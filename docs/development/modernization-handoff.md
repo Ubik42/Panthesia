@@ -146,15 +146,17 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 - 新增 PracticeContextPanel，集中演奏版本、谱面、转调 / 量化、手别、外观、音源与高级练习设置。普通布局内联显示，专注布局从右上角展开同一组控件；组件负责展开、来源切换、外部点按与 Esc 收起，隐藏时暂停版本栏读取。移除主界面被主题长期隐藏的旧紧凑光效条挂载。
 - 专注布局收起全局菜单与低频歌曲操作，保持曲名、视图、时间线、BPM、播放模式和播放控制。右上角有音源连接提示，从设置面板仍可访问全部练习入口。返回曲库后全局菜单正常显示。
 - practiceFocus 进入已有显示偏好、布局方案与界面备份，新增“专注演奏布局”设置项；旧记录缺少此字段时采用普通布局，旧备份继续可读。已有预置“专注练习”会启用新布局，读谱 / 选曲预置恢复普通布局。
-- 收敛展开面板的换行与尺寸，修正旧样式隐藏新增按钮的问题；面板内转调设置采用内联展开，避免弹出区域越过窗口。
+- 收敛展开面板的换行与尺寸，修正旧样式隐藏新增按钮的问题；专注面板内转调设置采用内联展开；普通布局改为向下弹出，并提高定位规则优先级，解除旧规则同时限定上下边界所造成的压缩。普通弹层样式以当前源码注入隔离桌面核对，高度从约 41 增至 210 像素，证据 focus-popover-evidence.json / focus-normal-variant.png；最终样式随 Release 构建进入程序。
 
 实际桌面在 1000×800 的演奏区由 293.33 增至 491.67 像素。播放中切换时状态保持 playing，位置从 0.205509 继续到 0.237105；Esc 收起后焦点返回入口。面板中量化切换并恢复成功，BPM 可改到 90。1000 / 720 宽度下展开设置无横向溢出，按钮无断字；重启软件从曲库进入演奏后，专注偏好恢复，设置面板保持收起。
 
-证据 work/practice-focus-desktop.log；work/practice-range-runtime/focus-evidence.json、focus-reopen-evidence.json、focus-score.png、focus-waterfall.png、focus-settings-1000.png、focus-settings-720.png。仅检查受影响编译与这条实际操作链路，使用原隔离资料与内置练习副本。本批正在生成更新后的 Release 预览包；具体来源与独立启动结果完成后登记。
+证据 work/practice-focus-desktop.log；work/practice-range-runtime/focus-evidence.json、focus-reopen-evidence.json、focus-score.png、focus-waterfall.png、focus-settings-1000.png、focus-settings-720.png。仅检查受影响编译与这条实际操作链路，使用原隔离资料与内置练习副本。本批 Release 预览包已生成于 outputs/releases/Panthesia-20261119-focused-practice，源码提交 070f511（主改造 dc0d8fe）。实际工作区含既有未提交曲库路径调整，manifest 标记 dirty=true；内容指纹 C51D68A52BEBD4B7F81E634313D1239F09731CB12E2BC85279BDE1E673602914。29 个文件校验一致，独立 --window-check 返回 PASS，界面 / IPC / 音色 / Verovio / PDF ready，内置 5 首、9 音符、MIDI 已连接。证据 work/focused-practice-release.log、work/focused-practice-package-check/release-evidence.json、startup.log。首轮构建期间发现普通弹层定位冲突，修正后原构建因源码变化拒绝登记；最终包已按固定源码重新构建。
+
+下一批先核对各音源主音量、试听及界面能力是否一致：当前 PracticeTransport 的 volumeAvailable 仅判断“内置钢琴”，外部音源控制能力需按真实后端处理。随后核对音源 / 制谱设置运行状态及主流程交付项。原官方矩阵中的部分、待做和外部依赖范围仍有效，整体 Goal active。
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-song-practice，程序源码提交 39263e3，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 outputs/releases/Panthesia-20261119-independent（af146d8）继续留作历史版本。新包覆盖统一歌曲核心后的功能批次，整体 Goal 仍 active，未经要求未推送。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-focused-practice，程序源码提交 070f511，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 song-practice（39263e3）与 independent（af146d8）继续留作历史版本。新包覆盖歌曲核心、DuET 接入、统一谱面、循环、外观及专注布局，整体 Goal 仍 active，未经要求未推送。
 
 ## 数据与工作方式
 
