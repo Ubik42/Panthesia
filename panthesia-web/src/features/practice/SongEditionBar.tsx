@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { FileMusic, Layers3, SlidersHorizontal } from "lucide-react";
 import { api, type LoadedSong } from "../../api";
-import type { EngineCommand, RepertoireView } from "../../engine/commands.generated";
+import type {
+  EngineCommand,
+  RepertoireView,
+} from "../../engine/commands.generated";
 import { readRepertoire } from "../library/repertoireClient";
 import type { ScoreRouteEvidence } from "../../ScoreRoutePreview";
 import "./songEditionBar.css";
+import { SongPerformanceManager } from "./SongPerformanceManager";
 
 export function SongEditionBar({
   song,
@@ -27,11 +31,17 @@ export function SongEditionBar({
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [reading, setReading] = useState(false);
   useEffect(() => {
     let current = true;
-    setView(null);
+    setView((previous) =>
+      previous?.project?.performance.contentId === song.contentId
+        ? previous
+        : null,
+    );
     setError("");
     if (song.generated || !song.sourcePath) return;
+    setReading(true);
     void readRepertoire(song.sourcePath, song.contentId)
       .then((value) => {
         if (current) setView(value);
@@ -39,6 +49,9 @@ export function SongEditionBar({
       .catch((error) => {
         if (current)
           setError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (current) setReading(false);
       });
     return () => {
       current = false;
@@ -59,7 +72,7 @@ export function SongEditionBar({
     : [];
   const active = project?.notations.find((row) => row.active);
   const transform = song.practiceVariant?.settings;
-  const locked = disabled || pending;
+  const locked = disabled || pending || reading;
   const change = async (operation: () => Promise<unknown>) => {
     setPending(true);
     setError("");
@@ -145,7 +158,7 @@ export function SongEditionBar({
             });
           }}
         >
-        <option value="">{project?"MIDI 即时谱":"正在读取谱面…"}</option>
+          <option value="">{project ? "MIDI 即时谱" : "正在读取谱面…"}</option>
           {project?.notations.map((row) => (
             <option
               key={row.edition.id}
@@ -188,6 +201,14 @@ export function SongEditionBar({
             重新读取
           </button>
         </p>
+      )}
+      {view?.project && (
+        <SongPerformanceManager
+          view={view}
+          disabled={locked}
+          change={change}
+          open={openPerformance}
+        />
       )}
     </section>
   );

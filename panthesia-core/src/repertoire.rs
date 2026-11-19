@@ -169,4 +169,51 @@ impl RepertoireRegistry {
             .work_id = work_id.into();
         Ok(())
     }
+    pub fn separate(&mut self, content_id: &str) -> Result<(), String> {
+        let current = self
+            .performances
+            .get(content_id)
+            .ok_or("演奏版本尚未登记")?
+            .work_id
+            .clone();
+        if self
+            .performances
+            .values()
+            .filter(|p| p.work_id == current)
+            .count()
+            < 2
+        {
+            return Ok(());
+        }
+        let mut work = self.works.get(&current).ok_or("歌曲登记缺失")?.clone();
+        let id = std::iter::once(format!("work-{content_id}"))
+            .chain((0..=self.works.len()).map(|i| format!("work-{content_id}-independent-{i}")))
+            .find(|id| self.performances.values().all(|p| p.work_id != *id))
+            .ok_or("无法建立独立歌曲")?;
+        if !self.works.contains_key(&id) {
+            work.id = id.clone();
+            self.works.insert(id.clone(), work);
+        }
+        self.performances.get_mut(content_id).unwrap().work_id = id;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod relationship_tests {
+    #[test]
+    fn regrouping_restores_independent_identity_without_accumulating_or_overwriting_works() {
+        let mut registry = super::RepertoireRegistry::default();
+        registry.register("first", "原曲", "作者", Some("first.mid".into()));
+        registry.register("second", "个人演奏", "作者", Some("second.mid".into()));
+        for _ in 0..8 {
+            registry.link("second", "work-first").unwrap();
+            registry.separate("second").unwrap();
+        }
+        assert_eq!(registry.works.len(), 2);
+        assert_eq!(registry.performances["second"].work_id, "work-second");
+        assert_eq!(registry.works["work-second"].title, "个人演奏");
+        assert_eq!(registry.performances["second"].locations, ["second.mid"]);
+        registry.validate().unwrap();
+    }
 }

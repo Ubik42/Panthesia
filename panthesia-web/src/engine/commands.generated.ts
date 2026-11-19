@@ -146,6 +146,7 @@ export interface RepertoireEdit {
   "expected": string;
   "contentId": string;
   "workId"?: string | null;
+  "independent"?: boolean | null;
   "title"?: string | null;
   "composer"?: string | null;
   "catalogue"?: string | null;

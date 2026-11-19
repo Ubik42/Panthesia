@@ -177,6 +177,8 @@ fn prepare(
             .arg(&output)
             .arg("--title")
             .arg(title)
+            .arg("--source-content-id")
+            .arg(cid)
             .arg("--device")
             .arg(&device),
         Duration::from_secs(1800),
@@ -201,6 +203,7 @@ fn prepare(
         "notes.json",
         "score.npz",
         "frames.csv",
+        "input-identity.json",
         "review.json",
     ] {
         if !std::fs::metadata(output.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0) {

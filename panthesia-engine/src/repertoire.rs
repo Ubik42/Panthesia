@@ -19,6 +19,7 @@ pub struct RepertoireEdit {
     pub expected: String,
     pub content_id: String,
     pub work_id: Option<String>,
+    pub independent:Option<bool>,
     pub title: Option<String>,
     pub composer: Option<String>,
     pub catalogue: Option<String>,
@@ -252,6 +253,10 @@ impl Engine {
                         if let Some(edit) = edit {
                             if edit.expected != revision {
                                 return Err("作品资料已变化，请刷新；当前编辑内容保留".into());
+                            }
+                            if edit.independent==Some(true) {
+                                if edit.work_id.is_some(){return Err("请选择归入歌曲或设为独立歌曲中的一项操作".into());}
+                                registry.separate(&edit.content_id)?;
                             }
                             if let Some(work) = edit.work_id {
                                 registry.link(&edit.content_id, &work)?;

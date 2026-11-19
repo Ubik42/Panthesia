@@ -28,6 +28,7 @@ interface Asset {
   name: string;
   compressed: boolean;
   coverage: number;
+  alignmentSource?: "duetIdentity"|"matching";
   confidence: number;
   readiness: string;
   diagnostics: string[];
@@ -770,9 +771,9 @@ export function Notation({
         >
           生成可定位纸谱
         </button>
-        <span>
+        <span title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
-            ? `配对 ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
+            ? `${asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
             : ""}
         </span>
       </div>

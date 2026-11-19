@@ -124,6 +124,7 @@ pub mod library_workspace;
 mod library_edits;
 mod metadata_claims;
 mod notation;
+mod duet_alignment;
 pub mod score_ranges;
 mod tick_ranges;
 pub mod score_export;
@@ -2053,7 +2054,7 @@ impl Player {
                 self.score_content_guard(&content_id)?;
                 let file = self.file.as_ref().ok_or("请先打开 MIDI")?;
                 if file.content_id != content_id { return Err("曲目已切换，请重新配对乐谱".into()); }
-                let score = notation::ScoreAsset::new(bytes, name, file)?;
+                let score = notation::ScoreAsset::new(bytes, name, self.source_file.as_deref().unwrap_or(file))?;
                 self.check_score_review(&score, expected.as_ref())?;
                 return self.pair_score_asset(score);
             }
@@ -2066,7 +2067,7 @@ impl Player {
                 let existing=self.preferences.score_versions.get(&content_id).and_then(|rows|rows.iter().find(|v|v.name==name&&v.content_id==hash)).cloned();
                 if existing.is_none()&&self.preferences.score_versions.get(&content_id).is_some_and(|rows|rows.len()>=100){return Err("这首曲目已有 100 份谱面，请先移除不需要的版本".into())}
                 let file=self.file.as_ref().ok_or("请先选择曲目")?;
-                let score=notation::ScoreAsset::new(bytes,name.clone(),file)?;
+                let score=notation::ScoreAsset::new(bytes,name.clone(),self.source_file.as_deref().unwrap_or(file))?;
                 let midi=self.annotation_path(file)?;
                 let path=self.store_score_version_file(&score,&content_id)?;
                 if let Some(version)=existing{

@@ -24,6 +24,8 @@ pub struct ScoreAsset {
     pub alignment: ScoreMidiAlignment,
     pub content_id: String,
     pub source_fingerprint: String,
+    pub uses_source_identity:bool,
+    source_render_ids:HashMap<String,panthesia_core::musicxml::ScoreEventId>,
 }
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,8 +87,9 @@ impl ScoreAsset {
         check()?;
         let score = panthesia_core::score_performance::normalized_checked(&score, check)?;
         check()?;
-        let alignment =
-            panthesia_core::score_alignment::align_score_to_midi_checked(&score, file, check)?;
+        let direct=crate::duet_alignment::align(&bytes,&score,file,check)?;
+        let uses_source_identity=direct.is_some();
+        let (alignment,source_render_ids)=match direct {Some(value)=>(value.alignment,value.render_ids),None=>(panthesia_core::score_alignment::align_score_to_midi_checked(&score,file,check)?,HashMap::new())};
         Ok(Self {
             content_id: file.content_id.clone(),
             source_fingerprint: blake3::hash(&bytes).to_hex().to_string(),
@@ -94,6 +97,8 @@ impl ScoreAsset {
             name,
             score,
             alignment,
+            uses_source_identity,
+            source_render_ids,
         })
     }
     /// Only exact, individually trusted occurrence matches may influence a MIDI fingering.
@@ -242,7 +247,7 @@ impl ScoreAsset {
             }).collect();
             serde_json::json!({"complete":plan.complete && a.readiness == panthesia_core::score_alignment::AlignmentReadiness::Ready,"visits":visits})
         }));
-        serde_json::json!({"route":route,"name":self.name,"sourceFingerprint":self.source_fingerprint,"compressed":self.bytes.starts_with(b"PK"),"title":self.score.title,"coverage":a.coverage_percent,"confidence":a.mean_confidence_percent,"readiness":a.readiness,"diagnostics":a.navigation_diagnostics,"warnings":self.score.warnings.iter().map(score_warning_label).collect::<Vec<_>>(),"trillCount":trill_count,"mordentCount":mordent_count,"turnCount":turn_count,"invertedTurnCount":inverted_turn_count})
+        serde_json::json!({"alignmentSource":if self.uses_source_identity{"duetIdentity"}else{"matching"},"route":route,"name":self.name,"sourceFingerprint":self.source_fingerprint,"compressed":self.bytes.starts_with(b"PK"),"title":self.score.title,"coverage":a.coverage_percent,"confidence":a.mean_confidence_percent,"readiness":a.readiness,"diagnostics":a.navigation_diagnostics,"warnings":self.score.warnings.iter().map(score_warning_label).collect::<Vec<_>>(),"trillCount":trill_count,"mordentCount":mordent_count,"turnCount":turn_count,"invertedTurnCount":inverted_turn_count})
     }
     /// Compatibility entry point for consumers using the existing JSON response.
     #[allow(dead_code)]
@@ -267,6 +272,31 @@ impl ScoreAsset {
         check()?;
         if midi.len() > 4_000_000 || notes.len() > 100_000 {
             return Err("乐谱映射数据过大".into());
+        }
+        if self.uses_source_identity && notes.iter().any(|note|self.source_render_ids.contains_key(&note.renderer_id)) {
+            let mut by_source:HashMap<_,Vec<_>>=HashMap::new();
+            for matched in &self.alignment.matches {by_source.entry(&matched.score_id.source_id).or_default().push(matched);}
+            let semantic:HashMap<_,_>=self.score.parts.iter().flat_map(|part|part.measures.iter().flat_map(|measure|measure.events.iter().filter_map(|event|match event {panthesia_core::musicxml::ScoreEvent::Note(note)=>Some((&note.id,note)),_=>None}))).collect();
+            let performed:HashMap<_,_>=file.tracks.iter().flat_map(|track|track.notes.iter().enumerate().map(move |(index,note)|((track.track_id,index),note))).collect();
+            let mut mapping=Vec::new();let mut seen=HashSet::new();let mut ambiguities=0;
+            for rendered in notes {
+                check()?;
+                let Some(id)=self.source_render_ids.get(&rendered.renderer_id) else {continue;};
+                if !seen.insert(rendered.renderer_id.clone()){ambiguities+=1;continue;}
+                let Some(written)=semantic.get(id) else {continue;};
+                let Some(pitch)=written.pitch.as_ref() else {continue;};
+                let natural=match pitch.step {panthesia_core::musicxml::Step::C=>0,panthesia_core::musicxml::Step::D=>2,panthesia_core::musicxml::Step::E=>4,panthesia_core::musicxml::Step::F=>5,panthesia_core::musicxml::Step::G=>7,panthesia_core::musicxml::Step::A=>9,panthesia_core::musicxml::Step::B=>11};
+                let expected=(i16::from(pitch.octave)+1)*12+natural+i16::from(pitch.alter);
+                if i16::from(rendered.pitch)!=expected||rendered.page_index>=300 {continue;}
+                if let Some(matches)=by_source.get(id) {for matched in matches {
+                    if let Some(note)=performed.get(&(matched.midi_id.track_id,matched.midi_id.note_index)) {
+                        mapping.push(MappingRow{id:rendered.renderer_id.clone(),page:rendered.page_index,start:note.start.as_secs_f64(),end:note.end.as_secs_f64(),pitch:note.note,
+                            track:matched.midi_id.track_id,index:matched.midi_id.note_index,score_finger:matched.principal.then(||written.fingering.clone()).flatten()});
+                    }
+                }}
+            }
+            let following=self.alignment.navigation_complete&&!mapping.is_empty()&&ambiguities==0;
+            return Ok(MappingResult{mapping,ambiguities,unmapped:self.source_render_ids.len().saturating_sub(seen.len()),following,mapping_token:None});
         }
         let smf = midi_file::midly::Smf::parse(midi).map_err(|e| e.to_string())?;
         check()?;
