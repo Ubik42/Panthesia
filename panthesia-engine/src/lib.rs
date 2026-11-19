@@ -2580,9 +2580,14 @@ impl Player {
                 {
                     return Err("分段终点应在起点之后，且不超过曲目时长".into());
                 }
+                let position=self.state.position;
+                let playing=self.state.status=="playing";
+                let paused=self.state.status=="paused";
                 self.state.passage = enabled.then_some(Passage { start, end });
                 self.state.repetitions = 0;
-                self.reset(if enabled { start } else { 0. });
+                self.reset(if enabled { start } else { position });
+                if playing {self.ensure_audio()?;self.state.status="playing".into();}
+                else if paused {self.state.status="paused".into();}
             }
             Command::Pause => {
                 self.time_connected=false;

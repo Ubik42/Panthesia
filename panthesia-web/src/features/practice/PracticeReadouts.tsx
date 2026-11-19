@@ -3,7 +3,6 @@ import {
   displayPitch,
   type DisplayPreferences,
 } from "../../displayPreferences";
-import { practiceDuration } from "../../practiceTime";
 import { usePlaybackFields } from "./PlaybackView";
 import type { PlaybackStore } from "./playbackStore";
 import {
@@ -14,7 +13,6 @@ import {
   practiceStatus,
   seekableMeasures,
 } from "./practicePresentation";
-import { usePlaybackSlider } from "./usePlaybackSlider";
 
 const stageFields = [
   "status",
@@ -92,104 +90,6 @@ export function PracticeStageReadout({
             </strong>
           </div>
         )}
-    </div>
-  );
-}
-
-const timelineFields = [
-  "practiceMs",
-  "beat",
-  "position",
-  "measure",
-  "passage",
-] as const;
-export function PracticeTimeline({
-  store,
-  song,
-  disabled,
-  busy,
-  seek,
-}: {
-  store: PlaybackStore;
-  song: LoadedSong | null;
-  disabled: boolean;
-  busy: boolean;
-  seek: (measure: number) => Promise<boolean>;
-}) {
-  const state = usePlaybackFields(store, timelineFields);
-  const start = state.passage?.start ?? 0,
-    end = state.passage?.end ?? song?.duration ?? 0;
-  const unavailable = !song || end <= start || disabled;
-  const slider = usePlaybackSlider({
-    store,
-    value: state.position,
-    disabled: unavailable || busy,
-    commit: (position) =>
-      seek(state.passage ? Math.min(position, end - 0.000001) : position),
-  });
-  const measures = song?.measures ?? [];
-  const marks = measures.filter((m) => m.start >= start && m.start <= end);
-  const every = Math.max(1, Math.ceil(marks.length / 80));
-  return (
-    <div className="practice-timeline time-ruler">
-      <div className="time-ruler-labels">
-        <span>
-          第 {state.measure} 小节{" "}
-          <small>第 {Math.floor(state.beat ?? 1)} 拍</small>
-        </span>
-        <strong>
-          {clock(slider.value)} <small>/ {clock(song?.duration ?? 0)}</small>
-        </strong>
-        <span className="time-ruler-practice">
-          已练 {practiceDuration(state.practiceMs ?? 0)}
-        </span>
-      </div>
-      <div className="time-ruler-track">
-        <svg
-          viewBox="0 0 1000 20"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {marks
-            .filter((_, i) => i % every === 0)
-            .map((m) => {
-              const x =
-                ((m.start - start) / Math.max(0.01, end - start)) * 1000;
-              return (
-                <g key={m.number}>
-                  <line x1={x} x2={x} y1={0} y2={m.number % 4 === 1 ? 11 : 5} />
-                  {m.number % 4 === 1 && (
-                    <text x={x + 3} y={19}>
-                      {m.number}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-        </svg>
-        <input
-          type="range"
-          aria-label="曲目时间线"
-          aria-valuetext={`${clock(slider.value)}，第 ${state.measure} 小节`}
-          min={start}
-          max={end || 1}
-          step={0.01}
-          value={Math.max(start, Math.min(end, slider.value))}
-          disabled={unavailable || (busy && !slider.pending)}
-          onChange={(e) => slider.stage(Number(e.target.value))}
-          onPointerDown={slider.begin}
-          onPointerUp={slider.apply}
-          onPointerCancel={slider.cancel}
-          onBlur={slider.apply}
-          onKeyDown={(e) => slider.keyDown(e.key, e.repeat)}
-          onKeyUp={(e) => slider.keyUp(e.key)}
-        />
-      </div>
-      <div className="time-ruler-seconds">
-        {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-          <span key={f}>{clock(start + (end - start) * f)}</span>
-        ))}
-      </div>
     </div>
   );
 }

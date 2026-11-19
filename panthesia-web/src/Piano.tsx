@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { PianoKeyboard } from "./features/practice/pianoKeyboard";
+import type { PracticeRange } from "./features/practice/usePracticeRange";
 import { WaterfallClock } from "./features/practice/waterfallClock";
 import { WaterfallSprites } from "./features/practice/waterfallSprites";
 import type { PlaybackStore } from "./features/practice/playbackStore";
@@ -35,6 +36,7 @@ export function Piano({
   onSelect,
   display = displayDefaults,
   canInteract,
+  practiceRange,
 }: {
   song: LoadedSong | null;
   state: Snapshot;
@@ -45,6 +47,7 @@ export function Piano({
   display?: DisplayPreferences;
   onSelect?: (note: LoadedSong["notes"][number]) => void;
   canInteract?: () => boolean;
+  practiceRange?: PracticeRange|null;
 }) {
   const pitches = useMemo(() => {
     const variant = song?.practiceVariant?.active;
@@ -111,6 +114,7 @@ export function Piano({
     customTracks,
     automaticTracks,
     selectable: !!onSelect,
+    practiceRange,
   });
   const requestPaint = useRef<() => void>(() => {});
   const hitSource = useRef<LoadedSong | null>(null);
@@ -161,6 +165,7 @@ export function Piano({
         customTracks,
         automaticTracks,
         selectable: !!onSelect,
+        practiceRange,
       };
       clock.current.update(
         live,
@@ -181,6 +186,7 @@ export function Piano({
     customTracks,
     automaticTracks,
     onSelect,
+    practiceRange,
   ]);
   useEffect(() => {
     const element = canvas.current!;
@@ -236,6 +242,7 @@ export function Piano({
         customTracks,
         automaticTracks,
         selectable,
+        practiceRange,
       } = latest.current;
       hitSource.current = song;
       const visualNotes = new Map<number, string>();
@@ -441,6 +448,7 @@ export function Piano({
           )
             playedNotes.add(note.pitch);
           const fill = required ? "#efd484" : noteColor;
+          const inRange=!practiceRange||note.start<practiceRange.end&&note.start+note.duration>practiceRange.start;
           sprites.note(
             ctx,
             x + 2,
@@ -452,7 +460,7 @@ export function Piano({
               ? 10 * strength
               : 0,
             dpr,
-            required ? 1 : 0.88,
+            required ? 1 : inRange ? 0.88 : 0.24,
           );
           const action = actions.current(note, position, state.speed);
           const label = noteLabel(

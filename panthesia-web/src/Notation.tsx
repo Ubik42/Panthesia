@@ -1,5 +1,6 @@
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import type { ScoreMappingRequest } from "./features/scores/mappingTypes";
+import type { PracticeRange } from "./features/practice/usePracticeRange";
 import { TaskActivity } from "./engine/TaskActivity";
 import { ScoreHistoryReview } from "./ScoreHistoryReview";
 import type {
@@ -78,8 +79,14 @@ export function Notation({
   openHistoryPlan,
   toolRequest,
   clearToolRequest,
+  selectPracticeNote,
+  practiceRange,
+  loop,
 }: {
   song: LoadedSong;
+  selectPracticeNote?: (note:Note)=>void;
+  practiceRange?:PracticeRange|null;
+  loop:(start:number,end:number)=>Promise<boolean>;
   toolRequest?: ScoreToolRequest | null;
   clearToolRequest?: () => void;
   state: Snapshot;
@@ -266,6 +273,10 @@ export function Notation({
     return keep;
   }, [song.notes, song.fingerActions]);
   const html = useMemo(() => ({ __html: pages[page] ?? "" }), [pages, page]);
+  useEffect(()=>{
+    const selected=new Set(practiceRange?mapping.filter(m=>m.start<practiceRange.end&&m.end>practiceRange.start).map(m=>m.id):[]);
+    root.current?.querySelectorAll("g.note").forEach(note=>note.classList.toggle("practice-range-note",selected.has(note.id)));
+  },[practiceRange?.start,practiceRange?.end,mapping,pages,page]);
   const notesById = useMemo(
     () => new Map(song.notes.map((n) => [`${n.track}:${n.index}`, n])),
     [song.notes],
@@ -529,7 +540,7 @@ export function Notation({
       target.setAttribute("tabindex", "0");
       target.setAttribute(
         "aria-label",
-        `${pitchName(entries[0].pitch)} · ${entries.length} 个演奏位置 · ${edit ? "编辑指法" : "定位"}`,
+        `${pitchName(entries[0].pitch)} · ${entries.length} 个演奏位置 · ${selectPracticeNote?"选择练习范围":edit ? "编辑指法" : "定位"}`,
       );
       if (selected?.id === id) target.classList.add("selected-score-note");
       if (!showFingers) continue;
@@ -635,6 +646,7 @@ export function Notation({
     important,
     zoom,
     paperWidth,
+    Boolean(selectPracticeNote),
   ]);
   const activate = (target: Element | null) => {
     if (!target || editorBusy) return;
@@ -651,6 +663,7 @@ export function Notation({
       return;
     }
     setSelectionError("");
+    if(selectPracticeNote){const note=notesById.get(`${n.track}:${n.index}`);if(note)selectPracticeNote(note);return;}
     if (edit) {
       setFollow(false);
       setSelected(n);
@@ -665,6 +678,7 @@ export function Notation({
         .sort((a, b) => a.start - b.start);
       const choice = choices.find((m) => m.end >= state.position) ?? choices[0];
       if (!choice || editorBusy) return;
+      if(selectPracticeNote){const note=notesById.get(`${choice.track}:${choice.index}`);if(note)selectPracticeNote(note);return;}
       if (canEdit) {
         onEdit(true);
         setFollow(false);
@@ -849,7 +863,7 @@ export function Notation({
           disabled={editorBusy}
           selectRange={(first, last) => setRangeSelection({ first, last })}
           loop={async (start, end) => {
-            await api.command({ type: "loop", start, end, enabled: true });
+            if(!(await loop(start,end)))throw Error("循环尚未设置，请稍后重试。");
           }}
         />
       )}

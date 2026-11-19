@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 f25d649。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 5e5a484。
 
 ## 当前主线
 
@@ -99,6 +99,20 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 实际桌面从谱面管理进入配置，识别 Python 3.12.13、DuET 0.1.0、Torch 2.11.0+cu128 与 RTX 4080。选择 CPU 的检查返回 effectiveDevice=cpu；关闭重开保留输入，保存后读取到 cpu。过期 revision 保存被拒绝，恢复自动查找时旧配置备份与原字节完全一致；设置关闭后返回谱面管理。重启实际桌面后 revision 与保存结果一致、device=auto，声音入口为 ready，设备页演奏音源选择器仍可用。1000×800 截图无横向溢出，计算设备标签完整显示。
 
 本批只做受影响桌面构建和上述操作链路，使用 work/duet-settings-runtime 隔离资料；未重复 DuET 模型推理或运行全套回归。证据：work/duet-runtime-desktop.log、work/duet-settings-runtime/settings-evidence.json、reopen-evidence.json、settings-wide.png、settings-narrow.png、settings-reopen-narrow.png。后续继续演奏工作区的版本 / 谱面 / 音源状态整合、减少重复弹窗及 P4 成品外观与运行包。
+
+## P3：跨视图 A/B 范围与循环批次
+
+- usePracticeRange 维护来源明确的选段草稿，复用 Snapshot.passage 类型。支持按当前位置设置 A / B，也可从 MIDI 即时谱、量化 / 关联 MusicXML、瀑布点选首尾音符；首尾顺序不限制，范围包含两处音符的实际时值。切视图继续选段，切歌与练习条件改变后清理旧来源。
+- 时间线集中启用 / 退出循环，显示草稿端点及范围在全曲中的位置；实际循环仍由引擎 passage 表示。移除打开侧栏循环设置的重复按钮，按小节细调仍从“小节与分段”进入。短于十秒的窗口显示百分之一秒，减少整数秒刻度重复。
+- MIDI 即时谱和 MusicXML 高亮范围内音符，瀑布降低范围外音符的透明度。只在选音模式生成瀑布命中对象，普通播放继续复用既有绘制缓存。
+- PracticeTimeline 从 PracticeReadouts 拆出，主工作区直接导入；静态刻度和范围按钮使用独立缓存边界。谱面内的循环命令改走主工作区受来源约束的实时调用。
+- 引擎 Loop 命令在正在播放 / 暂停时保持相应状态；退出循环保留当前位置。MeasureLoop 已通过同一命令实现，避免不同入口采用不同退出行为。
+
+桌面实际链路：MIDI 简谱选起音，再切瀑布选终音，得到 1.20–4.05 秒，与当前 MIDI 音符起止完全一致；播放中退出循环，位置从 1.4684 继续到 1.4917，status 保持 playing。量化谱重新选段得到 1.80–5.25 秒，6 个谱面音符高亮；换另一内容 MIDI 后端点自动清空。按当前位置手动标记得到 0.60–2.40 秒，退出后停留 0.60，状态 ready。
+
+宽度 1440 / 1000 / 720 的范围按钮均在可见窗口内，无根节点横向滚动。窄窗发现过旧 flex 换列造成控件进入右侧隐区，已在实际几何检查后修正。最终截图使用 manual-range-1440.png、manual-range-1000.png、manual-range-720.png；早期 notation-selection-narrow.png 是修正前检查材料，不作最终布局依据。
+
+证据位于 work/practice-range-runtime/range-evidence.json、layout-evidence.json 及上述 PNG；受影响桌面构建 work/practice-range-desktop.log。使用隔离资料与内置练习副本，仅检查这条用户链路与受影响构建，未运行全套回归。后续进入 P4：统一演奏表面、皮肤与特效设置，整理剩余耦合及运行包；视图切换时复用谱面渲染结果仍可继续优化。
 
 ## 交付状态
 

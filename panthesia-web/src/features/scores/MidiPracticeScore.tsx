@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LoadedSong, Note, Snapshot } from "../../api";
 import "./midiPracticeScore.css";
+import type {PracticeRange} from "../practice/usePracticeRange";
 
 const names = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const degree = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
@@ -17,13 +18,17 @@ const NoteGlyph = memo(function NoteGlyph({
   x,
   ppq,
   active,
-  seek,
+  activate,
+  selecting,
+  selected,
 }: {
   note: Note;
   x: number;
   ppq: number;
   active: boolean;
-  seek: (position:number) => void;
+  activate:(note:Note)=>void;
+  selecting:boolean;
+  selected:boolean;
 }) {
   const lower = lowerStaff(note);
   const base = lower ? 194 : 94,
@@ -43,15 +48,15 @@ const NoteGlyph = memo(function NoteGlyph({
     for (let line = base - 50; line >= y; line -= 10) ledger.push(line);
   return (
     <g
-      className={`midi-score-note ${lower ? "left-hand" : "right-hand"} ${active ? "active" : ""}`}
+      className={`midi-score-note ${lower ? "left-hand" : "right-hand"} ${active ? "active" : ""} ${selected?"range-selected":""}`}
       role="button"
       tabIndex={0}
-      aria-label={`${names[note.pitch % 12]}${Math.floor(note.pitch / 12) - 1}，跳到此音`}
-      onClick={()=>seek(note.start)}
+      aria-label={`${names[note.pitch % 12]}${Math.floor(note.pitch / 12) - 1}，${selecting?"选择此音":"跳到此音"}`}
+      onClick={()=>activate(note)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          seek(note.start);
+          activate(note);
         }
       }}
     >
@@ -120,13 +125,17 @@ export function MidiPracticeScore({
   song,
   state,
   seek,
+  selectPracticeNote,
+  practiceRange,
 }: {
   song: LoadedSong;
   state: Snapshot;
   seek: (position: number) => void;
+  selectPracticeNote?:(note:Note)=>void;
+  practiceRange?:PracticeRange|null;
 }) {
-  const seekRef=useRef(seek);seekRef.current=seek;
-  const seekNote=useCallback((position:number)=>seekRef.current(position),[]);
+  const actionRef=useRef({seek,selectPracticeNote});actionRef.current={seek,selectPracticeNote};
+  const activateNote=useCallback((note:Note)=>{const action=actionRef.current;action.selectPracticeNote?action.selectPracticeNote(note):action.seek(note.start);},[]);
   const [page, setPage] = useState(0),
     [follow, setFollow] = useState(true);
   const root = useRef<HTMLElement>(null);
@@ -319,7 +328,9 @@ export function MidiPracticeScore({
                             state.position >= n.start - 0.035 &&
                             state.position < n.start + n.duration
                           }
-                          seek={seekNote}
+                          activate={activateNote}
+                          selecting={!!selectPracticeNote}
+                          selected={!!practiceRange&&n.start<practiceRange.end&&n.start+n.duration>practiceRange.start}
                         />
                       ))}
                       {!visible.some((n) => !lowerStaff(n)) && (

@@ -51,7 +51,6 @@ import { StartupNotice } from "./app/StartupNotice";
 import { TaskActivity } from "./engine/TaskActivity";
 import {
   PracticeStageReadout,
-  PracticeTimeline,
   PracticeResultStrip,
   PracticeSetupSummary,
   PracticePedal,
@@ -134,6 +133,8 @@ import { RoutineDialog, RoutineStatus } from "./RoutineDialog";
 import { LadderDialog, LadderStatus } from "./LadderDialog";
 import { PassageDialog } from "./PassageDialog";
 import { LiveBarNavigator } from "./BarNavigator";
+import { usePracticeRange } from "./features/practice/usePracticeRange";
+import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { Piano } from "./Piano";
 import {
   ExerciseDialog,
@@ -409,6 +410,7 @@ export default function App() {
   }, [state.mode]);
   const [loopStart, setLoopStart] = useState(1),
     [loopEnd, setLoopEnd] = useState(0);
+  const practiceRange=usePracticeRange(song,playback);
   const scoreInput = useRef<HTMLInputElement>(null);
   const scorePairTarget = useRef<{ contentId: string; title: string } | null>(null);
   const requestBusy = useRef(false);
@@ -2100,15 +2102,16 @@ export default function App() {
                   previewBars={seconds}
                   display={display}
                   onSelect={
-                    editFingers && !recital ? setSelectedNote : undefined
+                    practiceRange.picking ? practiceRange.pick : editFingers && !recital ? setSelectedNote : undefined
                   }
+                  practiceRange={practiceRange.range}
                 />}
             {view === "score" && song && state.mode !== "memory" && (
               <PlaybackView
                 store={playback}
                 contentId={song?.contentId ?? null}
               >
-                {(live) => (!song.hasScore && !song.practiceVariant?.settings.quantize ? <MidiPracticeScore song={song} state={live} seek={position=>action({type:"seek",position})}/> :
+                {(live) => (!song.hasScore && !song.practiceVariant?.settings.quantize ? <MidiPracticeScore song={song} state={live} seek={position=>action({type:"seek",position})} selectPracticeNote={practiceRange.picking?practiceRange.pick:undefined} practiceRange={practiceRange.range}/> :
                   <Notation
                     toolRequest={scoreToolRequest}
                     clearToolRequest={clearScoreToolRequest}
@@ -2179,6 +2182,9 @@ export default function App() {
                     song={song}
                     state={live}
                     seek={(position) => action({ type: "seek", position })}
+                    selectPracticeNote={practiceRange.picking?practiceRange.pick:undefined}
+                    practiceRange={practiceRange.range}
+                    loop={(start,end)=>run({type:"loop",start,end,enabled:true})}
                     changed={async () => {
                       const session = await api.session();
                       installSession(session);
@@ -2190,7 +2196,7 @@ export default function App() {
                     assignHands={() => setHandsDialog(true)}
                     edit={editFingers && !recital}
                     canEdit={!recital}
-                    onEdit={setEditFingers}
+                    onEdit={value=>{if(value)practiceRange.cancelPicking();setEditFingers(value);}}
                   />
                 )}
               </PlaybackView>
@@ -2326,6 +2332,9 @@ export default function App() {
           )}
           </details>
           <PracticeTimeline
+            range={practiceRange}
+            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})}
+            togglePicking={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}
             store={playback}
             song={song}
             busy={busy || openingActive}
@@ -2346,7 +2355,6 @@ export default function App() {
             {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
             <button onClick={()=>{getInterfaceWorkbench().update({section:"display"});setDisplayDialog(true);}}>外观与网格</button>
             <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
-            <button className="instrument-loop" disabled={!song||busy||routineActive||ladderActive||recital} onClick={()=>panels.revealInspector("setup")}>小节循环 {state.passage?"· 已启用":""}</button>
             <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
           </div>
           <PracticeTransport

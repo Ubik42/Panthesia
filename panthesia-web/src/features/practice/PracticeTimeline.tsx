@@ -1,0 +1,167 @@
+import { memo, useMemo } from "react";
+import { clock, type LoadedSong } from "../../api";
+import { practiceDuration } from "../../practiceTime";
+import { usePlaybackFields } from "./PlaybackView";
+import type { PlaybackStore } from "./playbackStore";
+import { usePlaybackSlider } from "./usePlaybackSlider";
+import type { PracticeRangeController } from "./usePracticeRange";
+import { PracticeRangeControls, rangeTime } from "./PracticeRangeControls";
+const fields = [
+  "practiceMs",
+  "beat",
+  "position",
+  "measure",
+  "passage",
+  "contentId",
+  "scoreRevision",
+] as const;
+const TimelineMarks = memo(function TimelineMarks({
+  song,
+  start,
+  end,
+}: {
+  song: LoadedSong | null;
+  start: number;
+  end: number;
+}) {
+  const marks = useMemo(() => {
+    const rows = (song?.measures ?? []).filter(
+      (m) => m.start >= start && m.start <= end,
+    );
+    const every = Math.max(1, Math.ceil(rows.length / 80));
+    return rows.filter((_, i) => i % every === 0);
+  }, [song?.measures, start, end]);
+  return (
+    <svg viewBox="0 0 1000 20" preserveAspectRatio="none" aria-hidden="true">
+      {marks.map((m) => {
+        const x = ((m.start - start) / Math.max(0.01, end - start)) * 1000;
+        return (
+          <g key={m.number}>
+            <line x1={x} x2={x} y1={0} y2={m.number % 4 === 1 ? 11 : 5} />
+            {m.number % 4 === 1 && (
+              <text x={x + 3} y={19}>
+                {m.number}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+});
+export function PracticeTimeline({
+  store,
+  song,
+  disabled,
+  busy,
+  seek,
+  range,
+  loop,
+  togglePicking,
+}: {
+  store: PlaybackStore;
+  song: LoadedSong | null;
+  disabled: boolean;
+  busy: boolean;
+  seek: (position: number) => Promise<boolean>;
+  range: PracticeRangeController;
+  loop: (start: number, end: number, enabled: boolean) => Promise<boolean>;
+  togglePicking: () => void;
+}) {
+  const state = usePlaybackFields(store, fields);
+  const start = state.passage?.start ?? 0,
+    end = state.passage?.end ?? song?.duration ?? 0;
+  const unavailable =
+    !song ||
+    end <= start ||
+    disabled ||
+    state.contentId !== song.contentId ||
+    state.scoreRevision !== song.scoreRevision;
+  const slider = usePlaybackSlider({
+    store,
+    value: state.position,
+    disabled: unavailable || busy,
+    commit: (position) =>
+      seek(state.passage ? Math.min(position, end - 0.000001) : position),
+  });
+  const full = song?.duration ?? 1;
+  const formatTime=end-start<10?rangeTime:clock;
+  return (
+    <div className="practice-timeline time-ruler">
+      <div className="time-ruler-labels">
+        <span>
+          第 {state.measure} 小节{" "}
+          <small>第 {Math.floor(state.beat ?? 1)} 拍</small>
+        </span>
+        <strong>
+          {formatTime(slider.value)} <small>/ {formatTime(song?.duration ?? 0)}</small>
+        </strong>
+        <span>{state.passage ? "循环段时间线" : "全曲时间线"}</span>
+      </div>
+      {(range.range || state.passage) && (
+        <div
+          className="practice-range-overview"
+          aria-label="选段在全曲中的位置"
+        >
+          {state.passage && (
+            <i
+              style={{
+                left: `${(state.passage.start / full) * 100}%`,
+                width: `${((state.passage.end - state.passage.start) / full) * 100}%`,
+              }}
+            />
+          )}
+          {range.dirty && range.range && (
+            <i
+              className="draft"
+              style={{
+                left: `${(range.range.start / full) * 100}%`,
+                width: `${((range.range.end - range.range.start) / full) * 100}%`,
+              }}
+            />
+          )}
+          <b
+            style={{ left: `${Math.min(100, (state.position / full) * 100)}%` }}
+          />
+        </div>
+      )}
+      <div className="time-ruler-track">
+        <TimelineMarks song={song} start={start} end={end} />
+        <input
+          type="range"
+          aria-label="曲目时间线"
+          aria-valuetext={`${formatTime(slider.value)}，第 ${state.measure} 小节`}
+          min={start}
+          max={end || 1}
+          step={0.01}
+          value={Math.max(start, Math.min(end, slider.value))}
+          disabled={unavailable || (busy && !slider.pending)}
+          onChange={(e) => slider.stage(Number(e.target.value))}
+          onPointerDown={slider.begin}
+          onPointerUp={slider.apply}
+          onPointerCancel={slider.cancel}
+          onBlur={slider.apply}
+          onKeyDown={(e) => slider.keyDown(e.key, e.repeat)}
+          onKeyUp={(e) => slider.keyUp(e.key)}
+        />
+      </div>
+      <div className="time-ruler-seconds">
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+          <span key={f}>{formatTime(start + (end - start) * f)}</span>
+        ))}
+      </div>
+      <div className="practice-range-toolbar">
+        <span className="time-ruler-practice">
+          已练 {practiceDuration(state.practiceMs ?? 0)}
+        </span>
+        <PracticeRangeControls
+          range={range}
+          disabled={unavailable || busy}
+          active={!!state.passage}
+          loop={loop}
+          toggle={togglePicking}
+        />
+      </div>
+    </div>
+  );
+}
