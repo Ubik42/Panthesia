@@ -6,6 +6,7 @@ import {
 import { pitchName } from "./engine/musicFormatting";
 export type DisplayPreferences = {
   practiceLayoutVersion: number;
+  practiceFocus: boolean;
   skin: "studio" | "midnight" | "rosewood";
   pianoMaterial: "ivory" | "porcelain" | "glass";
   effectStyle: "bloom" | "ripple" | "comet";
@@ -71,6 +72,7 @@ export const zxcvCodes = [
 ];
 export const displayDefaults: DisplayPreferences = {
   practiceLayoutVersion: 3,
+  practiceFocus: false,
   skin: "studio", pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   effectsEnabled: true,
@@ -142,6 +144,7 @@ export function normalizeDisplayPreferences(
     effectsPalette: raw.effectsPalette === "ember" || raw.effectsPalette === "violet" ? raw.effectsPalette : "aurora",
     effectsIntensity: size(raw.effectsIntensity, 0, 100, 70),
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
+    practiceFocus: raw.practiceFocus === true,
     keyCodes: keys,
     uiScale: size(raw.uiScale, 80, 150, 100),
     shortcuts: normalizeShortcuts(raw.shortcuts, keys),

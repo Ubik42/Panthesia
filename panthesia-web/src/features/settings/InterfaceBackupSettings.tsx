@@ -18,6 +18,7 @@ import {
 import { codeLabel } from "../../displayPreferences";
 import { shortcutActions, shortcutLabel } from "../../shortcuts";
 const labels: Record<string, string> = {
+  practiceFocus: "专注演奏布局",
   uiScale: "整体界面缩放",
   notation: "音符名称",
   noteLabels: "音符提示",

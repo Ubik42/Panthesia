@@ -1,0 +1,80 @@
+.practice-panel { position: relative; }
+.practice-context { flex: none; min-width: 0; }
+.practice-context > summary { display: none; }
+.practice-context .practice-advanced-settings { display: none; }
+.practice-context .instrument-controls { border-bottom: 1px solid var(--instrument-line); }
+.practice-context .practice-variant[open] > .variant-body { top: calc(100% + 8px); bottom: auto; }
+.daily-workbench.page-practice.practice-focus > .workspace-topbar { display: none; }
+.daily-workbench.practice-focus .practice-panel > .song-toolbar { min-height: 52px; padding: 8px 164px 8px 18px; }
+.practice-focus .practice-panel > .song-toolbar > button:not(.back-to-library):not([aria-label="显示曲库"]) { display: none; }
+.practice-focus .song-toolbar .current-song > :not(h1) { display: none; }
+.daily-workbench.practice-focus .current-song h1 { margin: 0; }
+.practice-focus .practice-context {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: min(760px, calc(100% - 24px));
+  z-index: 35;
+  pointer-events: none;
+}
+.practice-focus .practice-context > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: fit-content;
+  margin-left: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--instrument-line);
+  border-radius: 5px;
+  background: var(--instrument-panel);
+  color: var(--instrument-text);
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+  pointer-events: auto;
+  list-style: none;
+}
+.practice-focus .practice-context > summary::-webkit-details-marker { display: none; }
+.practice-focus .practice-context > summary[aria-disabled=true] { opacity: .5; cursor: default; }
+.practice-focus .practice-context-body {
+  margin-top: 9px;
+  padding: 8px;
+  max-height: min(560px, calc(100vh - 120px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--instrument-line);
+  border-radius: 8px;
+  background: var(--instrument-panel);
+  color: var(--instrument-text);
+  box-shadow: 0 12px 35px #10182730;
+  pointer-events: auto;
+}
+.practice-context-heading { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px 10px; font-size: 13px; }
+.practice-context-heading button { padding: 4px; background: transparent; border-color: var(--instrument-line); color: inherit; }
+.practice-focus .practice-context :is(.song-edition-bar,.instrument-controls) { padding: 10px; gap: 10px; }
+.practice-focus .practice-context .practice-advanced-settings { display: inline-flex; }
+.practice-focus .practice-context .song-edition-bar { border-top: 1px solid var(--instrument-line); }
+.practice-focus .practice-context .instrument-controls { border-bottom: 0; }
+.practice-focus .practice-context .instrument-controls { flex-wrap: wrap; align-items: center; }
+.practice-focus .practice-context .instrument-controls > button { flex: none; white-space: nowrap; }
+.practice-focus .practice-context .instrument-controls > .practice-variant { flex: 0 0 auto; }
+.practice-focus .practice-context .instrument-controls > .practice-variant[open] { flex-basis: 100%; }
+.practice-focus .practice-context .instrument-hands { flex: none; }
+.practice-focus .practice-context .instrument-hands button { white-space: nowrap; }
+.practice-focus .practice-context .instrument-controls > .instrument-sound { flex: 1 1 230px; min-width: 180px; max-width: none; margin-left: 0; white-space: normal; }
+.practice-focus .practice-context .practice-variant[open] > .variant-body { position: static; width: 100%; max-height: none; box-shadow: none; margin: 10px 0 0; }
+.daily-workbench.practice-focus .practice-view-toolbar { padding-top: 5px; padding-bottom: 5px; min-height: 37px; }
+.practice-focus .practice-panel > .practice-passage-details { display: none; }
+.practice-focus .notation-pane .score-rhythm-note { display: none; }
+.daily-workbench .practice-view-toolbar .practice-focus-toggle { display: inline-flex; color: var(--instrument-text); border: 1px solid var(--instrument-line); background: var(--instrument-panel); border-radius: 5px; padding: 5px 9px; font-size: 11px; }
+.practice-context-signal { width: 6px; height: 6px; border-radius: 50%; background: #8b94a4; }
+.practice-context-signal[data-state=ready] { background: #48a98b; }
+.practice-context-signal[data-state=changing] { background: #c79744; }
+.practice-context-signal[data-state=error] { background: #c35e4c; }
+.daily-workbench .practice-view-toolbar .practice-focus-toggle[aria-pressed=true] { color: var(--instrument-accent); background: var(--instrument-selected); }
+@media(max-width:720px) {
+  .daily-workbench.practice-focus .practice-panel > .song-toolbar { padding-left: 12px; padding-right: 150px; gap: 8px; }
+  .practice-focus .practice-context .song-edition-bar > label { width: 100%; }
+  .practice-focus .practice-context .song-edition-bar select { flex: 1; width: auto; }
+}

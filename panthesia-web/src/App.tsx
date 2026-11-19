@@ -1,3 +1,4 @@
+import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
 import { SongCredits } from "./features/practice/SongCredits";
 import { SongBrowser } from "./features/library/SongBrowser";
@@ -42,7 +43,6 @@ import {ScoreWorkspaceButton} from "./features/scores/ScoreWorkspaceButton";
 import {SongEditionBar} from "./features/practice/SongEditionBar";
 import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
 import { PracticeVariantPanel } from "./features/practice/PracticeVariantPanel";
-import { PianoEffectsSettings } from "./features/settings/PianoEffectsSettings";
 import { isCapturingKeys, isComposingKey, isTextEntry, isVisibleInput, topInputScope, topPopup, visibleDialogs } from "./app/inputOwnership";
 import { libraryResumeContext, historyResumeContext } from "./app/workspaceResumeContext";
 import { SessionStatus } from "./app/SessionStatus";
@@ -1286,6 +1286,10 @@ export default function App() {
   const exportMidi = () => {
     if (song) setMediaExport({contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId});
   };
+  const togglePracticeFocus = () => setDisplay(previous => ({
+    ...previous, practiceFocus: !previous.practiceFocus,
+    ...(!previous.practiceFocus ? {libraryOpen:false,inspector:false} : {}),
+  }));
   const fullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else
@@ -1691,7 +1695,7 @@ export default function App() {
   return (
     <div
       data-skin={display.skin}
-      className={`workbench daily-workbench page-${workspace} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
+      className={`workbench daily-workbench page-${workspace} ${display.practiceFocus ? "practice-focus" : ""} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
       onDragOver={(e) => {
@@ -1953,10 +1957,22 @@ export default function App() {
           <PracticeSetupSummary store={playback} song={song} connected={connected}
             display={display} showRequired={view === "score"}
             open={() => panels.revealInspector("setup")} />
-          {song && <SongEditionBar song={song} active={workspace==="practice"} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
+          <PracticeContextPanel focus={display.practiceFocus} source={`${song?.engineId}:${song?.contentId}`} disabled={navigation.locked || !startupReady}
+            sound={{state:state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline",label:`${state.output} · ${state.sound?.changing?"正在连接":state.sound?.error?"连接异常，请检查音源":state.sound?.ready?"已连接":"未连接"}`}}>
+            {contextVisible => <>
+          {song && <SongEditionBar song={song} active={workspace==="practice" && contextVisible} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
             execute={command=>run(command,true)}
             openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}
             manage={()=>setScoresDialog(true)}/>}
+          <div className="instrument-controls">
+            <button className="practice-advanced-settings" onClick={()=>panels.revealInspector("setup")}>高级练习设置</button>
+            {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
+            <button onClick={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}}>外观与网格</button>
+            <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
+            <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
+          </div>
+            </>}
+          </PracticeContextPanel>
           <div className="view-toolbar practice-view-toolbar">
             <div className="practice-view-tabs" role="group" aria-label="练习视图">
               <button
@@ -2053,6 +2069,7 @@ export default function App() {
                 指法建议
               </button>
             </ToolbarMore>
+            <button className="practice-focus-toggle" aria-pressed={display.practiceFocus} disabled={navigation.locked || !startupReady} onClick={togglePracticeFocus}>{display.practiceFocus ? "退出专注" : "专注演奏"}</button>
             <PracticeLegend song={song} display={display} />
             <ToolbarMore label="显示选项" scale={display.uiScale / 100} disabled={navigation.locked || !startupReady}>
               <PracticeLegend song={song} display={display} />
@@ -2089,7 +2106,6 @@ export default function App() {
               </label>
             </ToolbarMore>
           </div>
-          {view === "keyboard" && <PianoEffectsSettings compact value={display} change={patch => setDisplay(previous => ({...previous, ...patch}))} openAppearance={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}} />}
           <div className="piano-stage">
             {(view === "keyboard" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
@@ -2350,12 +2366,7 @@ export default function App() {
             open={openQueuedSong}
             manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
             repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
-          <div className="instrument-controls">
-            {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
-            <button onClick={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}}>外观与网格</button>
-            <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
-            <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
-          </div>
+
           <PracticeTransport
             store={playback}
             available={!!song}

@@ -296,9 +296,6 @@ summary:focus-visible {
 .daily-workbench .piano-stage {
   background: #172034;
 }
-.daily-workbench .practice-panel > .piano-effects-settings.compact {
-  display: none;
-}
 .daily-workbench .practice-passage-details {
   background: #eef1f8;
   border-color: #dce2ee;

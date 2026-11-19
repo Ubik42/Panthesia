@@ -4,6 +4,7 @@ import {
 } from "../../displayPreferences";
 export const layoutKeys = [
   "uiScale",
+  "practiceFocus",
   "libraryOpen",
   "inspector",
   "libraryWidth",

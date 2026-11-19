@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 d788f24。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 dd23568。
 
 ## 当前主线
 
@@ -140,6 +140,17 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 从发布目录启动的 Release 进程可正常响应。Release 无开发调试端口，未使用失败的 CDP 连接作为功能结果；改用程序现有 --window-check，以另一份隔离资料独立运行，实际返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符、MIDI 已连接。证据 work/song-practice-release.log、work/song-practice-package-check/startup.log。最终同源码 Debug 构建及上述纯 MIDI 操作链再次通过，截图已更新到当前皮肤工具栏。早期 Debug 构建曾因构建中新增样式而拒绝登记，最终 Release / Debug 构建已稳定登记。
 
 其余设置界面统一、演奏页信息收敛与主流程交付审计继续待做；官方功能矩阵中的部分 / 待做 / 外部依赖项目维持原状态。DuET 环境依赖仍使用本地 Python / 模型设置，本包未包含大型推理环境。
+
+## P4：专注演奏与统一练习设置批次
+
+- 新增 PracticeContextPanel，集中演奏版本、谱面、转调 / 量化、手别、外观、音源与高级练习设置。普通布局内联显示，专注布局从右上角展开同一组控件；组件负责展开、来源切换、外部点按与 Esc 收起，隐藏时暂停版本栏读取。移除主界面被主题长期隐藏的旧紧凑光效条挂载。
+- 专注布局收起全局菜单与低频歌曲操作，保持曲名、视图、时间线、BPM、播放模式和播放控制。右上角有音源连接提示，从设置面板仍可访问全部练习入口。返回曲库后全局菜单正常显示。
+- practiceFocus 进入已有显示偏好、布局方案与界面备份，新增“专注演奏布局”设置项；旧记录缺少此字段时采用普通布局，旧备份继续可读。已有预置“专注练习”会启用新布局，读谱 / 选曲预置恢复普通布局。
+- 收敛展开面板的换行与尺寸，修正旧样式隐藏新增按钮的问题；面板内转调设置采用内联展开，避免弹出区域越过窗口。
+
+实际桌面在 1000×800 的演奏区由 293.33 增至 491.67 像素。播放中切换时状态保持 playing，位置从 0.205509 继续到 0.237105；Esc 收起后焦点返回入口。面板中量化切换并恢复成功，BPM 可改到 90。1000 / 720 宽度下展开设置无横向溢出，按钮无断字；重启软件从曲库进入演奏后，专注偏好恢复，设置面板保持收起。
+
+证据 work/practice-focus-desktop.log；work/practice-range-runtime/focus-evidence.json、focus-reopen-evidence.json、focus-score.png、focus-waterfall.png、focus-settings-1000.png、focus-settings-720.png。仅检查受影响编译与这条实际操作链路，使用原隔离资料与内置练习副本。本批正在生成更新后的 Release 预览包；具体来源与独立启动结果完成后登记。
 
 ## 交付状态
 

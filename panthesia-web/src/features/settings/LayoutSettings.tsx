@@ -145,6 +145,7 @@ export function LayoutSettings({
         </p>
       )}
       <div className="display-settings-checks">
+        <label><input type="checkbox" checked={value.practiceFocus} onChange={event=>update({practiceFocus:event.target.checked})} />专注演奏布局</label>
         <label>
           <input
             type="checkbox"
@@ -211,6 +212,7 @@ export function LayoutSettings({
           {
             name: "读谱",
             patch: {
+              practiceFocus: false,
               libraryOpen: false,
               inspector: true,
               keyboardHeight: 80,
@@ -219,11 +221,12 @@ export function LayoutSettings({
           },
           {
             name: "选曲",
-            patch: { libraryOpen: true, inspector: false, libraryWidth: 360 },
+            patch: { practiceFocus: false, libraryOpen: true, inspector: false, libraryWidth: 360 },
           },
           {
             name: "专注练习",
             patch: {
+              practiceFocus: true,
               libraryOpen: false,
               inspector: false,
               keyboardHeight: 150,
