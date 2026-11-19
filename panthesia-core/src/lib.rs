@@ -8,6 +8,7 @@ pub use wgpu_jumpstart::{Color, Gpu, TransformUniform, Uniform};
 pub mod config;
 pub mod product;
 pub mod practice_transform;
+pub mod practice_score;
 pub mod song_project;
 pub mod exercise;
 pub mod fingering;

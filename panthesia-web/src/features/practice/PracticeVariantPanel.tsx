@@ -34,7 +34,7 @@ export function PracticeVariantPanel({song, disabled, apply}: {song: LoadedSong;
         <button onClick={()=>change({transpose:0,quantize:0})} disabled={!info.active}>恢复原始演奏</button>
       </fieldset>
       <p>设置按曲目自动保存。切换后暂停播放；音符、声音、等音和 MIDI 简谱同步更新。转调保留大小调性质。量化保留速度变化与踏板时序。</p>
-      {info.active && info.sourceHasScore && <p>当前显示练习版 MIDI 五线谱。原始关联谱保留，恢复原始演奏后可查看。</p>}
+      {info.active && info.sourceHasScore && <p>关联谱随转调显示，演奏光标跟随当前练习时序。原谱的书面节奏保持原样，原文件单独保存。</p>}
       {outside && <p className="variant-warning">转调后部分音符超出 88 键钢琴音域。请缩小转调幅度，以便用实体钢琴练习。</p>}
     </div>
   </details>;

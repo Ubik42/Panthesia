@@ -42,6 +42,10 @@ pub(super) fn location(data: &Path, path: &Path, cid: &str) -> Result<(PathBuf, 
         }
     }
 }
+pub(super) fn associated_id(path:&Path,cid:&str)->String {
+    let key=crate::library_workspace::key(path);
+    format!("associated-{}",blake3::hash(format!("{cid}\n{}",key.trim_start_matches("//?/")).as_bytes()).to_hex())
+}
 pub(super) fn versions(
     prefs: &Preferences,
     path: &Path,
@@ -59,7 +63,7 @@ pub(super) fn versions(
             .any(|v| v.path == path && v.content_id == a.content_id)
         {
             rows.push(ScoreVersion {
-                id: format!("associated-{}", a.content_id),
+                id: associated_id(&path,&a.content_id),
                 name: path
                     .file_name()
                     .unwrap_or_default()

@@ -25,7 +25,7 @@ export function useLibraryOpening({
     result: LibraryPrepared,
     current: () => boolean,
     workspace: LibraryOpenWorkspace,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
 }) {
   const store = getLibraryOpens();
   const state = useSyncExternalStore(
@@ -114,7 +114,7 @@ export function useLibraryOpening({
       setReady({ id, ticket });
       return;
     }
-    await current.current.present(
+    const presented=await current.current.present(
       intent,
       receipt.result.libraryPrepared,
       () =>
@@ -127,7 +127,14 @@ export function useLibraryOpening({
           ?.disposition === "pending",
       owner,
     );
-    store.present(id);
+    if(presented) {
+      store.present(id);
+      setError("");
+    } else if(ticket===epoch.current) {
+      // Binding a just-loaded song may temporarily block presentation. Keep its
+      // completion pending until the workspace can display the installed session.
+      setReady({id,ticket});
+    }
   };
   useEffect(() => {
     if (!ready || !visible || !canPresent) return;

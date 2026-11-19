@@ -898,13 +898,7 @@ impl Player {
                 if entries.len() >= 100 {
                     return Err("这首曲目已有 100 份谱面，请先移除不需要的版本".into());
                 }
-                let id = format!(
-                    "score-{}",
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_err(|e| e.to_string())?
-                        .as_nanos()
-                );
+                let id = library_scores::associated_id(&path,&association.content_id);
                 entries.push(preferences::ScoreVersion {
                     id,
                     name: self
@@ -1497,7 +1491,7 @@ impl Player {
                     self.notation.is_some(),
                     self.score_revision,
                 ))
-                .map_err(|e| e.to_string()).map(|mut v|{v["annotationRevision"]=serde_json::json!(self.state.annotation_revision);v["grid"]=serde_json::json!(self.grid_signature());v["meterMap"]=serde_json::json!(self.current_meter_map());v["fingerUndoAvailable"]=serde_json::json!(!self.finger_undo.is_empty());v["trackSounds"]=serde_json::json!(self.track_sound_settings());v["soundPresets"]=serde_json::json!(self.soundfont_presets);self.decorate_tracks(&mut v);self.decorate_finger_actions(&mut v);v["practiceVariant"]=self.variant_document();if self.variant().active(){v["hasScore"]=serde_json::json!(false);v["fingerActions"]=serde_json::json!([]);}v}),
+                .map_err(|e| e.to_string()).map(|mut v|{v["annotationRevision"]=serde_json::json!(self.state.annotation_revision);v["grid"]=serde_json::json!(self.grid_signature());v["meterMap"]=serde_json::json!(self.current_meter_map());v["fingerUndoAvailable"]=serde_json::json!(!self.finger_undo.is_empty());v["trackSounds"]=serde_json::json!(self.track_sound_settings());v["soundPresets"]=serde_json::json!(self.soundfont_presets);self.decorate_tracks(&mut v);self.decorate_finger_actions(&mut v);v["practiceVariant"]=self.variant_document();if self.variant().active(){v["fingerActions"]=serde_json::json!([]);}v}),
                 None => Ok(serde_json::Value::Null),
             };
         }
@@ -1907,27 +1901,23 @@ impl Player {
             Command::ApplyScoreSource{id,fingerprint,mode}=>return self.apply_score_source(id,fingerprint,mode),
             Command::ImportScoreOriginal{path,default_bpm}=>return self.import_score_original(path,default_bpm),
             Command::ScoreVersions => {
-                self.remember_active_score()?;
                 let f = self.file.as_ref().ok_or("请先选择曲目")?;
                 let midi = self.annotation_path(f)?;
-                let current = panthesia_core::library::load_song_sidecar(&midi, &f.content_id)
-                    .ok()
-                    .and_then(|s| s.score)
-                    .map(|s| panthesia_core::library::resolve_score_path(&midi, &s));
-                let rows:Vec<_>=self.preferences.score_versions.get(&f.content_id).into_iter().flatten().map(|v|serde_json::json!({"id":v.id,"name":v.name,"path":v.path,"active":current.as_ref()==Some(&v.path),"available":v.path.is_file(),"fingerprint":v.content_id})).collect();
+                let (versions,current)=library_scores::versions(&self.preferences,&midi,&f.content_id)?;
+                let rows:Vec<_>=versions.iter().map(|v|serde_json::json!({"id":v.id,"name":v.name,"path":v.path,"active":current.as_ref()==Some(&v.path),"available":v.path.is_file(),"fingerprint":v.content_id})).collect();
                 return Ok(serde_json::json!({"contentId":f.content_id,"versions":rows}));
             }
             Command::PreviewScoreVersionRoute{id,content_id}=>{
                 self.score_content_guard(&content_id)?;
-                let version=self.preferences.score_versions.get(&content_id)
-                    .and_then(|rows|rows.iter().find(|v|v.id==id)).ok_or("谱面版本不存在")?;
                 let file=self.file.as_ref().ok_or("请先选择曲目")?;
                 let midi=self.annotation_path(file)?;
+                let (versions,_)=library_scores::versions(&self.preferences,&midi,&content_id)?;
+                let version=versions.iter().find(|v|v.id==id).ok_or("谱面版本不存在")?;
                 let assoc=panthesia_core::library::ScoreAssociation{path:version.path.clone(),content_id:version.content_id.clone()};
                 if !panthesia_core::library::verify_score_association(&midi,&assoc).map_err(|e|e.to_string())?{
                     return Err("谱面文件已经改变，请重新导入并检查顺序".into());
                 }
-                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read(&version.path).map_err(|e|e.to_string())?,version.name.clone(),file)?;
+                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read(&version.path).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
                 let mut result=asset.route_payload(Some(file));
                 result["review"]=serde_json::to_value(self.score_review(&asset)).map_err(|error|error.to_string())?;
                 result["versionId"]=serde_json::json!(id);
@@ -1938,7 +1928,7 @@ impl Player {
                 self.score_content_guard(&content_id)?;
                 let file=self.file.as_ref().ok_or("请先选择曲目")?;
                 let fingerprint=blake3::hash(&bytes).to_hex().to_string();
-                let asset=notation::ScoreAsset::new(bytes,name,file)?;
+                let asset=notation::ScoreAsset::new(bytes,name,self.source_file.as_deref().unwrap_or(file))?;
                 let mut result=asset.route_payload(Some(file));
                 result["review"]=serde_json::to_value(self.score_review(&asset)).map_err(|error|error.to_string())?;
                 result["fingerprint"]=serde_json::json!(fingerprint);
@@ -1947,6 +1937,7 @@ impl Player {
             }
             Command::ActivateScore { id, content_id, expected } => {
                 self.score_content_guard(&content_id)?;
+                self.remember_active_score()?;
                 let v = self
                     .preferences
                     .score_versions
@@ -1968,7 +1959,7 @@ impl Player {
                 let score = notation::ScoreAsset::new(
                     panthesia_core::utils::atomic_file::read(&v.path).map_err(|e| e.to_string())?,
                     v.name,
-                    f,
+                    self.source_file.as_deref().unwrap_or(f),
                 )?;
                 self.check_score_review(&score, expected.as_ref())?;
                 panthesia_core::library::save_score_association(&midi, &content_id, &v.path)
@@ -2046,6 +2037,10 @@ impl Player {
                     .notation
                     .as_ref()
                     .map_or(serde_json::Value::Null, |s| s.payload(self.file.as_deref()));
+                if self.variant().transpose != 0 && let Some(asset)=self.notation.as_ref() {
+                    payload["bytes"]=serde_json::json!(panthesia_core::practice_score::transpose(&asset.bytes,self.variant().transpose)?);
+                    payload["compressed"]=serde_json::json!(false);
+                }
                 if let Some(f) = &self.file {
                     if !payload.is_null() {
                         payload["contentId"] = serde_json::json!(f.content_id);

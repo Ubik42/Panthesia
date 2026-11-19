@@ -46,7 +46,7 @@ export function LibraryOpenRecovery({
   const panel = useRef<HTMLElement>(null),
     appliedFocus = useRef("");
   useEffect(() => {
-    if (pendingId) setExpanded(true);
+    setExpanded(!!pendingId);
   }, [pendingId]);
   useEffect(() => {
     if (!focusRequest || appliedFocus.current === focusRequest.requestId)

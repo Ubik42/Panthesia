@@ -142,6 +142,7 @@ impl Engine {
         }
         if self.snapshot().content_id.is_some()
             && (asset_edit::supports(&command) || practice_edit::classify(&command).is_some())
+            && !matches!(&command,Command::ActivateScore{..}|Command::DetachScore{..})
         {
             let song = self.song_document(false)?;
             if song["practiceVariant"]["active"].as_bool() == Some(true) {

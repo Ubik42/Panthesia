@@ -316,6 +316,7 @@ pub(crate) struct Playback {
     sound_timeline: Arc<track_sound::Timeline>,
     state: Snapshot,
     file: SongFile,
+    source_file: Option<SongFile>,
     title: String,
     config: SongConfig,
     notes: PracticeNotes,
@@ -343,6 +344,7 @@ impl Playback {
             sound_timeline: reader.sound_timeline.clone(),
             state: reader.state.clone(),
             file: reader.file.take().ok_or("新曲目准备结果缺失")?,
+            source_file: reader.source_file.take(),
             title: std::mem::take(&mut reader.title),
             config: reader.config.clone(),
             notes: std::mem::take(&mut reader.notes),
@@ -387,6 +389,7 @@ impl Playback {
         player.panic();
         let retired = (
             std::mem::replace(&mut player.file, Some(self.file)),
+            std::mem::replace(&mut player.source_file, self.source_file),
             std::mem::replace(&mut player.notes, self.notes),
             std::mem::replace(&mut player.events, self.events),
             std::mem::replace(&mut player.sound_timeline, self.sound_timeline),

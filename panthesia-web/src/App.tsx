@@ -40,6 +40,7 @@ import { DesktopCloseProgress } from "./app/DesktopCloseProgress";
 import { ImportQueueButton, ImportQueueNotice } from "./features/imports/ImportQueueButton";
 import { PreparationButton } from "./app/PreparationButton";
 import {ScoreWorkspaceButton} from "./features/scores/ScoreWorkspaceButton";
+import {SongEditionBar} from "./features/practice/SongEditionBar";
 import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
 import { PracticeVariantPanel } from "./features/practice/PracticeVariantPanel";
 import { PianoEffectsSettings } from "./features/settings/PianoEffectsSettings";
@@ -1619,7 +1620,7 @@ export default function App() {
         navigationState.workspace !== owner ||
         navigationState.locked
       )
-        throw new Error("工作区或练习状态已变化，原打开结果继续保留。");
+        return false;
       checkLibraryPrepared(prepared, intent.request.engineId, session.state);
       if (
         playback.getSnapshot().stateOrder?.engineId !== intent.request.engineId
@@ -1657,6 +1658,7 @@ export default function App() {
       if (owner === "review") navigation.closeReview();
       else setLibraryDialog(false);
       void updateCollection().catch(() => {});
+      return true;
     },
   });
   const openingIntent = [...libraryOpening.state.entries]
@@ -1945,6 +1947,10 @@ export default function App() {
           <PracticeSetupSummary store={playback} song={song} connected={connected}
             display={display} showRequired={view === "score"}
             open={() => panels.revealInspector("setup")} />
+          {song && <SongEditionBar song={song} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
+            execute={command=>run(command,true)}
+            openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}
+            manage={()=>setScoresDialog(true)}/>}
           <div className="view-toolbar practice-view-toolbar">
             <div className="practice-view-tabs" role="group" aria-label="练习视图">
               <button

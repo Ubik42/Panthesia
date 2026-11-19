@@ -22,6 +22,7 @@ pub(crate) struct Context {
     origin: Origin,
     file: SongFile,
     asset: Arc<notation::ScoreAsset>,
+    transpose:i8,
 }
 pub(crate) struct Installation {
     origin: Origin,
@@ -30,10 +31,15 @@ pub(crate) struct Installation {
 impl Context {
     fn prepare(
         self,
-        input: Input,
+        mut input: Input,
         check: impl Fn() -> Result<(), String>,
     ) -> Result<(Installation, serde_json::Value), String> {
         check()?;
+        // The displayed score is transposed. Correlate against source semantics,
+        // then use stable track/note identities to follow the effective MIDI timing.
+        for note in &mut input.notes {
+            note.pitch=(i16::from(note.pitch)-i16::from(self.transpose)).clamp(0,127) as u8;
+        }
         let mut result =
             self.asset
                 .map_notes_checked(&self.file, &input.midi, input.notes, &check)?;
@@ -118,6 +124,7 @@ impl Player {
             },
             file: file.clone(),
             asset: asset.clone(),
+            transpose:self.variant().transpose,
         })
     }
     pub(super) fn install_score_mapping(

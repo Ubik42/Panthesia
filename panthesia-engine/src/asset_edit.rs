@@ -39,7 +39,6 @@ pub(crate) fn supports(command: &Command) -> bool {
             | Command::DetachScore { .. }
             | Command::SaveScoreVersion { .. }
             | Command::RemoveScoreVersion { .. }
-            | Command::ScoreVersions
             | Command::RenameScoreVersion { .. }
             | Command::SetPaperMapping { .. }
             | Command::SavePaperPractice { .. }
@@ -78,6 +77,7 @@ pub(crate) fn runtime_reads(command: &Command) -> bool {
             | Command::PreviewCrossPaperTransfer { .. }
             | Command::PaperTransferSources { .. }
             | Command::Score
+            | Command::ScoreVersions
             | Command::ExportAnnotatedScore { .. }
     )
 }
@@ -637,7 +637,8 @@ impl Context {
                         .get(&file.content_id)
                         .map(Vec::as_slice)
                         .unwrap_or_default();
-                    let assets = load_pipeline::Assets::read_checked(file, &path, versions, &|| token.check())?;
+                    let score_source=if reader.variant().active() {reader.source_file.as_deref().unwrap_or(file)} else {file};
+                    let assets = load_pipeline::Assets::read_checked(score_source, &path, versions, &|| token.check())?;
                     warning = assets.error;
                     let new_notation = assets.notation.map(Arc::new);
                     let new_key = new_notation
@@ -793,6 +794,7 @@ impl Engine {
                                 Command::PreviewScoreBytesRoute { .. }
                                     | Command::PreviewScoreVersionRoute { .. }
                                     | Command::Score
+                                    | Command::ScoreVersions
                                     | Command::ExportAnnotatedScore { .. }
                             );
                             let mut reader = context.into_player(!editor && !lightweight)?;
