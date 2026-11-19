@@ -3,7 +3,7 @@
 .practice-context > summary { display: none; }
 .practice-context .practice-advanced-settings { display: none; }
 .practice-context .instrument-controls { border-bottom: 1px solid var(--instrument-line); }
-.practice-context .practice-variant[open] > .variant-body { top: calc(100% + 8px); bottom: auto; }
+.practice-panel .practice-context .practice-variant[open] > .variant-body { top: calc(100% + 8px); bottom: auto; }
 .daily-workbench.page-practice.practice-focus > .workspace-topbar { display: none; }
 .daily-workbench.practice-focus .practice-panel > .song-toolbar { min-height: 52px; padding: 8px 164px 8px 18px; }
 .practice-focus .practice-panel > .song-toolbar > button:not(.back-to-library):not([aria-label="显示曲库"]) { display: none; }
