@@ -167,11 +167,11 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 
 迁移实际链：旧插件状态复制前后 SHA-256 均为 7218a2318cf0e04d26633e98314ce09190a9ea0303de0b3063e5906df8c94705，新资料文件与原字节相同，插件报告已恢复且无警告。换到 launch-b 运行目录后仍从同一资料恢复，未在新 CWD 建立状态目录。见 plugin-state-evidence.json、plugin-reopen-evidence.json、plugin-profile-settings.png。检查的资料根及工作目录均隔离，未读取 / 改写正式插件预设。
 
-本批准备生成 audio-profile Release 预览包，构建及独立启动结果完成后登记。后续按主流程和原范围做交付审计，官方矩阵未关闭项继续有效。
+本批 Release 预览包已生成于 outputs/releases/Panthesia-20261119-audio-profile，源码提交 f3331da。当前工作区既有曲库路径调整仍未提交，构建记录标记 dirty=true，源码内容指纹 228CE979FF6A580982837B5E1F13743472144485A20751A6D17EC29D67916273。29 个文件校验一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符，MIDI 已连接。见 work/audio-profile-release.log、work/audio-profile-package-check/release-evidence.json、startup.log。后续按主流程和原范围做交付审计，官方矩阵未关闭项继续有效。
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-focused-practice，程序源码提交 070f511，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 song-practice（39263e3）与 independent（af146d8）继续留作历史版本。新包覆盖歌曲核心、DuET 接入、统一谱面、循环、外观及专注布局，整体 Goal 仍 active，未经要求未推送。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-audio-profile，程序源码提交 f3331da，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 focused-practice（070f511）、song-practice（39263e3）与 independent（af146d8）继续留作历史版本。新包覆盖此前歌曲核心与演奏改造，并加入统一音量、即时调整队列和插件资料归属；整体 Goal 仍 active，未经要求未推送。
 
 ## 数据与工作方式
 
