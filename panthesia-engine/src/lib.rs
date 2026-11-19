@@ -129,6 +129,7 @@ pub mod score_ranges;
 mod tick_ranges;
 pub mod score_export;
 pub mod score_sources;
+mod practice_notation;
 mod finger_demo;
 mod demo_protocol;
 mod held_demo;
@@ -1451,6 +1452,7 @@ impl Player {
                 | Command::Metadata
                 | Command::Calibration
                 | Command::Score
+                | Command::SourceScore
                 | Command::ScoreMap { .. } | Command::ExportAnnotatedScore { .. }
                 | Command::SuggestHands { .. }
                 | Command::SuggestFingers { .. } | Command::FingerPlanContext { .. }
@@ -2034,23 +2036,8 @@ impl Player {
                     return Err(error);
                 }
             }
-            Command::Score => {
-                let mut payload = self
-                    .notation
-                    .as_ref()
-                    .map_or(serde_json::Value::Null, |s| s.payload(self.file.as_deref()));
-                if self.variant().transpose != 0 && let Some(asset)=self.notation.as_ref() {
-                    payload["bytes"]=serde_json::json!(panthesia_core::practice_score::transpose(&asset.bytes,self.variant().transpose)?);
-                    payload["compressed"]=serde_json::json!(false);
-                }
-                if let Some(f) = &self.file {
-                    if !payload.is_null() {
-                        payload["contentId"] = serde_json::json!(f.content_id);
-                        payload["scoreRevision"] = serde_json::json!(self.score_revision)
-                    }
-                }
-                return Ok(payload);
-            }
+            Command::Score => return self.score_payload(true),
+            Command::SourceScore => return self.score_payload(false),
             Command::PairScore { bytes, name, content_id, expected } => {
                 self.score_content_guard(&content_id)?;
                 let file = self.file.as_ref().ok_or("请先打开 MIDI")?;
@@ -2087,7 +2074,7 @@ impl Player {
                 return self.annotated_score_artifact(&content_id,score_revision,&options,None,&|| Ok(()))?.into_value(download,fingerprint.as_deref());
             }
             Command::ScoreMap {score_revision,midi,notes,content_id} => {
-                return self.map_score_owned(score_mapping::Input {content_id,score_revision,source_fingerprint:None,midi,notes});
+                return self.map_score_owned(score_mapping::Input {content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
             }
             Command::UpdateLibraryPaper{..}=>return Err("谱页整理应由独立调用线程执行".into()),
             Command::ExportPracticeBackup{..}|Command::ImportStagedPracticeBackup{..}=>return Err("备份文件应由独立调用线程处理".into()),

@@ -28,7 +28,8 @@ interface Asset {
   name: string;
   compressed: boolean;
   coverage: number;
-  alignmentSource?: "duetIdentity"|"matching";
+  alignmentSource?: "duetIdentity"|"matching"|"practiceIdentity";
+  practiceNotation?: boolean;
   confidence: number;
   readiness: string;
   diagnostics: string[];
@@ -270,6 +271,8 @@ export function Notation({
     [song.notes],
   );
   const [reload, setReload] = useState(0);
+  const [sourceRhythm, setSourceRhythm] = useState(false);
+  useEffect(()=>setSourceRhythm(false),[song.contentId]);
   const renderedMapping = useRef<ScoreMappingRequest | null>(null);
   const mappingSequence = useRef(0), mappingWorking = useRef(false);
   const correlateRendered = useCallback(async (request: ScoreMappingRequest) => {
@@ -325,7 +328,7 @@ export function Notation({
     setError("");
     setPage(0);
     api
-      .command<Asset | null>({ type: "score" })
+      .command<Asset | null>({ type: sourceRhythm && song.hasScore ? "sourceScore" : "score" })
       .then((data) => {
         if (disposed) return;
         if (!data) {
@@ -358,6 +361,7 @@ export function Notation({
             setPages(result.pages.map(cleanSvg));
             await correlateRendered({
               scoreRevision: song.scoreRevision, sourceFingerprint: data.sourceFingerprint,
+              practiceNotation: data.practiceNotation === true,
               midi, notes: result.notes, contentId: data.contentId,
             });
           } catch (e) {
@@ -387,7 +391,7 @@ export function Notation({
       mappingWorking.current = false;
       worker.terminate();
     };
-  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered]);
+  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm]);
   useEffect(() => {
     if (historyFocus && ["playing", "countIn"].includes(state.status))
       setFollow(true);
@@ -763,17 +767,18 @@ export function Notation({
             ))}
           </select>
         </label>
-        <ScoreExportButton song={song} disabled={editorBusy} expanded={exporting} open={() => setExporting(true)} />
+        <ScoreExportButton song={song} disabled={editorBusy || !song.hasScore || asset?.practiceNotation} expanded={exporting} open={() => setExporting(true)} />
         <button
-          disabled={loading || editorBusy || asset?.readiness !== "Ready" || !asset.sourceFingerprint || !mappingToken || !mapping.length || !pages.length}
+          disabled={loading || editorBusy || asset?.practiceNotation || asset?.readiness !== "Ready" || !asset.sourceFingerprint || !mappingToken || !mapping.length || !pages.length}
           onClick={() => setLocatingPaper(true)}
           title="根据已核对的 MusicXML 谱页，生成可从练习历史逐音定位的纸谱"
         >
           生成可定位纸谱
         </button>
+        {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>setSourceRhythm(event.target.value==="source")}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
         <span title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
-            ? `${asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
+            ? `${asset.practiceNotation ? "量化练习谱" : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
             : ""}
         </span>
       </div>
@@ -836,8 +841,9 @@ export function Notation({
       )}
       {asset?.route && (
         <ScoreRoute
-          key={`${song.contentId}:${song.scoreRevision}`}
+          key={`${song.contentId}:${song.scoreRevision}:${sourceRhythm}`}
           route={asset.route}
+          practice={asset.practiceNotation}
           position={state.position}
           seek={seek}
           disabled={editorBusy}

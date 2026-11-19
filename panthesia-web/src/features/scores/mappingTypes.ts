@@ -23,6 +23,7 @@ export interface ScoreMappingResult {
   mappingToken?: string;
 }
 export interface ScoreMappingRequest {
+  practiceNotation?: boolean;
   contentId: string;
   scoreRevision: number;
   sourceFingerprint: string;

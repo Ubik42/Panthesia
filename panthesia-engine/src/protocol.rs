@@ -115,6 +115,7 @@ pub enum Command {
     },
     VstEditor,
     Score,
+    SourceScore,
     ScoreSources { #[serde(default)] content_id: Option<String> },
     PreviewScoreSource {id:String,fingerprint:String},
     LinkScoreSource {midi_path:PathBuf,content_id:String,version_id:String,path:PathBuf,default_bpm:u16},

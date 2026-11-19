@@ -2106,7 +2106,7 @@ export default function App() {
                 store={playback}
                 contentId={song?.contentId ?? null}
               >
-                {(live) => (!song.hasScore ? <MidiPracticeScore song={song} state={live} seek={position=>action({type:"seek",position})}/> :
+                {(live) => (!song.hasScore && !song.practiceVariant?.settings.quantize ? <MidiPracticeScore song={song} state={live} seek={position=>action({type:"seek",position})}/> :
                   <Notation
                     toolRequest={scoreToolRequest}
                     clearToolRequest={clearScoreToolRequest}

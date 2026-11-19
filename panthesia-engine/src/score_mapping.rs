@@ -11,6 +11,8 @@ pub struct Input {
     pub source_fingerprint: Option<String>,
     pub midi: Vec<u8>,
     pub notes: Vec<notation::RenderNote>,
+    #[serde(default)]
+    pub practice_notation: bool,
 }
 pub(crate) struct Origin {
     content_id: String,
@@ -21,14 +23,82 @@ pub(crate) struct Origin {
 pub(crate) struct Context {
     origin: Origin,
     file: SongFile,
-    asset: Arc<notation::ScoreAsset>,
-    transpose:i8,
+    asset: Option<Arc<notation::ScoreAsset>>,
+    transpose: i8,
+    quantize: u8,
 }
 pub(crate) struct Installation {
     origin: Origin,
     located: Option<Arc<LocatedScoreMap>>,
 }
 impl Context {
+    fn practice_mapping(
+        &self,
+        notes: Vec<notation::RenderNote>,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<notation::MappingResult, String> {
+        if notes.len() > 100_000 {
+            return Err("练习谱映射超过十万个音符".into());
+        }
+        let engraving =
+            panthesia_core::practice_engraving::engrave(&self.file, "", 0, false, check)?;
+        let tracks: HashMap<_, _> = self
+            .file
+            .tracks
+            .iter()
+            .map(|track| (track.track_id, track))
+            .collect();
+        let mut mapping = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut ambiguities = 0;
+        for rendered in notes {
+            check()?;
+            let Some(source) = engraving.notes.get(&rendered.renderer_id) else {
+                continue;
+            };
+            if !seen.insert(rendered.renderer_id.clone()) {
+                ambiguities += 1;
+                continue;
+            }
+            let Some(note) = tracks
+                .get(&source.track)
+                .and_then(|track| track.notes.get(source.index))
+            else {
+                continue;
+            };
+            if note.note != rendered.pitch || rendered.page_index >= 300 {
+                seen.remove(&rendered.renderer_id);
+                continue;
+            }
+            mapping.push(notation::MappingRow {
+                id: rendered.renderer_id,
+                page: rendered.page_index,
+                start: self
+                    .file
+                    .tempo_track
+                    .pulses_to_duration(source.start_tick)
+                    .as_secs_f64(),
+                end: self
+                    .file
+                    .tempo_track
+                    .pulses_to_duration(source.end_tick)
+                    .as_secs_f64(),
+                pitch: note.note,
+                track: source.track,
+                index: source.index,
+                score_finger: None,
+            });
+        }
+        let unmapped = engraving.notes.len().saturating_sub(seen.len());
+        let following = !mapping.is_empty() && ambiguities == 0 && unmapped == 0;
+        Ok(notation::MappingResult {
+            mapping,
+            ambiguities,
+            unmapped,
+            following,
+            mapping_token: None,
+        })
+    }
     fn prepare(
         self,
         mut input: Input,
@@ -37,12 +107,20 @@ impl Context {
         check()?;
         // The displayed score is transposed. Correlate against source semantics,
         // then use stable track/note identities to follow the effective MIDI timing.
-        for note in &mut input.notes {
-            note.pitch=(i16::from(note.pitch)-i16::from(self.transpose)).clamp(0,127) as u8;
+        for note in &mut input.notes.iter_mut().filter(|_| !input.practice_notation) {
+            note.pitch = (i16::from(note.pitch) - i16::from(self.transpose)).clamp(0, 127) as u8;
         }
-        let mut result =
+        let mut result = if input.practice_notation {
+            if self.quantize == 0 {
+                return Err("量化条件已改变，请重新读取练习谱".into());
+            }
+            self.practice_mapping(input.notes, &check)?
+        } else {
             self.asset
-                .map_notes_checked(&self.file, &input.midi, input.notes, &check)?;
+                .as_ref()
+                .ok_or("当前没有所选原谱，请使用量化练习谱")?
+                .map_notes_checked(&self.file, &input.midi, input.notes, &check)?
+        };
         check()?;
         let mut trusted = HashMap::new();
         let mut conflicting = std::collections::HashSet::new();
@@ -107,10 +185,13 @@ impl Player {
         fingerprint: Option<&str>,
     ) -> Result<Context, String> {
         let file = self.file.as_ref().ok_or("请先打开 MIDI")?;
-        let asset = self.notation.as_ref().ok_or("尚未配对乐谱")?;
+        if self.notation.is_none() && self.variant().quantize == 0 {
+            return Err("尚未配对乐谱或启用量化练习谱".into());
+        }
+        let display_origin = self.score_display_origin();
         if file.content_id != content_id
             || revision.is_some_and(|revision| revision != self.score_revision)
-            || fingerprint.is_some_and(|fingerprint| fingerprint != asset.source_fingerprint)
+            || fingerprint.is_some_and(|fingerprint| fingerprint != display_origin)
         {
             return Err("曲目或谱面已切换，请重新加载乐谱".into());
         }
@@ -119,12 +200,13 @@ impl Player {
             origin: Origin {
                 content_id: content_id.into(),
                 revision: self.score_revision,
-                fingerprint: asset.source_fingerprint.clone(),
+                fingerprint: display_origin,
                 epoch: self.score_mapping_epoch,
             },
             file: file.clone(),
-            asset: asset.clone(),
-            transpose:self.variant().transpose,
+            asset: self.notation.clone(),
+            transpose: self.variant().transpose,
+            quantize: self.variant().quantize,
         })
     }
     pub(super) fn install_score_mapping(
@@ -142,11 +224,7 @@ impl Player {
         if self.score_mapping_epoch != origin.epoch
             || self.score_revision != origin.revision
             || self.file.as_ref().map(|file| &file.content_id) != Some(&origin.content_id)
-            || self
-                .notation
-                .as_ref()
-                .map(|asset| &asset.source_fingerprint)
-                != Some(&origin.fingerprint)
+            || self.score_display_origin() != origin.fingerprint
         {
             return Err("乐谱对应结果已过期，请重新加载当前谱面".into());
         }

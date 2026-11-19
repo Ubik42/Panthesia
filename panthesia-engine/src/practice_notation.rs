@@ -1,0 +1,93 @@
+//! Display preparation is called by asset_read_task's detached reader.
+use crate::*;
+impl Player {
+    pub(super) fn score_display_origin(&self) -> String {
+        self.notation
+            .as_ref()
+            .map(|asset| asset.source_fingerprint.clone())
+            .unwrap_or_else(|| {
+                format!(
+                    "midi:{}",
+                    self.file
+                        .as_ref()
+                        .map_or("", |file| file.content_id.as_str())
+                )
+            })
+    }
+    pub(super) fn score_payload(&self, practice: bool) -> Result<serde_json::Value, String> {
+        let variant = self.variant();
+        if self.notation.is_none() && (!practice || variant.quantize == 0) {
+            return Ok(serde_json::Value::Null);
+        }
+        let mut payload = self.notation.as_ref().map_or_else(||serde_json::json!({"name":self.title,"sourceFingerprint":self.score_display_origin(),"warnings":[]}),|asset|asset.route_payload(self.file.as_deref()));
+        if practice && variant.quantize != 0 {
+            let file = self.file.as_ref().ok_or("请先选择曲目")?;
+            let info = self.variant_document();
+            let minor = info["minor"].as_bool().unwrap_or(false);
+            let tonic =
+                (info["tonic"].as_i64().unwrap_or(0) + i64::from(variant.transpose)).rem_euclid(12);
+            let fifths = (-7i8..=7)
+                .filter(|f| (i64::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
+                .min_by_key(|f| f.abs())
+                .unwrap_or(0);
+            let engraving = panthesia_core::practice_engraving::engrave(
+                file,
+                &self.title,
+                fifths,
+                minor,
+                &|| Ok(()),
+            )?;
+            let edition = panthesia_core::song_project::PracticeEdition::new(
+                &file.content_id,
+                variant.clone(),
+            )?;
+            payload["displayEditionId"] = serde_json::json!(format!(
+                "{}:{}",
+                edition.id,
+                panthesia_core::practice_engraving::GENERATOR
+            ));
+            payload["displayFingerprint"] =
+                serde_json::json!(blake3::hash(&engraving.bytes).to_hex().to_string());
+            payload["bytes"] = serde_json::json!(engraving.bytes);
+            payload["compressed"] = serde_json::json!(false);
+            payload["practiceNotation"] = serde_json::json!(true);
+            payload["alignmentSource"] = serde_json::json!("practiceIdentity");
+            payload["coverage"] = serde_json::json!(100);
+            payload["confidence"] = serde_json::json!(100);
+            payload["readiness"] = serde_json::json!("Ready");
+            payload["diagnostics"] = serde_json::json!([]);
+            payload["warnings"] = serde_json::json!([if variant.durations {
+                "按当前量化演奏重新记谱；谱表按音区分配"
+            } else {
+                "按当前量化起点重新记谱，书面时值取至 1/128；演奏仍使用原始时值"
+            }]);
+            for key in [
+                "trillCount",
+                "mordentCount",
+                "turnCount",
+                "invertedTurnCount",
+            ] {
+                payload[key] = serde_json::json!(0);
+            }
+            let visits:Vec<_>=file.musical_time.measures.iter().enumerate().filter_map(|(index,m)|{
+                let start=file.tempo_track.pulses_to_duration(m.start_tick).as_secs_f64();
+                let end=file.tempo_track.pulses_to_duration(m.end_tick).min(file.duration).as_secs_f64();
+                (end>start).then(||serde_json::json!({"ordinal":index,"measure":index,"number":m.display_number.to_string(),"pass":1,"start":start,"end":end,"startBeat":1,"endBeat":1.+(m.end_tick-m.start_tick) as f64/f64::from(file.tempo_track.ppq())*f64::from(m.denominator)/4.,"partialStart":false,"partialEnd":false}))
+            }).collect();
+            payload["route"] = serde_json::json!({"complete":true,"visits":visits});
+        } else if variant.transpose != 0 {
+            payload["bytes"] = serde_json::json!(panthesia_core::practice_score::transpose(
+                &self.notation.as_ref().ok_or("尚未配对乐谱")?.bytes,
+                variant.transpose
+            )?);
+            payload["compressed"] = serde_json::json!(false);
+        } else if let Some(asset) = self.notation.as_ref() {
+            payload["bytes"] = serde_json::json!(asset.bytes);
+        }
+        if let Some(file) = &self.file {
+            payload["contentId"] = serde_json::json!(file.content_id);
+            payload["scoreRevision"] = serde_json::json!(self.score_revision);
+        }
+        Ok(payload)
+    }
+}

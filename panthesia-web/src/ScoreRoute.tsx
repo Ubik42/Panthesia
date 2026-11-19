@@ -17,8 +17,8 @@ export interface WrittenRoute {
   visits: WrittenVisit[];
 }
 const beat = (value: number) => Number(value.toFixed(3)).toString();
-const label = (visit: WrittenVisit) =>
-  `原谱第 ${visit.number || visit.measure + 1} 小节${visit.partialStart ? `，第 ${beat(visit.startBeat)} 拍开始` : ""}${visit.partialEnd ? `，第 ${beat(visit.endBeat)} 拍前结束` : ""}`;
+const visitLabel = (visit: WrittenVisit, practice: boolean) =>
+  `${practice ? "练习谱" : "原谱"}第 ${visit.number || visit.measure + 1} 小节${visit.partialStart ? `，第 ${beat(visit.startBeat)} 拍开始` : ""}${visit.partialEnd ? `，第 ${beat(visit.endBeat)} 拍前结束` : ""}`;
 
 export function ScoreRoute({
   route,
@@ -27,6 +27,7 @@ export function ScoreRoute({
   disabled,
   loop,
   selectRange,
+  practice = false,
 }: {
   route: WrittenRoute;
   position: number;
@@ -34,7 +35,9 @@ export function ScoreRoute({
   disabled: boolean;
   loop: (start: number, end: number) => Promise<void>;
   selectRange: (first: number, last: number) => void;
+  practice?: boolean;
 }) {
+  const label = (visit: WrittenVisit) => visitLabel(visit, practice);
   let low = 0,
     high = route.visits.length;
   while (low < high) {
@@ -87,7 +90,7 @@ export function ScoreRoute({
         <label>
           书面小节
           <select
-            aria-label="原谱小节"
+            aria-label={practice ? "练习谱小节" : "原谱小节"}
             value={chosen.measure}
             onChange={(e) => {
               const visits = route.visits.filter(
@@ -108,7 +111,7 @@ export function ScoreRoute({
         <label>
           演奏位置
           <select
-            aria-label="原谱小节演奏位置"
+            aria-label={practice ? "练习谱小节演奏位置" : "原谱小节演奏位置"}
             value={chosen.ordinal}
             onChange={(e) => setSelected(Number(e.target.value))}
           >
@@ -121,7 +124,7 @@ export function ScoreRoute({
           </select>
         </label>
         <button disabled={blocked} onClick={() => go(chosen)}>
-          定位原谱小节
+          {practice ? "定位练习谱小节" : "定位原谱小节"}
         </button>
         <button
           disabled={blocked || chosen.end - chosen.start < 0.1}
@@ -129,12 +132,12 @@ export function ScoreRoute({
         >
           循环这一段
         </button>
-        <button
+        {!practice && <button
           disabled={blocked}
           onClick={() => selectRange(chosen.ordinal, chosen.ordinal)}
         >
           选段练习
-        </button>
+        </button>}
         <button
           disabled={disabled || working}
           onClick={() => setSelected(null)}
@@ -146,7 +149,7 @@ export function ScoreRoute({
         )}
       </div>
       {error && <p role="alert">{error}</p>}
-      <nav className="score-route-sequence" aria-label="原谱演奏顺序">
+      <nav className="score-route-sequence" aria-label={practice ? "练习谱演奏顺序" : "原谱演奏顺序"}>
         <button
           disabled={blocked || index === 0}
           onClick={() => go(route.visits[index - 1])}

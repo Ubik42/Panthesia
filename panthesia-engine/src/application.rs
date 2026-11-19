@@ -161,6 +161,7 @@ impl Engine {
                 content_id,
                 score_revision,
                 source_fingerprint: None,
+                practice_notation: false,
                 midi,
                 notes,
             });

@@ -2500,6 +2500,7 @@ export type EngineCommand =
   | { type: "importPackage"; "bytes": Array<number>; "policy": string }
   | { type: "vstEditor" }
   | { type: "score" }
+  | { type: "sourceScore" }
   | { type: "scoreSources"; "content_id"?: string | null }
   | { type: "previewScoreSource"; "id": string; "fingerprint": string }
   | { type: "linkScoreSource"; "midi_path": string; "content_id": string; "version_id": string; "path": string; "default_bpm": number }

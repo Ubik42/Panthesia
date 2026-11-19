@@ -9,6 +9,8 @@ pub mod config;
 pub mod product;
 pub mod practice_transform;
 pub mod practice_score;
+mod practice_transpose;
+pub mod practice_engraving;
 pub mod song_project;
 pub mod song_catalog;
 pub mod exercise;

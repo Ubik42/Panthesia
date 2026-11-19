@@ -147,7 +147,7 @@ export function ScoreRangeDialog({
         contentId: string;
         scoreRevision: number;
         route: WrittenRoute | null;
-      }>({ type: "score" })
+      }>({ type: "sourceScore" })
       .then((asset) => {
         if (disposed) return;
         if (
