@@ -9,6 +9,113 @@
   color-scheme: light;
   font-size: 14px;
 }
+.browser-edition-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #6576a1;
+  background: #edf0fa;
+  border: 1px solid #dfe5f4;
+  padding: 4px 7px;
+  border-radius: 5px;
+}
+.browser-performance-picker {
+  display: grid;
+  gap: 7px;
+  margin: 5px 0 12px;
+  font-size: 12px;
+  color: #66748f;
+}
+.browser-performance-picker > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.browser-performance-picker select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  background: #f5f7fc;
+  color: #293951;
+  border: 1px solid #dce3ef;
+  padding: 8px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+.browser-detail .browser-location-option {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  min-height: 25px;
+  margin: 6px 0;
+  padding: 7px;
+  background: #f5f7fb;
+  color: #61708d;
+  border: 1px solid #e1e7f1;
+}
+.browser-detail .browser-location-option[aria-pressed="true"] {
+  border-color: #8c99db;
+  background: #edf0fb;
+  color: #334a94;
+}
+.browser-song-version-manager {
+  margin-top: 12px;
+  font-size: 12px;
+  border-top: 1px solid #e0e5ef;
+  padding-top: 12px;
+}
+.browser-song-version-manager > button {
+  width: 100%;
+  background: #f5f7fc;
+  color: #52658d;
+  border: 1px solid #dce3ef;
+}
+.browser-song-version-manager .song-performance-body {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  padding-top: 14px;
+  max-height: none;
+  overflow: visible;
+}
+.browser-song-version-manager .song-performance-body li {
+  flex-wrap: wrap;
+}
+.browser-song-version-manager .song-performance-body li > span {
+  flex-basis: 100%;
+}
+.browser-song-version-manager .song-performance-body button {
+  font-size: 11px;
+  background: #f5f7fc;
+  color: #52658d;
+  border: 1px solid #dce3ef;
+  min-height: 28px;
+}
+.browser-song-version-manager h3 {
+  color: #34415c;
+}
+.browser-song-version-manager p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6a7892;
+}
+@media (max-width: 850px) {
+  .song-browser .browser-detail {
+    max-height: 300px;
+  }
+  .browser-performance-picker {
+    margin: 8px 0;
+    max-width: 100%;
+  }
+  .browser-edition-count {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+}
 .browser-sidebar {
   display: flex;
   flex-direction: column;

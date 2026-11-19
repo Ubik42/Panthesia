@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Headphones,
   Library,
+  Layers3,
   Music2,
   Pause,
   Play,
@@ -26,6 +27,14 @@ import {
 import { libraryPath } from "./ScanFolders";
 import type { LibraryFolder } from "./useLibraryReads";
 import "./songBrowser.css";
+import {
+  groupSongs,
+  songKey,
+  songLocation,
+  type BrowserSong,
+} from "./songCatalog";
+import { useSongCatalog } from "./useSongCatalog";
+import { BrowserSongVersions } from "./BrowserSongVersions";
 
 interface Preview {
   bpm: number;
@@ -162,9 +171,19 @@ export function SongBrowser({
     timers = useRef<ReturnType<typeof setTimeout>[]>([]),
     active = useRef(new Set<number>()),
     previewEpoch = useRef(0),
-    selectedRef = useRef(selectedPath),
     list = useRef<HTMLDivElement>(null);
-  selectedRef.current = selectedPath;
+  const grouping = useSongCatalog(rows);
+  const catalogIndex = useMemo(
+    () =>
+      new Map(
+        grouping.catalog?.performances.map((row) => [row.contentId, row]) ?? [],
+      ),
+    [grouping.catalog],
+  );
+  const rowByPath = useMemo(
+    () => new Map(rows.map((row) => [libraryPath(row.path), row])),
+    [rows],
+  );
   const stopPreview = () => {
     ++previewEpoch.current;
     timers.current.forEach(clearTimeout);
@@ -260,26 +279,38 @@ export function SongBrowser({
     () => new Map(collection.map((r) => [libraryPath(r.path ?? ""), r])),
     [collection],
   );
+  const recordsByContent = useMemo(
+    () => new Map(collection.map((row) => [row.contentId, row])),
+    [collection],
+  );
+  const recordFor = useMemo(
+    () => (row: SongRow) =>
+      row.contentId
+        ? recordsByContent.get(row.contentId)
+        : records.get(libraryPath(row.path)),
+    [recordsByContent, records],
+  );
   const filtered = useMemo(
     () =>
-      rows
-        .filter((row) => {
-          const path = libraryPath(row.path),
-            record = records.get(path);
-          if (tab === "favorites" && !record?.favorite) return false;
-          if (tab === "recent" && !record?.lastUsed) return false;
-          if (
-            !(globalSearch && queryValue) &&
-            selectedFolder &&
-            selectedFolder !== "builtin" &&
-            !path.startsWith(selectedFolder + "/")
-          )
-            return false;
-          if (selectedFolder === "builtin" && !row.id.startsWith("builtin/"))
-            return false;
-          return matchesSongSearch({
-            title: row.title,
-            composer: row.composer,
+      rows.filter((row) => {
+        const path = libraryPath(row.path),
+          record = recordFor(row);
+        if (tab === "favorites" && !record?.favorite) return false;
+        if (tab === "recent" && !record?.lastUsed) return false;
+        if (
+          !(globalSearch && queryValue) &&
+          selectedFolder &&
+          selectedFolder !== "builtin" &&
+          !path.startsWith(selectedFolder + "/")
+        )
+          return false;
+        if (selectedFolder === "builtin" && !row.id.startsWith("builtin/"))
+          return false;
+        return matchesSongSearch(
+          {
+            title: `${catalogIndex.get(row.contentId ?? "")?.title ?? ""} ${row.title}`,
+            composer:
+              catalogIndex.get(row.contentId ?? "")?.composer || row.composer,
             arranger: row.arranger ?? "",
             artist: "",
             collection: "",
@@ -288,36 +319,101 @@ export function SongBrowser({
             notes: "",
             path: row.path,
             source: `${row.source} ${row.category}`,
-          }, searchTerms);
-        })
+          },
+          searchTerms,
+        );
+      }),
+    [
+      rows,
+      recordFor,
+      catalogIndex,
+      tab,
+      selectedFolder,
+      globalSearch,
+      queryValue,
+      searchTerms,
+    ],
+  );
+  const performanceCount = useMemo(
+    () =>
+      new Set(filtered.map((row) => row.contentId || libraryPath(row.path)))
+        .size,
+    [filtered],
+  );
+  const allGroups = useMemo(
+    () => groupSongs(rows, catalogIndex, recordFor),
+    [rows, catalogIndex, recordFor],
+  );
+  const allGroupsById = useMemo(
+    () => new Map(allGroups.map((group) => [group.id, group])),
+    [allGroups],
+  );
+  const visibleGroups = useMemo(
+    () => groupSongs(filtered, catalogIndex, recordFor),
+    [filtered, catalogIndex, recordFor],
+  );
+  const visibleById = useMemo(
+    () => new Map(visibleGroups.map((group) => [group.id, group])),
+    [visibleGroups],
+  );
+  const groups = useMemo(
+    () =>
+      visibleGroups
+        .map((group) => ({
+          ...group,
+          performances:
+            allGroupsById.get(group.id)?.performances ?? group.performances,
+        }))
         .sort((a, b) =>
           tab === "recent"
-            ? (records.get(libraryPath(b.path))?.lastUsed ?? 0) -
-              (records.get(libraryPath(a.path))?.lastUsed ?? 0)
+            ? b.lastUsed - a.lastUsed
             : a.title.localeCompare(b.title, "zh-CN", { numeric: true }),
         ),
-    [rows, records, tab, selectedFolder, globalSearch, queryValue, searchTerms],
+    [visibleGroups, allGroupsById, tab],
   );
+  const requested = rowByPath.get(libraryPath(selectedPath));
+  const requestedKey = requested ? songKey(requested, catalogIndex) : null;
+  const groupsById = useMemo(
+    () => new Map(groups.map((group) => [group.id, group])),
+    [groups],
+  );
+  const defaultGroup = useMemo(
+    () =>
+      groups.find((group) => /look at the sky/i.test(group.title)) ?? groups[0],
+    [groups],
+  );
+  const selectedGroup = groupsById.get(requestedKey ?? "") ?? defaultGroup;
+  const selected = selectedGroup
+    ? songLocation(selectedGroup, selectedPath)
+    : undefined;
+  const selectedPerformance = selectedGroup?.performances.find(
+    (performance) =>
+      performance.id ===
+      (selected?.contentId || libraryPath(selected?.path ?? "")),
+  );
+  const chooseGroup = (group: BrowserSong) => {
+    const row =
+      group.id === selectedGroup?.id && selected
+        ? selected
+        : songLocation(
+            visibleById.get(group.id) ?? group,
+            current?.sourcePath ?? "",
+          );
+    setSelectedPath(row.path);
+    return row;
+  };
   useEffect(() => setPage(0), [selectedFolder, queryValue, tab, globalSearch]);
   useEffect(() => {
-    const index = filtered.findIndex(
-      (row) => libraryPath(row.path) === libraryPath(selectedPath),
-    );
+    const index = groups.findIndex((group) => group.id === selectedGroup?.id);
     if (index >= 0) setPage(Math.floor(index / 60));
-  }, [filtered, selectedPath]);
+  }, [groups, selectedGroup?.id]);
   useEffect(() => {
     requestAnimationFrame(() =>
       list.current
         ?.querySelector('[aria-selected="true"]')
         ?.scrollIntoView({ block: "nearest" }),
     );
-  }, [page, selectedPath, filtered]);
-  const selected =
-    filtered.find((r) => libraryPath(r.path) === libraryPath(selectedPath)) ??
-    filtered.find(
-      (r) => /look at the sky/i.test(r.path) && /原调_乐谱量化/.test(r.path),
-    ) ??
-    filtered[0];
+  }, [page, selectedGroup?.id, groups]);
   useEffect(() => {
     stopPreview();
     setPreview(null);
@@ -379,6 +475,8 @@ export function SongBrowser({
     setOpening(true);
     try {
       await open(selected);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setOpening(false);
     }
@@ -388,7 +486,7 @@ export function SongBrowser({
       ? "内置练习"
       : selectedFolder
         ? selectedFolder.split("/").at(-1)
-        : "全部曲目";
+        : "全部歌曲";
   const folderNode = (node: FolderNode, depth = 0): React.ReactNode => (
     <div key={node.path} role="none">
       <div
@@ -459,7 +557,7 @@ export function SongBrowser({
           onClick={() => setSelectedFolder("")}
         >
           <Music2 size={17} />
-          全部曲目<small>{rows.length.toLocaleString()}</small>
+          全部歌曲<small>{allGroups.length.toLocaleString()}</small>
         </button>
         <button
           className={`browser-root ${selectedFolder === "builtin" ? "selected" : ""}`}
@@ -570,7 +668,7 @@ export function SongBrowser({
           <input
             aria-label="搜索曲目"
             placeholder="搜索曲名、作者、标签；可用 composer:肖邦"
-            title={'支持 composer:作者、tags:标签、双引号短语和 -词 排除'}
+            title={"支持 composer:作者、tags:标签、双引号短语和 -词 排除"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -602,7 +700,8 @@ export function SongBrowser({
           </div>
           <span>
             {folderName} <b> / </b>
-            {filtered.length.toLocaleString()} 首
+            {groups.length.toLocaleString()} 首 ·{" "}
+            {performanceCount.toLocaleString()} 份演奏
           </span>
         </div>
         <div
@@ -617,16 +716,18 @@ export function SongBrowser({
               void begin();
               return;
             }
-            const index = filtered.findIndex((r) => r.path === selected?.path),
+            const index = groups.findIndex(
+                (group) => group.id === selectedGroup?.id,
+              ),
               next = Math.max(
                 0,
                 Math.min(
-                  filtered.length - 1,
+                  groups.length - 1,
                   index + (e.key === "ArrowDown" ? 1 : -1),
                 ),
               );
-            if (filtered[next]) {
-              setSelectedPath(filtered[next].path);
+            if (groups[next]) {
+              chooseGroup(groups[next]);
               setPage(Math.floor(next / 60));
             }
           }}
@@ -637,7 +738,7 @@ export function SongBrowser({
               正在读取曲库，已有目录会陆续显示…
             </p>
           )}
-          {ready && !filtered.length && (
+          {ready && !groups.length && (
             <div className="browser-empty">
               <Music2 size={35} />
               <h2>{query ? "没有匹配曲目" : "这个目录还没有曲目"}</h2>
@@ -648,37 +749,60 @@ export function SongBrowser({
               </p>
             </div>
           )}
-          {filtered.slice(page * 60, (page + 1) * 60).map((row) => {
-            const parts = titleParts(row.title),
-              isCurrent =
-                libraryPath(current?.sourcePath ?? "") ===
-                libraryPath(row.path);
+          {grouping.error && (
+            <p role="status" className="browser-list-notice">
+              歌曲关系暂未读到：{grouping.error}{" "}
+              <button onClick={grouping.reload}>重新读取</button>
+            </p>
+          )}
+          {groups.slice(page * 60, (page + 1) * 60).map((group) => {
+            const isCurrent = group.performances.some(
+              (performance) =>
+                performance.contentId === current?.contentId ||
+                performance.locations.some(
+                  (row) =>
+                    libraryPath(row.path) ===
+                    libraryPath(current?.sourcePath ?? ""),
+                ),
+            );
             return (
               <button
-                key={row.path}
+                key={group.id}
                 role="option"
-                aria-selected={row.path === selected?.path}
-                title={row.path}
-                className={`browser-song ${row.path === selected?.path ? "selected" : ""}`}
-                onClick={() => setSelectedPath(row.path)}
+                aria-selected={group.id === selectedGroup?.id}
+                className={`browser-song ${group.id === selectedGroup?.id ? "selected" : ""}`}
+                onClick={() => chooseGroup(group)}
                 onDoubleClick={() => {
-                  setSelectedPath(row.path);
+                  if (opening || unavailable) return;
+                  const row = chooseGroup(group);
                   stopPreview();
                   setOpening(true);
-                  void open(row).finally(() => setOpening(false));
+                  void open(row)
+                    .catch((error) => setError(String(error)))
+                    .finally(() => setOpening(false));
                 }}
               >
                 <span className="browser-song-icon">
                   <Music2 size={20} />
                 </span>
                 <span className="browser-song-title">
-                  <strong>{parts.title}</strong>
+                  <strong>{titleParts(group.title).title}</strong>
                   <small>
-                    {parts.version} <i>·</i>{" "}
-                    {row.composer || row.source || "本地 MIDI"}
+                    {group.composer ||
+                      group.performances[0].locations[0].source ||
+                      "本地 MIDI"}
+                    {group.performances.some(
+                      (row) => row.notationCount > 0,
+                    ) && <> · 有关联谱面</>}
                   </small>
                 </span>
-                {isCurrent && <span className="browser-current">当前曲目</span>}
+                {group.performances.length > 1 && (
+                  <span className="browser-edition-count">
+                    <Layers3 size={13} />
+                    {group.performances.length} 份演奏
+                  </span>
+                )}
+                {isCurrent && <span className="browser-current">当前歌曲</span>}
                 <ChevronRight size={15} />
               </button>
             );
@@ -691,10 +815,10 @@ export function SongBrowser({
               上一页
             </button>
             <span>
-              {page + 1} / {Math.max(1, Math.ceil(filtered.length / 60))}
+              {page + 1} / {Math.max(1, Math.ceil(groups.length / 60))}
             </span>
             <button
-              disabled={(page + 1) * 60 >= filtered.length}
+              disabled={(page + 1) * 60 >= groups.length}
               onClick={() => setPage((p) => p + 1)}
             >
               下一页
@@ -710,9 +834,36 @@ export function SongBrowser({
               <span>曲目预览</span>
               <Music2 size={18} />
             </div>
-            <h2>{titleParts(selected.title).title}</h2>
+            <h2>{titleParts(selectedGroup!.title).title}</h2>
+            <label className="browser-performance-picker">
+              <span>
+                <Layers3 size={15} />
+                演奏版本 · {selectedGroup!.performances.length} 份
+              </span>
+              <select
+                aria-label="选择演奏版本"
+                value={selectedPerformance?.id ?? ""}
+                disabled={opening}
+                onChange={(event) => {
+                  const performance = selectedGroup!.performances.find(
+                    (row) => row.id === event.target.value,
+                  );
+                  if (performance)
+                    setSelectedPath(performance.locations[0].path);
+                }}
+              >
+                {selectedGroup!.performances.map((performance) => (
+                  <option key={performance.id} value={performance.id}>
+                    {performance.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="browser-version">
               {titleParts(selected.title).version}
+              {selectedPerformance?.notationCount
+                ? ` · ${selectedPerformance.notationCount} 份谱面`
+                : ""}
             </p>
             <div className="browser-preview-paper">
               {preview ? (
@@ -767,8 +918,40 @@ export function SongBrowser({
             </div>
             <details className="browser-file-location">
               <summary>文件位置</summary>
-              <p>{selected.path}</p>
+              {selectedPerformance?.locations.map((location) => (
+                <button
+                  key={location.path}
+                  className="browser-location-option"
+                  aria-pressed={
+                    libraryPath(location.path) === libraryPath(selected.path)
+                  }
+                  title={location.path}
+                  onClick={() => setSelectedPath(location.path)}
+                >
+                  {location.path}
+                </button>
+              ))}
             </details>
+            <BrowserSongVersions
+              key={`${selected.contentId ?? ""}:${selected.path}`}
+              row={selected}
+              disabled={!!unavailable || opening}
+              changed={grouping.reload}
+              open={async (path) => {
+                const target = rowByPath.get(libraryPath(path));
+                if (!target)
+                  throw new Error(
+                    "这个文件位置未出现在当前曲库，请重新扫描后打开。",
+                  );
+                stopPreview();
+                setOpening(true);
+                try {
+                  return await open(target);
+                } finally {
+                  setOpening(false);
+                }
+              }}
+            />
             {error && (
               <p role="alert" className="browser-error">
                 {error}

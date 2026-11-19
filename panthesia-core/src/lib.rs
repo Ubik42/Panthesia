@@ -10,6 +10,7 @@ pub mod product;
 pub mod practice_transform;
 pub mod practice_score;
 pub mod song_project;
+pub mod song_catalog;
 pub mod exercise;
 pub mod fingering;
 #[cfg(feature = "native-render")]

@@ -17,6 +17,7 @@ pub enum Command {
     AudioDevice { name: Option<String> },
     SongPreview { path: PathBuf },
     ReadRepertoire { path: Option<PathBuf>, content_id: Option<String> },
+    SongCatalog,
     InspectNotation { path: PathBuf, content_id: String, version_id: String },
     EditRepertoire { request: crate::repertoire::RepertoireEdit },
     StartLibraryOpen { request: crate::library_operations::LibraryOpenRequest },

@@ -1,5 +1,19 @@
 // Generated from panthesia-engine/src/protocol.rs. Do not edit.
 // Migrated domains follow Rust serde names and input defaults; remaining domains use unknown.
+export interface CatalogPerformance {
+  "contentId": string;
+  "workId": string;
+  "title": string;
+  "composer": string;
+  "label": string;
+  "notationCount": number;
+}
+
+export interface SongCatalog {
+  "revision": string;
+  "performances": Array<CatalogPerformance>;
+}
+
 export interface MetadataSourceCandidate {
   "path": string;
   "name": string;
@@ -2425,6 +2439,7 @@ export type EngineCommand =
   | { type: "audioDevice"; "name"?: string | null }
   | { type: "songPreview"; "path": string }
   | { type: "readRepertoire"; "path"?: string | null; "content_id"?: string | null }
+  | { type: "songCatalog" }
   | { type: "inspectNotation"; "path": string; "content_id": string; "version_id": string }
   | { type: "editRepertoire"; "request": RepertoireEdit }
   | { type: "startLibraryOpen"; "request": LibraryOpenRequest }

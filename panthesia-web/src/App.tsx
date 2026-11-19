@@ -999,7 +999,10 @@ export default function App() {
     [collection],
   );
   const allLibraryRows = useMemo(() => {
-    const rows = [...songs];
+    const rows = songs.map(row=>{
+      const record=byPath.get(normalize(row.path));
+      return !row.contentId&&record?{...row,contentId:record.contentId}:row;
+    });
     const known = new Set(rows.map((row) => normalize(row.path)));
     for (const record of byPath.values()) {
       const row = collectionSongRow(record),
@@ -1947,7 +1950,7 @@ export default function App() {
           <PracticeSetupSummary store={playback} song={song} connected={connected}
             display={display} showRequired={view === "score"}
             open={() => panels.revealInspector("setup")} />
-          {song && <SongEditionBar song={song} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
+          {song && <SongEditionBar song={song} active={workspace==="practice"} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
             execute={command=>run(command,true)}
             openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}
             manage={()=>setScoresDialog(true)}/>}

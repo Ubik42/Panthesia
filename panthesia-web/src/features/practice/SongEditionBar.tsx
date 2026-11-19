@@ -16,6 +16,7 @@ export function SongEditionBar({
   execute,
   openPerformance,
   manage,
+  active = true,
 }: {
   song: LoadedSong;
   disabled: boolean;
@@ -26,6 +27,7 @@ export function SongEditionBar({
     label: string,
   ) => Promise<unknown>;
   manage: () => void;
+  active?: boolean;
 }) {
   const [view, setView] = useState<RepertoireView | null>(null);
   const [pending, setPending] = useState(false),
@@ -33,6 +35,10 @@ export function SongEditionBar({
   const [retry, setRetry] = useState(0);
   const [reading, setReading] = useState(false);
   useEffect(() => {
+    if (!active) {
+      setReading(false);
+      return;
+    }
     let current = true;
     setView((previous) =>
       previous?.project?.performance.contentId === song.contentId
@@ -62,6 +68,7 @@ export function SongEditionBar({
     song.sourcePath,
     song.scoreRevision,
     retry,
+    active,
   ]);
   const project = view?.project;
   if (song.generated) return null;
@@ -70,9 +77,9 @@ export function SongEditionBar({
         (row) => row.workId === project.work.id,
       )
     : [];
-  const active = project?.notations.find((row) => row.active);
+  const activeNotation = project?.notations.find((row) => row.active);
   const transform = song.practiceVariant?.settings;
-  const locked = disabled || pending || reading;
+  const locked = disabled || pending || reading || !active;
   const change = async (operation: () => Promise<unknown>) => {
     setPending(true);
     setError("");
@@ -89,7 +96,7 @@ export function SongEditionBar({
     <section
       className="song-edition-bar"
       aria-label="演奏与谱面版本"
-      aria-busy={pending}
+      aria-busy={pending || reading}
     >
       <label>
         <Layers3 size={16} />
@@ -127,7 +134,7 @@ export function SongEditionBar({
         <span>练习谱面</span>
         <select
           aria-label="当前练习谱面"
-          value={active?.edition.versionId ?? ""}
+          value={activeNotation?.edition.versionId ?? ""}
           disabled={locked || !project}
           onChange={(event) => {
             const id = event.target.value;

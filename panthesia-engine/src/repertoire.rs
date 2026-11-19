@@ -13,6 +13,21 @@ pub struct RepertoireView {
     pub notation_statuses: BTreeMap<String, String>,
     pub project:Option<panthesia_core::song_project::SongProject>,
 }
+#[derive(Serialize)]
+#[serde(untagged)]
+enum Reply {
+    View(RepertoireView),
+    Catalog(panthesia_core::song_catalog::SongCatalog),
+}
+struct CatalogSeed {content_id:String,title:String,composer:String,path:String}
+impl Engine {
+    fn catalog_seeds(&self)->Result<Vec<CatalogSeed>,String> {
+        let source=self.catalog_rows.lock().map_err(|_|"曲库来源暂不可读")?.as_ref().and_then(std::sync::Weak::upgrade);
+        let Some(source)=source else{return Ok(vec![]);};
+        let rows=source.lock().map_err(|_|"曲库快照暂不可读")?;
+        Ok(rows.iter().filter_map(|row|Some(CatalogSeed{content_id:row.content_id.clone()?,title:row.title.clone(),composer:row.composer.clone(),path:row.path.to_string_lossy().into_owned()})).collect())
+    }
+}
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RepertoireEdit {
@@ -47,10 +62,19 @@ fn migrate(
     data: &Path,
     path: Option<&Path>,
     content: Option<&str>,
+    known:&[CatalogSeed],
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<(), String> {
     let workspace = Workspace::load(data)?;
     let prefs = Preferences::load(&data.join("web-preferences.json"))?;
+    for source in known {
+        check()?;
+        registry.register(&source.content_id,&source.title,&source.composer,Some(source.path.clone()));
+        let work_id=registry.performances[&source.content_id].work_id.clone();
+        if let Some(work)=registry.works.get_mut(&work_id) {
+            if work.title=="未命名作品" {work.title=source.title.clone();work.composer=source.composer.clone();}
+        }
+    }
     let history = panthesia_core::practice_history::PracticeHistoryStore::load_snapshot(
         data.join("web-practice-history.ron"),
     )?;
@@ -227,7 +251,10 @@ impl Engine {
                     token.check()?;
                     return serde_json::to_value(result).map_err(|e| e.to_string());
                 }
+                let known=engine.catalog_seeds()?;
+                let catalog=matches!(command,Command::SongCatalog);
                 let (path, content, edit) = match command {
+                    Command::SongCatalog=>(None,None,None),
                     Command::ReadRepertoire { path, content_id } => (path, content_id, None),
                     Command::EditRepertoire { request } => (None, None, Some(request)),
                     _ => return Err("作品操作无效".into()),
@@ -248,6 +275,7 @@ impl Engine {
                             &data,
                             path.as_deref(),
                             content.as_deref(),
+                            &known,
                             &|| token.check(),
                         )?;
                         if let Some(edit) = edit {
@@ -299,6 +327,7 @@ impl Engine {
                         registry.validate()?;
                         let bytes =
                             serde_json::to_vec_pretty(&registry).map_err(|e| e.to_string())?;
+                        if catalog {return Ok::<_,String>(Reply::Catalog(panthesia_core::song_catalog::SongCatalog::from_registry(&registry,blake3::hash(&bytes).to_hex().to_string())));}
                         // Even the initial migration uses the existing optimistic transaction lane.
                         let destination = data.join("repertoire.json");
                         if atomic_file::read_limited(&destination, 64_000_000)
@@ -363,12 +392,12 @@ impl Engine {
                             }
                             Some(project)
                         } else {None};
-                        Ok::<_, String>(RepertoireView {
+                        Ok::<_, String>(Reply::View(RepertoireView {
                             registry,
                             revision: blake3::hash(&bytes).to_hex().to_string(),
                             notation_statuses,
                             project,
-                        })
+                        }))
                     },
                 );
                 let result = result?;

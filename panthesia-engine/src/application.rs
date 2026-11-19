@@ -27,6 +27,7 @@ impl Engine {
         root: PathBuf,
         rows: Arc<Mutex<Vec<library::SongRow>>>,
     ) -> library_monitor::Monitor {
+        *self.catalog_rows.lock().unwrap_or_else(|error|error.into_inner())=Some(Arc::downgrade(&rows));
         library_monitor::Monitor::start_loading(
             root,
             self.data.clone(),
@@ -48,7 +49,7 @@ impl Engine {
         }
         if matches!(
             &command,
-            Command::ReadRepertoire { .. }
+            Command::ReadRepertoire { .. } | Command::SongCatalog
                 | Command::EditRepertoire { .. }
                 | Command::InspectNotation { .. }
         ) {

@@ -201,6 +201,7 @@ pub use practice_edit::Request as PracticeRequest;
 
 #[derive(Clone)]
 pub struct Engine {
+    catalog_rows: Arc<Mutex<Option<std::sync::Weak<Mutex<Vec<library::SongRow>>>>>>,
     paper_navigation: Arc<std::sync::atomic::AtomicU64>,
     music_imports: music_import::Store,
     backup_imports: backup_operations::Store,
@@ -2719,7 +2720,7 @@ impl Player {
             Command::PrepareMeasurePart { content_id, measure, part, track_id } => {
                 self.prepare_measure_part(&content_id, measure, part, track_id)?;
             }
-            Command::ReadRepertoire { .. } | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
+            Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
             Command::PreviewLegacyExerciseTracks { .. } | Command::ApplyLegacyExerciseTracks { .. }
                 | Command::PreviewLegacyExerciseHistory { .. } | Command::ReviewLegacyExerciseHistory { .. } => unreachable!(),
         }

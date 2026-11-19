@@ -8,11 +8,13 @@ export function SongPerformanceManager({
   disabled,
   change,
   open,
+  embedded = false,
 }: {
   view: RepertoireView;
   disabled: boolean;
   change: (operation: () => Promise<unknown>) => Promise<void>;
   open: (path: string, contentId: string, label: string) => Promise<unknown>;
+  embedded?: boolean;
 }) {
   const [query, setQuery] = useState(""),
     [selected, setSelected] = useState("");
@@ -36,12 +38,15 @@ export function SongPerformanceManager({
     )
     .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
   const target = candidates.find((row) => row.contentId === selected);
+  const Container = embedded ? "section" : "details";
   return (
-    <details className="song-performance-manager">
-      <summary>
-        <Layers3 size={15} />
-        管理演奏版本 <span>{siblings.length} 份</span>
-      </summary>
+    <Container className="song-performance-manager">
+      {!embedded && (
+        <summary>
+          <Layers3 size={15} />
+          管理演奏版本 <span>{siblings.length} 份</span>
+        </summary>
+      )}
       <div className="song-performance-body">
         <section aria-label="当前歌曲的演奏版本">
           <h3>{project.work.title}</h3>
@@ -53,7 +58,9 @@ export function SongPerformanceManager({
                   <strong>{row.label || "演奏版本"}</strong>
                   <small>
                     {row.contentId === project.performance.contentId
-                      ? "当前演奏"
+                      ? embedded
+                        ? "当前选择"
+                        : "当前演奏"
                       : row.locations[0] || "文件待定位"}
                   </small>
                 </span>
@@ -140,6 +147,6 @@ export function SongPerformanceManager({
           </button>
         </section>
       </div>
-    </details>
+    </Container>
   );
 }
