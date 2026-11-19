@@ -49,6 +49,11 @@ pub fn configure(
         );
         for window in &mut context.config_mut().app.windows {
             window.data_directory = None;
+            #[cfg(debug_assertions)]
+            if let Ok(port)=panthesia_core::product::env("PANTHESIA_DEVTOOLS_PORT") {
+                let port=port.parse::<u16>().ok().filter(|port|*port>=1024).ok_or("开发调试端口需为 1024～65535")?;
+                window.additional_browser_args=Some(format!("--remote-debugging-address=127.0.0.1 --remote-debugging-port={port}"));
+            }
         }
     }
     Ok(context)

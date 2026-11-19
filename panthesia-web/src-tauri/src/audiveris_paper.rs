@@ -586,6 +586,7 @@ pub async fn recognize_paper_with_audiveris(
                 hash: hash.clone(),
                 size: bytes.len(),
                 created_at_ms: crate::score_draft_bridge::now_ms(),
+                generation:None,
             },
             &bytes,
         )

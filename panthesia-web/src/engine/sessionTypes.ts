@@ -122,7 +122,7 @@ export interface MeterMapPreview {
   measures: LoadedSong["measures"];
 }
 export interface LoadedSong {
-  practiceVariant?: {settings: import("./commands.generated").Variant; tonic: number; minor: boolean; keySource: "manual" | "midi" | "estimate"; sourceHasScore: boolean; minPitch: number | null; maxPitch: number | null; active: boolean};
+  practiceVariant?: {editionId?:string|null; settings: import("./commands.generated").Variant; tonic: number; minor: boolean; keySource: "manual" | "midi" | "estimate"; sourceHasScore: boolean; minPitch: number | null; maxPitch: number | null; active: boolean};
   engineId?: string | null;
   grid?: string;
   meterMap?: MeterMap | null;

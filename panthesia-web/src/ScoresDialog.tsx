@@ -34,6 +34,7 @@ import {
 } from "./features/scores/ScoreVersionBrowser";
 import "./features/scores/scoreManagerWorkspace.css";
 import { api, type LoadedSong } from "./api";
+import { CurrentSongProject } from "./features/scores/SongProjectSummary";
 import { PaperScore, type PaperAttachment } from "./PaperScore";
 import {
   ScoreRoutePreview,
@@ -139,8 +140,7 @@ export function ScoresDialog({
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const canGenerateMuseScorePdf =
     api.desktop && /Windows/i.test(navigator.userAgent);
-  const canGenerateMuseScoreScore =
-    canGenerateMuseScorePdf && /\.midi?$/i.test(song.sourcePath);
+  const canGenerateDuetScore = api.desktop && !song.generated && /\.midi?$/i.test(song.sourcePath);
   const [versionPreview, setVersionPreview] =
     useState<ScoreVersionPreview | null>(null);
   const refresh = (requireFresh = false) =>
@@ -520,15 +520,16 @@ export function ScoresDialog({
         >
           选择 MusicXML / MXL
         </button>
-        {canGenerateMuseScoreScore && (
+        {canGenerateDuetScore && (
           <button
             disabled={busy || paperBusy}
             onClick={() => void generateScore()}
           >
-            从 MIDI 生成初稿
+            用 DuET 生成乐谱
           </button>
         )}
       </div>
+      <p className="parameter-help">DuET 从原始演奏 MIDI 推断节奏、声部和谱表。当前转调与量化作为练习条件单独使用；MuseScore 用于后续编辑和 PDF 排版。</p>
       <input
         hidden
         ref={input}
@@ -632,9 +633,7 @@ export function ScoresDialog({
           )}
           {filePreview.generated && (
             <p className="parameter-help">
-              这是 MuseScore Studio 根据当前 MIDI
-              推出的谱面初稿。请检查谱号、左右手、时值和小节；MIDI
-              通常没有完整的记谱信息。
+              这是 DuET 根据原始演奏 MIDI 生成的乐谱初稿。请核对谱号、左右手、时值和小节，再采用为练习谱面。
             </p>
           )}
           {filePreview.recognizedFrom && (
@@ -808,6 +807,8 @@ export function ScoresDialog({
             <X size={18} />
           </button>
         </div>
+        <CurrentSongProject contentId={song.contentId} path={song.sourcePath}
+          revision={JSON.stringify([versions.map(v=>[v.id,v.active,v.fingerprint]),conversion.drafts.length])}/>
         {localBusy && (
           <p className="score-manager-local-progress" role="status">
             正在{conversion.localAction || "处理谱面"}…

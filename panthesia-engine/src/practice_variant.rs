@@ -3,16 +3,7 @@ use crate::*;
 use midi_file::midly::{MidiMessage as M, num::u7};
 use midi_file::{MidiEvent, MidiFile};
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-pub struct Variant {
-    pub transpose: i8,
-    /// 0 = original timing; otherwise a whole-note subdivision.
-    pub quantize: u8,
-    pub durations: bool,
-    pub tonic: Option<u8>,
-    pub minor: Option<bool>,
-}
+pub use panthesia_core::practice_transform::Variant;
 
 #[cfg(test)]
 mod tests {
@@ -137,60 +128,6 @@ mod tests {
                 .abs()
                 < 0.000001
         );
-    }
-}
-impl Default for Variant {
-    fn default() -> Self {
-        Self {
-            transpose: 0,
-            quantize: 0,
-            durations: true,
-            tonic: None,
-            minor: None,
-        }
-    }
-}
-impl Variant {
-    pub(crate) fn from_grid(grid: &str) -> Result<Self, String> {
-        let Some((_, signature)) = grid.split_once(";practice-v1:") else {
-            return Ok(Self::default());
-        };
-        let values: Vec<_> = signature.split(',').collect();
-        if values.len() != 3 {
-            return Err("历史练习版本信息不完整".into());
-        }
-        let value = Self {
-            transpose: values[0].parse().map_err(|_| "历史转调信息无效")?,
-            quantize: values[1].parse().map_err(|_| "历史量化信息无效")?,
-            durations: match values[2] {
-                "1" => true,
-                "0" => false,
-                _ => return Err("历史量化时值无效".into()),
-            },
-            ..Default::default()
-        };
-        value.validate()?;
-        Ok(value)
-    }
-    pub fn active(&self) -> bool {
-        self.transpose != 0 || self.quantize != 0
-    }
-    pub fn validate(&self) -> Result<(), String> {
-        if !(-24..=24).contains(&self.transpose)
-            || ![0, 8, 16, 32].contains(&self.quantize)
-            || self.tonic.is_some_and(|v| v > 11)
-        {
-            return Err("转调或量化设置无效".into());
-        }
-        Ok(())
-    }
-    pub fn signature(&self) -> String {
-        format!(
-            ";practice-v1:{},{},{}",
-            self.transpose,
-            self.quantize,
-            u8::from(self.durations)
-        )
     }
 }
 pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, String> {
@@ -483,7 +420,8 @@ impl Player {
             .filter(|n| n.channel != 9)
             .map(|n| n.note)
             .collect();
-        serde_json::json!({"settings":variant,"tonic":tonic,"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
+        let edition=source.and_then(|file|panthesia_core::song_project::PracticeEdition::new(&file.content_id,variant.clone()).ok());
+        serde_json::json!({"editionId":edition.map(|e|e.id),"settings":variant,"tonic":tonic,"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
     }
     pub(super) fn apply_variant_memory(&mut self, value: &Variant) -> Result<(), String> {
         if !self.variant().active() {

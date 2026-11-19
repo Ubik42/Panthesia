@@ -263,7 +263,7 @@ export function useScoreConversion(slot: ScoreWorkspaceSlot) {
       } else {
         if (resume) throw new Error("当前版本需要重新生成初稿。");
         if (kind === "midiToNotation")
-          draft = await api.generateMuseScoreScore(
+          draft = await api.generateDuetScore(
             slot.getSnapshot().source.contentId,
           );
         else {

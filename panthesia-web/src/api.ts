@@ -183,7 +183,7 @@ export const api = {
   exportNotationDraftBytes: (request: import("./engine/commands.generated").DraftSelection, name: string, bytes: number[] | Uint8Array): Promise<string | null> => invoke("export_notation_draft_bytes", {request, name, bytes: bytes instanceof Uint8Array ? Array.from(bytes) : bytes}),
   readScoreJob: (request: import("./engine/commands.generated").ScoreJobRequest): Promise<import("./engine/commands.generated").ScoreJobStatus | null> => invoke("read_score_job", { request }),
   cancelScoreJob: (request: import("./engine/commands.generated").ScoreJobRequest): Promise<import("./engine/commands.generated").ScoreJobStatus> => invoke("cancel_score_job", { request }),
-  startMidiScoreJob: (job: import("./engine/commands.generated").ScoreJobRequest): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("generate_musescore_score", { contentId: job.contentId, job }),
+  startMidiScoreJob: (job: import("./engine/commands.generated").ScoreJobRequest): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("generate_duet_score", { contentId: job.contentId, job }),
   startPaperScoreJob: async (job: import("./engine/commands.generated").ScoreJobRequest, bookId: string, expectedPages: {id: string; kind: string}[], preparedPdf?: Uint8Array, options: {signal?: AbortSignal; shouldCancel?: () => boolean; progress?: (sent: number, total: number) => void} = {}): Promise<import("./engine/commands.generated").ScoreSubmitted> => {
     let session: string | undefined;
     const check = () => { if (options.shouldCancel?.() || options.signal?.reason === "cancelled") throw new Error("已停止传输识谱 PDF，原谱页保留。"); };
@@ -581,8 +581,8 @@ export const api = {
     invoke<void>("open_score_in_musescore", { contentId, versionId, engineId: engineId ?? null }),
   addMuseScorePdf: (contentId: string, versionId: string) =>
     invoke<{ active: string }>("add_musescore_pdf", { contentId, versionId }),
-  generateMuseScoreScore: (contentId: string) =>
-    invoke<import("./engine/commands.generated").ScoreDraft>("generate_musescore_score", { contentId, job: null }),
+  generateDuetScore: (contentId: string) =>
+    invoke<import("./engine/commands.generated").ScoreDraft>("generate_duet_score", { contentId, job: null }),
   museScoreProgramStatus: () => invoke<import("./engine/commands.generated").MuseScoreProgramStatus>("musescore_program_status"),
   selectMuseScoreProgram: () => invoke<import("./engine/commands.generated").MuseScoreProgramStatus>("select_musescore_program"),
   resetMuseScoreProgram: () => invoke<import("./engine/commands.generated").MuseScoreProgramStatus>("reset_musescore_program"),

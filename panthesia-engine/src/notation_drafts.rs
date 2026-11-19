@@ -22,6 +22,8 @@ pub struct DraftRecord {
     pub hash: String,
     pub size: usize,
     pub created_at_ms: u64,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub generation:Option<panthesia_core::song_project::NotationGeneration>,
 }
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,6 +51,7 @@ pub struct DraftSummary {
     pub save_pending: bool,
     pub saved_path: Option<PathBuf>,
     pub source_warning: Option<String>,
+    pub generation:Option<panthesia_core::song_project::NotationGeneration>,
 }
 #[derive(Serialize)]
 pub struct DraftListing {
@@ -311,6 +314,7 @@ pub fn list(data: &Path, content_id: &str) -> Result<DraftListing, String> {
                 .is_some_and(|saved| !saved.linked || saved.version_id.is_none()),
             saved_path: receipt.map(|saved| saved.path),
             source_warning: record.source_warning,
+            generation:record.generation,
         });
     }
     result

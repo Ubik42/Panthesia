@@ -55,6 +55,39 @@ export interface Variant {
   "minor"?: boolean | null;
 }
 
+export interface NotationGeneration {
+  "id": string;
+  "generator": string;
+  "generatorIdentity": string;
+  "sourceContentId": string;
+  "inputKind": string;
+  "directory": string;
+  "notesPath": string;
+  "reportPath": string;
+}
+
+export interface PracticeEdition {
+  "id": string;
+  "performanceId": string;
+  "transform": Variant;
+}
+
+export interface ProjectNotation {
+  "edition": NotationEdition;
+  "active": boolean;
+  "status": string;
+  "generation": NotationGeneration | null;
+}
+
+export interface SongProject {
+  "work": MusicalWork;
+  "performance": PerformanceEdition;
+  "practice": PracticeEdition;
+  "notations": Array<ProjectNotation>;
+  "generations": Array<NotationGeneration>;
+  "issues": Array<string>;
+}
+
 export interface NotationCapabilities {
   "fingerprint": string;
   "format": string;
@@ -125,6 +158,7 @@ export interface RepertoireView {
   "registry": RepertoireRegistry;
   "revision": string;
   "notationStatuses": Record<string, string>;
+  "project": SongProject | null;
 }
 
 export interface StartupStatus {
@@ -1163,6 +1197,7 @@ export interface DraftSummary {
   "savePending": boolean;
   "savedPath": string | null;
   "sourceWarning": string | null;
+  "generation": NotationGeneration | null;
 }
 
 export interface DraftListing {

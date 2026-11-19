@@ -65,6 +65,8 @@ export function scoreJobMessage(status: ScoreJobProgress): string {
       {
         preparing: "正在准备",
         readingSource: "正在核对曲目与谱页",
+        checkingDuet: "正在准备 DuET 本地制谱环境",
+        duetGenerating: "DuET 正在生成乐谱，可以继续演奏或稍后查看",
         choosingProgram: "正在检查或选择 MuseScore 程序",
         copyingSource: "正在准备固定的转换副本",
         converting: "MuseScore 正在从 MIDI 转谱",

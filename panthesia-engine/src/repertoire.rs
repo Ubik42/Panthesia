@@ -11,6 +11,7 @@ pub struct RepertoireView {
     pub registry: RepertoireRegistry,
     pub revision: String,
     pub notation_statuses: BTreeMap<String, String>,
+    pub project:Option<panthesia_core::song_project::SongProject>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -329,10 +330,39 @@ impl Engine {
                             };
                             notation_statuses.insert(notation.id.clone(), status.into());
                         }
+                        let project = if let Some(cid)=selected.as_deref() {
+                            let prefs=Preferences::load(&data.join("web-preferences.json"))?;
+                            let active=path.as_ref().and_then(|p| {
+                                let score=panthesia_core::library::load_song_sidecar(p,cid).ok()?.score?;
+                                let actual=crate::library_workspace::key(&panthesia_core::library::resolve_score_path(p,&score));
+                                registry.notations.values().find(|n|n.performance_id==cid && n.content_id==score.content_id &&
+                                    crate::library_workspace::key(Path::new(&n.path)).trim_start_matches("//?/")==actual.trim_start_matches("//?/"))
+                                    .map(|n|n.id.clone())
+                            });
+                            let mut project=panthesia_core::song_project::SongProject::from_registry(&registry,cid,
+                                prefs.variants.get(cid).cloned().unwrap_or_default(),active.as_deref())?;
+                            for notation in &mut project.notations {notation.status=notation_statuses.get(&notation.edition.id).cloned().unwrap_or_else(||"unverified".into());}
+                            match crate::notation_drafts::list(&data,cid) {
+                                Ok(list)=> {
+                                    project.issues=list.issues;
+                                    for draft in list.drafts {
+                                        if let Some(generation)=draft.generation {
+                                            for notation in &mut project.notations {
+                                                if notation.edition.content_id==draft.fingerprint {notation.generation=Some(generation.clone());}
+                                            }
+                                            project.generations.push(generation);
+                                        }
+                                    }
+                                },
+                                Err(error)=>project.issues.push(error),
+                            }
+                            Some(project)
+                        } else {None};
                         Ok::<_, String>(RepertoireView {
                             registry,
                             revision: blake3::hash(&bytes).to_hex().to_string(),
                             notation_statuses,
+                            project,
                         })
                     },
                 );

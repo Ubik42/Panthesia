@@ -9,6 +9,7 @@ mod score_export_bridge;
 mod export_files;
 mod media_export_bridge;
 mod external_process;
+mod duet_score;
 mod backup_operations;
 mod practice_backup_bridge;
 mod audiveris_paper;
@@ -752,7 +753,7 @@ fn convert_musescore_pdf(executable:&std::path::Path,source:&std::path::Path,des
     convert_musescore_pdf_controlled(executable,source,destination,None)
 }
 
-#[cfg(target_os="windows")]
+#[cfg(all(test,target_os="windows"))]
 fn convert_musescore_midi_to_musicxml_controlled(executable:&std::path::Path,source:&std::path::Path,destination:&std::path::Path,control:Option<&score_jobs::Token>)->Result<Vec<u8>,String>{
     use std::os::windows::process::CommandExt;
     let mut command=std::process::Command::new(executable);
@@ -788,64 +789,9 @@ fn convert_musescore_midi_to_musicxml(executable:&std::path::Path,source:&std::p
     convert_musescore_midi_to_musicxml_controlled(executable,source,destination,None)
 }
 #[tauri::command]
-async fn generate_musescore_score(state:tauri::State<'_,State>,content_id:String,job:Option<score_jobs::ScoreJobRequest>)->Result<score_jobs::ConversionReply,String>{
-    let tracked=job.is_some();
-    let guard=state.score_jobs.begin(job,score_jobs::ScoreJobKind::MidiToNotation,&content_id,&state.engine)?;
-    let control=guard.token();
-    let result=async {
-    {
-        let rows=state.generated_scores.lock().map_err(|_|"转谱初稿状态不可用")?;
-        if rows.len()>=16&&rows.values().all(|row|!row.cached&&row.saved.is_none()) { return Err("已有多份尚未保留的转谱初稿，请先另存当前初稿后继续制作".into()); }
-    }
-    control.stage("readingSource")?;
-    let engine=state.engine.clone(); let cid=content_id.clone();
-    let (source,input_bytes)=tauri::async_runtime::spawn_blocking(move||verified_midi_input(&engine,&cid)).await.map_err(|error|error.to_string())??;
-    control.stage("choosingProgram")?;
-    let executable=musescore_executable(&state,Some(&control)).await?;
-    control.check()?;
-    #[cfg(target_os="windows")]
-    {
-        let data=state.data.clone();let generated=state.generated_scores.clone();let engine=state.engine.clone();
-        tauri::async_runtime::spawn_blocking(move||{
-            let scratch = conversion_files::Scratch::create(&data, "midi")?;
-            control.stage("copyingSource")?;
-            let input = scratch.source(&source, &input_bytes)?;
-            let unique=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos();
-            let output=scratch.dir.join("score.musicxml");
-            let result=(||{
-                control.stage("converting")?;
-                let bytes=convert_musescore_midi_to_musicxml_controlled(&executable,&input,&output,Some(&control))?;
-                control.stage("checkingResult")?;
-                let source_warning = verified_midi_input(&engine, &content_id).and_then(|(current, _)| {
-                    if current != source { return Err("MIDI 文件位置已改变".into()); }
-                    Ok(())
-                }).err().map(|error| format!("初稿来自转谱开始时的 MIDI，来源随后发生变化。初稿已保留，请返回原曲目核对：{error}"));
-                let stem=source.file_stem().and_then(|s|s.to_str()).unwrap_or("当前曲目").chars().take(80).collect::<String>();
-                let name=format!("{stem} · MuseScore 转谱初稿.musicxml");
-                let hash=blake3::hash(&bytes).to_hex().to_string();
-                let token=blake3::hash(format!("{content_id}\n{hash}\n{unique}\n{}",std::process::id()).as_bytes()).to_hex().to_string();
-                let mut previews=generated.lock().map_err(|_|"转谱预览资料正忙")?;
-                score_edit::make_preview_room(&mut previews, None, |row| (row.cached || row.saved.is_some()).then_some(row.created))?;
-                control.check()?;
-                let cache_error=panthesia_engine::notation_drafts::store(&data,&panthesia_engine::notation_drafts::DraftRecord {
-                    id:token.clone(),content_id:content_id.clone(),name:name.clone(),kind:"midiToNotation".into(),source:source.clone(),source_warning:source_warning.clone(),book_id:None,pages:Vec::new(),hash:hash.clone(),size:bytes.len(),created_at_ms:score_draft_bridge::now_ms(),
-                },&bytes).err().map(|error|format!("初稿已生成，但缓存未保存；请在本次会话另存原谱：{error}"));
-                control.check()?;
-                previews.insert(token.clone(),GeneratedScorePreview{created:std::time::Instant::now(),content_id,source,name:name.clone(),hash,saved:None,cached:cache_error.is_none()});
-                let cached = cache_error.is_none();
-                let warning = match (source_warning, cache_error) { (Some(source), Some(cache)) => Some(format!("{source}；{cache}")), (source, cache) => source.or(cache) };
-                Ok(score_jobs::ScoreDraft {name, bytes, preview_token: token, cached, warning, saved: None})
-            })();
-            result
-        }).await.map_err(|e|e.to_string())?
-    }
-    #[cfg(not(target_os="windows"))]
-    {let _=(source,input_bytes,executable);Err("当前平台尚未接入 MuseScore MIDI 转谱".into())}
-
-    }.await;
-    guard.finish(result, tracked)
+async fn generate_duet_score(state:tauri::State<'_,State>,content_id:String,job:Option<score_jobs::ScoreJobRequest>)->Result<score_jobs::ConversionReply,String>{
+    duet_score::generate(&state,content_id,job).await
 }
-
 fn write_new_generated_score(path:&std::path::Path,bytes:&[u8])->Result<(),String>{
     if path.extension().and_then(|s|s.to_str()).is_none_or(|ext|!ext.eq_ignore_ascii_case("musicxml")) {
         return Err("请将转谱初稿保存为 .musicxml 文件".into());
@@ -1105,7 +1051,7 @@ fn main() {
             add_musescore_pdf,
             pdf_conversion::prepare_pdf_draft,pdf_conversion::list_pdf_drafts,pdf_conversion::read_pdf_draft_bytes,
             pdf_conversion::adopt_pdf_draft,pdf_conversion::export_pdf_draft,pdf_conversion::remove_pdf_draft,
-            generate_musescore_score,
+            generate_duet_score,
             score_jobs::read_score_job,score_jobs::cancel_score_job,score_jobs::score_job_protocol,
             media_export_bridge::prepare_media_export,media_export_bridge::list_media_exports,media_export_bridge::remove_media_export,media_export_bridge::save_media_export,media_export_bridge::confirm_media_export,
             score_export_bridge::prepare_score_export,score_export_bridge::list_score_exports,score_export_bridge::read_score_export,score_export_bridge::remove_score_export,score_export_bridge::save_score_export,

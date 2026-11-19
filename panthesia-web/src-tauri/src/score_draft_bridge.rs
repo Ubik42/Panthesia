@@ -48,7 +48,7 @@ pub async fn retain_notation_file(
         let record = notation_drafts::DraftRecord {
             id: id.clone(), content_id: request.content_id, name: request.name.clone(), kind: "importedNotation".into(),
             source: std::path::PathBuf::from(&request.name), source_warning: None, book_id: None, pages: vec![],
-            hash, size: request.bytes.len(), created_at_ms: now_ms(),
+            hash, size: request.bytes.len(), created_at_ms: now_ms(), generation:None,
         };
         notation_drafts::store(&data, &record, &request.bytes)?;
         Ok(RetainedNotationFile { id, content_id: record.content_id, name: record.name, size: record.size })

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { editRepertoire, readRepertoire } from "./repertoireClient";
 import { NotationCapabilitiesView } from "../scores/NotationCapabilitiesView";
+import { SongProjectSummary } from "../scores/SongProjectSummary";
 import type {
   RepertoireView,
   ScoreQuality,
@@ -84,7 +85,7 @@ export function RepertoirePanel({
       className="browse-detail-block repertoire-panel"
       aria-label="作品与版本关系"
     >
-      <h4>作品与版本</h4>
+      <h4>歌曲与演奏版本</h4>
       <p className="parameter-help">
         同一作品可以关联多个演奏版本。练习历史、指法和文件位置继续按各自内容保存。
       </p>
@@ -95,10 +96,11 @@ export function RepertoirePanel({
           }
           onClick={() => run(() => readRepertoire(path, contentId!))}
         >
-          {busy ? "正在整理…" : "整理作品与版本"}
+          {busy ? "正在读取…" : "查看歌曲与版本"}
         </button>
       ) : (
         <>
+          {view.project && <SongProjectSummary project={view.project}/>}
           <div className="repertoire-form">
             <label>
               作品标题

@@ -11,7 +11,8 @@ const domains = [
   ["../../panthesia-engine/src/metadata_discovery.rs", ["MetadataSourceCandidate", "MetadataDiscovery"], "output"],
   ["../../panthesia-engine/src/synthesia_import.rs", ["ImportOptions"]],
   ["../../panthesia-engine/src/synthesia_import.rs", ["ImportRow", "ImportPreview"], "output"],
-  ["../../panthesia-engine/src/practice_variant.rs", ["Variant"]],
+  ["../../panthesia-core/src/practice_transform.rs", ["Variant"]],
+  ["../../panthesia-core/src/song_project.rs", ["NotationGeneration", "PracticeEdition", "ProjectNotation", "SongProject"], "output"],
   ["../../panthesia-core/src/score_document.rs", ["NotationCapabilities"], "output"],
   ["../../panthesia-core/src/repertoire.rs", ["ScoreQuality", "MusicalWork", "PerformanceEdition", "NotationEdition", "RepertoireRegistry"], "output"],
   ["../../panthesia-engine/src/repertoire.rs", ["RepertoireEdit"]],
@@ -122,6 +123,7 @@ for (const [path, names] of domains) {
 }
 function typeOf(rust, strict = false) {
   rust = rust.trim();
+  if (["crate::practice_variant::Variant", "practice_variant::Variant"].includes(rust)) return "Variant";
   if (["HistoryOperationPhase", "crate::history_operations::HistoryOperationPhase", "history_operations::HistoryOperationPhase"].includes(rust)) return "PreparationPhase";
   if (["HistoryOperationOrigin", "crate::history_operations::HistoryOperationOrigin", "history_operations::HistoryOperationOrigin"].includes(rust)) return "PreparationOrigin";
   if (["String", "PathBuf", "&'static str"].includes(rust)) return "string";

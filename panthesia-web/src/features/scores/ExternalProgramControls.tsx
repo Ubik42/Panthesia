@@ -4,7 +4,7 @@ import "./externalProgram.css";
 
 export function ExternalProgramControls({ program, disabled = false }: { program: ExternalProgramController; disabled?: boolean }) {
   const name = program.kind === "musescore" ? "MuseScore Studio" : "Audiveris";
-  const description = program.kind === "musescore" ? "编辑原谱 · MIDI 转谱 · PDF 排版" : "将纸谱识别为可编辑乐谱";
+  const description = program.kind === "musescore" ? "编辑原谱 · PDF 排版" : "将纸谱识别为可编辑乐谱";
   const busy = program.checking || program.changing;
   const supported = program.status?.supported !== false;
   const source = { selected: "手动选择", environment: "环境设置", installed: "自动查找" };
