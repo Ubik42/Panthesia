@@ -477,6 +477,10 @@ export function DeviceSettingsDialog({
                 </select>
               </label>
             </div>
+            {state.sound?.pluginStatePath && <p className="device-note" role={state.sound.pluginStateWarning?"status":undefined}>
+              {state.sound.pluginStateWarning || (state.sound.pluginStateRestored?"插件设置已从练习资料恢复。":"插件首次连接，设置将保存在练习资料中。")}
+              {" "}更新软件时可继续使用同一份练习资料。
+            </p>}
             <label htmlFor="audio-endpoint">扬声器 / 耳机</label>
             <select
               id="audio-endpoint"

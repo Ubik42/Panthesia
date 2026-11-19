@@ -1,3 +1,4 @@
+import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
 import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
 import { SongCredits } from "./features/practice/SongCredits";
@@ -106,7 +107,6 @@ import {
   pitchName,
   type EngineCommand,
   type PlaybackAdjustmentCommand,
-  type PlaybackAdjustmentSource,
   type LoadedSong,
   type CollectionSong,
   type Snapshot,
@@ -637,10 +637,7 @@ export default function App() {
     if (!startupReady || binding || !connected) return;
     if (songOpeningActive.current) { setNotice("正在准备曲目，可在打开进度中取消或接续。"); return; }
     if (value.type === "speed" || value.type === "volume" || value.type === "seek" || value.type === "mode") {
-      if (value.type === "seek") clearLiveNotes();
-      const { stateOrder, contentId, scoreRevision } = playback.getSnapshot();
-      pendingAdjust.current.set(value.type, { command: value, source: { stateOrder, contentId, scoreRevision }, createdAtMs: Date.now() });
-      void drainAdjust();
+      void adjustRealtime(value);
     } else
       void run(
         value,
@@ -654,28 +651,20 @@ export default function App() {
         ].includes(value.type),
       );
   };
-  const pendingAdjust = useRef(new Map<string, { command: PlaybackAdjustmentCommand; source: PlaybackAdjustmentSource; createdAtMs: number }>());
-  const adjusting = useRef(false);
-  useEffect(() => {
-    if (binding || !connected) pendingAdjust.current.clear();
-  }, [binding, connected]);
-  const drainAdjust = async () => {
-    if (adjusting.current) return;
-    adjusting.current = true;
+  const playbackAdjustments = useMemo(()=>new PlaybackAdjustmentQueue(
+    ()=>playback.getSnapshot(),
+    async(source,command,createdAtMs)=>{await api.adjustPlayback(source,command,createdAtMs);return api.state();},
+  ),[playback]);
+  useEffect(()=>{if(binding||!connected)playbackAdjustments.cancel();},[binding,connected,playbackAdjustments]);
+  useEffect(()=>()=>playbackAdjustments.cancel(),[playbackAdjustments]);
+  const adjustRealtime = async(value:PlaybackAdjustmentCommand) => {
+    if(!startupReady||binding||!connected||songOpeningActive.current)return false;
+    if(value.type==="seek")clearLiveNotes();
     try {
-      while (pendingAdjust.current.size) {
-        const [key, value] = pendingAdjust.current.entries().next().value!;
-        pendingAdjust.current.delete(key);
-        await api.adjustPlayback(value.source, value.command, value.createdAtMs);
-        setState(await api.state());
-      }
-      setError("");
-    } catch (e) {
-      pendingAdjust.current.clear();
-      setError(String(e instanceof Error ? e.message : e));
-    } finally {
-      adjusting.current = false;
-    }
+      const snapshot=await playbackAdjustments.enqueue(value);
+      if(!snapshot)return false;
+      setState(snapshot);setError("");return true;
+    } catch(error) {setError(error instanceof Error?error.message:String(error));return false;}
   };
   const shortcutQueue = useRef<Promise<unknown>>(Promise.resolve());
   const shortcutGeneration = useRef(0);
@@ -1686,7 +1675,7 @@ export default function App() {
   songOpeningActive.current = openingActive;
   useEffect(() => {
     if (openingActive) {
-      pendingAdjust.current.clear();
+      playbackAdjustments.cancel();
       shortcutGeneration.current++;
       shortcutQueue.current = Promise.resolve();
       clearLiveNotes();
@@ -2354,7 +2343,7 @@ export default function App() {
             song={song}
             busy={busy || openingActive}
             disabled={!connected || state.recording || recital || ladderActive || routineActive}
-            seek={(position) => run({ type: "seek", position })}
+            seek={(position) => adjustRealtime({ type: "seek", position })}
           />
           <PracticeResultStrip
             store={playback}
@@ -2382,7 +2371,7 @@ export default function App() {
                 : `后续 ${followingQueue.skipped} 首文件不可用，可在曲库中修复文件位置`
               : undefined}
             command={action}
-            adjust={run}
+            adjust={adjustRealtime}
             stopRecording={() => { void run({ type: "recording", active: false }, true); }}
             playShortcut={display.shortcuts.playPause ? shortcutLabel(display.shortcuts.playPause) : ""}
             restartShortcut={display.shortcuts.restart ? shortcutLabel(display.shortcuts.restart) : ""}

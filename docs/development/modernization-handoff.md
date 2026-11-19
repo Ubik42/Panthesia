@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 dd23568。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 2ee29eb。
 
 ## 当前主线
 
@@ -153,6 +153,21 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 证据 work/practice-focus-desktop.log；work/practice-range-runtime/focus-evidence.json、focus-reopen-evidence.json、focus-score.png、focus-waterfall.png、focus-settings-1000.png、focus-settings-720.png。仅检查受影响编译与这条实际操作链路，使用原隔离资料与内置练习副本。本批 Release 预览包已生成于 outputs/releases/Panthesia-20261119-focused-practice，源码提交 070f511（主改造 dc0d8fe）。实际工作区含既有未提交曲库路径调整，manifest 标记 dirty=true；内容指纹 C51D68A52BEBD4B7F81E634313D1239F09731CB12E2BC85279BDE1E673602914。29 个文件校验一致，独立 --window-check 返回 PASS，界面 / IPC / 音色 / Verovio / PDF ready，内置 5 首、9 音符、MIDI 已连接。证据 work/focused-practice-release.log、work/focused-practice-package-check/release-evidence.json、startup.log。首轮构建期间发现普通弹层定位冲突，修正后原构建因源码变化拒绝登记；最终包已按固定源码重新构建。
 
 下一批先核对各音源主音量、试听及界面能力是否一致：当前 PracticeTransport 的 volumeAvailable 仅判断“内置钢琴”，外部音源控制能力需按真实后端处理。随后核对音源 / 制谱设置运行状态及主流程交付项。原官方矩阵中的部分、待做和外部依赖范围仍有效，整体 Goal active。
+
+## P4：三音源主音量、即时控制与插件资料批次
+
+- 内置、VST3 和 MIDI 路由统一消费当前主音量，启动 / 输出切换 / 设备切换后重新应用。Pianoteq 使用输出端增益与短渐变，峰值读取改为真实增益后电平；MIDI 保留歌曲 CC11，并叠加主音量，CC121 / GM 复位后恢复主值。原始 MIDI、CC7 与击键力度不变。
+- 演奏栏新增静音 / 恢复按钮，三种音源均可调音量。修正刚调音量后静音时恢复旧值的问题。取消静音记住本次会话的非零音量；重启时若主音量为零，恢复按钮采用默认音量。
+- 新 PlaybackAdjustmentQueue 替代旧无应答 pendingAdjust：速度、主音量、即时模式和时间线定位不再进入全局 requestBusy 通道。原通道会直接拒绝连续调整，现按来源串行并合并同类最新值，取消 / 换歌后忽略旧结果。队列检查中在途最大为 1，待处理 0.3 被 0.4 替换，来源变化取消旧应答。
+- Sound Owner 显式接收资料根，VST3 状态从 CWD 迁到资料目录。首次复制旧状态并保留原件，新目标已有资料时优先使用；更新保留 .previous.bin，恢复失败停用本次覆盖。设备设置显示插件是否从资料恢复，消除升级包与插件状态的运行目录耦合。
+
+仅运行相关增益、MIDI 控制器与状态迁移检查，证据 work/master-gain-test.log、midi-master-volume-test.log、plugin-state-migration-test.log；队列场景见 work/master-volume-runtime/queue-evidence.json。实际桌面在内置 / Pianoteq / Microsoft GS 三路使用静音恢复及音量键盘操作，Pianoteq 的电平从 0.002901 降到 0.00000375 以下并恢复至 0.04890；静音后切换到 Pianoteq，250 ms 后电平约 2.96e-10。Windows MIDI 无应用内电平回读，证据覆盖真实端口连接与命令 / 控制器路径，不把 null 电平当作声波验证。见 volume-evidence.json。
+
+即时控制实际链：播放中改到 90 BPM、定位到 4.4512 秒，status 仍 playing；弹对后继续 / 连续可切换。见 realtime-controls-evidence.json。旧模拟 MIDI 导入及 WebView 调试过程中，原生窗口重置视口曾影响坐标点击，最终音量操作改用可观察的 Home / End 键盘控制；仅保存最终可确认链路。
+
+迁移实际链：旧插件状态复制前后 SHA-256 均为 7218a2318cf0e04d26633e98314ce09190a9ea0303de0b3063e5906df8c94705，新资料文件与原字节相同，插件报告已恢复且无警告。换到 launch-b 运行目录后仍从同一资料恢复，未在新 CWD 建立状态目录。见 plugin-state-evidence.json、plugin-reopen-evidence.json、plugin-profile-settings.png。检查的资料根及工作目录均隔离，未读取 / 改写正式插件预设。
+
+本批准备生成 audio-profile Release 预览包，构建及独立启动结果完成后登记。后续按主流程和原范围做交付审计，官方矩阵未关闭项继续有效。
 
 ## 交付状态
 

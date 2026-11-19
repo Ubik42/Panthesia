@@ -232,7 +232,7 @@ export interface Snapshot {
   input: string | null;
   output: string;
   outputId?: string | null;
-  sound?: {ready:boolean;changing:boolean;error:string|null;lateNotes?:number;device?:string;deviceId?:string|null};
+  sound?: {ready:boolean;changing:boolean;error:string|null;lateNotes?:number;device?:string;deviceId?:string|null;pluginStatePath?:string|null;pluginStateRestored?:boolean;pluginStateWarning?:string|null};
   audioLevel?:number|null;
   audioPerformance?:{callbacks:number;maxRenderUs:number;overBudgetCallbacks:number;maxFrames:number}|null;
   playbackPerformance?:{maxGapMs:number;lateTicks:number;maxTickMs:number;maxPublishMs:number};

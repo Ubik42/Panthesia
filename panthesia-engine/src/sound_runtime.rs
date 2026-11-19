@@ -2,7 +2,7 @@
 use crate::{audio::Audio, background_tasks::TaskToken, midi_packet::Packet};
 use std::{
     collections::BTreeMap,
-    path::PathBuf,
+    path::{Path,PathBuf},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
@@ -20,6 +20,9 @@ pub struct Status {
     pub late_notes: u64,
     pub device: String,
     pub device_id: Option<String>,
+    pub plugin_state_path: Option<String>,
+    pub plugin_state_restored: bool,
+    pub plugin_state_warning: Option<String>,
 }
 struct Shared {
     level:AtomicU32,
@@ -140,17 +143,17 @@ enum Request {
 }
 enum Route {
     Builtin,
-    Midi(midir::MidiOutputConnection),
+    Midi {connection:midir::MidiOutputConnection,expression:crate::midi_master_volume::ExpressionGain},
     Vst(panthesia_vst3::Vst3OutputConnection),
 }
 impl Route {
-    fn open(name: Option<&str>,device:Option<&str>) -> Result<Self, String> {
+    fn open(name: Option<&str>,device:Option<&str>,state_root:&Path) -> Result<Self, String> {
         match name {
             None => Ok(Self::Builtin),
             Some(name) if name.starts_with("vst3:") => {
                 let path = PathBuf::from(&name[5..]);
                 let backend = panthesia_vst3::Vst3Backend::for_device(device)
-                    .map_err(|error| error.to_string())?;
+                    .map_err(|error| error.to_string())?.with_state_root(state_root.to_path_buf());
                 if !backend
                     .has_output(&path)
                     .map_err(|error| format!("VST3 插件位置无法读取：{error}"))?
@@ -174,7 +177,7 @@ impl Route {
                     .find(|port| midi.port_name(port).ok().as_deref() == Some(name))
                     .ok_or("找不到所选 MIDI 输出")?;
                 midi.connect(&port, "Panthesia playback")
-                    .map(Self::Midi)
+                    .map(|connection|Self::Midi{connection,expression:Default::default()})
                     .map_err(|error| error.to_string())
             }
         }
@@ -183,7 +186,7 @@ impl Route {
         match self {
             Self::Builtin => {}
             Self::Vst(vst) => vst.stop_all(),
-            Self::Midi(midi) => {
+            Self::Midi {connection:midi,..} => {
                 for channel in 0..16 {
                     for (cc, value) in [(64, 0), (123, 0), (120, 0)] {
                         let _ = midi.send(&[176 | channel, cc, value]);
@@ -200,9 +203,7 @@ impl Route {
                 }
                 Ok(())
             }
-            Self::Midi(midi) => midi
-                .send(bytes)
-                .map_err(|error| format!("MIDI 输出失败：{error}")),
+            Self::Midi {connection,expression} => expression.send(bytes,|bytes|connection.send(bytes).map_err(|error|format!("MIDI 输出失败：{error}"))),
             Self::Vst(vst) => {
                 if let Ok(midi_file::midly::live::LiveEvent::Midi { channel, message }) =
                     midi_file::midly::live::LiveEvent::parse(bytes)
@@ -211,6 +212,13 @@ impl Route {
                 }
                 Ok(())
             }
+        }
+    }
+    fn set_volume(&mut self,volume:f64)->Result<(),String> {
+        match self {
+            Self::Builtin=>Ok(()),
+            Self::Vst(vst)=>{vst.set_volume(volume);Ok(())},
+            Self::Midi {connection,expression}=>expression.set_volume(volume,|bytes|connection.send(bytes).map_err(|error|format!("MIDI 音量设置失败：{error}"))),
         }
     }
 }
@@ -234,6 +242,7 @@ fn label(name: Option<&str>) -> String {
     }
 }
 struct Owner {
+    state_root:PathBuf,
     meter_at: Instant,
     device:Option<String>,
     audio: Option<Audio>,
@@ -246,6 +255,12 @@ struct Owner {
     shared: Arc<Shared>,
 }
 impl Owner {
+    fn sync_volume(&mut self)->Result<(),String> {
+        self.volume=self.shared.volume.load(Ordering::Acquire);
+        let volume=f32::from_bits(self.volume) as f64;
+        if let Some(audio)=&self.audio {audio.set_volume(volume);}
+        self.route.set_volume(volume)
+    }
     fn stop(&mut self) {
         self.route.stop();
         if let Some(audio) = &self.audio {
@@ -267,8 +282,11 @@ impl Owner {
                 changing: false,
                 error,
                 late_notes: self.shared.late.load(Ordering::Acquire),
-                device: if matches!(self.route,Route::Midi(_)){"Windows MIDI · 系统路由".into()}else{Audio::device(self.device.as_deref()).map(|d|d.to_string()).unwrap_or_else(|_|"发声设备不可用".into())},
+                device: if matches!(self.route,Route::Midi{..}){"Windows MIDI · 系统路由".into()}else{Audio::device(self.device.as_deref()).map(|d|d.to_string()).unwrap_or_else(|_|"发声设备不可用".into())},
                 device_id:self.device.clone(),
+                plugin_state_path:if let Route::Vst(vst)=&self.route{vst.state_location().map(|path|path.to_string_lossy().into_owned())}else{None},
+                plugin_state_restored:if let Route::Vst(vst)=&self.route{vst.state_restored()}else{false},
+                plugin_state_warning:if let Route::Vst(vst)=&self.route{vst.state_warning().map(str::to_owned)}else{None},
             };
         }
     }
@@ -319,7 +337,8 @@ impl Owner {
                     self.shared.late.store(0, Ordering::Release);
                     self.generation = id;
                     self.shared.installed.store(id, Ordering::Release);
-                    self.publish(None);
+                    let error=self.sync_volume().err();
+                    self.publish(error);
                 } else {
                     self.publish(Some("待安装的音源连接已失效，请重新选择".into()));
                 }
@@ -349,7 +368,7 @@ impl Owner {
                 let (route, chosen) = if self.silent {
                     (Route::Builtin, output.clone())
                 } else {
-                    match Route::open(output.as_deref(),self.device.as_deref()) {
+                    match Route::open(output.as_deref(),self.device.as_deref(),&self.state_root) {
                         Ok(route) => (route, output.clone()),
                         Err(error) => {
                             warnings.push(format!("上次音源无法连接，暂用内置钢琴：{error}"));
@@ -366,12 +385,10 @@ impl Owner {
                 self.generation = id;
                 self.shared.desired.store(id, Ordering::Release);
                 self.shared.installed.store(id, Ordering::Release);
-                self.volume = self.shared.volume.load(Ordering::Acquire);
-                if let Some(audio) = &self.audio {
-                    audio.set_volume(f32::from_bits(self.volume) as f64);
-                }
+                let volume_error=self.sync_volume().err();
+                if let Some(error)=&volume_error {warnings.push(error.clone());}
                 let warning = (!warnings.is_empty()).then(|| warnings.join("；"));
-                self.publish(None);
+                self.publish(volume_error);
                 let _ = reply.send(Ok(Boot {
                     label: label(chosen.as_deref()),
                     warning,
@@ -382,7 +399,7 @@ impl Owner {
                     token.check()?;
                     if let Route::Vst(vst)=&self.route {vst.save_state().map_err(|e|e.to_string())?;}
                     let audio=if self.silent {None}else{Some(Audio::open_font_device(font,name.as_deref())?)};
-                    let route=if self.silent {Route::Builtin}else{Route::open(output.as_deref(),name.as_deref())?};
+                    let route=if self.silent {Route::Builtin}else{Route::open(output.as_deref(),name.as_deref(),&self.state_root)?};
                     token.check()?;
                     self.staged.insert(id,Replacement::Device {audio,route,device:name});
                     Ok(label(output.as_deref()))
@@ -408,7 +425,7 @@ impl Owner {
                         if self.silent {
                             Ok(Route::Builtin)
                         } else {
-                            Route::open(name.as_deref(),self.device.as_deref())
+                            Route::open(name.as_deref(),self.device.as_deref(),&self.state_root)
                         }
                     })
                     .and_then(|route| {
@@ -493,7 +510,7 @@ impl Owner {
         if self.meter_at.elapsed()>=Duration::from_millis(16) {
         self.meter_at=Instant::now();
         if let Ok(mut performance)=self.shared.performance.try_lock(){*performance=if matches!(self.route,Route::Builtin){self.audio.as_ref().map(Audio::performance)}else{None};}
-        let level=match &self.route {Route::Builtin=>self.audio.as_ref().map(Audio::peak),Route::Vst(vst)=>Some(vst.peak()),Route::Midi(_)=>None};
+        let level=match &self.route {Route::Builtin=>self.audio.as_ref().map(Audio::peak),Route::Vst(vst)=>Some(vst.peak()),Route::Midi{..}=>None};
         self.shared.observable.store(level.is_some(),Ordering::Relaxed);
         let previous=f32::from_bits(self.shared.level.load(Ordering::Relaxed));
         self.shared.level.store(level.unwrap_or(0.).max(previous*0.65).to_bits(),Ordering::Relaxed);
@@ -522,10 +539,7 @@ impl Owner {
         }
         let volume = self.shared.volume.load(Ordering::Acquire);
         if self.volume != volume {
-            self.volume = volume;
-            if let Some(audio) = &self.audio {
-                audio.set_volume(f32::from_bits(volume) as f64);
-            }
+            if let Err(error)=self.sync_volume() {self.publish(Some(error));}
         }
         let click = self.shared.click.swap(0, Ordering::AcqRel);
         if click != 0 {
@@ -572,7 +586,7 @@ impl Owner {
     }
 }
 impl Host {
-    pub fn start(silent: bool) -> Result<Self, String> {
+    pub fn start(silent: bool,data:PathBuf) -> Result<Self, String> {
         let shared = Arc::new(Shared {
             level:AtomicU32::new(0),observable:AtomicBool::new(false),
             stop: AtomicBool::new(false),
@@ -602,6 +616,7 @@ impl Host {
             .spawn(move || {
                 let _lifetime = OwnerLifetime(worker.clone());
                 let mut owner = Owner {
+                    state_root:data.join("vst3-state"),
                     meter_at: Instant::now(),
                     device:None,
                     audio: None,

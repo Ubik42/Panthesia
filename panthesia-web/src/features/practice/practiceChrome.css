@@ -321,3 +321,6 @@
     max-height: 175px;
   }
 }
+
+.daily-workbench .practice-volume .volume-mute { display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:4px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--instrument-muted); }
+.daily-workbench .practice-volume .volume-mute[aria-pressed=true] {background:var(--instrument-selected);color:var(--instrument-accent);border-color:var(--instrument-line);}

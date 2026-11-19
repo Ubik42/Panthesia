@@ -130,6 +130,7 @@ mod tick_ranges;
 pub mod score_export;
 pub mod score_sources;
 mod practice_notation;
+mod midi_master_volume;
 mod finger_demo;
 mod demo_protocol;
 mod held_demo;

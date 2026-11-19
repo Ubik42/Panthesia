@@ -34,7 +34,7 @@ impl Engine {
         let storage_tasks = tasks.storage_lane(32)?;
         let devices = device_catalog::Catalog::start()?;
         let player_devices = devices.clone();
-        let sound = sound_runtime::Host::start(silent)?;
+        let sound = sound_runtime::Host::start(silent,data.clone())?;
         let player_sound = sound.clone();
         let reclaimer = playback_memory::Reclaimer::start()?;
         let (input_tx, input_rx) = mpsc::sync_channel(4096);

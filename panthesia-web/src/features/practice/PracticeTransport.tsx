@@ -8,7 +8,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import type { EngineCommand } from "../../api";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePlaybackFields } from "./PlaybackView";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
@@ -93,7 +93,8 @@ export function PracticeTransport({
             : busy
               ? "请等待当前操作完成"
               : undefined;
-  const volumeAvailable = state.output === "内置钢琴";
+  const lastVolume = useRef(state.volume > 0 ? state.volume : 0.8);
+  useEffect(()=>{if(state.volume>0)lastVolume.current=state.volume;},[state.volume]);
   const speed = usePlaybackSlider({
     store,
     value: state.speed * state.bpm,
@@ -110,7 +111,7 @@ export function PracticeTransport({
   const volume = usePlaybackSlider({
     store,
     value: state.volume,
-    disabled: !volumeAvailable || busy || !connected,
+    disabled: !connected,
     commit: (value) => adjust({ type: "volume", value }),
   });
   return (
@@ -304,27 +305,27 @@ export function PracticeTransport({
           </span>
         )}
       </div>
-      <label
+      <div
         className="practice-volume"
-        title={
-          volumeAvailable
-            ? "内置钢琴音量"
-            : `请在${state.output || "外部音源"}中调整音量`
-        }
+        role="group" aria-label="演奏主音量"
+        title={`主音量 · ${state.output}`}
       >
-        {volumeAvailable && volume.value === 0 ? (
+        <button type="button" className="volume-mute" aria-label={volume.value===0?"取消静音":"静音"} aria-pressed={volume.value===0}
+          disabled={!connected||volume.pending} onClick={()=>{if(volume.value>0)lastVolume.current=volume.value;volume.begin();volume.stage(volume.value===0?lastVolume.current:0);volume.apply();}}>
+        {volume.value === 0 ? (
           <VolumeX size={17} aria-hidden="true" />
         ) : (
           <Volume2 size={17} aria-hidden="true" />
         )}
+        </button>
         <input
-          aria-label="钢琴音量"
+          aria-label="主音量"
           aria-valuetext={`${Math.round(volume.value * 100)}%`}
           type="range"
           min="0"
           max="100"
           value={volume.value * 100}
-          disabled={!volumeAvailable || !connected || (busy && !volume.pending)}
+          disabled={!connected}
           aria-busy={volume.pending || undefined}
           onChange={(event) => volume.stage(Number(event.target.value) / 100)}
           onPointerDown={volume.begin}
@@ -335,9 +336,9 @@ export function PracticeTransport({
           onKeyUp={(event) => volume.keyUp(event.key)}
         />
         <output>
-          {volumeAvailable ? `${Math.round(volume.value * 100)}%` : "外部音源"}
+          {`${Math.round(volume.value * 100)}%`}
         </output>
-      </label>
+      </div>
     </div>
   );
 }
