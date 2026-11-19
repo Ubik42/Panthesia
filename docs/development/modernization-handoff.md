@@ -4,6 +4,8 @@
 
 当前目标保持模块解耦与公开功能补齐，进度依据功能矩阵。品牌调整不代表整体现代化已完成。资料来源 / 个人覆盖模型和后台读写已保留，sidecar v4 与曲目包 v15 已接入版本保护；恢复默认值的前端、扩展模板及开场资料仍需继续完成。旧用户资料根、旧环境变量、文件格式与浏览器草稿保留读取兼容。
 
+独立项目运行包已完成：outputs/releases/Panthesia-20261119-independent/Panthesia.exe。程序源码提交 af146d8，Release 构建及隔离资料的实际启动、练习保存和重启恢复通过。交付记录见 [Panthesia 独立项目运行包](panthesia-independent-release-20261119.md)。当前分支 main，GitHub 已上传。
+
 ## 转换前的开发记录
 
 # 长期开发交接
