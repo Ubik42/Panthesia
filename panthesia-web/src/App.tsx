@@ -267,6 +267,8 @@ export default function App() {
   const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
   const [expressionReveal, setExpressionReveal] = useState<{ contentId: string; id: string } | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
+  const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
+  const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
   const [settings, setSettings] = useState(false),
     [view, setView] = useState("score"),
     [editFingers, setEditFingers] = useState(false),
@@ -2345,7 +2347,7 @@ export default function App() {
             <button onClick={()=>{getInterfaceWorkbench().update({section:"display"});setDisplayDialog(true);}}>外观与网格</button>
             <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
             <button className="instrument-loop" disabled={!song||busy||routineActive||ladderActive||recital} onClick={()=>panels.revealInspector("setup")}>小节循环 {state.passage?"· 已启用":""}</button>
-            <button className="instrument-sound" onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.device??"选择发声设备"}</small></span></button>
+            <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
           </div>
           <PracticeTransport
             store={playback}
@@ -2472,6 +2474,7 @@ export default function App() {
       {scoresDialog && song && (
         <ScoresDialog
           workspace={workspaceSessions.scores}
+          configureDuet={()=>{setScoresDialog(false);setSettingsTab("duet");setSettingsReturnToScores(true);setSettings(true);}}
           song={song}
           close={() => {
             setScoresDialog(false);
@@ -2917,6 +2920,7 @@ export default function App() {
         }}
       />}
       {settings && <DeviceSettingsDialog
+        initialTab={settingsTab}
         store={playback}
         state={state}
         engineId={progressEngineId}
@@ -2926,7 +2930,7 @@ export default function App() {
         command={run}
         synchronize={refreshSession}
         reportError={setError}
-        close={() => setSettings(false)}
+        close={() => {setSettings(false);setSettingsTab("sound");if(settingsReturnToScores)setScoresDialog(true);setSettingsReturnToScores(false);}}
       />}
       {editDraftsOpen && <EditDraftCenter store={workspaceSessions.edits} close={() => setEditDraftsOpen(false)} changed={refreshEdits}
         resumePractice={async (contentId, path) => {

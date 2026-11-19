@@ -19,6 +19,7 @@ import { DeviceScanNotice } from "./DeviceScanNotice";
 import "./deviceSettings.css";
 import type { PlaybackStore } from "../practice/playbackStore";
 import { usePlaybackFields } from "../practice/PlaybackView";
+import { DuetRuntimePanel } from "../settings/DuetRuntimePanel";
 
 type Calibration = { message: string; suggested: number | null };
 const pluginName = (path: string) =>
@@ -38,6 +39,7 @@ export function DeviceSettingsDialog({
   synchronize,
   reportError,
   close,
+  initialTab = "sound",
 }: {
   store: PlaybackStore;
   state: Pick<
@@ -58,7 +60,9 @@ export function DeviceSettingsDialog({
   synchronize: () => Promise<void>;
   reportError: (message: string) => void;
   close: () => void;
+  initialTab?: "sound"|"duet";
 }) {
+  const [tab,setTab]=useState(initialTab);
   const inputActivity = usePlaybackFields(store, [
     "pressed",
     "midiEvents",
@@ -351,9 +355,9 @@ export function DeviceSettingsDialog({
       >
         <div className="dialog-heading">
           <div>
-            <h2 id="device-title">设备与声音</h2>
+            <h2 id="device-title">演奏与制谱设置</h2>
             <p className="device-subtitle">
-              选择输入键盘、演奏音源和发声设备，然后试音。
+              {tab==="sound"?"选择输入键盘、演奏音源和发声设备，然后试音。":"配置本机 Python、DuET 模型和计算设备。"}
             </p>
           </div>
           <button
@@ -367,7 +371,9 @@ export function DeviceSettingsDialog({
             <X size={19} />
           </button>
         </div>
-        <div className="device-settings-body">
+        <nav className="device-settings-tabs" role="tablist" aria-label="设置分类"><button role="tab" aria-selected={tab==="sound"} onClick={()=>setTab("sound")}>设备与声音</button><button role="tab" aria-selected={tab==="duet"} onClick={()=>setTab("duet")}>DuET 制谱</button></nav>
+        {tab==="duet"&&<div className="device-settings-body"><DuetRuntimePanel disabled={!!unavailable}/></div>}
+        <div className="device-settings-body" hidden={tab!=="sound"}>
           <div className="sound-signal-path" aria-label="当前发声链路">
             <span>
               <small>输入键盘</small>
@@ -888,7 +894,7 @@ export function DeviceSettingsDialog({
           )}
         </div>
         <div className="dialog-actions device-settings-footer">
-          <button
+          {tab==="sound"&&<button
             disabled={allRefreshing}
             onClick={() => void refreshDevices(true)}
           >
@@ -901,7 +907,7 @@ export function DeviceSettingsDialog({
               : devices.refreshing
                 ? "刷新其他清单"
                 : "刷新全部清单"}
-          </button>
+          </button>}
           <button
             data-dialog-close
             className="device-done"

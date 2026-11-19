@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 de7c0a2。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 f25d649。
 
 ## 当前主线
 
@@ -38,7 +38,7 @@
 2. 继续收敛谱面管理中的多层操作。成功打开已消费，历史记录默认折叠；无需重新处理已验证的打开回执。
 3. DuET 原始输入身份已进入 MusicXML、引擎对应和谱页元素。旧生成结果继续走原有匹配；重新制谱会产生带来源身份的新结果。后续按正常曲目使用反馈改善复杂记谱，避免重复建设第二套对应算法。
 4. 量化练习谱已从有效 MIDI 重新生成；原谱可独立选择。转调已处理和弦根音 / 低音、各声部 / 谱表调号和常见装饰音升降记号。复杂分手和记谱质量继续按实际曲目反馈改善；自定义调号、微分音及其他乐器的完整移调声明仍有限制。
-5. 让演奏与版本切换直接消费统一核心，替换仍依赖路径及偏好拼接的旧适配。DuET 环境路径目前用自动发现 / duet-runtime.json / 环境变量配置，后续接入软件设置页。
+5. 让演奏与版本切换直接消费统一核心，替换仍依赖路径及偏好拼接的旧适配。DuET 环境路径的自动发现 / 配置文件 / 环境变量已统一到 duet_runtime，并接入软件设置页。
 
 P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和演奏工作区仍有明确剩余项，整体重构继续 active。
 
@@ -87,6 +87,18 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 实际控件检查：85 BPM 提交成功，120 草稿取消后恢复 85，999 被拒绝并提示范围，随后恢复 100；等音模式确实等待 6 个必弹音，切到连续后无需输入继续推进。宽 / 窄窗口浮层在屏幕内，无横向溢出。只执行受影响构建和这条实际操作 / 绘制对照，没有运行全套回归。
 
 证据：work/practice-workspace-desktop.log；work/practice-workspace-runtime 下 waterfall-before.json、waterfall-final.json、controls.json、keyboard-smoke.json 及 workspace-final.png、transform-popover-wide.png、transform-popover-narrow.png、live-keyboard.png。下一批继续 P3 音源与制谱环境设置、演奏主次操作及谱面 / 瀑布一致操作，随后进入 P4 成品外观与运行包。
+
+## P3：DuET 环境设置与音源状态批次
+
+- 桌面新增 duet_runtime 模块，共用有效配置解析、路径状态和设备选择；duet_score 退出原有内嵌配置解析。读取、保存、检查与生成不再各自决定 Python / 模型位置。
+- “演奏与制谱设置”分为设备与声音、DuET 制谱。制谱页可编辑 / 浏览 Python 程序、模型目录及自动 / CUDA / CPU，明确显示当前生效位置和来源。环境检查读取本机包、模型配置与 CUDA 状态；检查与编辑草稿不写配置。
+- 谱面管理的“添加与初稿”页可直接进入 DuET 配置，关闭后返回同一管理工作区。关闭设置时暂存未保存输入，当前软件会话重新打开可继续；保存后下次制谱使用新配置。
+- 保存按原内容指纹检查版本，拒绝覆盖外部或其他请求已改变的设置；写前按内容身份备份旧字节，再原子替换。恢复自动查找采用同一保存流程。
+- 主演奏区音源入口显示连接中、连接错误、未连接和已连接状态，异常时可直接进入设置；设备与声音页继续提供原输入、音源、发声设备及试音操作。
+
+实际桌面从谱面管理进入配置，识别 Python 3.12.13、DuET 0.1.0、Torch 2.11.0+cu128 与 RTX 4080。选择 CPU 的检查返回 effectiveDevice=cpu；关闭重开保留输入，保存后读取到 cpu。过期 revision 保存被拒绝，恢复自动查找时旧配置备份与原字节完全一致；设置关闭后返回谱面管理。重启实际桌面后 revision 与保存结果一致、device=auto，声音入口为 ready，设备页演奏音源选择器仍可用。1000×800 截图无横向溢出，计算设备标签完整显示。
+
+本批只做受影响桌面构建和上述操作链路，使用 work/duet-settings-runtime 隔离资料；未重复 DuET 模型推理或运行全套回归。证据：work/duet-runtime-desktop.log、work/duet-settings-runtime/settings-evidence.json、reopen-evidence.json、settings-wide.png、settings-narrow.png、settings-reopen-narrow.png。后续继续演奏工作区的版本 / 谱面 / 音源状态整合、减少重复弹窗及 P4 成品外观与运行包。
 
 ## 交付状态
 

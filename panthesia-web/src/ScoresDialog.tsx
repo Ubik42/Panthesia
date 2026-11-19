@@ -47,11 +47,13 @@ export function ScoresDialog({
   close,
   changed,
   workspace,
+  configureDuet,
 }: {
   song: LoadedSong;
   close: () => void;
   changed: () => Promise<void>;
   workspace?: ScoreWorkspaceStore;
+  configureDuet?:()=>void;
 }) {
   const museScore = useExternalProgram("musescore", api.desktop);
   const [localWorkspace] = useState(createScoreWorkspaceStore);
@@ -529,6 +531,7 @@ export function ScoresDialog({
           </button>
         )}
       </div>
+      {configureDuet&&<button type="button" onClick={configureDuet}>配置 DuET 运行环境</button>}
       <p className="parameter-help">DuET 从原始演奏 MIDI 推断节奏、声部和谱表。当前转调与量化作为练习条件单独使用；MuseScore 用于后续编辑和 PDF 排版。</p>
       <input
         hidden

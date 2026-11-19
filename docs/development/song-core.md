@@ -24,7 +24,9 @@ SongProject 是对现有持久记录的共享读取投影。管理与谱面工�
 
 本机运行环境按 PANTHESIA_DUET_PYTHON / PANTHESIA_DUET_MODEL、资料目录 duet-runtime.json、默认路径发现。默认使用共享 Transkun Python 环境已安装的 duet-score 和共享 DuET 权重。软件调用禁止自动下载，任务支持取消与超时，不占用音频实时线程。
 
-duet-runtime.json 可配置 python、model、device（auto / cuda / cpu）。本轮本机 CUDA 调用通过。环境安装向导、运行环境设置 UI 和独立发行依赖尚未完成。
+duet-runtime.json 可配置 python、model、device（auto / cuda / cpu）。运行环境设置 UI 已接入“演奏与制谱设置 → DuET 制谱”，谱面管理的添加与初稿页可以直接进入，关闭设置后返回原处。duet_runtime 模块统一负责配置读取、有效路径解析、文件状态与检查，生成任务消费同一解析结果；环境变量优先级不变，界面列出实际生效来源。
+
+环境检查在后台本机 Python 中导入 DuET 与 Torch、读取模型配置及 CUDA 状态，不进行推理或下载。保存核对原配置版本，原字节备份到 settings-backups/duet-runtime-<内容哈希>.json 后原子替换。未保存输入在本次软件会话中暂存；恢复自动查找也需要保存。实际关闭并重启软件后，已保存设置仍可读取。既有 CUDA 制谱证据继续有效，本轮额外核对 CPU 环境检查与设备选择。环境安装向导和跨机器发行依赖仍需后续处理。
 
 ## 记谱规范及后续迁移
 

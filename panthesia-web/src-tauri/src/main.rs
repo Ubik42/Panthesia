@@ -10,6 +10,7 @@ mod export_files;
 mod media_export_bridge;
 mod external_process;
 mod duet_score;
+mod duet_runtime;
 mod backup_operations;
 mod practice_backup_bridge;
 mod audiveris_paper;
@@ -1052,6 +1053,10 @@ fn main() {
             pdf_conversion::prepare_pdf_draft,pdf_conversion::list_pdf_drafts,pdf_conversion::read_pdf_draft_bytes,
             pdf_conversion::adopt_pdf_draft,pdf_conversion::export_pdf_draft,pdf_conversion::remove_pdf_draft,
             generate_duet_score,
+            duet_runtime::read_duet_runtime,
+            duet_runtime::save_duet_runtime,
+            duet_runtime::probe_duet_runtime,
+            duet_runtime::browse_duet_runtime,
             score_jobs::read_score_job,score_jobs::cancel_score_job,score_jobs::score_job_protocol,
             media_export_bridge::prepare_media_export,media_export_bridge::list_media_exports,media_export_bridge::remove_media_export,media_export_bridge::save_media_export,media_export_bridge::confirm_media_export,
             score_export_bridge::prepare_score_export,score_export_bridge::list_score_exports,score_export_bridge::read_score_export,score_export_bridge::remove_score_export,score_export_bridge::save_score_export,

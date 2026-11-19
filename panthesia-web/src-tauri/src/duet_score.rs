@@ -4,20 +4,13 @@ use panthesia_core::{song_project::NotationGeneration, utils::atomic_file};
 use panthesia_engine::notation_drafts::{self, DraftRecord};
 use serde::{Deserialize, Serialize};
 use std::{
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
     sync::Mutex,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 const WORKER: &str = include_str!("duet_worker.py");
 static GENERATING: Mutex<()> = Mutex::new(());
-#[derive(Default, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-struct Runtime {
-    python: Option<PathBuf>,
-    model: Option<PathBuf>,
-    device: Option<String>,
-}
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Manifest {
@@ -26,50 +19,6 @@ struct Manifest {
     name: String,
     hash: String,
     score: String,
-}
-fn runtime(data: &Path) -> Result<(PathBuf, PathBuf, String), String> {
-    let settings = match atomic_file::read_limited(&data.join("duet-runtime.json"), 32768) {
-        Ok(bytes) => serde_json::from_slice::<Runtime>(&bytes)
-            .map_err(|e| format!("DuET 配置无法读取：{e}"))?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Runtime::default(),
-        Err(e) => return Err(e.to_string()),
-    };
-    let tools = panthesia_core::product::env_os("PANTHESIA_MUSIC_TOOLS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .to_owned()
-        });
-    let python = panthesia_core::product::env_os("PANTHESIA_DUET_PYTHON")
-        .map(PathBuf::from)
-        .or(settings.python)
-        .unwrap_or_else(|| tools.join("_reference/Transkun/.venv/Scripts/python.exe"));
-    let model = panthesia_core::product::env_os("PANTHESIA_DUET_MODEL")
-        .map(PathBuf::from)
-        .or(settings.model)
-        .unwrap_or_else(|| {
-            PathBuf::from(r"D:\cs\_tools\_reference\_models\music-transcription\DuET")
-        });
-    if !python.is_file() {
-        return Err(format!(
-            "DuET 本地运行环境未找到：{}。请配置 duet-runtime.json 的 python 和 model。",
-            python.display()
-        ));
-    }
-    if !model.join("model.safetensors").is_file() || !model.join("config.json").is_file() {
-        return Err(format!("DuET 模型未找到：{}", model.display()));
-    }
-    let device = settings.device.unwrap_or_else(|| "auto".into());
-    if !["auto", "cuda", "cpu"].contains(&device.as_str()) {
-        return Err("DuET 设备应为 auto、cuda 或 cpu".into());
-    }
-    Ok((python, model, device))
 }
 fn command(python: &Path, worker: &Path, model: &Path) -> Command {
     let mut command = Command::new(python);
@@ -100,7 +49,8 @@ fn prepare(
     let _gpu = GENERATING
         .try_lock()
         .map_err(|_| "DuET 正在为另一首歌制谱，请等待当前任务完成")?;
-    let (python, model, device) = runtime(data)?;
+    let runtime = crate::duet_runtime::resolve_checked(data)?;
+    let (python, model, device) = (runtime.python, runtime.model, runtime.device);
     let scratch = crate::conversion_files::Scratch::create(data, "midi")?;
     let worker = scratch.dir.join("duet_worker.py");
     std::fs::write(&worker, WORKER).map_err(|e| e.to_string())?;
