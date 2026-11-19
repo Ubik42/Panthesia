@@ -26,6 +26,8 @@ pub struct Status {
     pub paper_unavailable:usize,
     pub score_updates:usize,
     pub score_unavailable:usize,
+    pub metadata_files:usize,
+    pub metadata_pending:usize,
 }
 #[derive(Deserialize, Serialize)]
 struct Settings {
@@ -102,6 +104,7 @@ struct Worker {
     folder_signature: BTreeMap<String, bool>,
     score_scanner: crate::score_sources::Scanner,
     paper_scanner:crate::score_attachments::source_monitor::Scanner,
+    metadata_scanner:crate::metadata_discovery::Scanner,
 }
 impl Worker {
     fn new(data: PathBuf, root: PathBuf, rows: Arc<Mutex<Vec<SongRow>>>) -> Self {
@@ -148,6 +151,7 @@ impl Worker {
             folder_signature: BTreeMap::new(),
             score_scanner:Default::default(),
             paper_scanner:Default::default(),
+            metadata_scanner:Default::default(),
         }
     }
     fn discover(&mut self) -> Result<(), String> {
@@ -172,10 +176,11 @@ impl Worker {
             self.folder_signature = folders;
         }
         let mut local = Vec::new();
+        let mut metadata_paths = Vec::new();
         for root in &roots {
             let stop=self.stop.clone();
-            match library::scan_folder_until(root,||if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}) {
-                Ok(found) => local.extend(found),
+            match library::scan_folder_contents_until(root,||if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}) {
+                Ok((found, sources)) => {local.extend(found);metadata_paths.extend(sources);},
                 Err(e) => {
                     self.status.errors.push(format!("{}：{e}", root.display()));
                     local.extend(
@@ -186,6 +191,13 @@ impl Worker {
                     );
                 }
             }
+        }
+        let stop=self.stop.clone();
+        match self.metadata_scanner.scan(&self.data,metadata_paths,&self.root,self.status.errors.clone(),|| {
+            if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}
+        }) {
+            Ok((files,pending,changed))=>{self.status.metadata_files=files;self.status.metadata_pending=pending;if changed{self.status.revision+=1;}},
+            Err(error)=>self.status.errors.push(format!("资料来源检查：{error}")),
         }
         self.check_running()?;
         let mut seen = BTreeSet::new();

@@ -1,5 +1,24 @@
 // Generated from panthesia-engine/src/protocol.rs. Do not edit.
 // Migrated domains follow Rust serde names and input defaults; remaining domains use unknown.
+export interface MetadataSourceCandidate {
+  "path": string;
+  "name": string;
+  "sourceId": string | null;
+  "size": number;
+  "songs": number;
+  "matchedPaths": Array<string>;
+  "applied": number;
+  "updates": number;
+  "pending": boolean;
+  "error": string | null;
+}
+
+export interface MetadataDiscovery {
+  "updatedAt": number;
+  "files": Array<MetadataSourceCandidate>;
+  "errors": Array<string>;
+}
+
 export interface ImportOptions {
   "overwrite": boolean;
   "fingers": boolean;
@@ -2552,6 +2571,9 @@ export type EngineCommand =
   | { type: "unassignLibrary"; "paths": Array<string>; "group": string }
   | { type: "libraryMetadataHistory"; "path": string; "content_id": string }
   | { type: "previewSynthesiaMetadata"; "bytes": Array<number>; "paths": Array<string>; "options": ImportOptions }
+  | { type: "discoverSynthesiaMetadata"; "paths": Array<string>; "refresh"?: boolean }
+  | { type: "previewDiscoveredSynthesiaMetadata"; "source_path": string; "source_id": string; "paths": Array<string>; "options": ImportOptions }
+  | { type: "importDiscoveredSynthesiaMetadata"; "source_path": string; "source_id": string; "paths": Array<string>; "options": ImportOptions; "expected": string }
   | { type: "importSynthesiaMetadata"; "bytes": Array<number>; "paths": Array<string>; "options": ImportOptions; "expected": string }
   | { type: "previewMetadataRestore"; "path": string; "content_id": string; "id": string }
   | { type: "restoreLibraryMetadata"; "path": string; "content_id": string; "id": string; "fields": Array<string>; "expected": SongMetadata }

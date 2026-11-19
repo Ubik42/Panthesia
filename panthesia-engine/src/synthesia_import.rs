@@ -330,19 +330,9 @@ pub fn apply(
 ) -> Result<serde_json::Value, String> {
     let lock = crate::library_workspace::lock_for(data)?;
     let _guard = crate::library_workspace::wait_for(&lock, check)?;
-    let receipt_path = data.join("metadata-imports").join(format!(
-        "{}.json",
-        blake3::hash(expected.as_bytes()).to_hex()
-    ));
+    let receipt_path = receipt_path(data, &expected);
     let request = request_hash(&bytes, &paths, &options, &expected)?;
-    if let Ok(existing) = panthesia_core::utils::atomic_file::read(&receipt_path) {
-        let receipt: serde_json::Value =
-            serde_json::from_slice(&existing).map_err(|e| e.to_string())?;
-        if receipt["requestHash"] != request {
-            return Err("导入请求已用于其他来源，请重新预览".into());
-        }
-        return Ok(receipt);
-    }
+    if let Some(receipt) = completed_source_import(data, &blake3::hash(&bytes).to_hex(), &paths, &options, &expected)? { return Ok(receipt); }
     let mut workspace = Workspace::load(data)?;
     let prepared = prepare(&mut workspace, &bytes, &paths, &options, check)?;
     if prepared.preview.proof != expected {
@@ -420,9 +410,27 @@ fn request_hash(
     options: &ImportOptions,
     expected: &str,
 ) -> Result<String, String> {
+    source_request_hash(&blake3::hash(bytes).to_hex(), paths, options, expected)
+}
+fn receipt_path(data:&Path,expected:&str)->PathBuf {
+    data.join("metadata-imports").join(format!("{}.json",blake3::hash(expected.as_bytes()).to_hex()))
+}
+pub(crate) fn completed_source_import(data:&Path,source_id:&str,paths:&[PathBuf],options:&ImportOptions,expected:&str)->Result<Option<serde_json::Value>,String> {
+    let bytes=match panthesia_core::utils::atomic_file::read(&receipt_path(data,expected)) {
+        Ok(bytes)=>bytes,
+        Err(e) if e.kind()==std::io::ErrorKind::NotFound=>return Ok(None),
+        Err(e)=>return Err(e.to_string()),
+    };
+    let receipt:serde_json::Value=serde_json::from_slice(&bytes).map_err(|e|e.to_string())?;
+    if receipt["requestHash"]!=source_request_hash(source_id,paths,options,expected)? {
+        return Err("导入请求已用于其他来源，请重新预览".into());
+    }
+    Ok(Some(receipt))
+}
+fn source_request_hash(source_id:&str,paths:&[PathBuf],options:&ImportOptions,expected:&str)->Result<String,String> {
     Ok(blake3::hash(
         &serde_json::to_vec(&(
-            blake3::hash(bytes).to_hex().to_string(),
+            source_id,
             paths,
             options,
             expected,

@@ -59,6 +59,8 @@ export interface LibraryMonitorStatus {
   paperUnavailable?: number;
   scoreUpdates?: number;
   scoreUnavailable?: number;
+  metadataFiles?: number;
+  metadataPending?: number;
 }
 export interface Note {
   index: number;

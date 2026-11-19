@@ -1341,6 +1341,8 @@ export function LibraryDialog({
                 {new Date(monitor.lastScan).toLocaleTimeString("zh-CN")}
               </small>
             )}
+            {!!monitor.metadataFiles && <small>发现 {monitor.metadataFiles} 份 Synthesia 资料
+              {monitor.metadataPending ? ` · ${monitor.metadataPending} 份正在建立索引` : ""}</small>}
             {monitor.errors.length > 0 && (
               <details>
                 <summary>{monitor.errors.length} 项需要处理</summary>

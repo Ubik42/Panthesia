@@ -95,6 +95,7 @@ pub mod repertoire;
 mod import_storage;
 mod library_metadata;
 mod synthesia_import;
+mod metadata_discovery;
 pub use synthesia_import::{ImportOptions as SynthesiaImportOptions, ImportPreview as SynthesiaImportPreview, ImportRow as SynthesiaImportRow};
 mod legacy_exercise_tracks;
 mod legacy_exercise_history;
@@ -1866,7 +1867,9 @@ impl Player {
             | Command::ReadLibraryMetadata { .. }
             | Command::SaveLibraryMetadata { .. }
             | Command::UpdateSongMetadata { .. } => unreachable!(),
-            Command::PreviewSynthesiaMetadata { .. } | Command::ImportSynthesiaMetadata { .. } => unreachable!("library import uses the background library lane"),
+            Command::DiscoverSynthesiaMetadata { .. } | Command::PreviewDiscoveredSynthesiaMetadata { .. }
+            | Command::ImportDiscoveredSynthesiaMetadata { .. }
+            | Command::PreviewSynthesiaMetadata { .. } | Command::ImportSynthesiaMetadata { .. } => unreachable!("library import uses the background library lane"),
             Command::LibraryFolders
             | Command::RefreshLibrary
             | Command::RemoveLibraryFolder { .. } => return Err("曲库文件夹管理由应用处理".into()),

@@ -7,6 +7,7 @@ pub(crate) fn supports(command: &Command) -> bool {
         command,
         Command::SaveSongLearning { .. }
             | Command::ImportSynthesiaMetadata { .. }
+            | Command::ImportDiscoveredSynthesiaMetadata { .. }
             | Command::ResetLibraryMetadataDefaults { .. }
             | Command::SaveLibraryMetadata { .. }
             | Command::RestoreLibraryMetadata { .. }
@@ -27,7 +28,8 @@ pub(crate) fn supports(command: &Command) -> bool {
     )
 }
 pub(crate) fn reads(command: &Command) -> bool {
-    matches!(command, Command::PreviewSynthesiaMetadata { .. }) || crate::library_workspace::reads(command)
+    matches!(command, Command::PreviewSynthesiaMetadata { .. } | Command::DiscoverSynthesiaMetadata { .. }
+        | Command::PreviewDiscoveredSynthesiaMetadata { .. }) || crate::library_workspace::reads(command)
         || matches!(
             command,
             Command::MetadataTemplates
@@ -42,7 +44,10 @@ pub(crate) fn reads(command: &Command) -> bool {
 pub(crate) fn label(command: &Command) -> &'static str {
     match command {
         Command::ImportSynthesiaMetadata { .. } => "导入 Synthesia 资料",
+        Command::ImportDiscoveredSynthesiaMetadata { .. } => "导入 Synthesia 资料",
         Command::PreviewSynthesiaMetadata { .. } => "预览 Synthesia 资料",
+        Command::PreviewDiscoveredSynthesiaMetadata { .. } => "预览 Synthesia 资料",
+        Command::DiscoverSynthesiaMetadata { .. } => "查找 Synthesia 资料",
         Command::SaveSongLearning { .. } => "保存学习资料",
         Command::ReadSongLearning { .. } => "读取学习资料",
         Command::SaveLibraryMetadata { .. } | Command::UpdateSongMetadata { .. } => "保存曲库信息",
@@ -99,6 +104,11 @@ pub(crate) fn execute(
 ) -> Result<serde_json::Value, String> {
     match command {
         Command::ImportSynthesiaMetadata { bytes, paths, options, expected } => crate::synthesia_import::apply(data, bytes, paths, options, expected, check),
+        Command::ImportDiscoveredSynthesiaMetadata { source_path, source_id, paths, options, expected } => {
+            if let Some(receipt)=crate::synthesia_import::completed_source_import(data,&source_id,&paths,&options,&expected)? {return Ok(receipt);}
+            let bytes = crate::metadata_discovery::read_source(data, &source_path, &source_id, &paths, check)?;
+            crate::synthesia_import::apply(data, bytes, paths, options, expected, check)
+        }
         Command::RelinkLibrary { items } => {
             crate::library_repairs::relink_checked(data, items, check)
         }
@@ -158,6 +168,11 @@ pub(crate) fn read(
 ) -> Result<serde_json::Value, String> {
     match command {
         Command::PreviewSynthesiaMetadata { bytes, paths, options } => crate::synthesia_import::preview(data, bytes, paths, options, check),
+        Command::DiscoverSynthesiaMetadata { paths, refresh } => serde_json::to_value(crate::metadata_discovery::discover(data, &paths, refresh, check)?).map_err(|e|e.to_string()),
+        Command::PreviewDiscoveredSynthesiaMetadata { source_path, source_id, paths, options } => {
+            let bytes = crate::metadata_discovery::read_source(data, &source_path, &source_id, &paths, check)?;
+            crate::synthesia_import::preview(data, bytes, paths, options, check)
+        }
         Command::PendingMetadataHistoryPage {
             query,
             offset,

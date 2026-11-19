@@ -28,6 +28,8 @@ const controlCommands = new Set<EngineCommand["type"]>([
   "panic", "pause", "note", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",
 ]);
 const backgroundCommands = new Set<EngineCommand["type"]>([
+  "discoverSynthesiaMetadata", "previewDiscoveredSynthesiaMetadata", "importDiscoveredSynthesiaMetadata",
+  "previewSynthesiaMetadata", "importSynthesiaMetadata",
   "libraryRepairs", "midiReplacements", "previewMidiReplacement", "decideMidiReplacement", "readLibraryPath",
   "relinkLibrary", "setLibraryPrimary", "ignoreLibraryPath", "restoreLibraryPath", "pendingMetadataHistory", "pendingMetadataHistoryPage", "claimPendingMetadataHistory", "readMetadataHistoryClaim",
   "libraryWorkspace", "inspectSong", "inspectSongs", "libraryGroup", "removeLibraryGroup", "assignLibrary", "unassignLibrary",

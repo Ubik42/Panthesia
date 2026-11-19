@@ -8,6 +8,7 @@ const source = readFileSync(new URL("../../panthesia-engine/src/protocol.rs", im
 const target = new URL("../src/engine/commands.generated.ts", import.meta.url);
 
 const domains = [
+  ["../../panthesia-engine/src/metadata_discovery.rs", ["MetadataSourceCandidate", "MetadataDiscovery"], "output"],
   ["../../panthesia-engine/src/synthesia_import.rs", ["ImportOptions"]],
   ["../../panthesia-engine/src/synthesia_import.rs", ["ImportRow", "ImportPreview"], "output"],
   ["../../panthesia-engine/src/practice_variant.rs", ["Variant"]],

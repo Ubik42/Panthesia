@@ -301,7 +301,7 @@ fn registered_folders(data: &Path) -> Result<Vec<PathBuf>, String> {
         Err(e) => Err(e.to_string()),
     }
 }
-fn catalog_root() -> PathBuf {
+pub(crate) fn catalog_root() -> PathBuf {
     panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT").map(PathBuf::from).unwrap_or_else(||PathBuf::from(r"D:\Music\MIDI\PracticeLibrary"))
 }
 fn folder_key(path: &Path) -> String {
@@ -365,6 +365,9 @@ pub fn command_paths(command: &crate::Command) -> Vec<PathBuf> {
         | crate::Command::UpdateSongMetadata { path, .. } => vec![path.clone()],
         crate::Command::IndexLibrary { paths, .. }
         | crate::Command::PreviewSynthesiaMetadata { paths, .. }
+        | crate::Command::DiscoverSynthesiaMetadata { paths, .. }
+        | crate::Command::PreviewDiscoveredSynthesiaMetadata { paths, .. }
+        | crate::Command::ImportDiscoveredSynthesiaMetadata { paths, .. }
         | crate::Command::ImportSynthesiaMetadata { paths, .. }
         | crate::Command::InspectSongs { paths, .. }
         | crate::Command::AssignLibrary { paths, .. }
@@ -394,7 +397,17 @@ pub fn scan_folder(root: &Path) -> Result<Vec<SongRow>, String> {
     scan_folder_until(root,||Ok(()))
 }
 pub(crate) fn scan_folder_until(root:&Path,check:impl Fn()->Result<(),String>) -> Result<Vec<SongRow>,String> {
+    scan_folder_contents_until(root, check).map(|(songs, _)| songs)
+}
+pub(crate) fn scan_folder_contents_until(root:&Path,check:impl Fn()->Result<(),String>) -> Result<(Vec<SongRow>,Vec<PathBuf>),String> {
+    scan_folder_contents(root,check,true)
+}
+pub(crate) fn scan_metadata_until(root:&Path,check:impl Fn()->Result<(),String>) -> Result<Vec<PathBuf>,String> {
+    scan_folder_contents(root,check,false).map(|(_,sources)|sources)
+}
+fn scan_folder_contents(root:&Path,check:impl Fn()->Result<(),String>,include_songs:bool) -> Result<(Vec<SongRow>,Vec<PathBuf>),String> {
     let mut rows = Vec::new();
+    let mut metadata = Vec::new();
     let mut pending = vec![(root.to_owned(), 0)];
     let mut visited = 0;
     while let Some((directory, depth)) = pending.pop() {
@@ -424,7 +437,11 @@ pub(crate) fn scan_folder_until(root:&Path,check:impl Fn()->Result<(),String>) -
                 }
                 continue;
             }
-            if !kind.is_file()
+            if kind.is_file() && path.extension().is_some_and(|ext|ext.eq_ignore_ascii_case("synthesia")) {
+                if metadata.len() < 129 { metadata.push(path); }
+                continue;
+            }
+            if !include_songs || !kind.is_file()
                 || !path.extension().is_some_and(|e| {
                     e.eq_ignore_ascii_case("mid") || e.eq_ignore_ascii_case("midi")
                 })
@@ -459,7 +476,8 @@ pub(crate) fn scan_folder_until(root:&Path,check:impl Fn()->Result<(),String>) -
         }
     }
     rows.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(rows)
+    metadata.sort();
+    Ok((rows, metadata))
 }
 pub fn enriched(rows: &[SongRow], data: &Path) -> Vec<SongRow> {
     let mut rows = rows.to_vec();
