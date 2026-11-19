@@ -135,11 +135,15 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 
 核心仅执行 practice_engraving 两项相关检查，通过复调往返和非网格演奏时序独立性。实际桌面导入隔离 MIDI：原音起点 0.105208 / 0.3125 秒，时值 0.122917 / 1.25 秒。简化谱点选定位到 0.105208，循环范围 0.105208–1.5625，5 个片段高亮；切 1/16 演奏量化再恢复原始时序，音高 / 起点 / 时值与导入时完全一致。1000×800 无横向溢出，无页面错误。证据 work/unified-midi-engraving-test.log、work/practice-range-runtime/unified-midi-evidence.json 及 unified-midi-wide.png / unified-midi-narrow.png。
 
-本批准备制作当前源码的练习预览运行包，运行包状态在完成独立启动后更新。其余设置界面统一与整体目标审计继续待做。
+本批已制作 Release 练习预览包 outputs/releases/Panthesia-20261119-song-practice，程序源码提交 39263e3。当前工作区原有的曲库路径调整仍未提交，运行包按实际工作区构建，manifest 标记 dirty=true，内容指纹 88461BBFD65F1874E7A1DD3AE8342BB894D0AED8213FB096002BD6D4E2AAEE3B。29 个打包文件哈希核对一致。
+
+从发布目录启动的 Release 进程可正常响应。Release 无开发调试端口，未使用失败的 CDP 连接作为功能结果；改用程序现有 --window-check，以另一份隔离资料独立运行，实际返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符、MIDI 已连接。证据 work/song-practice-release.log、work/song-practice-package-check/startup.log。最终同源码 Debug 构建及上述纯 MIDI 操作链再次通过，截图已更新到当前皮肤工具栏。早期 Debug 构建曾因构建中新增样式而拒绝登记，最终 Release / Debug 构建已稳定登记。
+
+其余设置界面统一、演奏页信息收敛与主流程交付审计继续待做；官方功能矩阵中的部分 / 待做 / 外部依赖项目维持原状态。DuET 环境依赖仍使用本地 Python / 模型设置，本包未包含大型推理环境。
 
 ## 交付状态
 
-现有正式运行包为 outputs/releases/Panthesia-20261119-independent。其程序源码提交为 af146d8。后续功能批次为本地源码，尚未推送或制作新正式包。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-song-practice，程序源码提交 39263e3，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 outputs/releases/Panthesia-20261119-independent（af146d8）继续留作历史版本。新包覆盖统一歌曲核心后的功能批次，整体 Goal 仍 active，未经要求未推送。
 
 ## 数据与工作方式
 
