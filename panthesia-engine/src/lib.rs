@@ -1912,7 +1912,7 @@ impl Player {
                 let rows:Vec<_>=versions.iter().map(|v|serde_json::json!({"id":v.id,"name":v.name,"path":v.path,"active":current.as_ref()==Some(&v.path),"available":v.path.is_file(),"fingerprint":v.content_id})).collect();
                 return Ok(serde_json::json!({"contentId":f.content_id,"versions":rows}));
             }
-            Command::PreviewScoreVersionRoute{id,content_id}=>{
+            Command::PreviewScoreVersionRoute{id,content_id,include_document}=>{
                 self.score_content_guard(&content_id)?;
                 let file=self.file.as_ref().ok_or("请先选择曲目")?;
                 let midi=self.annotation_path(file)?;
@@ -1922,9 +1922,11 @@ impl Player {
                 if !panthesia_core::library::verify_score_association(&midi,&assoc).map_err(|e|e.to_string())?{
                     return Err("谱面文件已经改变，请重新导入并检查顺序".into());
                 }
-                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read(&version.path).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
+                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read_dependency(&version.path,4_000_000).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
+                if asset.source_fingerprint != version.content_id { return Err("谱面文件在读取期间已改变，请重新预览".into()); }
                 let mut result=asset.route_payload(Some(file));
                 result["review"]=serde_json::to_value(self.score_review(&asset)).map_err(|error|error.to_string())?;
+                if include_document { result["document"]=serde_json::json!({"bytes":asset.bytes,"name":asset.name}); }
                 result["versionId"]=serde_json::json!(id);
                 result["contentId"]=serde_json::json!(content_id);
                 return Ok(result);
@@ -4157,7 +4159,7 @@ mod tests {
         assert_eq!(rows["versions"].as_array().unwrap().len(), 2);
         let first = rows["versions"][0]["id"].as_str().unwrap().to_owned();
         let file = PathBuf::from(rows["versions"][0]["path"].as_str().unwrap());
-        let preview=p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone()}).unwrap();
+        let preview=p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone(),include_document:false}).unwrap();
         assert_eq!(preview["versionId"],first);
         assert_eq!(preview["route"]["visits"].as_array().unwrap().len(),1);
         assert!(preview.get("bytes").is_none());
@@ -4192,7 +4194,7 @@ mod tests {
         assert_eq!(serde_json::to_value(p.preferences.score_versions.get(&id)).unwrap(), before_versions);
         p.preferences_path = original_preferences_path;
         std::fs::write(&file,b"changed source").unwrap();
-        assert!(p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone()}).is_err());
+        assert!(p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone(),include_document:false}).is_err());
         p.command(Command::RemoveScoreVersion {
             id: first,
             content_id: id,

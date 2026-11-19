@@ -124,7 +124,7 @@ pub enum Command {
     ApplyScoreSource {id:String,fingerprint:String,mode:String},
     ImportScoreOriginal {path:PathBuf,default_bpm:u16},
     ScoreVersions,
-    PreviewScoreVersionRoute {id:String,content_id:String},
+    PreviewScoreVersionRoute {id:String,content_id:String,#[serde(default)] include_document:bool},
     PreviewScoreBytesRoute {bytes:Vec<u8>,name:String,content_id:String},
     SaveScoreVersion {bytes:Vec<u8>,name:String,content_id:String},
     LibraryScores {path:PathBuf,content_id:String},

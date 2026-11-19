@@ -2483,6 +2483,16 @@ export default function App() {
           workspace={workspaceSessions.scores}
           configureDuet={()=>{setScoresDialog(false);setSettingsTab("duet");setSettingsReturnToScores(true);setSettings(true);}}
           song={song}
+          openPractice={async () => {
+            const current = playback.getSnapshot();
+            if (current.contentId !== song.contentId || playback.getEngineId() !== song.engineId)
+              throw new Error("当前歌曲已改变，请返回对应歌曲打开谱面。");
+            if (!(await changeWorkspace("practice")))
+              throw new Error("谱面已采用。当前工作区正在处理，请稍后打开演奏。");
+            setView("score");
+            setScoresDialog(false);
+            setPaperRevision(value => value + 1);
+          }}
           close={() => {
             setScoresDialog(false);
             setPaperRevision((v) => v + 1);

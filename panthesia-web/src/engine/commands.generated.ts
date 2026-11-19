@@ -2509,7 +2509,7 @@ export type EngineCommand =
   | { type: "applyScoreSource"; "id": string; "fingerprint": string; "mode": string }
   | { type: "importScoreOriginal"; "path": string; "default_bpm": number }
   | { type: "scoreVersions" }
-  | { type: "previewScoreVersionRoute"; "id": string; "content_id": string }
+  | { type: "previewScoreVersionRoute"; "id": string; "content_id": string; "include_document"?: boolean }
   | { type: "previewScoreBytesRoute"; "bytes": Array<number>; "name": string; "content_id": string }
   | { type: "saveScoreVersion"; "bytes": Array<number>; "name": string; "content_id": string }
   | { type: "libraryScores"; "path": string; "content_id": string }

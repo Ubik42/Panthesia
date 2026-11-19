@@ -1,3 +1,4 @@
+import { ScoreDocumentPreview, type ScorePreviewDocument } from "./features/scores/ScoreDocumentPreview";
 import { useExternalProgram } from "./features/scores/useExternalProgram";
 import { ExternalProgramControls } from "./features/scores/ExternalProgramControls";
 import { ScoreTaskActivity } from "./engine/ScoreTaskActivity";
@@ -48,12 +49,14 @@ export function ScoresDialog({
   changed,
   workspace,
   configureDuet,
+  openPractice,
 }: {
   song: LoadedSong;
   close: () => void;
   changed: () => Promise<void>;
   workspace?: ScoreWorkspaceStore;
   configureDuet?:()=>void;
+  openPractice?:()=>Promise<void>;
 }) {
   const museScore = useExternalProgram("musescore", api.desktop);
   const [localWorkspace] = useState(createScoreWorkspaceStore);
@@ -203,18 +206,19 @@ export function ScoresDialog({
   }, [song.contentId, song.engineId]);
   const previewVersion = async (version: Version) => {
     const contentId = song.contentId;
-    const ticket = slot.beginAction("读取谱面演奏顺序");
+    const ticket = slot.beginAction("读取谱面预览");
     if (!ticket) return;
     setError("");
     setVersionPreview(null);
     try {
-      const evidence = await command<ScoreRouteEvidence>({
+      const { document, ...evidence } = await command<ScoreRouteEvidence & { document?: ScorePreviewDocument }>({
         type: "previewScoreVersionRoute",
+        include_document: true,
         id: version.id,
         content_id: contentId,
       });
       if (currentSourceKey.current === sourceKey)
-        setVersionPreview({ id: version.id, path: version.path, evidence });
+        setVersionPreview({ id: version.id, path: version.path, evidence, document });
     } catch (cause) {
       if (currentSourceKey.current === sourceKey)
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -291,8 +295,8 @@ export function ScoresDialog({
       ),
     );
   };
-  const saveFile = (mode: "use" | "save") =>
-    void perform(async () => {
+  const saveFile = async (mode: "use" | "save", practice = false) => {
+    const saved = await perform(async () => {
       if (!filePreview) return false;
       if (!validImportName) throw new Error("请输入 1–120 字的谱面版本名称。");
       if (mode === "use" && !filePreview.evidence.review) {
@@ -329,6 +333,8 @@ export function ScoresDialog({
       setFilePreview(null);
       if (currentSourceKey.current === sourceKey) setVersionPreview(null);
     });
+    if (saved && practice) await returnToPractice();
+  };
   const saveDraftForEdit = async () => {
     if (
       !filePreview?.previewToken ||
@@ -442,15 +448,17 @@ export function ScoresDialog({
     }
   };
   const perform = async (work: () => Promise<void | boolean>, saved = true) => {
-    if (busy || paperBusy || currentSourceKey.current !== sourceKey) return;
+    if (busy || paperBusy || currentSourceKey.current !== sourceKey) return false;
     const ticket = slot.beginAction();
-    if (!ticket) return;
+    if (!ticket) return false;
     setError("");
     try {
-      if ((await work()) === false) return;
+      if ((await work()) === false) return false;
       await refreshSavedResult(saved);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       slot.endAction(ticket);
     }
@@ -462,8 +470,13 @@ export function ScoresDialog({
       setError(error instanceof Error ? error.message : String(error)),
     );
   };
-  const activateVersion = (version: Version, evidence: ScoreRouteEvidence) =>
-    void perform(async () => {
+  const returnToPractice = async () => {
+    if (!openPractice || currentSourceKey.current !== sourceKey) return;
+    try { await openPractice(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+  };
+  const activateVersion = async (version: Version, evidence: ScoreRouteEvidence, practice = false) => {
+    const saved = await perform(async () => {
       if (evidence.route?.complete !== true)
         throw new Error("请先核对完整演奏顺序，再使用谱面。");
       if (!evidence.review) {
@@ -484,6 +497,8 @@ export function ScoresDialog({
         expected: evidence.review,
       });
     });
+    if (saved && practice) await returnToPractice();
+  };
   const renameVersion = (version: Version, draft: ScoreNameDraft) =>
     void perform(async () => {
       await command({
@@ -646,10 +661,11 @@ export function ScoresDialog({
               / 图片谱面中。
             </p>
           )}
-          <ScoreRoutePreview
-            evidence={filePreview.evidence}
-            title="这份谱面的演奏顺序"
-          />
+          {managerDraft.section === "import" && <ScoreDocumentPreview bytes={filePreview.bytes} name={filePreview.name} />}
+          <details className="score-manager-route">
+            <summary>演奏顺序 · {filePreview.evidence.route?.complete ? "顺序完整" : "需要核对"} · 对应 {Math.round(filePreview.evidence.coverage)}%</summary>
+            <ScoreRoutePreview evidence={filePreview.evidence} title="这份谱面的演奏顺序" />
+          </details>
           <p className="parameter-help">
             “添加并使用”会立即切换当前谱面。“仅保存谱面版本”会保留当前谱面和练习；以后可以在版本列表核对并启用。
             {(filePreview.generated || filePreview.recognizedFrom) &&
@@ -657,7 +673,7 @@ export function ScoresDialog({
           </p>
           <div className="dialog-actions">
             <button
-              className="primary-button"
+              className={openPractice ? undefined : "primary-button"}
               disabled={
                 busy ||
                 !validImportName ||
@@ -667,6 +683,7 @@ export function ScoresDialog({
             >
               添加并使用
             </button>
+            {openPractice && <button className="primary-button" disabled={busy || !validImportName || filePreview.evidence.route?.complete !== true} onClick={() => void saveFile("use", true)}>添加并打开演奏</button>}
             <button
               disabled={busy || !validImportName}
               onClick={() => saveFile("save")}
@@ -701,6 +718,7 @@ export function ScoresDialog({
   const versionsContent = (
     <>
       <ScoreVersionBrowser
+        previewVisible={managerDraft.section === "versions"}
         versions={versions}
         originals={originals}
         session={draftSession}
@@ -719,6 +737,7 @@ export function ScoresDialog({
           version ? void previewVersion(version) : setVersionPreview(null)
         }
         useVersion={activateVersion}
+        openPractice={openPractice ? () => void returnToPractice() : undefined}
         renameVersion={renameVersion}
         removeVersion={removeVersion}
         linkSource={(version) =>
@@ -810,8 +829,11 @@ export function ScoresDialog({
             <X size={18} />
           </button>
         </div>
+        <details className="score-manager-project">
+          <summary>歌曲、演奏版本与当前练习</summary>
         <CurrentSongProject contentId={song.contentId} path={song.sourcePath}
           revision={JSON.stringify([versions.map(v=>[v.id,v.active,v.fingerprint]),conversion.drafts.length])}/>
+        </details>
         {localBusy && (
           <p className="score-manager-local-progress" role="status">
             正在{conversion.localAction || "处理谱面"}…

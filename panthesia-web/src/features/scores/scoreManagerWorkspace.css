@@ -7,6 +7,21 @@
   overflow: hidden;
   padding: 20px;
 }
+.score-manager-project { flex: none; margin: 0 0 10px; max-height: 28vh; overflow: auto; }
+.score-manager-project > summary, .score-version-file > summary, .score-manager-route > summary { cursor: pointer; padding: 8px 0; font-size: 13px; }
+.score-manager-project .song-project-summary { margin: 4px 0; }
+.score-version-file { margin-top: 8px; }
+.score-manager-route { margin: 10px 0; }
+.daily-workbench[data-skin] .scores-dialog.settings-dialog { background: var(--instrument-panel); color: var(--instrument-text); border-color: var(--instrument-line); color-scheme: light; }
+.daily-workbench[data-skin=midnight] .scores-dialog.settings-dialog { color-scheme: dark; }
+.daily-workbench[data-skin] .scores-dialog :is(.browse-detail-masthead,.score-version-detail,.score-route-preview,.score-version-items > button,.score-draft-row) { background: var(--instrument-surface); color: var(--instrument-text); border-color: var(--instrument-line); }
+.daily-workbench[data-skin] .scores-dialog :is(h2,h3,h4,label,strong,summary) { color: var(--instrument-text); }
+.daily-workbench[data-skin] .scores-dialog :is(.dialog-heading p,.parameter-help,.score-version-path,.score-version-items small,.score-version-source-actions p,.score-manager-footer > span,.score-route-visits time,.score-route-tools label) { color: var(--instrument-muted); }
+.daily-workbench[data-skin] .scores-dialog.settings-dialog :is(button,select,input:not([type=range])) { background: var(--instrument-panel); color: var(--instrument-text); border-color: var(--instrument-line); }
+.daily-workbench[data-skin] .scores-dialog.settings-dialog :is(.browse-detail-tabs > button[aria-selected=true],.score-version-items > button[aria-pressed=true]) { background: var(--instrument-selected); border-color: var(--instrument-accent); box-shadow: none; }
+.daily-workbench[data-skin] .scores-dialog.settings-dialog :is(button.primary,button.primary-button) { background: var(--instrument-accent); color: #fff; border-color: var(--instrument-accent); }
+.daily-workbench[data-skin] .scores-dialog :is(.score-version-current > span,.score-route-ready,.score-route-position) { color: var(--instrument-accent); }
+.daily-workbench[data-skin] .scores-dialog :is(.score-version-detail,.score-version-source-actions,.score-version-remove,.song-project-summary,.score-manager-footer,.score-route-visits,.score-route-visits li) { border-color: var(--instrument-line); }
 .scores-dialog > .dialog-heading {
   flex: none;
   margin-bottom: 12px;

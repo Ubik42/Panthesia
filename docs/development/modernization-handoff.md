@@ -169,6 +169,19 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 
 本批 Release 预览包已生成于 outputs/releases/Panthesia-20261119-audio-profile，源码提交 f3331da。当前工作区既有曲库路径调整仍未提交，构建记录标记 dirty=true，源码内容指纹 228CE979FF6A580982837B5E1F13743472144485A20751A6D17EC29D67916273。29 个文件校验一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符，MIDI 已连接。见 work/audio-profile-release.log、work/audio-profile-package-check/release-evidence.json、startup.log。后续按主流程和原范围做交付审计，官方矩阵未关闭项继续有效。
 
+## P2 / P4：谱页预览与采用后直接演奏批次
+
+- 新增 ScoreDocumentPreview，共用演奏谱面的 Verovio 渲染器、SVG 清理和内容缓存。导入 MusicXML / MXL、DuET 保留初稿和已有版本均可在采用前显示真实谱页，支持翻页、放大及失败重试；原谱预览明确说明采用后应用练习变换。
+- 已有版本的预览命令按需返回同一次读取的谱面字节；限制读取大小，并核对实际内容指纹。只读预览继续走后台读取，不安装演奏映射，不切换当前谱面。分区隐藏 / 来源变化 / 关闭时取消本地排版任务。
+- 初稿新增“添加并打开演奏”，版本新增“使用并打开演奏”或“打开谱面演奏”。先完成保存 / 采用及会话刷新，再结束当前操作、检查歌曲身份，进入对应谱面演奏页。失败保留原有恢复入口。
+- 歌曲关系、文件位置 / 名称及演奏顺序明细改为可展开辅助信息；谱页加载后将预览滚入当前窗口。谱面管理窗口接入现有皮肤颜色，白纸保持读谱对比。
+
+受影响 Desktop Debug 与前端生产构建通过。隔离资料 work/song-core-duet-runtime 中，已保存 DuET 版本显示 9 个音符；打开已保留 DuET 初稿、150% 放大、采用并返回演奏通过。另从内置练习 MusicXML 导入，预览后仅保存版本，再采用并打开演奏通过。最终源码从内置谱切回 DuET 谱：源演奏内容身份相同，+2 半音 / 1/16 量化及其 editionId 完全相同，演奏页 9 个谱音正常显示。1000×800 窗口未出现横向溢出，谱页预览自动移至内容区顶部 8 像素处。未运行全套回归或重新执行 DuET 推理，复用此前真实生成的保留初稿。
+
+证据：work/score-document-desktop.log；work/score-document-runtime/flow-evidence.json、import-version-evidence.json、final-workflow-evidence.json，及 final-visible-preview.png / duet-draft-preview.png。早期操作脚本的选择器和状态读取修正后，最终链以 final-workflow-evidence.json 为准，其中 practiceVariant 读取实际返回字段。
+
+后续集中按主流程做交付审计及原功能矩阵未完成项；复杂曲目记谱质量和外部推理环境仍需对应实际使用范围。整体 Goal 继续 active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-audio-profile，程序源码提交 f3331da，包含构建时工作区原有本地修改，来源及内容校验记录在包内。此前 focused-practice（070f511）、song-practice（39263e3）与 independent（af146d8）继续留作历史版本。新包覆盖此前歌曲核心与演奏改造，并加入统一音量、即时调整队列和插件资料归属；整体 Goal 仍 active，未经要求未推送。

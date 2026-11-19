@@ -1,3 +1,4 @@
+import { ScoreDocumentPreview, type ScorePreviewDocument } from "./ScoreDocumentPreview";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ScoreRoutePreview,
@@ -20,6 +21,7 @@ export type ScoreVersionPreview = {
   id: string;
   path: string;
   evidence: ScoreRouteEvidence;
+  document?: ScorePreviewDocument;
 };
 export function ScoreVersionBrowser({
   versions,
@@ -34,6 +36,8 @@ export function ScoreVersionBrowser({
   read,
   previewVersion,
   useVersion,
+  openPractice,
+  previewVisible = true,
   renameVersion,
   removeVersion,
   linkSource,
@@ -52,7 +56,9 @@ export function ScoreVersionBrowser({
   sourceIssue?: string;
   read: () => void;
   previewVersion: (row: ScoreVersionRow | null) => void;
-  useVersion: (row: ScoreVersionRow, evidence: ScoreRouteEvidence) => void;
+  useVersion: (row: ScoreVersionRow, evidence: ScoreRouteEvidence, practice?: boolean) => void;
+  openPractice?: () => void;
+  previewVisible?: boolean;
   renameVersion: (row: ScoreVersionRow, draft: ScoreNameDraft) => void;
   removeVersion: (row: ScoreVersionRow) => void;
   linkSource: (row: ScoreVersionRow) => void;
@@ -267,6 +273,8 @@ export function ScoreVersionBrowser({
                       : "文件缺失"}
                 </span>
               </div>
+              <details className="score-version-file" key={selected.id}>
+                <summary>文件位置与名称{draft ? " · 有未保存输入" : ""}</summary>
               <p className="score-version-path">{selected.path}</p>
               <label className="score-version-name">
                 谱面名称
@@ -326,15 +334,15 @@ export function ScoreVersionBrowser({
                   </button>
                 </div>
               )}
+              </details>
               <div className="score-version-main-actions">
                 <button
                   disabled={busy || !selected.available}
                   onClick={() => previewVersion(evidence ? null : selected)}
                 >
-                  {evidence ? "收起演奏顺序" : "预览演奏顺序"}
+                  {evidence ? "收起谱面预览" : "预览谱面"}
                 </button>
                 <button
-                  className="primary"
                   disabled={
                     busy ||
                     selected.active ||
@@ -345,18 +353,21 @@ export function ScoreVersionBrowser({
                 >
                   {selected.active ? "正在使用" : "使用此谱面"}
                 </button>
+                {openPractice && <button className="primary" disabled={busy || !selected.available || (!selected.active && evidence?.route?.complete !== true)}
+                  onClick={() => selected.active ? openPractice() : evidence && useVersion(selected, evidence, true)}>
+                  {selected.active ? "打开谱面演奏" : "使用并打开演奏"}
+                </button>}
               </div>
+              {previewVisible && evidence && preview?.document && <ScoreDocumentPreview {...preview.document} />}
               {!selected.available && (
                 <p className="score-version-warning">
                   原文件当前不可用。可重新添加相同谱面，或从原谱工具核对文件位置。
                 </p>
               )}
-              {evidence && (
-                <ScoreRoutePreview
-                  evidence={evidence}
-                  title={`${selected.name} · 演奏顺序`}
-                />
-              )}
+              {evidence && <details className="score-manager-route">
+                <summary>演奏顺序 · {evidence.route?.complete ? "顺序完整" : "需要核对"} · 对应 {Math.round(evidence.coverage)}%</summary>
+                <ScoreRoutePreview evidence={evidence} title={`${selected.name} · 演奏顺序`} />
+              </details>}
               {desktop && (
                 <div className="score-version-source-actions">
                   <h4>原谱与排版</h4>
