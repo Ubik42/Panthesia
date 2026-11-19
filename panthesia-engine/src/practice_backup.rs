@@ -227,6 +227,7 @@ fn finite_numbers(v: &Value) -> Result<(), String> {
 
 impl Backup {
     pub fn version(&self) -> u8 {
+        if crate::metadata_templates::required_version(&self.metadata_templates) > 1 { return 19; }
         if self.history.values().flat_map(|s| &s.sessions).any(|s| s.context.as_ref().is_some_and(|c| !c.note_playback.is_empty())) { return 18; }
         if self.metadata_history.iter().flat_map(|row| &row.records).any(|record|
             record.before.has_extended_fields() || record.after.has_extended_fields()) { return 17; }
@@ -699,7 +700,7 @@ impl Backup {
         if header["format"] != "neothesia-practice"
             || !matches!(
                 header["version"].as_u64(),
-                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18)
+                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19)
             )
             || header["size"].as_u64() != Some(data.len() as u64)
             || header["hash"].as_str() != Some(blake3::hash(data).to_hex().as_str())
@@ -2069,7 +2070,8 @@ mod tests {
     fn metadata_templates_back_up_merge_and_roll_back_with_old_versions() {
         let source = player();
         let rules: crate::metadata_templates::Rules =
-            serde_json::from_value(json!({"notes":{"mode":"append","value":"备份提示"}})).unwrap();
+            serde_json::from_value(json!({"notes":{"mode":"append","value":"备份提示"},
+                "subtitle":{"mode":"set","value":"新版模板副标题"}})).unwrap();
         crate::metadata_templates::update(&source.data, "课堂".into(), Some(rules.clone()), 0)
             .unwrap();
         let selection = Selection {
@@ -2080,7 +2082,7 @@ mod tests {
         };
         let backup: Backup =
             serde_json::from_value(source.practice_backup_snapshot(&selection).unwrap()).unwrap();
-        assert_eq!(backup.version(), 4);
+        assert_eq!(backup.version(), 19);
         assert_eq!(backup.metadata_templates.len(), 1);
         let decoded = Backup::decode(&backup.encode().unwrap()).unwrap();
         assert_eq!(decoded.metadata_templates, backup.metadata_templates);

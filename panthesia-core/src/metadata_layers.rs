@@ -51,6 +51,7 @@ impl MetadataLayers {
 
     pub fn reset(&mut self, fields: &[String]) -> Result<(), String> {
         if fields.is_empty() || fields.len() > FIELDS.len()
+            || fields.iter().collect::<BTreeSet<_>>().len() != fields.len()
             || fields.iter().any(|field| !FIELDS.contains(&field.as_str())) {
             return Err("请选择有效的来源资料字段".into());
         }

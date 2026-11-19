@@ -64,9 +64,12 @@ pub fn read(
     path: PathBuf,
     expected: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let (cid, value) = actual(workspace, &path, expected.as_deref())?;
+    let (cid, _) = actual(workspace, &path, expected.as_deref())?;
     let layers = crate::metadata_defaults::view(&path, &cid)?;
-    Ok(serde_json::json!({"contentId":cid,"value":value,"layers":layers.layers,"proof":layers.proof}))
+    if let Some(entry) = workspace.entries.get_mut(&crate::library_workspace::key(&path)) {
+        entry.metadata = layers.value.clone();
+    }
+    serde_json::to_value(layers).map_err(|error| error.to_string())
 }
 pub(crate) fn validate(value: &SongMetadata) -> Result<(), String> {
     for (label, text, limit) in [

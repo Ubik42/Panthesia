@@ -1,11 +1,5 @@
-export const templateFields = [
-  ["composer", "作曲家"],
-  ["artist", "演奏者"],
-  ["collection", "作品集"],
-  ["difficulty", "难度"],
-  ["tags", "标签"],
-  ["notes", "备注"],
-] as const;
+import { metadataFields } from "./features/library/metadataFields";
+export const templateFields = metadataFields;
 export type TemplateField = (typeof templateFields)[number][0];
 export type Rule = { mode: string; value: string };
 export type Rules = Record<TemplateField, Rule>;

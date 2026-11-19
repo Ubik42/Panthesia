@@ -2,6 +2,17 @@ import type { SongMetadata } from "../../engine/commands.generated";
 
 export type Metadata = Required<SongMetadata>;
 export type MetadataField = keyof Metadata;
+export interface MetadataDefaults {
+  contentId: string;
+  value: Metadata;
+  layers: {
+    sourceFormat: "synthesia";
+    sourceId: string;
+    defaults: Metadata;
+    overridden: MetadataField[];
+  } | null;
+  proof: string;
+}
 export interface MetadataHistory {
   records: {
     id: string;
@@ -42,5 +53,7 @@ export interface MetadataSaveReply {
 }
 export interface MetadataService {
   read: () => Promise<Metadata>;
+  readDefaults: () => Promise<MetadataDefaults>;
+  resetDefaults: (fields: MetadataField[], expected: Metadata, proof: string) => Promise<MetadataSaveReply>;
   save: (value: Metadata, expected: Metadata) => Promise<MetadataSaveReply>;
 }

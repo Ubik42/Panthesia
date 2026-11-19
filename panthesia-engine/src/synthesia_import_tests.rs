@@ -97,7 +97,9 @@ fn content_bound_import_preserves_personal_data_and_commits_source_history_and_g
     })
     .unwrap();
     let mut edited = saved;
-    edited.metadata.notes = Some("预览之后的编辑".into());
+    let mut personal = edited.metadata.clone();
+    personal.notes = Some("预览之后的编辑".into());
+    edited.set_personal_metadata(personal);
     library::save_song_sidecar(&path, &cid, edited.clone()).unwrap();
     assert!(
         commit(

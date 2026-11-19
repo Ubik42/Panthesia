@@ -1,5 +1,6 @@
 import { metadataFields, completeMetadata } from "./features/library/metadataFields";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MetadataDefaultsPanel } from "./features/library/MetadataDefaultsPanel";
 import {
   openEditDraft,
   busyEditDraft,
@@ -10,6 +11,7 @@ import { EditDraftStatus } from "./features/editing/EditDraftStatus";
 import {
   readLibraryMetadata,
   saveLibraryMetadata,
+  resetLibraryMetadataDefaults,
 } from "./features/library/metadataClient";
 import { requireValue } from "./engine/requireValue";
 import { TaskActivity } from "./engine/TaskActivity";
@@ -18,6 +20,8 @@ import type { Metadata } from "./libraryQuery";
 import type {
   MetadataDraft,
   MetadataService,
+  MetadataDefaults,
+  MetadataField,
 } from "./features/library/metadataTypes";
 export type MetadataEdit = { path: string; contentId: string; value: Metadata };
 const fields = metadataFields;
@@ -68,6 +72,9 @@ export function LibraryMetadataEditor({
       cachedDraft.current?.tagsText ??
       (cachedDraft.current?.draft ?? edit.value).tags.join("，"),
   );
+  const [defaultsRevision, setDefaultsRevision] = useState(0);
+  const readDefaults = useCallback(() => service ? service.readDefaults() :
+    readLibraryMetadata(edit.path, edit.contentId), [service, edit.path, edit.contentId]);
   const dirty = !equal(base, draft) || tagsText !== base.tags.join("，");
   const tagsError =
     draft.tags.length > 100
@@ -181,7 +188,27 @@ export function LibraryMetadataEditor({
     setSavedWarnings(warnings);
     setRefreshPending(true);
     setUnconfirmed(false);
+    setDefaultsRevision(value => value + 1);
   };
+  const resetDefaults = (view: MetadataDefaults, selected: MetadataField[]) => job(async () => {
+    setUnconfirmed(true);
+    const reply = service ? await service.resetDefaults(selected, base, view.proof) :
+      await resetLibraryMetadataDefaults(edit.path, edit.contentId, selected, base, view.proof);
+    setDefaultsRevision(value => value + 1);
+    if (reply.status === "conflict") {
+      present(requireValue(reply.current, "最新曲目信息"));
+      setNotice("资料来源或个人修改已变化，请审阅最新资料后重新选择恢复字段。");
+      return;
+    }
+    rememberSaved(requireValue(reply.value, "已恢复的曲目信息"), reply.warnings, "已恢复所选来源默认值。后续导入会更新这些字段。");
+    try {
+      await saved(reply.warnings);
+      draftMemory?.delete(memoryKey);
+      setRefreshPending(false);
+    } catch (failure) {
+      throw new Error(`资料已恢复，界面刷新失败：${failure instanceof Error ? failure.message : String(failure)}`);
+    }
+  });
   const save = () =>
     void job(async () => {
       setUnconfirmed(true);
@@ -241,6 +268,7 @@ export function LibraryMetadataEditor({
       const value = service
         ? await service.read()
         : (await readLibraryMetadata(edit.path, edit.contentId)).value;
+      setDefaultsRevision(previous => previous + 1);
       if (
         dirty &&
         equal(value, draft) &&
@@ -331,6 +359,9 @@ export function LibraryMetadataEditor({
         {tagsError ||
           "标签用中文或英文逗号分隔，最多 100 个，每个最多 128 字。"}
       </p>
+      <MetadataDefaultsPanel read={readDefaults} revision={defaultsRevision} base={base}
+        disabled={busy || dirty || !!conflict || refreshPending || unconfirmed}
+        reset={resetDefaults} />
       {error && (
         <p role="alert" className="dialog-error">
           {error}

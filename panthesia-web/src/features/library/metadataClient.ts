@@ -3,6 +3,7 @@ import { api } from "../../api";
 import type { Rules } from "../../metadataTemplates";
 import type {
   Metadata,
+  MetadataDefaults,
   MetadataField,
   MetadataHistory,
   MetadataRestorePreview,
@@ -43,9 +44,23 @@ export async function readLibraryMetadata(
     content_id: expected,
   });
   identity(reply, expected);
-  if (!metadata(reply.value))
-    throw new Error("曲目资料读取不完整，请重新读取。");
-  return { contentId: reply.contentId, value: reply.value };
+  return metadataDefaultsReply(reply, reply.contentId);
+}
+
+export function metadataDefaultsReply(reply: unknown, contentId: string): MetadataDefaults {
+  identity(reply, contentId);
+  const layers = reply.layers;
+  if (!metadata(reply.value) || !contentIdentity(reply.proof) ||
+    (layers !== null && (!object(layers) || layers.sourceFormat !== "synthesia" ||
+      !contentIdentity(layers.sourceId) || !metadata(layers.defaults) || !fieldList(layers.overridden))))
+    throw new Error("资料来源读取不完整，请重新读取。");
+  return reply as unknown as MetadataDefaults;
+}
+
+export async function resetLibraryMetadataDefaults(path: string, contentId: string,
+  fields: MetadataField[], expected: Metadata, proof: string): Promise<MetadataSaveReply> {
+  return savedReply(await api.command<unknown>({ type: "resetLibraryMetadataDefaults", path,
+    content_id: contentId, fields, expected, proof }), contentId);
 }
 
 export async function previewLibraryMetadata(

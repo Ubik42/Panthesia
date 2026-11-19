@@ -1,4 +1,5 @@
 import { product } from "./product.generated";
+import { SongCredits } from "./features/practice/SongCredits";
 import { SongBrowser } from "./features/library/SongBrowser";
 import { ApplicationMenu } from "./app/ApplicationMenu";
 import { MidiPracticeScore } from "./features/scores/MidiPracticeScore";
@@ -1744,6 +1745,7 @@ export default function App() {
             <button onClick={()=>{setLibraryAdvanced(false);void changeWorkspace("library");}}>选择曲目…</button>
             <button onClick={()=>{void changeWorkspace("library").then(()=>setLibraryAdvanced(true));}}>管理目录与资料…</button>
             <button onClick={()=>{setLibraryOpen(true);void refresh();}}>显示选曲侧栏</button>
+            <button disabled={!song || song.generated || busy} onClick={()=>{setMetadataDraftPath(null);setMetadata(true);}}>当前曲目信息…</button>
             {api.desktop&&<button disabled={busy} onClick={()=>void api.importFolder().then(refresh).catch(e=>setError(String(e)))}>添加扫描文件夹…</button>}
             <button disabled={busy} onClick={()=>void api.command({type:"refreshLibrary"}).then(refresh).catch(e=>setError(String(e)))}>重新扫描目录</button>
           </>},
@@ -1887,13 +1889,12 @@ export default function App() {
             )}
             <div className="current-song">
               <h1 title={song?.title}>{song?.title || "选择曲目"}</h1>
-              <span title={selectedRow?.composer}>
-                {selectedRow?.composer ||
-                  (song ? "本地 MIDI" : "打开本地 MIDI 或选择内置练习")}
-              </span>
+              <SongCredits song={song} editing={metadata} fallback={selectedRow?.composer ||
+                (song ? "本地 MIDI" : "打开本地 MIDI 或选择内置练习")} />
             </div>
             <button
               disabled={!song || song.generated || busy}
+              className="icon-button metadata-info-button"
               onClick={() => { setMetadataDraftPath(null); setMetadata(true); }}
               title="编辑曲目信息"
               aria-label="编辑曲目信息"
