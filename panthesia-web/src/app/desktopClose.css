@@ -1,0 +1,21 @@
+.desktop-close-backdrop { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 24px; background: #0b101bd9; backdrop-filter: blur(10px); }
+.desktop-close-dialog { width: min(520px, 100%); max-height: calc(100dvh - 48px); overflow: auto; box-sizing: border-box; padding: 28px; border: 1px solid #597d9780; border-radius: 20px; background: linear-gradient(145deg, #202e41, #151d2b 70%); color: #ecf2fa; box-shadow: 0 26px 80px #0008; }
+.desktop-close-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 16px; color: #80d8d0; background: #1b56596b; margin-bottom: 18px; }
+.desktop-close-heading > span { color: #9cb3ca; font-size: 11px; letter-spacing: .08em; }
+.desktop-close-heading h2 { margin: 7px 0 18px; font-size: 25px; }
+.desktop-close-dialog > p { display: flex; gap: 9px; align-items: flex-start; line-height: 1.7; color: #c5d2e1; }
+.desktop-close-spinner { animation: desktop-close-spin 1.3s linear infinite; flex: none; margin-top: 5px; }
+.desktop-close-steps { display: flex; flex-wrap: wrap; gap: 12px 24px; padding-left: 22px; margin: 24px 0; color: #8e9fb3; font-size: 12px; }
+.desktop-close-steps .current { color: #9ae4dc; font-weight: 600; }
+.desktop-close-steps .complete { color: #d0dce9; }
+.desktop-close-issues { padding: 14px; border-radius: 11px; background: #3c322b80; border: 1px solid #8b6d4b80; font-size: 13px; }
+.desktop-close-issues ul { padding-left: 18px; margin-bottom: 0; }
+.desktop-close-issues li { margin-top: 9px; overflow-wrap: anywhere; color: #d2c8bb; }
+.desktop-close-issues li span { display: block; color: #f4d7a8; }
+.desktop-close-dialog .desktop-close-error { color: #ffb6a8; overflow-wrap: anywhere; }
+.desktop-close-dialog footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.desktop-close-dialog small { color: #9eb0c4; font-size: 12px; }
+.desktop-close-dialog button { padding: 9px 18px; border-radius: 9px; }
+@keyframes desktop-close-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .desktop-close-spinner { animation: none; } .desktop-close-backdrop { backdrop-filter: none; } }
+@media (max-width: 540px), (max-height: 600px) { .desktop-close-backdrop { padding: 12px; } .desktop-close-dialog { padding: 20px; max-height: calc(100dvh - 24px); } .desktop-close-icon { display: none; } }

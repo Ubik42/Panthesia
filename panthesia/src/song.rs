@@ -1,0 +1,432 @@
+use panthesia_core::exercise::{ExercisePlan, ExerciseSpec};
+use panthesia_core::library::{FingerHint, load_song_sidecar};
+#[cfg(test)]
+use panthesia_core::practice::PracticeHands;
+use panthesia_core::practice::PracticePart;
+
+use std::collections::{HashMap, HashSet};
+use std::time::Duration;
+
+use crate::context::Context;
+
+#[cfg(test)]
+use panthesia_core::song_config::infer_practice_parts_from_centers;
+pub use panthesia_core::song_config::{PlayerConfig, SongConfig, TrackConfig};
+
+#[derive(Debug, Clone)]
+pub struct Song {
+    pub file: midi_file::MidiFile,
+    pub config: SongConfig,
+    pub exercise_spec: Option<ExerciseSpec>,
+    pub exercise_phrase_duration: Option<Duration>,
+    pub fingerings: HashMap<(Duration, u8, u8, usize), u8>,
+    pub fingering_crossings: HashSet<(Duration, u8, u8, usize)>,
+    pub manual_fingering_hints: Vec<FingerHint>,
+}
+
+impl Song {
+    pub fn new(file: midi_file::MidiFile) -> Self {
+        let config = SongConfig::new(&file.tracks);
+        let mut song = Self {
+            file,
+            config,
+            exercise_spec: None,
+            exercise_phrase_duration: None,
+            fingerings: HashMap::new(),
+            fingering_crossings: HashSet::new(),
+            manual_fingering_hints: Vec::new(),
+        };
+        song.load_manual_fingerings();
+        song
+    }
+
+    pub fn from_exercise(plan: &ExercisePlan) -> Result<Self, String> {
+        let mut song = Self::new(plan.to_midi_file()?);
+        song.file.content_id = plan.practice_id();
+        song.exercise_spec = Some(plan.spec);
+        let micros_per_beat = 60_000_000 / u64::from(plan.spec.tempo_bpm);
+        song.exercise_phrase_duration = Some(Duration::from_micros(
+            u64::from(plan.beats_per_repetition()) * micros_per_beat,
+        ));
+        if let Some(fingerings) = plan.fingerings() {
+            for track in song.file.tracks.iter() {
+                let (fingers, crossings) = match track.notes.first().map(|note| note.channel) {
+                    Some(0) => (&fingerings.right, &fingerings.right_crossings),
+                    Some(1) => (&fingerings.left, &fingerings.left_crossings),
+                    _ => continue,
+                };
+                for ((note, finger), crossing) in track.notes.iter().zip(fingers).zip(crossings) {
+                    let key = (note.start, note.note, note.channel, note.track_id);
+                    song.fingerings.insert(key, *finger);
+                    if *crossing {
+                        song.fingering_crossings.insert(key);
+                    }
+                }
+            }
+        }
+        for track in &mut song.config.tracks {
+            let channel = song.file.tracks[track.track_id]
+                .notes
+                .first()
+                .map(|note| note.channel);
+            track.practice_part = match channel {
+                Some(0) => PracticePart::RightHand,
+                Some(1) => PracticePart::LeftHand,
+                _ => track.practice_part,
+            };
+        }
+        Ok(song)
+    }
+
+    fn load_manual_fingerings(&mut self) {
+        let Some(path) = self.file.source_path.as_deref() else {
+            return;
+        };
+        let sidecar = match load_song_sidecar(path, &self.file.content_id) {
+            Ok(sidecar) => sidecar,
+            Err(panthesia_core::library::MetadataError::Read(error))
+                if error.kind() == std::io::ErrorKind::NotFound =>
+            {
+                return;
+            }
+            Err(error) => {
+                log::warn!(
+                    "Could not load finger hints for '{}': {error}",
+                    path.display()
+                );
+                return;
+            }
+        };
+
+        for hint in sidecar.fingerings {
+            let Some(note) = self
+                .file
+                .tracks
+                .iter()
+                .find(|track| track.track_id == hint.track_id)
+                .and_then(|track| track.notes.get(hint.note_index))
+            else {
+                log::warn!(
+                    "Ignoring finger hint for missing track {}, note {} in '{}'",
+                    hint.track_id,
+                    hint.note_index,
+                    path.display()
+                );
+                continue;
+            };
+            self.fingerings.insert(
+                (note.start, note.note, note.channel, note.track_id),
+                hint.finger,
+            );
+            self.manual_fingering_hints.push(hint);
+        }
+    }
+
+    pub fn effective_tempo_bpm(&self, speed: f32) -> Option<u16> {
+        let base = f32::from(self.exercise_spec?.tempo_bpm);
+        if !speed.is_finite() || speed <= 0.0 {
+            return None;
+        }
+        Some((base * speed).round().clamp(1.0, f32::from(u16::MAX)) as u16)
+    }
+
+    pub fn from_env(ctx: &Context) -> Option<Self> {
+        let args: Vec<String> = std::env::args().collect();
+        let midi_file = if args.len() > 1 {
+            midi_file::MidiFile::new(&args[1]).ok()
+        } else if let Some(last) = ctx.config.last_opened_song() {
+            midi_file::MidiFile::new(last).ok()
+        } else {
+            None
+        };
+
+        let mut song = Self::new(midi_file?);
+        song.apply_saved_setup(ctx);
+        Some(song)
+    }
+
+    pub fn apply_saved_setup(&mut self, ctx: &Context) -> bool {
+        ctx.practice_history
+            .setup(&self.file.content_id)
+            .is_some_and(|setup| self.config.apply_practice_setup(setup))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use panthesia_core::exercise::{ExercisePlan, ExerciseSpec};
+    use panthesia_core::library::save_song_fingerings;
+    use piano_layout::KeyboardRange;
+
+    #[test]
+    fn generated_both_hand_exercise_enters_song_with_hand_shortcuts() {
+        let plan =
+            ExercisePlan::generate(ExerciseSpec::default(), &KeyboardRange::standard_88_keys())
+                .unwrap();
+        let song = Song::from_exercise(&plan).unwrap();
+
+        assert_eq!(song.config.practice_hands(), Some(PracticeHands::Both));
+        assert_eq!(song.config.tracks.len(), 3);
+        assert_eq!(song.fingerings.len(), 30);
+        assert_eq!(song.fingering_crossings.len(), 4);
+        assert!(
+            song.fingering_crossings
+                .contains(&(Duration::from_secs(3), 65, 0, 1))
+        );
+        assert!(
+            song.fingering_crossings
+                .contains(&(Duration::from_secs(5), 45, 1, 2))
+        );
+        assert_eq!(song.fingerings.get(&(Duration::ZERO, 60, 0, 1)), Some(&1));
+        assert_eq!(song.fingerings.get(&(Duration::ZERO, 36, 1, 2)), Some(&5));
+        assert_eq!(
+            song.fingerings.get(&(Duration::from_secs(7), 72, 0, 1)),
+            Some(&5)
+        );
+        assert_eq!(
+            song.config
+                .tracks
+                .iter()
+                .filter(|track| track.practice_part == PracticePart::LeftHand)
+                .count(),
+            1
+        );
+        assert_eq!(
+            song.config
+                .tracks
+                .iter()
+                .filter(|track| track.practice_part == PracticePart::RightHand)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn imported_song_maps_content_bound_finger_hints_to_exact_notes() {
+        let root = std::env::temp_dir().join(format!(
+            "neothesia-song-fingerings-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let midi_path = root.join("Imported.mid");
+        std::fs::copy("../test.mid", &midi_path).unwrap();
+        let file = midi_file::MidiFile::new(&midi_path).unwrap();
+        let (track_id, note_index, expected_key) = file
+            .tracks
+            .iter()
+            .find_map(|track| {
+                track.notes.first().map(|note| {
+                    (
+                        track.track_id,
+                        0,
+                        (note.start, note.note, note.channel, note.track_id),
+                    )
+                })
+            })
+            .unwrap();
+        let hint = FingerHint {
+            track_id,
+            note_index,
+            finger: 4,
+        };
+        save_song_fingerings(&midi_path, &file.content_id, vec![hint]).unwrap();
+
+        let song = Song::new(midi_file::MidiFile::new(&midi_path).unwrap());
+        assert_eq!(song.manual_fingering_hints, [hint]);
+        assert_eq!(song.fingerings.get(&expected_key), Some(&4));
+        assert!(song.fingering_crossings.is_empty());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn generated_single_hand_exercises_keep_explicit_part_identity() {
+        use panthesia_core::exercise::ExerciseHands;
+
+        for (hands, expected) in [
+            (ExerciseHands::Right, PracticePart::RightHand),
+            (ExerciseHands::Left, PracticePart::LeftHand),
+        ] {
+            let plan = ExercisePlan::generate(
+                ExerciseSpec {
+                    hands,
+                    ..Default::default()
+                },
+                &KeyboardRange::standard_88_keys(),
+            )
+            .unwrap();
+            let song = Song::from_exercise(&plan).unwrap();
+            let played_track = song
+                .config
+                .tracks
+                .iter()
+                .find(|track| track.player == PlayerConfig::Human)
+                .unwrap();
+
+            assert_eq!(played_track.practice_part, expected);
+        }
+    }
+
+    #[test]
+    fn generated_song_identity_survives_tempo_and_hand_progression() {
+        use panthesia_core::exercise::ExerciseHands;
+
+        let keyboard = KeyboardRange::standard_88_keys();
+        let slow = ExercisePlan::generate(ExerciseSpec::default(), &keyboard).unwrap();
+        let fast_left = ExercisePlan::generate(
+            ExerciseSpec {
+                tempo_bpm: 120,
+                hands: ExerciseHands::Left,
+                ..Default::default()
+            },
+            &keyboard,
+        )
+        .unwrap();
+        let slow = Song::from_exercise(&slow).unwrap();
+        let fast_left = Song::from_exercise(&fast_left).unwrap();
+
+        assert_eq!(slow.file.content_id, fast_left.file.content_id);
+        assert_eq!(slow.effective_tempo_bpm(0.75), Some(45));
+        assert_eq!(fast_left.effective_tempo_bpm(0.75), Some(90));
+        assert_eq!(slow.effective_tempo_bpm(f32::NAN), None);
+    }
+
+    #[test]
+    fn generated_phrase_boundary_matches_serialized_midi_timing() {
+        let plan = ExercisePlan::generate(
+            ExerciseSpec {
+                repetitions: 2,
+                tempo_bpm: 70,
+                ..Default::default()
+            },
+            &KeyboardRange::standard_88_keys(),
+        )
+        .unwrap();
+        let song = Song::from_exercise(&plan).unwrap();
+        let boundary = song.exercise_phrase_duration.unwrap();
+        let right_track = song
+            .file
+            .tracks
+            .iter()
+            .find(|track| track.notes.first().is_some_and(|note| note.channel == 0))
+            .unwrap();
+
+        assert_eq!(right_track.notes[15].start, boundary);
+    }
+
+    #[test]
+    fn two_piano_tracks_are_assigned_by_pitch_center() {
+        let parts = infer_practice_parts_from_centers(&[(7, 76.0), (3, 48.0)]);
+
+        assert_eq!(parts[&7], PracticePart::RightHand);
+        assert_eq!(parts[&3], PracticePart::LeftHand);
+    }
+
+    #[test]
+    fn ambiguous_multi_part_arrangement_stays_unassigned() {
+        let parts = infer_practice_parts_from_centers(&[(1, 48.0), (2, 60.0), (3, 72.0)]);
+
+        assert!(parts.values().all(|part| *part == PracticePart::Other));
+    }
+
+    #[test]
+    fn hand_modes_keep_the_other_hand_as_accompaniment() {
+        let mut config = SongConfig {
+            note_players: Default::default(),
+            tracks: vec![
+                TrackConfig {
+                    track_id: 0,
+                    player: PlayerConfig::Human,
+                    visible: true,
+                    practice_part: PracticePart::LeftHand,
+                },
+                TrackConfig {
+                    track_id: 1,
+                    player: PlayerConfig::Human,
+                    visible: true,
+                    practice_part: PracticePart::RightHand,
+                },
+                TrackConfig {
+                    track_id: 2,
+                    player: PlayerConfig::Mute,
+                    visible: false,
+                    practice_part: PracticePart::Other,
+                },
+            ]
+            .into(),
+        };
+
+        assert_eq!(config.practice_hands(), Some(PracticeHands::Both));
+        assert!(config.set_practice_hands(PracticeHands::Right));
+        assert_eq!(config.tracks[0].player, PlayerConfig::Auto);
+        assert_eq!(config.tracks[1].player, PlayerConfig::Human);
+        assert_eq!(config.tracks[2].player, PlayerConfig::Mute);
+        assert_eq!(config.practice_hands(), Some(PracticeHands::Right));
+
+        assert!(config.set_practice_hands(PracticeHands::Left));
+        assert_eq!(config.tracks[0].player, PlayerConfig::Human);
+        assert_eq!(config.tracks[1].player, PlayerConfig::Auto);
+    }
+
+    #[test]
+    fn ambiguous_parts_do_not_offer_hand_shortcuts() {
+        let mut config = SongConfig {
+            note_players: Default::default(),
+            tracks: vec![TrackConfig {
+                track_id: 0,
+                player: PlayerConfig::Human,
+                visible: true,
+                practice_part: PracticePart::Other,
+            }]
+            .into(),
+        };
+
+        assert_eq!(config.practice_hands(), None);
+        assert!(!config.set_practice_hands(PracticeHands::Right));
+    }
+
+    #[test]
+    fn saved_track_setup_requires_the_same_track_structure() {
+        let mut config = SongConfig {
+            note_players: Default::default(),
+            tracks: vec![TrackConfig {
+                track_id: 4,
+                player: PlayerConfig::Human,
+                visible: true,
+                practice_part: PracticePart::RightHand,
+            }]
+            .into(),
+        };
+        let valid = SongPracticeSetup {
+            tracks: vec![PracticeTrackSetup {
+                track_id: 4,
+                mode: PracticeTrackMode::Auto,
+                visible: false,
+            }],
+            speed: 0.7,
+            loop_setup: None,
+            source_path: None,
+            exercise_spec: None,
+            last_used_unix_ms: 0,
+        };
+        assert!(config.apply_practice_setup(&valid));
+        assert_eq!(config.tracks[0].player, PlayerConfig::Auto);
+        assert!(!config.tracks[0].visible);
+
+        let incompatible = SongPracticeSetup {
+            tracks: vec![PracticeTrackSetup {
+                track_id: 99,
+                mode: PracticeTrackMode::Mute,
+                visible: true,
+            }],
+            ..valid
+        };
+        assert!(!config.apply_practice_setup(&incompatible));
+        assert_eq!(config.tracks[0].player, PlayerConfig::Auto);
+    }
+}

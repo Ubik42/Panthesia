@@ -1,0 +1,20 @@
+/target
+**/*.rs.bk
+/settings.ron
+/vst3-state
+/out
+.DS_Store
+node_modules
+/work
+/panthesia-web/dist
+/panthesia-web/test-results
+/panthesia-web/playwright-report
+*.tsbuildinfo
+
+# Local verification and distribution artifacts
+/outputs
+/test-results
+
+.env
+.env.*
+.npmrc

@@ -1,0 +1,319 @@
+/* Music first: one application menu, a folder tree, one transport. */
+.workspace-topbar {
+  min-height: 44px;
+  padding: 4px 12px;
+  gap: 14px;
+  background: #24272c;
+  border-bottom: 1px solid #101217;
+  flex-wrap: wrap;
+}
+.workspace-topbar .app-name {
+  min-width: 108px;
+  font-size: 14px;
+  gap: 7px;
+}
+.application-menubar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.application-menubar .toolbar-more > summary {
+  padding: 7px 10px;
+  min-height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 13px;
+  color: #d5d9df;
+}
+.application-menubar .toolbar-more > summary > svg {
+  display: none;
+}
+.application-menubar .toolbar-more[open] > summary,
+.application-menubar .toolbar-more > summary:hover {
+  background: #3a3f47;
+  border-color: #515a66;
+}
+.application-menubar .toolbar-more-actions {
+  min-width: 230px;
+  padding: 5px;
+  background: #292e35;
+  border: 1px solid #59616d;
+  border-radius: 3px;
+  box-shadow: 0 6px 16px #0005;
+}
+.application-menubar .toolbar-more-actions > button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  text-align: left;
+  justify-content: flex-start;
+}
+.application-menubar .toolbar-more-actions > button:hover {
+  background: #414a56;
+}
+.workspace-topbar .workspace-navigation {
+  gap: 0;
+  margin-left: 8px;
+  border-left: 1px solid #48505a;
+  padding-left: 12px;
+}
+.workspace-topbar .workspace-navigation button {
+  min-width: 65px;
+  min-height: 30px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 3px;
+}
+.workspace-topbar .workspace-navigation button[aria-current="page"] {
+  background: #424b56;
+  color: #f0f2f5;
+  box-shadow: inset 0 -2px #9dbbaf;
+}
+.workspace-topbar > .engine-indicator {
+  font-size: 0;
+  gap: 0;
+  min-width: 8px;
+  margin-left: 0;
+}
+.practice-panel > .practice-setup-summary {
+  display: none;
+}
+.practice-panel .song-toolbar {
+  min-height: 54px;
+  background: #282d34;
+  padding: 8px 14px;
+}
+.practice-panel .current-song h1 {
+  font-size: 16px;
+  margin: 0 0 3px;
+}
+.practice-panel .practice-view-toolbar {
+  min-height: 37px;
+  height: auto;
+  background: #22272e;
+  border-bottom: 1px solid #11161c;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.practice-view-toolbar > .view-legend,
+.practice-view-toolbar > button {
+  display: none;
+}
+.practice-view-toolbar > .toolbar-more {
+  margin-left: auto;
+}
+.practice-view-toolbar > .toolbar-more + .toolbar-more {
+  margin-left: 0;
+}
+.practice-view-toolbar .toolbar-more > summary {
+  background: transparent;
+  border: 0;
+  color: #a8b1bd;
+  font-size: 11px;
+}
+.practice-view-toolbar .toolbar-more > summary > svg:first-child {
+  display: none;
+}
+.practice-panel .practice-view-tabs button {
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+}
+.practice-panel .practice-view-tabs button.selected {
+  background: #343e47;
+  box-shadow: inset 0 -2px #a9c7bc;
+  color: #edf3f0;
+}
+.piano-stage > .midi-practice-score {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+.practice-passage-details {
+  flex: none;
+  border-top: 1px solid #3b444e;
+  background: #232931;
+  font-size: 12px;
+}
+.practice-passage-details > summary {
+  cursor: pointer;
+  padding: 6px 14px;
+  color: #aebac7;
+}
+.practice-transport {
+  background: #242b33;
+  border-top: 1px solid #4c5661;
+  padding: 10px 14px;
+  gap: 10px;
+}
+.transport-mode-switch {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #5a6673;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.transport-mode-switch button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #bcc6d0;
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.transport-mode-switch button + button {
+  border-left: 1px solid #5a6673;
+}
+.transport-mode-switch button[aria-pressed="true"] {
+  background: #c6d8cd;
+  color: #172c25;
+  font-weight: 650;
+}
+.scan-folders {
+  flex: none;
+  padding: 8px 6px;
+  border-bottom: 1px solid #3b434d;
+  background: #20252c;
+  font-size: 12px;
+  max-height: 220px;
+  overflow: auto;
+}
+.scan-folders-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 7px 4px;
+  color: #aeb8c3;
+  font-size: 11px;
+}
+.scan-folders > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  min-height: 31px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #c6cdd6;
+  text-align: left;
+}
+.scan-folders > button:hover {
+  background: #303943;
+}
+.scan-folders > button.active {
+  background: #3d4a53;
+  color: #f3f6f8;
+}
+.scan-folders > button > span {
+  flex: 1;
+  min-width: 0;
+}
+.scan-folders > button > svg {
+  flex: none;
+  color: #a8bcaa;
+}
+.scan-folders > button > small {
+  font-size: 11px;
+  color: #a2adb8;
+}
+.scan-folders b {
+  font-weight: 500;
+}
+.scan-folder-path {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #8998a6;
+  margin-top: 3px;
+}
+.scan-folders > .scan-folders-manage {
+  font-size: 11px;
+  color: #a5b9c8;
+  padding-left: 30px;
+}
+.practice-library .panel-heading {
+  min-height: 43px;
+  padding: 7px 12px;
+}
+.practice-library .panel-heading strong {
+  color: #e2e7ed;
+}
+.practice-library .practice-library-filter-row select {
+  max-width: 140px;
+}
+.practice-welcome-art,
+.practice-welcome-eyebrow {
+  display: none;
+}
+.practice-welcome {
+  background: #20262d;
+  max-width: 640px;
+  padding: 30px;
+}
+.practice-welcome-intro h2 {
+  font-size: 25px;
+}
+.practice-welcome-resume {
+  border-radius: 4px;
+  box-shadow: none;
+}
+.practice-welcome-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.practice-welcome-choices button {
+  flex: 1;
+  min-width: 140px;
+  border-radius: 3px;
+  background: transparent;
+}
+@media (max-width: 1100px) {
+  .workspace-topbar {
+    gap: 6px;
+  }
+  .workspace-topbar .workspace-navigation {
+    margin-left: 0;
+    padding-left: 6px;
+  }
+  .application-menubar .toolbar-more > summary {
+    padding: 7px;
+  }
+  .practice-transport-main {
+    flex-wrap: wrap;
+  }
+  .transport-mode-switch button {
+    padding: 7px;
+  }
+}
+@media (max-width: 800px) {
+  .workspace-topbar .workspace-navigation {
+    margin-left: auto;
+  }
+  .workspace-topbar .app-name {
+    min-width: 96px;
+  }
+  .workspace-topbar > .menu-spacer {
+    display: none;
+  }
+  .practice-transport {
+    padding: 8px;
+  }
+  .practice-transport-main {
+    gap: 6px;
+  }
+  .transport-mode-switch {
+    order: 3;
+  }
+  .scan-folders {
+    max-height: 175px;
+  }
+}

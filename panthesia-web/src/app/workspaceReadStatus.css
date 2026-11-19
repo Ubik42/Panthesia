@@ -1,0 +1,130 @@
+.workspace-read-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #28384633;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-read-status > svg {
+  flex: none;
+}
+.workspace-read-status > div {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.workspace-read-status strong {
+  color: #dae4e9;
+  font-weight: 600;
+}
+.workspace-read-status small {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.workspace-read-status button {
+  flex: none;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.workspace-read-status[data-state="failed"] {
+  border-color: #9b7152;
+  background: #63453526;
+}
+.workspace-read-status[data-state="ready"] {
+  padding: 4px 0;
+  margin: 2px 0;
+  border-color: transparent;
+  background: transparent;
+}
+.workspace-read-status[data-state="ready"] strong {
+  color: #b8c7be;
+  font-size: 11px;
+  font-weight: 500;
+}
+.workspace-read-status[data-state="ready"] button {
+  padding: 4px 9px;
+  min-height: 27px;
+}
+.workspace-read-detail {
+  flex-basis: 100%;
+  max-height: 120px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  color: #e2b59a;
+}
+@media (max-height: 700px) {
+  .workspace-read-detail {
+    max-height: 80px;
+  }
+}
+.workspace-read-status .is-reading {
+  animation: workspace-read-spin 1.2s linear infinite;
+}
+@keyframes workspace-read-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-read-status .is-reading {
+    animation: none;
+  }
+}
+
+.workspace-prepared-recovery {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border: 1px solid #68846e;
+  border-radius: 8px;
+  background: #354c3926;
+  font-size: 12px;
+}
+.workspace-prepared-recovery > div {
+  flex: 1 1 280px;
+}
+.workspace-prepared-recovery p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.workspace-prepared-recovery button {
+  font-size: 12px;
+}
+
+.workspace-read-status[data-compact][data-state="ready"] {
+  gap: 8px;
+  padding: 1px 0;
+  margin-block: 0;
+  min-height: 27px;
+}
+.workspace-read-status[data-compact][data-state="ready"] > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.workspace-read-status[data-compact][data-state="ready"] strong {
+  font-size: 11px;
+  font-weight: 500;
+}
+.workspace-read-status[data-compact][data-state="ready"] small {
+  font-size: 10px;
+}
+.workspace-read-status[data-compact][data-state="ready"] button {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 11px;
+}

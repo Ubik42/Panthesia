@@ -1,0 +1,88 @@
+.settings-dialog.fingering-workbench {
+  width: min(880px, 96vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.fingering-workbench-search {
+  display: grid;
+  gap: 7px;
+  color: #bdccdc;
+  font-size: 12px;
+}
+.fingering-workbench-search input {
+  min-height: 35px;
+  padding: 7px 10px;
+  background: #1c2530;
+  border: 1px solid #4c5b6b;
+  border-radius: 5px;
+  color: #e0e9f2;
+}
+.fingering-workbench-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.fingering-workbench > .dialog-heading,
+.fingering-workbench > .parameter-help,
+.fingering-workbench > .browse-pagination,
+.fingering-workbench > .fingering-workbench-search,
+.fingering-workbench > .fingering-workbench-storage {
+  flex: none;
+}
+.fingering-workbench-rows article {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 16px 0;
+  border-top: 1px solid #40505e;
+}
+.fingering-workbench-rows article > div:first-child {
+  min-width: 0;
+  flex: 1 1 360px;
+}
+.fingering-workbench-rows h3 {
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 5px;
+  color: #e0e9f2;
+  overflow-wrap: anywhere;
+}
+.fingering-workbench-rows p {
+  margin: 5px 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #b2c3d6;
+}
+.fingering-workbench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+.fingering-workbench-actions button {
+  min-height: 31px;
+  font-size: 12px;
+}
+.fingering-workbench-actions button:first-child {
+  border-color: #87a866;
+  color: #d2e9b9;
+}
+.fingering-workbench-storage {
+  padding: 10px 12px;
+  background: #413528;
+  border: 1px solid #8a6f4f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.fingering-workbench-button span {
+  margin-left: 7px;
+  color: #edbd93;
+  font-size: 11px;
+}
+.fingering-workbench-empty {
+  padding: 24px 10px;
+  text-align: center;
+}

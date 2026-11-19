@@ -1,0 +1,63 @@
+[package]
+name = "panthesia"
+version = "0.4.0"
+authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
+edition.workspace = true
+default-run = "panthesia"
+
+[features]
+default = ["oxi-synth", "vst3-hosting"]
+
+profiling-on = ["profiling/profile-with-puffin", "puffin", "puffin_http"]
+synth = []
+fluid-synth = ["synth", "cpal", "fluidlite", "oxisynth"]
+oxi-synth = ["synth", "cpal", "oxisynth"]
+vst3-hosting = ["synth", "cpal", "dep:vst3-host", "dep:panthesia-vst3"]
+score-verovio = ["sha2", "resvg"]
+
+[dependencies]
+thiserror.workspace = true
+pollster.workspace = true
+log.workspace = true
+env_logger.workspace = true
+wgpu.workspace = true
+wgpu-jumpstart.workspace = true
+panthesia-core = {workspace=true,features=["native-render"]}
+panthesia-vst3 = {workspace=true,optional=true}
+panthesia-image.workspace = true
+midi-file.workspace = true
+midi-io.workspace = true
+nuon.workspace = true
+futures-channel.workspace = true
+cosmic-text.workspace = true
+
+bytes.workspace = true
+lilt.workspace = true
+winit.workspace = true
+rfd.workspace = true
+
+cpal = { workspace = true, optional = true }
+vst3-host = { workspace = true, optional = true }
+fluidlite = { workspace = true, optional = true }
+oxisynth = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+resvg = { workspace = true, optional = true }
+
+profiling.workspace = true
+puffin = { workspace = true, optional = true }
+puffin_http = { workspace = true, optional = true }
+piano-layout.workspace = true
+
+[[bin]]
+name = "panthesia"
+
+[[bin]]
+name = "vst3-diagnostics"
+path = "src/bin/vst3-diagnostics.rs"
+required-features = ["vst3-hosting"]
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+embed-resource.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }

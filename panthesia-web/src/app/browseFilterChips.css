@@ -1,0 +1,43 @@
+.browse-filter-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 0 8px;
+  font-size: 12px;
+}
+.browse-filter-chips > span {
+  color: var(--muted);
+  margin-right: 2px;
+}
+.browse-filter-chips > button {
+  min-height: 26px;
+  padding: 3px 7px;
+  background: #344a512e;
+  border-color: #49606c;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.browse-filter-chips button > span {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browse-filter-chips .browse-filter-reset {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+}
+.browse-empty-actions {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 26px 16px;
+  color: var(--muted);
+  text-align: center;
+}
+.browse-empty-actions p {
+  margin: 0;
+  line-height: 1.6;
+}

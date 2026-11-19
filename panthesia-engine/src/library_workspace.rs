@@ -1,0 +1,796 @@
+use midi_file::MidiFile;
+use panthesia_core::library::{SongMetadata, load_song_sidecar, save_song_metadata};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
+
+#[derive(Clone, Default, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Workspace {
+    pub groups: Vec<Group>,
+    pub entries: BTreeMap<String, Entry>,
+    pub revision: u64,
+    pub learning: BTreeMap<String,crate::song_learning::Learning>,
+    pub preferred_paths:BTreeMap<String,PathBuf>,
+    pub ignored_paths:std::collections::BTreeSet<String>,
+    pub path_relinks:BTreeMap<String,crate::library_repairs::RelinkRecord>,
+    pub retired_entries:BTreeMap<String,Entry>,
+    pub replacement_reviews:BTreeMap<String,crate::library_repairs::ReplacementReview>,
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn index_refreshes_segmented_meter_from_sidecar() {
+        let root = std::env::temp_dir().join(format!("neothesia-meter-index-{}",
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("study.mid");
+        std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
+        let file = MidiFile::new(&path).unwrap();
+        let mut workspace = Workspace::default();
+        workspace.inspect(path.clone(), false).unwrap();
+        let sidecar = panthesia_core::library::SongSidecar {
+            meter_map: Some(panthesia_core::library::MeterMap {
+                pickup_ticks: u64::from(file.musical_time.ppq) / 2,
+                measure_lengths: vec![],
+                segments: vec![
+                    panthesia_core::library::MeterSegment { measure: 1, numerator: 4, denominator: 4, display_start: Some(0) },
+                    panthesia_core::library::MeterSegment { measure: 2, numerator: 3, denominator: 4, display_start: Some(20) },
+                ],
+            }),
+            ..Default::default()
+        };
+        let expected = crate::Player::sidecar_grid(&file, &sidecar).unwrap();
+        panthesia_core::library::save_song_sidecar(&path, &file.content_id, sidecar).unwrap();
+        let indexed = workspace.inspect(path, false).unwrap();
+        assert!(indexed.error.is_none());
+        assert_eq!(indexed.measures, expected.measures.len());
+        assert_eq!(indexed.meter, "4/4 → 3/4 手动 · 弱起");
+    }
+    #[test]
+    fn duplicates_keep_groups_and_replaced_content_does_not_inherit_them() {
+        let root = std::env::temp_dir().join(format!(
+            "neothesia-library-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let first = root.join("one.mid");
+        let second = root.join("renamed.mid");
+        std::fs::write(&first, include_bytes!("../assets/five-finger.mid")).unwrap();
+        std::fs::copy(&first, &second).unwrap();
+        let mut w = Workspace::default();
+        let top = w.group(None, "曲集".into(), None).unwrap();
+        let child = w.group(None, "练习".into(), Some(top.clone())).unwrap();
+        assert!(
+            w.group(Some(top.clone()), "曲集".into(), Some(child.clone()))
+                .is_err()
+        );
+        w.inspect(first.clone(), false).unwrap();
+        w.assign(vec![first.clone()], Some(child.clone()), Some(4))
+            .unwrap();
+        assert_eq!(
+            w.inspect(second.clone(), false).unwrap().groups,
+            vec![child.clone()]
+        );
+        std::fs::write(&second, include_bytes!("../assets/basic-chords.mid")).unwrap();
+        let e = w.inspect(second, false).unwrap();
+        assert!(e.groups.is_empty());
+        assert_eq!(e.rating, 0);
+        w.save(&root).unwrap();
+        let reopened = Workspace::load(&root).unwrap();
+        assert_eq!(reopened.entries[&key(&first)].groups, vec![child]);
+    }
+}
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Group {
+    pub id: String,
+    pub name: String,
+    pub parent: Option<String>,
+}
+#[derive(Clone, Default, Deserialize, Serialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Entry {
+    pub path: PathBuf,
+    pub content_id: Option<String>,
+    pub metadata: SongMetadata,
+    pub groups: Vec<String>,
+    pub rating: u8,
+    pub has_score: bool,
+    pub score_name: Option<String>,
+    pub notes: usize,
+    pub duration: f64,
+    pub tracks: usize,
+    pub measures: usize,
+    pub meter: String,
+    pub available: bool,
+    pub error: Option<String>,
+    pub size: u64,
+    pub modified: u64,
+    pub annotation_modified: u64,
+    pub analysis_version: u16,
+}
+pub fn key(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/").to_lowercase()
+}
+pub fn lock_for(data: &Path) -> Result<std::sync::Arc<std::sync::Mutex<()>>, String> {
+    static LOCKS: std::sync::OnceLock<
+        std::sync::Mutex<BTreeMap<String, std::sync::Arc<std::sync::Mutex<()>>>>,
+    > = std::sync::OnceLock::new();
+    let mut locks = LOCKS
+        .get_or_init(Default::default)
+        .lock()
+        .map_err(|_| "曲库锁不可用")?;
+    Ok(locks.entry(key(data)).or_default().clone())
+}
+impl Workspace {
+    pub fn load(data: &Path) -> Result<Self, String> {
+        match panthesia_core::utils::atomic_file::read_limited(
+            &data.join("library-workspace.json"),
+            256_000_000,
+        ) {
+            Ok(bytes) => {
+                serde_json::from_slice(&bytes).map_err(|e| format!("曲库管理信息无法读取：{e}"))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    /// Candidate discovery is independently verified by MIDI content; an unrelated monitor update does not invalidate it.
+    pub(crate) fn load_hint(data: &Path) -> Result<Self, String> {
+        match panthesia_core::utils::atomic_file::read_hint(
+            &data.join("library-workspace.json"),
+            256_000_000,
+        ) {
+            Ok(bytes) => {
+                serde_json::from_slice(&bytes).map_err(|e| format!("曲库管理信息无法读取：{e}"))
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+    pub fn save(&mut self, data: &Path) -> Result<(), String> {
+        crate::storage_control::workspace_writable(data)?;
+        self.revision += 1;
+        std::fs::create_dir_all(data).map_err(|e| e.to_string())?;
+        let path = data.join("library-workspace.json");
+        panthesia_core::utils::atomic_file::write(&path,&serde_json::to_vec(self).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+    }
+    pub fn inspect(&mut self, path: PathBuf, force: bool) -> Result<Entry, String> {
+        self.inspect_with_file(path, force, None)
+    }
+    pub(crate) fn inspect_prepared(&mut self, path: PathBuf, file: &MidiFile) -> Result<Entry, String> {
+        if file.source_path.as_ref() != Some(&path) { return Err("导入文件位置与准备结果不一致".into()); }
+        self.inspect_with_file(path, true, Some(file.clone()))
+    }
+    fn inspect_with_file(&mut self, path: PathBuf, force: bool, prepared: Option<MidiFile>) -> Result<Entry, String> {
+        let k = key(&path);
+        let previous = self.entries.get(&k).cloned().unwrap_or_default();
+        let previous_identity=previous.clone();
+        let mut entry = Entry {
+            path: path.clone(),
+            ..previous
+        };
+        let (size,modified) = if panthesia_core::utils::atomic_file::is_capturing(&path) {
+            let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,32_000_000).map_err(|e|e.to_string())?;
+            // A committed import is re-stamped by the regular background index scan.
+            (bytes.len() as u64,0)
+        } else {
+        let stat = match std::fs::metadata(&path) {
+            Ok(s) => s,
+            Err(e) => {
+                entry.available = false;
+                entry.error = Some(format!("文件无法读取：{e}"));
+                self.entries.insert(k, entry.clone());
+                return Ok(entry);
+            }
+        };
+        let size = stat.len();
+        let modified = stat
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_nanos().min(u64::MAX as u128) as u64);
+            (size,modified)
+        };
+        let annotation_modified =
+            std::fs::metadata(panthesia_core::library::metadata_sidecar_path(&path))
+                .ok()
+                .and_then(|s| s.modified().ok())
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_nanos().min(u64::MAX as u128) as u64);
+        if !force
+            && entry.analysis_version == 2
+            && entry.annotation_modified == annotation_modified
+            && entry.content_id.is_some()
+            && entry.size == size
+            && entry.modified == modified
+            && entry.error.is_none()
+        {
+            entry.available = true;
+            self.entries.insert(k, entry.clone());
+            return Ok(entry);
+        }
+        entry.available = true;
+        entry.size = size;
+        entry.modified = modified;
+        entry.annotation_modified = annotation_modified;
+        entry.analysis_version = 2;
+        entry.error = None;
+        if size > 32_000_000 {
+            entry.error = Some("MIDI 超过 32 MB，请使用更小的文件".into());
+            self.entries.insert(k, entry.clone());
+            return Ok(entry);
+        }
+        // Capture the file stamp before verifying bytes, just as the parsing
+        // path does. A later external edit must be seen by the next index scan.
+        let parsed = match prepared {
+            Some(file) => {
+                if !crate::import_storage::matches_content(&path, &file.content_id)? {
+                    return Err("导入文件在保存期间发生变化，请重新检查曲库".into());
+                }
+                Ok(file)
+            }
+            None => crate::library::read_midi_limited(&path, 32_000_000),
+        };
+        match parsed {
+            Ok(file) => {
+                if entry.content_id.as_ref().is_some_and(|id|id!=&file.content_id)
+                    || (entry.content_id.is_none() && self.retired_entries.values().any(|e|key(&e.path)==k)) {
+                    if let Some(id)=previous_identity.content_id.as_ref(){self.retired_entries.insert(crate::library_repairs::record_key(id,&path),previous_identity.clone());}
+                    entry.groups.clear();
+                    entry.rating = 0;
+                    entry.metadata = SongMetadata::default();
+                }
+                if let Some(alias) = self
+                    .entries
+                    .values()
+                    .find(|v| v.content_id.as_ref() == Some(&file.content_id) && key(&v.path) != k)
+                {
+                    for group in &alias.groups {
+                        if !entry.groups.contains(group) {
+                            entry.groups.push(group.clone());
+                        }
+                    }
+                    entry.rating = alias.rating;
+                    entry.metadata = alias.metadata.clone();
+                }
+                entry.content_id = Some(file.content_id.clone());
+                entry.notes = file.tracks.iter().map(|t| t.notes.len()).sum();
+                entry.tracks = file.tracks.iter().filter(|t| !t.notes.is_empty()).count();
+                entry.duration = file
+                    .tracks
+                    .iter()
+                    .flat_map(|t| t.notes.iter())
+                    .map(|n| n.end.as_secs_f64())
+                    .fold(0., f64::max);
+                entry.measures = file
+                    .musical_time
+                    .measures
+                    .iter()
+                    .filter(|m| {
+                        file.tempo_track
+                            .pulses_to_duration(m.start_tick)
+                            .as_secs_f64()
+                            < entry.duration
+                    })
+                    .count();
+                let meters: Vec<_> = file
+                    .musical_time
+                    .measures
+                    .iter()
+                    .map(|m| {
+                        format!(
+                            "{}/{}{}",
+                            m.numerator,
+                            m.denominator,
+                            if m.explicit_meter { "" } else { " 默认" }
+                        )
+                    })
+                    .fold(Vec::new(), |mut acc, s| {
+                        if !acc.contains(&s) {
+                            acc.push(s)
+                        }
+                        acc
+                    });
+                entry.meter = meters.join(" → ");
+                match load_song_sidecar(&path, &file.content_id) {
+                    Ok(s) => {
+                        if s.meter.is_some() || s.meter_map.is_some() {
+                            match crate::Player::sidecar_grid(&file, &s) {
+                                Ok(grid) => {
+                                    entry.measures = grid.measures.len();
+                                    let mut signatures = Vec::new();
+                                    for m in &grid.measures {
+                                        let signature = format!("{}/{}", m.numerator, m.denominator);
+                                        if signatures.last() != Some(&signature) {
+                                            signatures.push(signature);
+                                        }
+                                    }
+                                    let pickup = s.meter_map.as_ref().map(|m| m.pickup_ticks)
+                                        .or_else(|| s.meter.map(|m| m.pickup_ticks)).unwrap_or(0);
+                                    entry.meter = format!("{} 手动{}", signatures.join(" → "),
+                                        if pickup > 0 { " · 弱起" } else { "" });
+                                }
+                                Err(e) => entry.error = Some(format!("小节网格：{e}")),
+                            }
+                        }
+                        entry.metadata = s.metadata;
+                        entry.has_score = s.score.is_some();
+                        entry.score_name = s.score.map(|s| s.path.to_string_lossy().into());
+                    }
+                    Err(panthesia_core::library::MetadataError::Read(e))
+                        if e.kind() == std::io::ErrorKind::NotFound =>
+                    {
+                        entry.has_score = false;
+                        entry.score_name = None;
+                    }
+                    Err(e) => {
+                        entry.error = Some(format!("附加信息：{e}"));
+                    }
+                }
+            }
+            Err(e) => {
+                if let Some(id)=previous_identity.content_id.as_ref(){self.retired_entries.insert(crate::library_repairs::record_key(id,&path),previous_identity.clone());}
+                entry.content_id = None;
+                entry.error = Some(e.to_string());
+            }
+        }
+        self.entries.insert(k, entry.clone());
+        Ok(entry)
+    }
+    pub fn group(
+        &mut self,
+        id: Option<String>,
+        name: String,
+        parent: Option<String>,
+    ) -> Result<String, String> {
+        let name = name.trim().to_string();
+        if name.is_empty() || name.chars().count() > 80 {
+            return Err("分组名称需要 1～80 个字".into());
+        }
+        if parent
+            .as_ref()
+            .is_some_and(|p| !self.groups.iter().any(|g| &g.id == p))
+        {
+            return Err("上级分组不存在".into());
+        }
+        let id = id.unwrap_or_else(|| {
+            format!(
+                "group-{}-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos(),
+                self.revision
+            )
+        });
+        let mut ancestor = parent.clone();
+        for _ in 0..=self.groups.len() {
+            if ancestor.as_ref() == Some(&id) {
+                return Err("分组不能放进自身或下级分组".into());
+            }
+            ancestor = ancestor.and_then(|a| {
+                self.groups
+                    .iter()
+                    .find(|g| g.id == a)
+                    .and_then(|g| g.parent.clone())
+            });
+        }
+        if self
+            .groups
+            .iter()
+            .any(|g| g.id != id && g.parent == parent && g.name == name)
+        {
+            return Err("这个位置已有同名分组".into());
+        }
+        if let Some(g) = self.groups.iter_mut().find(|g| g.id == id) {
+            g.name = name;
+            g.parent = parent;
+        } else {
+            self.groups.push(Group {
+                id: id.clone(),
+                name,
+                parent,
+            });
+        }
+        Ok(id)
+    }
+    pub fn remove_group(&mut self, id: &str) -> Result<(), String> {
+        self.remove_group_checked(id, &|| Ok(()))
+    }
+    fn remove_group_checked(
+        &mut self,
+        id: &str,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<(), String> {
+        check()?;
+        let parent = self
+            .groups
+            .iter()
+            .find(|g| g.id == id)
+            .ok_or("分组不存在")?
+            .parent
+            .clone();
+        self.groups.retain(|g| g.id != id);
+        for g in &mut self.groups {
+            check()?;
+            if g.parent.as_deref() == Some(id) {
+                g.parent = parent.clone();
+            }
+        }
+        for e in self.entries.values_mut() {
+            check()?;
+            e.groups.retain(|g| g != id);
+        }
+        Ok(())
+    }
+    pub fn assign(
+        &mut self,
+        paths: Vec<PathBuf>,
+        group: Option<String>,
+        rating: Option<u8>,
+    ) -> Result<(), String> {
+        self.assign_checked(paths, group, rating, &|| Ok(()))
+    }
+    fn assign_checked(
+        &mut self,
+        paths: Vec<PathBuf>,
+        group: Option<String>,
+        rating: Option<u8>,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<(), String> {
+        check()?;
+        if group
+            .as_ref()
+            .is_some_and(|id| !self.groups.iter().any(|g| &g.id == id))
+        {
+            return Err("分组不存在".into());
+        }
+        if rating.is_some_and(|r| r > 5) {
+            return Err("评级应为 0～5".into());
+        }
+        // Resolve each selected content identity once, then update all aliases in one pass.
+        let mut updates: BTreeMap<String, (Vec<String>, u8)> = BTreeMap::new();
+        for path in paths {
+            check()?;
+            let entry = self.entries.entry(key(&path)).or_insert_with(|| Entry {
+                path: path.clone(),
+                available: path.is_file(),
+                ..Entry::default()
+            });
+            if let Some((groups, rating)) = entry.content_id.as_ref().and_then(|id| updates.get(id))
+            {
+                entry.groups = groups.clone();
+                entry.rating = *rating;
+                continue;
+            }
+            if let Some(g) = &group {
+                if !entry.groups.contains(g) {
+                    entry.groups.push(g.clone());
+                }
+            }
+            if let Some(r) = rating {
+                entry.rating = r;
+            }
+            if let Some(id) = &entry.content_id {
+                updates.insert(id.clone(), (entry.groups.clone(), entry.rating));
+            }
+        }
+        for entry in self.entries.values_mut() {
+            check()?;
+            if let Some((groups, rating)) = entry.content_id.as_ref().and_then(|id| updates.get(id))
+            {
+                entry.groups = groups.clone();
+                entry.rating = *rating;
+            }
+        }
+        Ok(())
+    }
+    pub fn unassign(&mut self, paths: Vec<PathBuf>, group: &str) {
+        let _ = self.unassign_checked(paths, group, &|| Ok(()));
+    }
+    fn unassign_checked(
+        &mut self,
+        paths: Vec<PathBuf>,
+        group: &str,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<(), String> {
+        let mut identities = std::collections::BTreeSet::new();
+        for path in paths {
+            check()?;
+            if let Some(entry) = self.entries.get_mut(&key(&path)) {
+                entry.groups.retain(|g| g != group);
+                if let Some(id) = &entry.content_id {
+                    identities.insert(id.clone());
+                }
+            }
+        }
+        for entry in self.entries.values_mut() {
+            check()?;
+            if entry
+                .content_id
+                .as_ref()
+                .is_some_and(|id| identities.contains(id))
+            {
+                entry.groups.retain(|g| g != group);
+            }
+        }
+        Ok(())
+    }
+    pub fn update_metadata(&mut self, path: PathBuf, value: SongMetadata) -> Result<(), String> {
+        let entry = self.inspect(path.clone(), true)?;
+        let id = entry
+            .content_id
+            .ok_or("无法识别 MIDI 内容，不能保存元数据")?;
+        save_song_metadata(&path, &id, value.clone()).map_err(|e| e.to_string())?;
+        for entry in self
+            .entries
+            .values_mut()
+            .filter(|e| e.content_id.as_ref() == Some(&id))
+        {
+            entry.metadata = value.clone();
+        }
+        Ok(())
+    }
+}
+
+pub fn accepts(command: &crate::Command) -> bool {
+    matches!(
+        command,
+        crate::Command::LibraryWorkspace
+            | crate::Command::ReadSongLearning { .. }
+            | crate::Command::SaveSongLearning{..}
+            | crate::Command::InspectSong { .. }
+            | crate::Command::InspectSongs { .. }
+            | crate::Command::LibraryGroup { .. }
+            | crate::Command::RemoveLibraryGroup { .. }
+            | crate::Command::AssignLibrary { .. }
+            | crate::Command::UnassignLibrary { .. }
+            | crate::Command::LibraryMetadataHistory { .. } | crate::Command::PreviewMetadataRestore { .. } | crate::Command::RestoreLibraryMetadata { .. }
+            | crate::Command::PreviewLibraryMetadata { .. }
+            | crate::Command::ReadLibraryMetadata { .. }
+            | crate::Command::ResetLibraryMetadataDefaults { .. }
+            | crate::Command::SaveLibraryMetadata { .. }
+            | crate::Command::UpdateSongMetadata { .. }
+    )
+}
+pub fn read_learning(
+    data: &Path,
+    content_id: &str,
+    check: impl Fn() -> Result<(), String>,
+) -> Result<serde_json::Value, String> {
+    if content_id.len() != 64 || !content_id.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("曲目内容身份无效".into());
+    }
+    check()?;
+    let lock = lock_for(data)?;
+    let _guard = wait_for(&lock, &check)?;
+    check()?;
+    let workspace = Workspace::load(data)?;
+    check()?;
+    serde_json::to_value(crate::song_learning::LearningRead {
+        content_id: content_id.to_owned(),
+        value: workspace.learning.get(content_id).cloned(),
+        write_settled: true,
+    }).map_err(|error| error.to_string())
+}
+pub(crate) fn wait_for<'a>(
+    lock: &'a std::sync::Mutex<()>,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<std::sync::MutexGuard<'a, ()>, String> {
+    check()?;
+    loop {
+        match lock.try_lock() {
+            Ok(guard) => return Ok(guard),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                check()?;
+                std::thread::sleep(std::time::Duration::from_millis(12));
+            }
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err("曲库文件锁不可用".into());
+            }
+        }
+    }
+}
+pub(crate) fn reads(command: &crate::Command) -> bool {
+    matches!(
+        command,
+        crate::Command::LibraryWorkspace
+            | crate::Command::ReadSongLearning { .. }
+            | crate::Command::ReadLibraryMetadata { .. }
+            | crate::Command::PreviewLibraryMetadata { .. }
+            | crate::Command::LibraryMetadataHistory { .. }
+            | crate::Command::PreviewMetadataRestore { .. }
+    )
+}
+pub fn execute(command: crate::Command, data: &Path) -> Result<serde_json::Value, String> {
+    execute_checked(command, data, &|| Ok(()))
+}
+pub(crate) fn execute_checked(
+    command: crate::Command,
+    data: &Path,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<serde_json::Value, String> {
+    execute_inner(command, data, check, true)
+}
+pub(crate) fn read_checked(
+    command: crate::Command,
+    data: &Path,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<serde_json::Value, String> {
+    if !reads(&command) {
+        return Err("曲库读取操作无效".into());
+    }
+    execute_inner(command, data, check, false)
+}
+fn execute_inner(
+    command: crate::Command,
+    data: &Path,
+    check: &impl Fn() -> Result<(), String>,
+    persist: bool,
+) -> Result<serde_json::Value, String> {
+    use crate::Command;
+    check()?;
+    if let Command::ReadSongLearning { content_id } = &command {
+        return read_learning(data, content_id, check);
+    }
+    let lock = lock_for(data)?;
+    let _guard = wait_for(&lock, check)?;
+    let mut workspace = Workspace::load(data)?;
+    check()?;
+    if matches!(command, Command::LibraryWorkspace) {
+        for e in workspace.entries.values_mut() {
+            check()?;
+            e.available = e.path.is_file();
+        }
+        let mut value = serde_json::to_value(workspace).map_err(|e| e.to_string())?;
+        let papers = crate::score_attachments::summaries_checked(data, check)?;
+        for entry in value["entries"].as_object_mut().unwrap().values_mut() {
+            check()?;
+            if let Some((count, names)) = entry["contentId"].as_str().and_then(|id| papers.get(id))
+            {
+                entry["paperCount"] = serde_json::json!(count);
+                entry["paperNames"] = serde_json::json!(names);
+            }
+        }
+        let preferences =
+            crate::preferences::Preferences::load(&data.join("web-preferences.json"))?;
+        for entry in value["entries"].as_object_mut().unwrap().values_mut() {
+            check()?;
+            let id = entry["contentId"].as_str().unwrap_or("");
+            let versions = preferences.score_versions.get(id);
+            entry["notationCount"] = serde_json::json!(
+                versions
+                    .map_or(0, |v| v.len())
+                    .max(usize::from(entry["hasScore"].as_bool() == Some(true)))
+            );
+        }
+        check()?;
+        return Ok(value);
+    }
+    let mut result = match command {
+        Command::SaveSongLearning {
+            path,
+            content_id,
+            value,
+            expected,
+        } => {
+            crate::song_learning::save_checked(
+                &mut workspace,
+                data,
+                path,
+                content_id,
+                value,
+                expected,
+                check,
+            )?;
+            serde_json::json!({"ok":true})
+        }
+        Command::InspectSong { path, force } => {
+            serde_json::to_value(workspace.inspect(path, force)?).map_err(|e| e.to_string())?
+        }
+        Command::InspectSongs { paths, force } => {
+            if paths.len() > 64 {
+                return Err("一次最多索引 64 首曲目".into());
+            }
+            let mut entries = Vec::new();
+            for path in paths {
+                check()?;
+                entries.push(workspace.inspect(path, force)?);
+            }
+            serde_json::json!({"entries":entries})
+        }
+        Command::LibraryGroup { id, name, parent } => {
+            serde_json::json!({"id":workspace.group(id,name,parent)?})
+        }
+        Command::RemoveLibraryGroup { id } => {
+            workspace.remove_group_checked(&id, check)?;
+            serde_json::json!({"ok":true})
+        }
+        Command::AssignLibrary {
+            paths,
+            group,
+            rating,
+        } => {
+            workspace.assign_checked(paths, group, rating, check)?;
+            serde_json::json!({"ok":true})
+        }
+        Command::UnassignLibrary { paths, group } => {
+            workspace.unassign_checked(paths, &group, check)?;
+            serde_json::json!({"ok":true})
+        }
+        Command::LibraryMetadataHistory { path, content_id } => {
+            crate::library_metadata::history(&mut workspace, data, path, content_id)?
+        }
+        Command::PreviewMetadataRestore {
+            path,
+            content_id,
+            id,
+        } => crate::library_metadata::restore_preview(&mut workspace, data, path, content_id, id)?,
+        Command::RestoreLibraryMetadata {
+            path,
+            content_id,
+            id,
+            fields,
+            expected,
+        } => crate::library_metadata::restore(
+            &mut workspace,
+            data,
+            path,
+            content_id,
+            id,
+            fields,
+            expected,
+        )?,
+        Command::PreviewLibraryMetadata {
+            path,
+            content_id,
+            rules,
+        } => crate::library_metadata::preview(&mut workspace, path, content_id, rules)?,
+        Command::ReadLibraryMetadata { path, content_id } => {
+            crate::library_metadata::read(&mut workspace, path, content_id)?
+        }
+        Command::ResetLibraryMetadataDefaults { path, content_id, fields, expected, proof } => {
+            crate::library_metadata::read(&mut workspace, path.clone(), Some(content_id.clone()))?;
+            let result = crate::metadata_defaults::reset(data, &path, &content_id, fields, expected, &proof)?;
+            if result["status"] == "saved" { workspace.inspect(path, true)?; }
+            result
+        }
+        Command::SaveLibraryMetadata {
+            path,
+            content_id,
+            value,
+            expected,
+        } => {
+            crate::library_metadata::save(&mut workspace, data, path, content_id, value, expected)?
+        }
+        Command::UpdateSongMetadata { path, value } => {
+            workspace.update_metadata(path, value)?;
+            serde_json::json!({"ok":true})
+        }
+        _ => unreachable!(),
+    };
+    check()?;
+    if persist {
+        if let Err(error) = workspace.save(data) {
+            if result["status"] == "saved" {
+                let warning = serde_json::json!(format!("资料已保存，曲库索引写入失败：{error}"));
+                if let Some(warnings) = result["warnings"].as_array_mut() {
+                    warnings.push(warning);
+                } else {
+                    result["warnings"] = serde_json::json!([warning]);
+                }
+            } else {
+                return Err(error);
+            }
+        }
+    }
+    return Ok(result);
+}

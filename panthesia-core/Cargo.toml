@@ -1,0 +1,39 @@
+[package]
+name = "panthesia-core"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+default = []
+native-render = ["dep:panthesia-image", "dep:bytemuck", "dep:wgpu", "dep:glyphon", "dep:wgpu-jumpstart"]
+
+[dependencies]
+serde = { workspace = true, features = ["serde_derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+panthesia-image = {workspace=true,optional=true}
+bytes.workspace = true
+csv.workspace = true
+blake3.workspace = true
+ron.workspace = true
+quick-xml.workspace = true
+md5 = "0.8"
+base64 = "0.22"
+zip.workspace = true
+log.workspace = true
+thiserror.workspace = true
+bytemuck = {workspace=true,optional=true}
+wgpu = {workspace=true,optional=true}
+glyphon = {workspace=true,optional=true}
+wgpu-jumpstart = {workspace=true,optional=true}
+piano-layout.workspace = true
+midi-file.workspace = true
+profiling.workspace = true
+euclid.workspace = true
+dpi.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation.workspace = true

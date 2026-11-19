@@ -1,0 +1,11 @@
+[package]
+name = "panthesia-vst3"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+panthesia-core.workspace = true
+midi-file.workspace = true
+cpal.workspace = true
+vst3-host.workspace = true
+log.workspace = true

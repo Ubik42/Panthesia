@@ -1,0 +1,14 @@
+.paper-controls .paper-page-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.paper-page-picker .paper-page-input-error {
+  flex-basis: 100%;
+  color: #eec584;
+  font-size: 0.85rem;
+}
+.paper-controls .paper-page-picker input[aria-invalid="true"] {
+  border-color: #eec584;
+}

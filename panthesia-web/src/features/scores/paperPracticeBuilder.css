@@ -1,0 +1,77 @@
+.paper-practice-dialog.paper-practice-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+.paper-practice-dialog .dialog-heading h2 {
+  margin-bottom: 6px;
+}
+.paper-practice-dialog .dialog-heading p {
+  color: var(--muted, #a9b4c6);
+  margin: 0;
+}
+.paper-practice-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 12px 0;
+}
+.paper-practice-context > span {
+  padding: 5px 9px;
+  background: #477cd61b;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.paper-practice-dialog .paper-practice-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: var(--muted, #a9b4c6);
+  font-size: 0.85rem;
+}
+.paper-practice-dialog .paper-practice-fields {
+  display: grid;
+  gap: 12px;
+  margin: 10px 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.paper-practice-dialog .paper-practice-fields label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.paper-practice-dialog .paper-practice-fields input,
+.paper-practice-dialog .paper-practice-fields textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.paper-practice-dialog .paper-practice-range {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.paper-practice-notice {
+  color: #b8d4ff;
+}
+.paper-practice-invalid {
+  color: #eec584;
+  font-size: 0.85rem;
+}
+.paper-practice-pending {
+  border: 1px solid #a3814e;
+  background: #a3814e16;
+  border-radius: 9px;
+  padding: 12px;
+  margin: 14px 0;
+}
+.paper-practice-pending p {
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+@media (max-width: 580px) {
+  .paper-practice-dialog .paper-practice-range {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

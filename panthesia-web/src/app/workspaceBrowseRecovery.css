@@ -1,0 +1,28 @@
+.workspace-browse-recovery {
+  flex: none;
+  max-height: 26vh;
+  overflow: auto;
+  padding-inline: 14px;
+}
+.workspace-browse-recovery .persistent-session-recovery {
+  margin-block: 6px;
+}
+.workspace-browse-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding-block: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-browse-summary > span {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.workspace-browse-summary button {
+  min-height: 28px;
+  padding: 3px 9px;
+  font-size: 12px;
+}

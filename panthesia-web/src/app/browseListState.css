@@ -1,0 +1,74 @@
+.browse-list-state {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 24px 18px;
+  text-align: center;
+}
+.browse-list-state-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 4px;
+  border: 1px solid #53664d6b;
+  border-radius: 15px;
+  background: #64814713;
+  color: #bad398;
+}
+.browse-list-state > strong {
+  color: #d9e4d8;
+  font-size: 14px;
+  font-weight: 600;
+}
+.browse-list-state > p {
+  max-width: 460px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.browse-list-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+.browse-list-state-actions button {
+  min-height: 34px;
+  font-size: 12px;
+}
+.browse-list-state[data-state="failed"] .browse-list-state-icon {
+  color: #dfbf99;
+  border-color: #92724f66;
+  background: #936b3210;
+}
+.browse-list-state[data-state="loading"] svg {
+  animation: browse-state-spin 1.4s linear infinite;
+}
+@keyframes browse-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .browse-list-state[data-state="loading"] svg {
+    animation: none;
+  }
+}
+@media (max-height: 700px) {
+  .browse-list-state {
+    min-height: 130px;
+    padding-block: 16px;
+    gap: 8px;
+  }
+  .browse-list-state-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+  }
+}

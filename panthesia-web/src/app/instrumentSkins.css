@@ -1,0 +1,45 @@
+.practice-variant {flex:none; background:var(--instrument-panel,#fff);border-top:1px solid var(--instrument-line,#d8dce4);font-size:12px;color:var(--instrument-text,#273147)}
+.practice-variant summary {display:flex;gap:20px;align-items:center;padding:9px 16px;cursor:pointer;list-style:revert}
+.practice-variant summary strong{font-weight:500;color:var(--instrument-muted,#67758a)}
+.variant-body{padding:8px 16px 12px;display:flex;flex-wrap:wrap;gap:12px 24px;max-height:290px;overflow:auto}
+.variant-body fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:9px;min-width:260px}
+.variant-body legend{font-weight:650;margin-bottom:8px}.variant-body label{display:inline-flex;gap:8px;align-items:center}
+.variant-transpose,.variant-key{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.variant-transpose input{width:58px}
+.variant-body p{flex-basis:100%;margin:0;color:var(--instrument-muted,#67758a);line-height:1.6}.variant-body .variant-warning{color:#a25b21}
+.variant-body button,.variant-body select,.variant-body input[type=number]{min-height:29px;border:1px solid var(--instrument-line,#d8dce4);border-radius:5px;background:var(--instrument-surface,#f5f6f9);color:inherit;padding:3px 9px}
+.appearance-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.appearance-fields label,.grid-settings>label{display:flex;flex-direction:column;gap:6px}
+.appearance-fields select,.grid-settings select{width:100%;min-height:34px}.grid-settings{margin-top:16px;padding-top:14px;border-top:1px solid var(--instrument-line,#d8dce4)}.grid-settings h4{margin:0 0 12px}.grid-settings .effects-intensity{margin:12px 0}
+.daily-workbench[data-skin=rosewood]{--surface:#f4efe7;--panel:#fffcf5;--text:#40382f;--muted:#7c6c5b;--line:#ddd3c3;--accent:#936738;background:#f4efe7;color:#40382f}
+.daily-workbench[data-skin=rosewood] .application-menubar,.daily-workbench[data-skin=rosewood] .instrument-header,.daily-workbench[data-skin=rosewood] .instrument-controls,.daily-workbench[data-skin=rosewood] .practice-transport{background:#f5eee2;color:#40382f;border-color:#ddd3c3}
+.daily-workbench[data-skin=rosewood] .song-browser{background:#fffcf5;color:#40382f}.daily-workbench[data-skin=rosewood] button[aria-pressed=true]{background:#eadcc7;color:#6b461f;border-color:#b89569}
+.daily-workbench[data-skin=midnight]{--surface:#1b1b29;--panel:#232332;--text:#e2e1ed;--muted:#aaa8bf;--line:#3b3a51;--accent:#c0acf4;background:#191925;color:#e2e1ed}
+.daily-workbench[data-skin=midnight] :is(.application-menubar,.instrument-header,.instrument-controls,.practice-transport,.workspace-navigation,.song-browser,.practice-timeline,.practice-result-strip,.practice-queue-strip){background:#222232;color:#e2e1ed;border-color:#3b3a51}
+.daily-workbench[data-skin=midnight] :is(input,select,button){color:inherit}.daily-workbench[data-skin=midnight] :is(.song-browser-sidebar,.song-browser-detail,.song-browser-list){background:#1c1c2a;color:#e2e1ed;border-color:#3b3a51}
+.daily-workbench[data-skin=midnight] button[aria-pressed=true]{background:#443a60;color:#e5d9ff;border-color:#8b73bb}
+.daily-workbench[data-skin=midnight] :is(.settings-dialog,.modal-dialog){background:#252536;color:#e2e1ed;--text:#e2e1ed;--muted:#aaa8bf}
+.daily-workbench[data-skin=midnight] .settings-dialog :is(select,input:not([type=range]),button){background:#303046;border-color:#4b4964;color:#e2e1ed}
+@media(max-width:780px){.appearance-fields{grid-template-columns:1fr}.practice-variant summary{gap:8px;flex-wrap:wrap}.variant-body{max-height:230px}.variant-body fieldset{min-width:0;width:100%}}
+
+.daily-workbench{--instrument-panel:#fff;--instrument-surface:#f5f6fa;--instrument-text:#273147;--instrument-muted:#71809a;--instrument-line:#dce2ed;--instrument-selected:#e9edfb;--instrument-accent:#6474d1}
+.daily-workbench[data-skin=rosewood]{--instrument-panel:#fffcf5;--instrument-surface:#f4eee3;--instrument-text:#493d2e;--instrument-muted:#8c765d;--instrument-line:#ddd0b9;--instrument-selected:#eddfc8;--instrument-accent:#97703f}
+.daily-workbench[data-skin=midnight]{--instrument-panel:#222232;--instrument-surface:#1a1a29;--instrument-text:#e2e1ed;--instrument-muted:#aaa8bf;--instrument-line:#3b3a51;--instrument-selected:#443a60;--instrument-accent:#c0acf4;color-scheme:dark}
+.daily-workbench .instrument-controls>button{background:transparent;color:var(--instrument-muted);border:1px solid var(--instrument-line);border-radius:5px;padding:5px 9px;font-size:11px}
+.daily-workbench[data-skin]:not([data-skin=studio]) :is(.workspace-topbar,.practice-panel .song-toolbar,.practice-panel .practice-view-toolbar,.instrument-controls,.practice-transport,.practice-timeline,.practice-result-strip,.practice-queue-strip,.browser-sidebar,.browser-detail,.browser-content,.browser-search,.browser-resume,.toolbar-more-actions){background:var(--instrument-panel);color:var(--instrument-text);border-color:var(--instrument-line)}
+.daily-workbench[data-skin]:not([data-skin=studio]) :is(.app-name,.current-song h1,.browser-heading h1,.browser-detail h2,.browser-song-title strong,.browser-song.selected .browser-song-title strong){color:var(--instrument-text)}
+.daily-workbench[data-skin]:not([data-skin=studio]) :is(.application-menubar .toolbar-more>summary,.workspace-navigation button,.practice-panel .song-toolbar button,.practice-panel .practice-view-toolbar button,.browser-tree-row>button,.browser-heading p,.browser-root,.browser-song-title small,.browser-song-facts dd,.browser-detail p,.browser-list-toolbar,.browser-pagination){color:var(--instrument-muted)}
+.daily-workbench[data-skin]:not([data-skin=studio]) .song-browser{background:var(--instrument-surface);color:var(--instrument-text);color-scheme:inherit}
+.daily-workbench[data-skin]:not([data-skin=studio]) .browser-song.selected{background:var(--instrument-selected)!important;border-color:var(--instrument-line)!important;box-shadow:inset 3px 0 var(--instrument-accent)}
+.daily-workbench[data-skin]:not([data-skin=studio]) :is(.browser-root.selected,.browser-tree-row.selected,.browser-song:hover,.browser-search input,.browser-song-icon,.browser-resume){background:var(--instrument-surface);color:var(--instrument-text)}
+.daily-workbench[data-skin]:not([data-skin=studio]) :is(.workspace-navigation button[aria-current=page],.practice-view-tabs button.selected){background:var(--instrument-selected);color:var(--instrument-accent)}
+.daily-workbench[data-skin]:not([data-skin=studio]) .application-menubar,.daily-workbench[data-skin]:not([data-skin=studio]) .workspace-navigation{background:transparent}
+.daily-workbench[data-skin]:not([data-skin=studio]) .practice-panel .song-toolbar button{background:transparent}
+.daily-workbench[data-skin=midnight] .practice-panel{background:#181725}
+.daily-workbench[data-skin=rosewood] .practice-panel{background:#2b231b}
+.daily-workbench[data-skin=midnight] :is(.practice-speed input[type=number],.practice-mode-switch button){background:#303046;border-color:#48465f;color:#d6d1e8}
+.daily-workbench[data-skin=midnight] .application-menubar .toolbar-more-actions>button{color:#d1cbdf}
+.daily-workbench .practice-variant button:disabled{opacity:.45}
+
+.daily-workbench[data-skin]:not([data-skin=studio]) .browser-sidebar-title{color:var(--instrument-text)}
+.daily-workbench[data-skin=rosewood] .browser-begin{background:#94713f;border-color:#94713f}
+.daily-workbench[data-skin=rosewood] .play-button{background:#94713f;border-color:#94713f}
+.daily-workbench[data-skin=midnight] .browser-begin{background:#7d64b2;border-color:#7d64b2}

@@ -1,0 +1,320 @@
+# MusicXML and grand-staff architecture
+
+## 当前 Web 路径与支持边界（2026-11-16）
+
+当前采用原始文档、练习语义、演奏对齐、显示四层。`panthesia-engine/src/notation.rs::ScoreAsset` 保留原字节和来源指纹；Rust `Score` 为练习所需的有限语义模型。Web 的 `public/verovio/worker.mjs` 直接读取保存的 XML/MXL，并输出 SVG 与渲染证据，随后与 Rust 音乐身份核对。
+
+显示正确、分析支持、演奏支持、编辑和完整导出分别记录。当前模型包含部分音乐语义，移调与渐强/渐弱楔形线仍有未表达诊断；完整排版、歌词等依靠原始来源保留。固定来源版本内的确定性 ID 与跨版本音符对应分别处理。原始文件和受控标记导出已有实现，统一往返保留证据仍待补齐。
+
+当前决策与后续工作见 [架构决策 A05–A06](../development/architecture-decisions.md)、[当前计划 T02–T06/T08](../development/current-plan.md) 和 [兼容矩阵](../development/musicxml-compatibility.md)。
+
+## 早期原生方案与演进记录
+
+下文保留早期导入器、原生渲染、worker 协议与逐步接入记录。文中的 “first”“next”“not yet” 按相应历史实现阶段理解；其中 `Score → engraving adapter` 为边界方向示意。当前 Web 的实际数据路径以上文为准。
+
+Panthesia treats notation as learning data, not merely a picture. MusicXML is
+imported into a small internal score model; practice analysis and fingering use
+that model; a replaceable renderer is responsible only for layout.
+
+```text
+MusicXML / MXL
+      |
+      v
+notation-neutral Score --------> phrase / fingering / score feedback
+      |                                      |
+      v                                      v
+engraving adapter <--------------- stable note and measure identities
+      |
+      v
+grand staff synchronized with the existing player clock
+```
+
+## What the first importer preserves
+
+- title, composer, parts and numbered measures;
+- exact rational quarter-note positions and durations;
+- pitch, rest, chord, voice and staff identity;
+- key signature, time signature, divisions and clefs;
+- direction words, dynamics, tempo and pedal marks;
+- fingering, ties, slurs, articulations and tuplet notation;
+- polyphonic `backup` and `forward` timing.
+- deterministic part/measure/kind/ordinal identities for notes and directions.
+- exact score-time projection through a paired MIDI PPQ and tempo map, including
+  explicit pulse-rounding and unprojected gaps.
+- confidence-bearing score-note to MIDI-note alignment with stable
+  `track_id`/`note_index` identities and explicit gaps on both sides.
+- repeat barlines, repeat counts and numbered-ending spans, preserved before
+  any playback-order expansion.
+
+The model deliberately has no SVG, DOM, webview or wgpu layout types. Learning
+features must remain usable if the renderer changes later.
+
+## Alignment contract
+
+Alignment is evidence, not source mutation. For each written pitch, the matcher
+compares an ordered score sequence with the ordered non-drum MIDI sequence. A
+bounded dynamic-programming pass can skip either side, so an added note or a
+missing repeated pitch does not cascade into false matches. Candidates more
+than 250 ms apart are never forced together.
+
+Every accepted pair retains:
+
+- the stable score event ID;
+- the MIDI track ID and note index already used by the player;
+- signed onset and duration differences;
+- whether score time projected exactly to a MIDI pulse;
+- confidence derived from those timing facts.
+
+Unmatched score and MIDI identities remain first-class results. A one-million
+cell limit per pitch bounds memory; very large sequences use a deterministic
+chronological fallback. This core does not yet compensate global offset,
+transposition, repeats or endings, and the current player UI does not consume
+the mapping.
+
+## Written order and performed order
+
+`Part.measures` always remains in source-document order. Each measure now
+preserves its barlines, forward/backward repeats, repeat count and numbered
+ending markers. Ending labels retain both their raw text and bounded parsed
+passes, so unusual exporter values are inspectable rather than silently lost.
+
+A separate bounded playback plan now gives each performed measure visit a
+deterministic occurrence identity while retaining the stable source-measure
+identity. Common repeats and numbered endings are expanded without mutating or
+duplicating the imported semantic score. Independent pass and visit caps make
+malformed input finite; diagnostics mark capped counts, malformed endings,
+unknown navigation and currently unsupported nested repeats.
+
+Each included visit now carries cumulative performed score time. Notes and
+directions expand into occurrence records identified by stable source event ID
+plus measure-visit occurrence ID; their measure-relative onsets are projected
+through the paired MIDI PPQ and tempo map. This correctly gives repeated source
+notes distinct player-clock times without duplicating source semantics.
+
+The primary gap-aware MIDI-note matcher now consumes these repeated
+occurrences. Match and unmatched evidence uses stable source-plus-occurrence
+IDs, and performed measure/pass signatures are compared across piano parts.
+Navigation conflicts and bounded-plan warnings remain explicit in the
+alignment result. Da capo, dal segno, coda and fine require a later explicit
+navigation model.
+
+## Compatibility verdict
+
+The core reduces alignment evidence to a conservative structured verdict:
+
+| Verdict | Meaning |
+| --- | --- |
+| Ready | navigation complete, at least 95% coverage, at least 85% mean confidence and no missing score notes |
+| Review | navigation complete, at least 75% coverage and at least 70% mean confidence |
+| Poor | navigation works but note evidence is below the review threshold |
+| Blocked | navigation is incomplete or conflicting, regardless of note percentage |
+
+The summary also retains matched notes, score gaps, MIDI gaps, inexact PPQ
+projections and navigation diagnostics. UI layers must show this evidence
+rather than replacing it with an unrelated compatibility calculation.
+
+## Song association
+
+The existing MIDI-content-bound `.panthesia.ron` sidecar can hold one optional
+score association. A score must parse before it is saved; the association
+stores a BLAKE3 fingerprint and uses a MIDI-relative path when possible.
+Loading can therefore distinguish missing, invalid, replaced and verified
+scores without touching the original MIDI or score. Practice Library Info now
+exposes native Pair, Replace and Remove controls plus this health state.
+Analyze runs the complete alignment pipeline off the UI thread and caches the
+structured readiness evidence against the score fingerprint. Pair, Replace and
+Remove invalidate stale analysis automatically.
+
+## Renderer synchronization contract
+
+The renderer does not receive practice authority. An adapter returns a bounded
+page count plus a one-to-one index from native `ScoreEventId` values to its own
+private element IDs. The index rejects empty IDs, duplicate score mappings,
+duplicate renderer IDs and out-of-range pages before playback can consume it.
+
+The native alignment produces an occurrence-aware highlight timeline from the
+matched MIDI note timestamps. A frame contains active notes plus a stable focus
+for page following. During rests, focus remains on the latest started note
+instead of jumping ahead. Repeated passages reuse the same written renderer
+element while retaining their distinct performed occurrence identities.
+
+Missing MIDI or renderer elements remain explicit diagnostics and never cause
+the player to guess or panic. This protocol is implemented without Verovio,
+JavaScript, SVG or web-view types; the next adapter must satisfy it behind a
+feature flag.
+
+Verovio's nominal time, pitch and duration tuple is sufficient for most notes,
+but it is not globally unique: the pinned corpus contains same-time/same-pitch
+unisons in independent voices. Correlation therefore groups both native and
+renderer evidence by semantic key and accepts only one-to-one groups. Duplicate
+groups, one-sided notes and extra renderer elements remain explicit. Source
+order is deliberately not a tie-breaker because it could highlight the wrong
+voice while appearing visually plausible.
+
+The worker boundary is a versioned JSON manifest rather than in-process
+JavaScript objects. It binds generated SVG pages to the exact score SHA-256 and
+contains only safe relative page paths plus renderer note evidence. The native
+side validates schema, renderer identity, fingerprint, complete page numbering,
+paths, note ranges and renderer-ID uniqueness before correlation. This makes
+generated artifacts cacheable while preventing stale or partially replaced
+score pages from entering the player.
+
+Manifest schema 2 also binds each individual SVG page by byte length and
+SHA-256. Verification happens after reading the page and before it can be handed
+to a texture or web display. Schema 1 remains structurally readable for
+diagnostics, but page loading requires per-page hashes and therefore fails
+closed for older artifacts.
+
+The native page cache holds at most the focused page and its immediate
+neighbours. A focus change evicts pages and pending requests outside that
+window, and new requests are prioritized current/previous/next. Every request
+carries a monotonically changing document generation. Results from an older
+song are rejected as stale; late results from an older window in the same song
+are rejected as outside the window. Duplicate or unsolicited completions are
+also refused. The cache therefore bounds memory and prevents asynchronous work
+from visually crossing song boundaries.
+
+## Feature-gated worker boundary
+
+The application now has a default-off `score-verovio` feature. When enabled, a
+native worker wrapper launches the pinned Node script with direct argument
+passing—never a shell—and renders into a unique staging directory. The script
+writes SVG pages first and publishes `manifest.json` last. Rust then validates
+the source fingerprint, schema and every page before atomically renaming the
+staging directory into the content-addressed cache.
+
+A valid cache hit bypasses Node entirely. A corrupt existing cache fails closed
+instead of being silently overwritten, and failed staging output is removed.
+Cache paths accept only lowercase SHA-256 identities, preventing path traversal.
+The default build neither compiles this module nor requires Node/Verovio.
+
+That generation now crosses the real application event boundary. Every `Play`
+transition starts a new render generation; transitions to menu, settings or
+free play advance it as well. The worker verifies the portable score association
+on its background thread, renders or reuses the cache, and sends a normal user
+event containing its generation. The event loop accepts only the current result
+once before handing the artifact to `PlayingScene`. Late results and duplicates
+are discarded before scene mutation. A debug snapshot exposes whether the
+current playing scene has accepted an artifact for future semantic smoke tests.
+
+The opt-in prototype is configured by `PANTHESIA_VEROVIO_PACKAGE_ROOT`, with
+optional `PANTHESIA_NODE`, `PANTHESIA_VEROVIO_WORKER` and
+`PANTHESIA_SCORE_CACHE` overrides. Without the required package root, no worker
+is started.
+
+After an artifact is accepted, PlayingScene creates its own bounded page cache,
+focuses page zero and requests only page zero and page one. Each request is read
+on a named background thread and re-verifies the page byte length and SHA-256 at
+read time. Results cross a separate application event containing both the outer
+song generation and inner page-cache request. The outer coordinator rejects
+cross-song results; the page cache rejects old windows and duplicates. Failed
+current-window reads release their pending slot so a later focus action can
+retry them. Debug snapshots expose focused and cached page counts.
+
+Verified page bytes are now parsed and rasterized by `resvg` on those page
+threads. Raster surfaces are opaque sRGB RGBA, preserve the SVG aspect ratio and
+are capped at 1600×2400 and four million pixels before allocation. A process-wide
+read-only font database avoids rescanning system fonts for neighbouring pages.
+The bounded cache stores reference-counted RGBA values, but only its focused
+page is uploaded through the existing native image pipeline. Replacing focus or
+the complete score document releases the previous GPU image; neighbour pages
+never allocate textures.
+
+The first visible surface fits one engraved page within a persisted 40–72%
+share of the logical viewport height and defaults to 62%. Its own header shows
+the current size and exposes compact minus/plus controls, avoiding more density
+in the practice toolbar. The layout reserves 160 pixels for the keyboard at the
+supported 670×620 minimum window and clamps legacy or damaged values before
+layout. It is composed before the top controls so practice actions remain
+unobstructed.
+This is intentionally a renderer shell: it does not own playback position,
+practice matching or highlight authority. Debug snapshots distinguish artifact,
+CPU cache, focus and GPU texture state so the boundary can be tested without
+screen-coordinate assertions.
+
+Score visibility is a persisted native appearance preference and defaults on,
+including when an older settings file has no field. The top-bar control is
+created only when a verified artifact exists. Hiding removes the focused image
+from the GPU renderer immediately but deliberately keeps the content-verified
+CPU window and semantic focus. Showing therefore uploads the cached page again
+without launching Node or Verovio. Page completions accepted while hidden stay
+CPU-only. The debug boundary exposes visibility separately from artifact,
+cache, focus and texture state so those lifetime guarantees are independently
+testable.
+
+The background boundary also reconstructs the native synchronization package
+for both fresh renders and cache hits. Native score notes are projected through
+the paired MIDI tempo map into onset/pitch/duration evidence, correlated only
+against unique Verovio semantic groups, then combined with the occurrence-aware
+score-to-MIDI alignment. The resulting render index and highlight timeline are
+owned by Rust; ambiguous unisons remain absent rather than receiving a source-
+order guess.
+
+After each player update, PlayingScene asks that timeline for the latest
+started note. Before the first note no focus is claimed; during a rest the last
+started note remains the focus. A page change advances the existing bounded
+cache window, evicts requests outside current/previous/next, releases the old
+GPU image and either uploads the cached target or starts verified background
+loads. Thus renderer layout selects a page, but native playback time remains
+the sole navigation authority.
+
+Active-note paint reuses that frame but does not mutate the verified page
+texture. On the same background raster thread, the HTML-style Verovio
+`data-id` attributes are rewritten only in memory so `usvg` can resolve the
+already validated renderer IDs. The first notehead child contributes bounded
+integer geometry stored beside the cached RGBA page. Missing IDs or empty
+geometry are omitted without invalidating the page.
+
+PlayingScene scales those bounds into the fitted page and draws a translucent
+blue fill plus an opaque outline after the page image. This gives a shape cue in
+addition to colour and avoids per-frame rerasterization, cache mutation or
+per-note GPU textures. Debug state distinguishes total synchronized notes,
+currently active semantic notes and active notes with visible geometry.
+
+The worker accepts `auto` layout by default and the explicit `encoded` mode for
+scores whose authored page breaks must be preserved. Layout mode is part of the
+cache namespace, so identical source bytes rendered under different break
+policies cannot reuse the wrong pages. An artifact with zero uniquely
+correlated notes is still renderable, but is no longer reported as synchronized.
+
+## Renderer decision
+
+| Option | Strength | Cost or risk | Decision |
+| --- | --- | --- | --- |
+| Build engraving in native wgpu | Full visual control | Professional notation layout is a large product by itself | Do not pursue |
+| Verovio to SVG | Portable, open source, embeddable, MusicXML input | 6.66 MiB module; requires page virtualization and a native display boundary | Approved for an isolated proof of concept |
+| MuseScore conversion | Broad import/export and mature engraving | Large external application; poor embedded runtime boundary | Optional external authoring tool; registered originals open from the desktop app |
+| React rewrite | Easy SVG/DOM display | Replaces a working native interaction/render loop without improving score semantics | Not required |
+
+MusicXML 4.0 supports much more than this first slice. The importer emits
+warnings for recognized deferred notation rather than silently claiming full
+support. See the [MusicXML 4.0 specification](https://www.w3.org/2021/06/musicxml40/),
+[Verovio input documentation](https://book.verovio.org/toolkit-reference/input-formats.html)
+and [MuseScore MusicXML guidance](https://handbook.musescore.org/file-management/working-with-musicxml-files).
+The desktop score manager can launch MuseScore Studio for a registered,
+unchanged MusicXML/MXL original. The user returns to the existing original-
+update review after saving. The embedded practice renderer remains Verovio;
+this handoff does not embed MuseScore or silently replace the current version.
+The pinned real-score evidence and exact counts live in the
+[compatibility matrix](../development/musicxml-compatibility).
+The renderer measurements and adoption constraints live in the
+[Verovio benchmark](../development/verovio-benchmark).
+
+## Planned slices
+
+1. Build a representative corpus of exported piano scores; bounded compressed
+   MXL input is already supported.
+2. Add score-timewise conversion when corpus evidence justifies its priority.
+3. Model repeats/endings, tuplets, transposition, pedal and ornament semantics
+   needed by learning features.
+4. Give score notes and measures stable identities and align them with the
+   player's performance timeline. The linear-timeline core is complete; repeat
+   and ending playback policy remains.
+5. Measure Verovio import fidelity, SVG generation time, binary size and
+   highlight latency outside the main application. This spike passed with
+   explicit size, virtualization and pedal-fidelity constraints.
+6. Add a feature-flagged synchronized grand-staff proof of concept behind a
+   renderer adapter, keeping the Rust semantic model authoritative.
+
+The original MIDI remains untouched. Notation layers must stay independently
+switchable and must report unsupported source features visibly.

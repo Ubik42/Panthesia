@@ -1,0 +1,2 @@
+# Optional isolated round-recovery fixture; not needed by the packaged application.
+blake3==1.0.8

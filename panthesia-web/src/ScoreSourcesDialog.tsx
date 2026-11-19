@@ -1,0 +1,698 @@
+import { ScoreTaskActivity } from "./engine/ScoreTaskActivity";
+import { requireValue } from "./engine/requireValue";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createScoreSourceClient } from "./features/scores/scoreSourceClient";
+import { X, RefreshCw } from "lucide-react";
+import { api } from "./api";
+import { ScoreSourceBatch } from "./ScoreSourceBatch";
+import {
+  ScoreRoutePreview,
+  type ScoreRouteEvidence,
+} from "./ScoreRoutePreview";
+
+import type {
+  ScoreSource as Source,
+  ScoreSourcePreview as Preview,
+  SourceStatus,
+} from "./features/scores/sourceTypes";
+export type {
+  ScoreSource as Source,
+  ScoreSourcePreview as Preview,
+} from "./features/scores/sourceTypes";
+const states: Record<SourceStatus, string> = {
+  ready: "原文件与保存版本一致",
+  changed: "原文件有更新",
+  acknowledged: "已保留当前版本",
+  missing: "原文件缺失",
+  unreadable: "原文件无法读取",
+};
+const durationText = (s: number) => {
+  const total = Math.round(s);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+};
+const displayPath = (path: string) => path.replace(/^\\\\\?\\/, "");
+
+export function ScoreSourcesDialog({
+  contentId,
+  engineId,
+  focusVersionId,
+  close,
+  changed,
+}: {
+  contentId?: string;
+  engineId?: string;
+  focusVersionId?: string;
+  close: () => void;
+  changed: () => Promise<void>;
+}) {
+  const client = useMemo(
+    () => createScoreSourceClient(engineId),
+    [engineId, contentId],
+  );
+  const [entries, setEntries] = useState<Source[]>([]),
+    [preview, setPreview] = useState<Preview | null>(null),
+    [selected, setSelected] = useState<string | null>(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState(""),
+    [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [batch, setBatch] = useState(false);
+  const focusPending = useRef(Boolean(focusVersionId));
+  useEffect(() => setPage(0), [query, filter]);
+  useEffect(() => {
+    if (!focusPending.current || !focusVersionId) return;
+    const index = entries.findIndex(
+      (entry) => entry.versionId === focusVersionId,
+    );
+    if (index < 0) return;
+    setSelected(entries[index].id);
+    setPage(Math.floor(index / 50));
+    focusPending.current = false;
+  }, [entries, focusVersionId]);
+  const working = useRef(false),
+    workSequence = useRef(0),
+    alive = useRef(true),
+    generation = useRef(0);
+  const scopeKey = JSON.stringify([contentId ?? null, engineId ?? null]);
+  const currentScopeKey = useRef(scopeKey);
+  currentScopeKey.current = scopeKey;
+  const pendingRefresh = useRef<{
+    contentId: string | undefined;
+    ticket: number;
+    job: Promise<void>;
+  } | null>(null);
+  const refresh = async (): Promise<void> => {
+    const pending = pendingRefresh.current;
+    if (pending) {
+      let failure: unknown;
+      try {
+        await pending.job;
+      } catch (cause) {
+        failure = cause;
+      }
+      if (!alive.current || currentScopeKey.current !== scopeKey) return;
+      if (
+        pending.contentId === contentId &&
+        pending.ticket === generation.current
+      ) {
+        if (failure) throw failure;
+        return;
+      }
+      if (pendingRefresh.current === pending) pendingRefresh.current = null;
+    }
+    const ticket = ++generation.current;
+    const operation = { contentId, ticket, job: Promise.resolve() };
+    const job = (async () => {
+      const requestedContentId = contentId;
+      try {
+        const data = await client.read(requestedContentId);
+        if (
+          alive.current &&
+          ticket === generation.current &&
+          currentScopeKey.current === scopeKey
+        ) {
+          setEntries(data.entries);
+          setLoading(false);
+          setError("");
+        }
+      } catch (cause) {
+        if (
+          alive.current &&
+          ticket === generation.current &&
+          currentScopeKey.current === scopeKey
+        ) {
+          setLoading(false);
+          throw cause;
+        }
+      }
+    })();
+    operation.job = job;
+    pendingRefresh.current = operation;
+    try {
+      await job;
+    } finally {
+      if (pendingRefresh.current === operation) pendingRefresh.current = null;
+    }
+  };
+  useEffect(() => {
+    alive.current = true;
+    workSequence.current++;
+    working.current = false;
+    setBusy(false);
+    setEntries([]);
+    setChosen(new Set());
+    setBatch(false);
+    setLoading(true);
+    setPreview(null);
+    setSelected(null);
+    focusPending.current = Boolean(focusVersionId);
+    void refresh().catch((e) => alive.current && setError(String(e)));
+    const refreshWhenActive = () => {
+      if (
+        document.visibilityState === "visible" &&
+        document.hasFocus() &&
+        !working.current
+      )
+        void refresh().catch((e) => alive.current && setError(String(e)));
+    };
+    const timer = setInterval(() => {
+      refreshWhenActive();
+    }, 5000);
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    return () => {
+      alive.current = false;
+      generation.current++;
+      clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [scopeKey, focusVersionId, client]);
+  const work = async (job: () => Promise<void>, refreshAfter = true) => {
+    if (working.current) return;
+    const requestedContentId = contentId;
+    const ticket = ++workSequence.current;
+    working.current = true;
+    setBusy(true);
+    setError("");
+    if (refreshAfter) setMessage("");
+    let jobSucceeded = false;
+    try {
+      await job();
+      jobSucceeded = true;
+      if (refreshAfter) await refresh();
+    } catch (e) {
+      if (
+        alive.current &&
+        workSequence.current === ticket &&
+        currentScopeKey.current === scopeKey
+      ) {
+        setError(
+          jobSucceeded
+            ? `当前操作已执行，但原谱列表读取失败：${String(e)}。请点击“立即检查”重读。`
+            : String(e),
+        );
+        if (!jobSucceeded) setPreview(null);
+      }
+    } finally {
+      if (workSequence.current === ticket) {
+        working.current = false;
+        if (alive.current && currentScopeKey.current === scopeKey)
+          setBusy(false);
+      }
+    }
+  };
+  const source = entries.find((s) => s.id === selected);
+  const currentPreview =
+    preview &&
+    source?.id === preview.id &&
+    source.fingerprint === preview.fingerprint
+      ? preview
+      : null;
+  const apply = (mode: "notation" | "performance" | "notationAndUse") =>
+    void work(async () => {
+      if (!currentPreview) return;
+      if (
+        mode === "notationAndUse" &&
+        (!contentId ||
+          source?.contentId !== contentId ||
+          !currentPreview.oldAvailable ||
+          currentPreview.pairing?.readiness !== "Ready" ||
+          currentPreview.routePreview?.route?.complete !== true)
+      ) {
+        throw new Error(
+          "当前原谱与正在练习的曲目尚未可靠对应。请先核对演奏顺序与谱音，再决定是否启用。",
+        );
+      }
+      if (
+        mode === "performance" &&
+        (!currentPreview.performanceReady ||
+          currentPreview.routePreview?.route?.complete !== true)
+      ) {
+        throw new Error(
+          "更新后谱面的演奏顺序尚未确认。请先保存谱面版本并校对。",
+        );
+      }
+      const result = await client.apply(
+        currentPreview.id,
+        currentPreview.fingerprint,
+        mode === "notationAndUse" ? "notation" : mode,
+      );
+      let activation = "";
+      if (mode === "notationAndUse") {
+        const versionId = result.versionId;
+        if (!versionId) {
+          activation =
+            "新谱面已保存，但版本编号未返回，因此尚未启用。请在谱面版本中检查。";
+        } else {
+          try {
+            const route = await client.command<ScoreRouteEvidence>({
+              type: "previewScoreVersionRoute",
+              id: versionId,
+              content_id: requireValue(contentId, "当前曲目编号"),
+            });
+            if (route.route?.complete !== true || route.readiness !== "Ready")
+              throw new Error("新版本与当前曲目的演奏顺序或音符对应需重新核对");
+            await client.command({
+              type: "activateScore",
+              id: versionId,
+              content_id: requireValue(contentId, "当前曲目编号"),
+            });
+            activation = "已保存并启用新谱面。当前曲目可以按更新后的小节练习。";
+          } catch (cause) {
+            activation = `新谱面已保存为版本 ${versionId}，但尚未启用：${cause instanceof Error ? cause.message : String(cause)}。请在谱面版本中核对后启用。`;
+          }
+        }
+      }
+      if (alive.current && currentScopeKey.current === scopeKey) {
+        setPreview(null);
+        setMessage(
+          [
+            mode === "notationAndUse"
+              ? activation
+              : mode === "notation"
+                ? "已添加新的谱面版本。原版本和演奏保持；需要时再选择使用新谱面。"
+                : "已生成并打开新谱演奏，旧曲目和成绩仍保留。",
+            ...result.warnings,
+          ].join(" "),
+        );
+      }
+      try {
+        await changed();
+      } catch (cause) {
+        if (alive.current && currentScopeKey.current === scopeKey)
+          setMessage(
+            (current) =>
+              `${current} 曲库状态暂未同步：${String(cause)}。请重新读取曲库。`,
+          );
+      }
+    });
+  const rows = entries.filter(
+    (s) =>
+      (filter === "all" ||
+        (filter === "changed" && s.pending) ||
+        (filter === "unavailable" &&
+          ["missing", "unreadable"].includes(s.status))) &&
+      `${s.songTitle} ${s.name} ${s.path}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+  );
+  useEffect(
+    () =>
+      setPage((n) => Math.min(n, Math.max(0, Math.ceil(rows.length / 50) - 1))),
+    [rows.length],
+  );
+  return (
+    <div
+      className="modal-backdrop score-sources-backdrop"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!busy) close();
+      }}
+    >
+      <section
+        className="settings-dialog score-sources-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="score-sources-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="dialog-heading">
+          <div>
+            <h2 id="score-sources-title">原谱文件</h2>
+            <p>保存版本与外部 MusicXML / MXL 原文件的对应关系</p>
+          </div>
+          <button
+            aria-label="关闭原谱文件"
+            autoFocus
+            disabled={busy}
+            onClick={close}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <p className="parameter-help">
+          原文件修改后，保存的谱面、演奏和个人资料继续保留。先预览，再选择添加谱面版本或生成新演奏。这里的文件位置仅保存在本机。
+        </p>
+        <div className="score-source-query">
+          <input
+            aria-label="查找原谱文件"
+            placeholder="查找版本名称或原文件位置"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <select
+            aria-label="原谱文件状态筛选"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="all">全部关联</option>
+            <option value="changed">有更新</option>
+            <option value="unavailable">缺失或无法读取</option>
+          </select>
+          <button disabled={busy} onClick={() => void work(refresh, false)}>
+            <RefreshCw size={14} />
+            立即检查
+          </button>
+        </div>
+        {(busy || loading) && <ScoreTaskActivity />}
+        {error && (
+          <p className="dialog-error" role="alert">
+            {error}
+          </p>
+        )}
+        {message && <p role="status">{message}</p>}
+        {loading && <p className="parameter-help">正在读取原谱关联…</p>}
+        {!loading && !error && !entries.length && (
+          <p className="parameter-help">
+            尚未关联原谱。在桌面版直接打开乐谱或在曲库添加演奏乐谱时会建立关联；已保存版本也可手动关联与其内容一致的原文件。
+          </p>
+        )}
+        <div className="score-source-batch-toolbar">
+          <button
+            disabled={busy || batch}
+            onClick={() =>
+              setChosen((previous) => {
+                const next = new Set(previous);
+                for (const row of rows.filter(
+                  (row) => row.pending && row.fingerprint,
+                )) {
+                  if (next.size >= 100) break;
+                  next.add(row.id);
+                }
+                return next;
+              })
+            }
+          >
+            选择筛选结果中的更新
+          </button>
+          <button
+            disabled={busy || batch || !chosen.size}
+            onClick={() => setChosen(new Set())}
+          >
+            清空选择
+          </button>
+          <button
+            className="primary-button"
+            disabled={
+              busy ||
+              batch ||
+              !entries.some((row) => chosen.has(row.id) && row.pending)
+            }
+            onClick={() => {
+              setPreview(null);
+              setBatch(true);
+            }}
+          >
+            批量预览 ·{" "}
+            {entries.filter((row) => chosen.has(row.id) && row.pending).length}
+          </button>
+          <span className="parameter-help">
+            每批最多 100 个版本，跨页保留选择
+          </span>
+        </div>
+        {batch && (
+          <ScoreSourceBatch
+            client={client}
+            sources={entries.filter((row) => chosen.has(row.id) && row.pending)}
+            run={work}
+            busy={busy}
+            changed={changed}
+            close={() => {
+              setBatch(false);
+              setChosen(new Set());
+            }}
+          />
+        )}
+        <div className="score-source-list" hidden={batch}>
+          {rows.slice(page * 50, (page + 1) * 50).map((s) => (
+            <article
+              data-source-id={s.id}
+              className={selected === s.id ? "selected" : ""}
+              key={s.id}
+            >
+              <header>
+                <label className="score-source-choice">
+                  <input
+                    type="checkbox"
+                    aria-label={`选择更新：${s.songTitle} · ${s.name}`}
+                    disabled={
+                      busy ||
+                      batch ||
+                      !s.pending ||
+                      !s.fingerprint ||
+                      (!chosen.has(s.id) && chosen.size >= 100)
+                    }
+                    checked={chosen.has(s.id)}
+                    onChange={(event) =>
+                      setChosen((previous) => {
+                        const next = new Set(previous);
+                        if (event.target.checked) next.add(s.id);
+                        else next.delete(s.id);
+                        return next;
+                      })
+                    }
+                  />
+                  <strong>
+                    {s.songTitle} · {s.name}
+                    {s.active ? " · 当前关联" : ""}
+                  </strong>
+                </label>
+                <span className={s.pending ? "source-updated" : "muted"}>
+                  {states[s.status]}
+                </span>
+              </header>
+              <p className="source-path" title={displayPath(s.path)}>
+                {displayPath(s.path)}
+              </p>
+              {s.error && <p className="parameter-help">{s.error}</p>}
+              <div className="dialog-actions">
+                <button
+                  disabled={
+                    busy || batch || !s.fingerprint || s.status === "ready"
+                  }
+                  onClick={() =>
+                    void work(async () => {
+                      setSelected(s.id);
+                      setPreview(null);
+                      const value = await client.preview(
+                        s.id,
+                        requireValue(s.fingerprint, "原谱指纹"),
+                      );
+                      if (alive.current && currentScopeKey.current === scopeKey)
+                        setPreview(value);
+                    })
+                  }
+                >
+                  预览更新
+                </button>
+                <button
+                  disabled={
+                    busy || batch || !s.fingerprint || s.status !== "changed"
+                  }
+                  onClick={() =>
+                    void work(async () => {
+                      await client.keep(
+                        s.id,
+                        requireValue(s.fingerprint, "原谱指纹"),
+                      );
+                      if (
+                        alive.current &&
+                        currentScopeKey.current === scopeKey
+                      ) {
+                        setPreview(null);
+                        setMessage(
+                          "已保留当前版本；原文件再次修改时会重新显示更新。",
+                        );
+                      }
+                    })
+                  }
+                >
+                  保留当前版本
+                </button>
+                {api.desktop && (
+                  <button
+                    disabled={busy || batch}
+                    onClick={() =>
+                      void work(async () => {
+                        const result = await client.link(
+                          s.midiPath,
+                          s.contentId,
+                          s.versionId,
+                        );
+                        if (
+                          result &&
+                          alive.current &&
+                          currentScopeKey.current === scopeKey
+                        ) {
+                          setPreview(null);
+                          setMessage("已重新关联原文件。");
+                        }
+                      })
+                    }
+                  >
+                    重新关联原文件
+                  </button>
+                )}
+                <button
+                  disabled={busy || batch}
+                  onClick={() =>
+                    void work(async () => {
+                      await client.command({
+                        type: "unlinkScoreSource",
+                        id: s.id,
+                        path: s.path,
+                      });
+                      if (
+                        alive.current &&
+                        currentScopeKey.current === scopeKey
+                      ) {
+                        setPreview(null);
+                        setMessage(
+                          "已取消原文件关联，保存谱面和曲目继续保留。",
+                        );
+                      }
+                    })
+                  }
+                >
+                  取消原文件关联
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="score-source-pagination" hidden={batch}>
+          <button disabled={page === 0} onClick={() => setPage((n) => n - 1)}>
+            上一页
+          </button>
+          <span>
+            {rows.length
+              ? `${page + 1} / ${Math.ceil(rows.length / 50)}`
+              : "0 / 0"}{" "}
+            · {rows.length} 个关联
+          </span>
+          <button
+            disabled={(page + 1) * 50 >= rows.length}
+            onClick={() => setPage((n) => n + 1)}
+          >
+            下一页
+          </button>
+        </div>
+        {preview && !currentPreview && (
+          <p role="status">原文件或关联已变化，请重新预览后应用。</p>
+        )}
+        {currentPreview && (
+          <section className="score-source-preview" aria-label="原谱更新预览">
+            <h3>{currentPreview.title || currentPreview.name}</h3>
+            <p>
+              {currentPreview.performanceReady
+                ? `${currentPreview.notes} 个演奏音符 · ${durationText(currentPreview.duration ?? 0)}`
+                : `${currentPreview.writtenNotes} 个书面谱音 · 演奏暂无法生成`}{" "}
+              · 缺省速度 {source?.defaultBpm} BPM
+            </p>
+            <p>
+              {!currentPreview.performanceReady
+                ? "可以保存新谱面版本；演奏生成不可用的原因见下方，不自动改变当前演奏。"
+                : currentPreview.samePerformance
+                  ? "演奏内容身份相同，重新生成时继续使用已有曲目资料和成绩。"
+                  : "演奏内容身份不同，将建立另一首曲目。旧成绩、逐音指法、分手、练习片段和计划不会自动迁到新音符。"}
+            </p>
+            <p>
+              {currentPreview.pairing
+                ? `与旧演奏对应 ${currentPreview.pairing.coverage}%${currentPreview.pairing.readiness === "Blocked" ? "，反复导航尚未通过" : ""}。添加谱面后仍需选择版本并核对跟随。`
+                : "旧演奏文件不可用，仍可保存新谱面或生成新的演奏曲目。"}
+            </p>
+            <ScoreRoutePreview
+              evidence={currentPreview.routePreview}
+              title="更新后谱面的实际演奏顺序"
+            />
+            {currentPreview.performanceError && (
+              <p className="dialog-error">{currentPreview.performanceError}</p>
+            )}
+            {currentPreview.pairing?.diagnostics.map((w, i) => (
+              <p className="parameter-help" key={`d${i}`}>
+                {w}
+              </p>
+            ))}
+            {currentPreview.warnings.map((w, i) => (
+              <p className="parameter-help" key={`w${i}`}>
+                {w}
+              </p>
+            ))}
+            <div className="dialog-actions">
+              <button disabled={busy} onClick={() => apply("notation")}>
+                添加为新谱面版本
+              </button>
+              <button
+                disabled={
+                  busy ||
+                  !contentId ||
+                  source?.contentId !== contentId ||
+                  !currentPreview.oldAvailable ||
+                  currentPreview.pairing?.readiness !== "Ready" ||
+                  currentPreview.routePreview?.route?.complete !== true
+                }
+                title={
+                  currentPreview.pairing?.readiness !== "Ready"
+                    ? "谱音与当前演奏尚未可靠对应，请先核对"
+                    : undefined
+                }
+                onClick={() => apply("notationAndUse")}
+              >
+                保存并使用新谱面
+              </button>
+              <button
+                className="primary-button"
+                disabled={
+                  busy ||
+                  !currentPreview.performanceReady ||
+                  currentPreview.routePreview?.route?.complete !== true
+                }
+                onClick={() => apply("performance")}
+              >
+                {!currentPreview.performanceReady
+                  ? "演奏生成不可用"
+                  : currentPreview.routePreview?.route?.complete !== true
+                    ? "演奏顺序需校对"
+                    : currentPreview.samePerformance
+                      ? "更新谱面并打开演奏"
+                      : "建立并打开新演奏曲目"}
+              </button>
+              <button disabled={busy} onClick={() => setPreview(null)}>
+                收起预览
+              </button>
+            </div>
+          </section>
+        )}
+        <footer className="dialog-actions">
+          <button
+            disabled={busy}
+            onClick={() =>
+              void work(async () => {
+                await client.command({ type: "stopRoutine" });
+                await client.command({ type: "stopLadder" });
+                await client.command({ type: "pause" });
+                setMessage(
+                  "已停止当前练习，可重新预览并应用更新。录音需先在录制窗口结束。",
+                );
+                await changed();
+              })
+            }
+          >
+            停止当前练习
+          </button>
+          <span className="parameter-help">
+            {entries.length} 个版本关联 · 每 5 秒检查；应用前再次核对文件内容
+          </span>
+          <button disabled={busy} onClick={close}>
+            完成
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}

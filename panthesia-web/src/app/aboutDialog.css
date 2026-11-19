@@ -1,0 +1,127 @@
+.about-dialog {
+  width: min(660px, calc(100vw - 32px));
+  line-height: 1.6;
+}
+.about-dialog .dialog-heading {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.about-dialog .dialog-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.about-version {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #5e754954;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #3b4b302e, #263337);
+}
+.about-version > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 11px;
+  color: #c5e49e;
+  background: #69814b33;
+}
+.about-version strong {
+  color: #e5eedb;
+  font-size: 19px;
+  font-weight: 600;
+}
+.about-version p {
+  margin: 3px 0 0;
+  color: #b4c3bb;
+  font-size: 12px;
+}
+.about-facts {
+  margin: 14px 0;
+  font-size: 13px;
+}
+.about-facts > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.about-facts dt {
+  color: var(--muted);
+}
+.about-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.about-actions button {
+  min-height: 35px;
+  font-size: 12px;
+}
+.about-status,
+.about-footer {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.about-warning {
+  padding: 10px 12px;
+  margin: 12px 0;
+  border: 1px solid #866343;
+  border-radius: 7px;
+  color: #e5c39e;
+  background: #5c43292e;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.about-warning p {
+  margin: 0 0 7px;
+}
+.about-details {
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.about-details summary {
+  cursor: pointer;
+  color: #bed1bd;
+  padding-block: 4px;
+}
+.about-details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #191f26;
+  font-family: inherit;
+  font-size: 11px;
+  user-select: text;
+}
+.about-copy-fallback {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 12px;
+}
+@media (max-width: 520px) {
+  .about-dialog {
+    padding: 18px;
+  }
+  .about-version strong {
+    font-size: 17px;
+  }
+  .about-facts > div {
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 8px;
+  }
+}

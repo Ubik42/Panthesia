@@ -1,0 +1,85 @@
+.history-annotation-workbench {
+  padding-top: 0;
+}
+.history-annotation-workbench > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.history-annotation-workbench h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.history-annotation-workbench header p {
+  margin: 7px 0 0;
+  color: #aabcca;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.history-annotation-workbench time {
+  font-size: 11px;
+  color: #95a9bc;
+  white-space: nowrap;
+}
+.annotation-field {
+  border: 1px solid #485969;
+  border-radius: 8px;
+  margin: 10px 0;
+  background: #26323e;
+}
+.annotation-field summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  cursor: pointer;
+  gap: 12px;
+  font-size: 12px;
+}
+.annotation-field summary span {
+  color: #adbfcc;
+  font-size: 11px;
+}
+.annotation-field > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0 12px 12px;
+  font-size: 12px;
+}
+.history-annotation-workbench .annotation-field textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.65;
+}
+.annotation-receipt,
+.annotation-merge-field {
+  border: 1px solid #7c6b4f;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.annotation-merge-field p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 130px;
+  overflow: auto;
+}
+.history-annotation-workbench .history-annotation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+@media (max-width: 560px) {
+  .history-annotation-workbench > header {
+    flex-direction: column;
+    gap: 7px;
+  }
+}

@@ -1,0 +1,60 @@
+[
+  {
+    "file": "LICENSE",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/LICENSE",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "1ad02d9267f7874d5b81f29e0bbc833c3e3399cd924a43696fa2a9b9f6b65c4c",
+    "license": "MIT"
+  },
+  {
+    "file": "43d-MultiStaff-StaffChange.musicxml",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/43d-MultiStaff-StaffChange.musicxml",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "da9cb2b59e98c2b643c6b5936c1e3d6487714993ef3fb45e8fa56e1f9c827676",
+    "license": "MIT"
+  },
+  {
+    "file": "42a-MultiVoice-TwoVoicesOnStaff-Lyrics.musicxml",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/42a-MultiVoice-TwoVoicesOnStaff-Lyrics.musicxml",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "1f21a23a83b5fab73489f191085cbd51ac381887af1d5574e5ff5e932b084b25",
+    "license": "MIT"
+  },
+  {
+    "file": "24a-GraceNotes.musicxml",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/24a-GraceNotes.musicxml",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "872293a5844f5983351cf1836e227b94e0f68bcf9e7228591ff250537fde760e",
+    "license": "MIT"
+  },
+  {
+    "file": "45b-RepeatWithAlternatives.musicxml",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/45b-RepeatWithAlternatives.musicxml",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "2dd2a4bc1c25ad01e6e1856692ff01f06703204e1e27da9fbb48139f5a43c24c",
+    "license": "MIT"
+  },
+  {
+    "file": "11c-TimeSignatures-CompoundSimple.musicxml",
+    "url": "https://raw.githubusercontent.com/w3c-cg/musicxmlTestSuite/0618bdee1bfcb965ffdd9f4e52271c909d744fd1/xmlFiles/11c-TimeSignatures-CompoundSimple.musicxml",
+    "revision": "0618bdee1bfcb965ffdd9f4e52271c909d744fd1",
+    "sha256": "37b1da3a2fcb08f2d8c5422ae0bf857a8371a4ea74ef896127bff0c547e30458",
+    "license": "MIT"
+  },
+  {
+    "file": "musescore-4.7.7-five-finger.musicxml",
+    "source": "Panthesia bundled original five-finger exercise",
+    "tool": "MuseScore Studio 4.7.7",
+    "toolSource": "https://github.com/musescore/MuseScore/releases/tag/v4.7.7",
+    "license": "GPL-3.0-or-later",
+    "sha256": "b99f79242896bed767c7f0dacdf19100c7c91c598a81dd7c62c01f7f3f574c4b"
+  },
+  {
+    "file": "audiveris-5.11.0-five-finger.mxl",
+    "source": "Panthesia bundled original five-finger exercise",
+    "tool": "Audiveris 5.11.0",
+    "toolSource": "https://github.com/Audiveris/audiveris/releases/tag/5.11.0",
+    "license": "GPL-3.0-or-later",
+    "sha256": "182944f8d9038481f0a11b15164f023e18825eb74d7ee5b738532cd6588648de"
+  }
+]

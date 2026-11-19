@@ -1,0 +1,113 @@
+.settings-dialog.fingering-dialog {
+  width: min(1120px, 96vw);
+  height: min(920px, 92vh);
+  max-height: 92vh;
+  gap: 10px;
+  background: #222a33;
+}
+.fingering-dialog > .dialog-heading {
+  flex: none;
+  margin-bottom: 0;
+}
+.fingering-dialog > .dialog-heading p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.fingering-dialog .fingering-workspace-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 0;
+  scrollbar-gutter: stable;
+}
+.fingering-dialog .fingering-workspace-body .browse-detail-masthead {
+  background: #222a33;
+}
+.fingering-dialog > .dialog-actions {
+  flex: none;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid #445362;
+  gap: 8px;
+}
+.fingering-dialog > .dialog-actions button {
+  min-height: 34px;
+  font-size: 12px;
+}
+.fingering-dialog .fingering-options {
+  gap: 14px;
+  align-items: end;
+}
+.fingering-dialog .fingering-options label {
+  line-height: 1.6;
+  color: #c2cfe0;
+}
+.fingering-dialog .fingering-options input,
+.fingering-dialog .fingering-options select {
+  min-height: 33px;
+  padding: 6px 8px;
+}
+.fingering-dialog .fingering-options input[type="text"] {
+  width: 86px;
+  font-variant-numeric: tabular-nums;
+}
+.fingering-dialog .fingering-options input[aria-invalid="true"] {
+  border-color: #d9927c;
+  background: #3b2e2b;
+}
+.fingering-dialog .fingering-help {
+  color: #b4c5d8;
+  line-height: 1.7;
+}
+.fingering-dialog .fingering-table-wrap {
+  max-height: 52vh;
+  border-color: #4b5b6b;
+}
+.fingering-dialog .fingering-table {
+  line-height: 1.6;
+}
+.fingering-dialog .fingering-table th {
+  background: #293541;
+  color: #cad9e8;
+}
+.fingering-dialog .fingering-table td:last-child {
+  min-width: 200px;
+}
+.fingering-dialog .fingering-selection {
+  flex-wrap: wrap;
+  gap: 9px 15px;
+}
+.fingering-dialog .finger-review {
+  margin-block: 18px;
+}
+.fingering-dialog .finger-acceptance {
+  margin-top: 0;
+}
+.fingering-dialog .fingering-empty {
+  line-height: 1.8;
+}
+.fingering-dialog .finger-position:focus-visible {
+  outline: 2px solid #a9ca80;
+  outline-offset: 3px;
+}
+@media (max-width: 680px) {
+  .settings-dialog.fingering-dialog {
+    padding: 15px;
+    width: 97vw;
+  }
+  .fingering-dialog .fingering-options > label {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .fingering-dialog .fingering-options label > select {
+    width: 100%;
+  }
+  .fingering-dialog .finger-plan-options {
+    flex-wrap: wrap;
+  }
+  .fingering-dialog > .dialog-actions .primary-button {
+    flex: 1 1 180px;
+  }
+}

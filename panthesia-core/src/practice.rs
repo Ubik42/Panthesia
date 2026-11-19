@@ -1,0 +1,2381 @@
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+    time::Duration,
+    sync::Arc,
+};
+
+use piano_layout::KeyboardRange;
+use serde::{Deserialize, Serialize};
+
+pub type NoteId = u8;
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub enum PracticeHands {
+    Both,
+    Right,
+    Left,
+    Custom,
+    #[default]
+    Unspecified,
+}
+
+impl PracticeHands {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Both => "Both",
+            Self::Right => "Right",
+            Self::Left => "Left",
+            Self::Custom => "Custom",
+            Self::Unspecified => "Unspecified",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::Both => Self::Right,
+            Self::Right => Self::Left,
+            Self::Left | Self::Custom | Self::Unspecified => Self::Both,
+        }
+    }
+}
+
+#[derive(
+    Debug, Clone, Copy, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub enum PracticePart {
+    LeftHand,
+    RightHand,
+    #[default]
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PracticeTarget {
+    pub note: NoteId,
+    pub velocity: u8,
+    pub score_time: Duration,
+    pub duration: Duration,
+    pub track_id: usize,
+    /// One-based measure number. Zero means that measure context is unknown.
+    pub measure: usize,
+    pub part: PracticePart,
+}
+
+impl PracticeTarget {
+    pub fn unknown(note: NoteId) -> Self {
+        Self {
+            note,
+            velocity: 0,
+            score_time: Duration::ZERO,
+            duration: Duration::ZERO,
+            track_id: 0,
+            measure: 0,
+            part: PracticePart::Other,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PracticeWindows {
+    /// A user note may wait this long for its matching score note.
+    pub early_match: Duration,
+    /// A matched note inside this window is considered on time.
+    pub on_time: Duration,
+    /// In flow practice, an expected note becomes missed after this delay.
+    pub late_match: Duration,
+}
+
+impl Default for PracticeWindows {
+    fn default() -> Self {
+        Self {
+            early_match: Duration::from_millis(500),
+            on_time: Duration::from_millis(80),
+            late_match: Duration::from_millis(500),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TimingGrade {
+    Early(Duration),
+    OnTime,
+    Late(Duration),
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct MatchedNote {
+    pub note: NoteId,
+    pub timing: TimingGrade,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PracticeJudgement {
+    Matched(TimingGrade),
+    Missed,
+    Wrong { played_note: NoteId },
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PracticeResult {
+    /// Opaque caller IDs carried through the actual matching queues.
+    /// They identify occurrences and never influence the matching rules.
+    pub reference: Option<usize>,
+    pub input: Option<usize>,
+    pub target: Option<PracticeTarget>,
+    pub judgement: PracticeJudgement,
+    pub timing_offset_ms: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PracticeSnapshot {
+    pub matched_notes: usize,
+    pub on_time_notes: usize,
+    pub early_notes: usize,
+    pub late_notes: usize,
+    pub wrong_notes: usize,
+    pub missed_notes: usize,
+    pub required_notes: usize,
+}
+
+impl PracticeSnapshot {
+    pub fn accuracy(self) -> Option<f32> {
+        let judged = self.matched_notes + self.wrong_notes + self.missed_notes;
+        (judged != 0).then(|| self.matched_notes as f32 / judged as f32)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PracticeBreakdown {
+    pub target_notes: usize,
+    pub matched_notes: usize,
+    pub on_time_notes: usize,
+    pub early_notes: usize,
+    pub late_notes: usize,
+    pub wrong_notes: usize,
+    pub missed_notes: usize,
+}
+
+impl PracticeBreakdown {
+    pub fn accuracy(self) -> Option<f32> {
+        let judged = self.matched_notes + self.wrong_notes + self.missed_notes;
+        (judged != 0).then(|| self.matched_notes as f32 / judged as f32)
+    }
+
+    fn record(&mut self, judgement: PracticeJudgement) {
+        match judgement {
+            PracticeJudgement::Matched(timing) => {
+                self.target_notes += 1;
+                self.matched_notes += 1;
+                match timing {
+                    TimingGrade::Early(_) => self.early_notes += 1,
+                    TimingGrade::OnTime => self.on_time_notes += 1,
+                    TimingGrade::Late(_) => self.late_notes += 1,
+                }
+            }
+            PracticeJudgement::Missed => {
+                self.target_notes += 1;
+                self.missed_notes += 1;
+            }
+            PracticeJudgement::Wrong { .. } => self.wrong_notes += 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct MeasureSummary {
+    pub measure: usize,
+    pub breakdown: PracticeBreakdown,
+    #[serde(default)]
+    pub timing: TimingSummary,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PartSummary {
+    pub part: PracticePart,
+    pub breakdown: PracticeBreakdown,
+    #[serde(default)]
+    pub timing: TimingSummary,
+}
+
+/// A judged score-note group with enough identity to revisit the same voice.
+/// Wrong presses have no proven target and are deliberately not assigned here.
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct MeasurePartSummary {
+    pub measure: usize,
+    pub part: PracticePart,
+    pub track_id: usize,
+    pub breakdown: PracticeBreakdown,
+    #[serde(default)]
+    pub timing: TimingSummary,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Serialize)]
+pub struct AttemptSummary {
+    pub overall: PracticeSnapshot,
+    pub measures: Vec<MeasureSummary>,
+    pub parts: Vec<PartSummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub measure_parts: Vec<MeasurePartSummary>,
+    #[serde(default)]
+    pub timing: TimingSummary,
+    #[serde(default)]
+    pub chords: ChordSummary,
+    #[serde(default)]
+    pub expression: ExpressionSummary,
+    #[serde(default)]
+    pub exercise_passes: Vec<ExercisePassSummary>,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ExercisePassSummary {
+    pub pass: usize,
+    pub breakdown: PracticeBreakdown,
+    #[serde(default)]
+    pub timing: TimingSummary,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ChordSummary {
+    pub eligible_chords: usize,
+    pub complete_chords: usize,
+    pub incomplete_chords: usize,
+    pub median_attack_span_ms: Option<u32>,
+    pub maximum_attack_span_ms: Option<u32>,
+}
+
+impl ChordSummary {
+    pub fn has_profile(self) -> bool {
+        self.complete_chords >= 4
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct TimingSummary {
+    pub matched_samples: usize,
+    /// Negative values are early; positive values are late.
+    pub median_offset_ms: Option<i32>,
+    /// Median absolute deviation from the median offset.
+    pub median_deviation_ms: Option<u32>,
+}
+
+impl TimingSummary {
+    pub fn has_profile(self) -> bool {
+        self.matched_samples >= 8
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TimingCalibrationStatus {
+    InsufficientSamples { captured: usize, required: usize },
+    Unstable { deviation_ms: u32, maximum_ms: u32 },
+    Centered,
+    AtLimit,
+    Suggested(TimingCalibrationSuggestion),
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct TimingCalibrationSuggestion {
+    pub current_ms: i32,
+    pub adjustment_ms: i32,
+    pub suggested_ms: i32,
+}
+
+pub fn timing_calibration_status(
+    timing: TimingSummary,
+    current_ms: i32,
+) -> TimingCalibrationStatus {
+    const REQUIRED_SAMPLES: usize = 24;
+    const MAX_DEVIATION_MS: u32 = 35;
+    const BIAS_DEADBAND_MS: u32 = 10;
+    const MAX_STEP_MS: i32 = 50;
+    const LIMIT_MS: i32 = 250;
+
+    if timing.matched_samples < REQUIRED_SAMPLES {
+        return TimingCalibrationStatus::InsufficientSamples {
+            captured: timing.matched_samples,
+            required: REQUIRED_SAMPLES,
+        };
+    }
+    let deviation_ms = timing.median_deviation_ms.unwrap_or(u32::MAX);
+    if deviation_ms > MAX_DEVIATION_MS {
+        return TimingCalibrationStatus::Unstable {
+            deviation_ms,
+            maximum_ms: MAX_DEVIATION_MS,
+        };
+    }
+    let bias_ms = timing.median_offset_ms.unwrap_or(0);
+    if bias_ms.unsigned_abs() < BIAS_DEADBAND_MS {
+        return TimingCalibrationStatus::Centered;
+    }
+
+    let current_ms = current_ms.clamp(-LIMIT_MS, LIMIT_MS);
+    let adjustment_ms = bias_ms.clamp(-MAX_STEP_MS, MAX_STEP_MS);
+    let suggested_ms = (current_ms + adjustment_ms).clamp(-LIMIT_MS, LIMIT_MS);
+    if suggested_ms == current_ms {
+        TimingCalibrationStatus::AtLimit
+    } else {
+        TimingCalibrationStatus::Suggested(TimingCalibrationSuggestion {
+            current_ms,
+            adjustment_ms: suggested_ms - current_ms,
+            suggested_ms,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct VelocitySummary {
+    pub matched_samples: usize,
+    pub mean_abs_difference: Option<u8>,
+    pub played_min: Option<u8>,
+    pub played_max: Option<u8>,
+    pub target_min: Option<u8>,
+    pub target_max: Option<u8>,
+    #[serde(default)]
+    pub contour_steps: usize,
+    #[serde(default)]
+    pub contour_aligned: usize,
+    #[serde(default)]
+    pub contour_flat: usize,
+    #[serde(default)]
+    pub contour_inverted: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PedalSummary {
+    pub user_changes: usize,
+    pub target_changes: usize,
+    pub user_used: bool,
+    pub target_present: bool,
+    pub user_continuous_samples: usize,
+    pub target_continuous_samples: usize,
+    #[serde(default)]
+    pub user_transitions: usize,
+    #[serde(default)]
+    pub target_transitions: usize,
+    #[serde(default)]
+    pub timing_samples: usize,
+    #[serde(default)]
+    pub median_offset_ms: Option<i32>,
+    #[serde(default)]
+    pub median_deviation_ms: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ExpressionSummary {
+    pub velocity: VelocitySummary,
+    pub pedal: PedalSummary,
+    #[serde(default)]
+    pub articulation: ArticulationSummary,
+}
+
+impl ExpressionSummary {
+    pub fn has_velocity_evidence(self) -> bool {
+        self.velocity.matched_samples >= 4
+    }
+
+    pub fn has_velocity_contour_evidence(self) -> bool {
+        self.velocity.contour_steps >= 6
+    }
+
+    pub fn has_pedal_evidence(self) -> bool {
+        self.pedal.user_used || self.pedal.target_present
+    }
+
+    pub fn has_pedal_timing_evidence(self) -> bool {
+        self.pedal.timing_samples >= 4
+            && self.pedal.user_transitions == self.pedal.target_transitions
+            && self.pedal.timing_samples == self.pedal.target_transitions
+            && self
+                .pedal
+                .median_deviation_ms
+                .is_some_and(|spread| spread <= 120)
+    }
+
+    pub fn has_articulation_evidence(self) -> bool {
+        self.articulation.matched_samples >= 4
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct ArticulationSummary {
+    pub matched_samples: usize,
+    pub median_duration_ratio_percent: Option<u16>,
+    pub shorter_count: usize,
+    pub similar_count: usize,
+    pub longer_count: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AttemptHistory {
+    completed: usize,
+    last: Option<AttemptSummary>,
+    best: Option<AttemptSummary>,
+}
+
+impl AttemptHistory {
+    pub fn record(&mut self, summary: AttemptSummary) {
+        self.completed += 1;
+        if self
+            .best
+            .as_ref()
+            .is_none_or(|best| is_better_attempt(&summary, best))
+        {
+            self.best = Some(summary.clone());
+        }
+        self.last = Some(summary);
+    }
+
+    /// One-based number of the attempt currently being practised.
+    pub fn current_attempt(&self) -> usize {
+        self.completed + 1
+    }
+
+    pub fn completed(&self) -> usize {
+        self.completed
+    }
+
+    pub fn last(&self) -> Option<&AttemptSummary> {
+        self.last.as_ref()
+    }
+
+    pub fn best(&self) -> Option<&AttemptSummary> {
+        self.best.as_ref()
+    }
+
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+}
+
+fn is_better_attempt(candidate: &AttemptSummary, best: &AttemptSummary) -> bool {
+    let candidate_accuracy = candidate.overall.accuracy().unwrap_or(0.0);
+    let best_accuracy = best.overall.accuracy().unwrap_or(0.0);
+
+    candidate_accuracy > best_accuracy
+        || (candidate_accuracy == best_accuracy
+            && candidate.overall.on_time_notes > best.overall.on_time_notes)
+        || (candidate_accuracy == best_accuracy
+            && candidate.overall.on_time_notes == best.overall.on_time_notes
+            && candidate.overall.matched_notes > best.overall.matched_notes)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AdaptiveTempoRules {
+    pub mastery_accuracy: f32,
+    pub mastery_timing: f32,
+    pub struggle_accuracy: f32,
+    pub step: f32,
+    pub min_speed: f32,
+    pub max_speed: f32,
+    pub mastery_takes: usize,
+}
+
+impl Default for AdaptiveTempoRules {
+    fn default() -> Self {
+        Self {
+            mastery_accuracy: 0.9,
+            mastery_timing: 0.7,
+            struggle_accuracy: 0.7,
+            step: 0.05,
+            min_speed: 0.5,
+            max_speed: 1.0,
+            mastery_takes: 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum AdaptiveTempoReason {
+    NoJudgedNotes,
+    BuildingMastery { completed: usize, required: usize },
+    Mastered,
+    NeedsAccuracy,
+    KeepPractising,
+    AtMaximum,
+    AtMinimum,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AdaptiveTempoDecision {
+    pub previous_speed: f32,
+    pub speed: f32,
+    pub reason: AdaptiveTempoReason,
+}
+
+impl AdaptiveTempoDecision {
+    pub fn changed(self) -> bool {
+        self.previous_speed != self.speed
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
+pub struct AdaptiveTempoCoach {
+    mastery_streak: usize,
+}
+
+impl AdaptiveTempoCoach {
+    pub fn evaluate(
+        &mut self,
+        summary: &AttemptSummary,
+        current_speed: f32,
+        rules: AdaptiveTempoRules,
+    ) -> AdaptiveTempoDecision {
+        let accuracy = summary.overall.accuracy();
+        let timing = (summary.overall.matched_notes != 0)
+            .then(|| summary.overall.on_time_notes as f32 / summary.overall.matched_notes as f32);
+        let min_speed = rules.min_speed.min(rules.max_speed);
+        let max_speed = rules.max_speed.max(rules.min_speed);
+        let current_speed = current_speed.clamp(min_speed, max_speed);
+
+        let Some(accuracy) = accuracy else {
+            self.mastery_streak = 0;
+            return decision(
+                current_speed,
+                current_speed,
+                AdaptiveTempoReason::NoJudgedNotes,
+            );
+        };
+
+        let mastered = accuracy >= rules.mastery_accuracy
+            && timing.is_some_and(|timing| timing >= rules.mastery_timing);
+        if mastered {
+            self.mastery_streak += 1;
+            let required = rules.mastery_takes.max(1);
+            if self.mastery_streak < required {
+                return decision(
+                    current_speed,
+                    current_speed,
+                    AdaptiveTempoReason::BuildingMastery {
+                        completed: self.mastery_streak,
+                        required,
+                    },
+                );
+            }
+
+            self.mastery_streak = 0;
+            if current_speed >= max_speed {
+                return decision(current_speed, current_speed, AdaptiveTempoReason::AtMaximum);
+            }
+            return decision(
+                current_speed,
+                round_speed((current_speed + rules.step).min(max_speed)),
+                AdaptiveTempoReason::Mastered,
+            );
+        }
+
+        self.mastery_streak = 0;
+        if accuracy < rules.struggle_accuracy {
+            if current_speed <= min_speed {
+                return decision(current_speed, current_speed, AdaptiveTempoReason::AtMinimum);
+            }
+            return decision(
+                current_speed,
+                round_speed((current_speed - rules.step).max(min_speed)),
+                AdaptiveTempoReason::NeedsAccuracy,
+            );
+        }
+
+        decision(
+            current_speed,
+            current_speed,
+            AdaptiveTempoReason::KeepPractising,
+        )
+    }
+
+    pub fn reset(&mut self) {
+        self.mastery_streak = 0;
+    }
+
+    pub fn mastery_streak(&self) -> usize {
+        self.mastery_streak
+    }
+}
+
+fn decision(previous_speed: f32, speed: f32, reason: AdaptiveTempoReason) -> AdaptiveTempoDecision {
+    AdaptiveTempoDecision {
+        previous_speed,
+        speed,
+        reason,
+    }
+}
+
+fn round_speed(speed: f32) -> f32 {
+    (speed * 100.0).round() / 100.0
+}
+
+#[derive(Debug, Clone, Copy)]
+struct NotePress {
+    input: Option<usize>,
+    timestamp: Duration,
+    note: NoteId,
+    velocity: u8,
+    released_at: Option<Duration>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TargetPress {
+    reference: Option<usize>,
+    timestamp: Duration,
+    target: PracticeTarget,
+}
+
+#[derive(Debug, Default, Clone)]
+struct PedalEvidence {
+    last_value: Option<u8>,
+    changes: usize,
+    used: bool,
+    continuous_samples: usize,
+    transitions: Vec<PedalTransition>,
+}
+
+impl PedalEvidence {
+    fn record(&mut self, at: Duration, value: u8) {
+        if self.last_value == Some(value) {
+            return;
+        }
+        let was_down = self.last_value.map(|previous| previous >= 64);
+        let is_down = value >= 64;
+        if self.last_value.is_some() {
+            self.changes += 1;
+        }
+        if was_down != Some(is_down) && (was_down.is_some() || is_down) {
+            self.transitions.push(PedalTransition { at, is_down });
+        }
+        self.last_value = Some(value);
+        self.used |= value > 0;
+        self.continuous_samples += usize::from((1..127).contains(&value));
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PedalTransition {
+    at: Duration,
+    is_down: bool,
+}
+
+#[derive(Debug, Default, Clone)]
+struct VelocityPoint {
+    played_sum: u32,
+    target_sum: u32,
+    samples: u32,
+}
+
+#[derive(Debug, Default, Clone)]
+struct ExpressionTracker {
+    velocity_samples: usize,
+    velocity_difference_sum: u64,
+    played_min: Option<u8>,
+    played_max: Option<u8>,
+    target_min: Option<u8>,
+    target_max: Option<u8>,
+    velocity_points: BTreeMap<Duration, VelocityPoint>,
+    user_pedal: PedalEvidence,
+    target_pedal: PedalEvidence,
+    active_articulations: HashMap<NoteId, VecDeque<ArticulationPress>>,
+    duration_ratios: Vec<u16>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ArticulationPress {
+    started_at: Duration,
+    target_duration: Duration,
+}
+
+impl ExpressionTracker {
+    fn record_velocity(&mut self, score_time: Duration, played: u8, target: u8) {
+        if played == 0 || target == 0 {
+            return;
+        }
+        self.velocity_samples += 1;
+        self.velocity_difference_sum += u64::from(played.abs_diff(target));
+        update_min_max(&mut self.played_min, &mut self.played_max, played);
+        update_min_max(&mut self.target_min, &mut self.target_max, target);
+        let point = self.velocity_points.entry(score_time).or_default();
+        point.played_sum += u32::from(played);
+        point.target_sum += u32::from(target);
+        point.samples += 1;
+    }
+
+    fn summary(&self) -> ExpressionSummary {
+        let (contour_steps, contour_aligned, contour_flat, contour_inverted) =
+            summarize_velocity_contour(&self.velocity_points);
+        let pedal_timing = summarize_pedal_timing(&self.user_pedal, &self.target_pedal);
+        let mut duration_ratios = self.duration_ratios.clone();
+        duration_ratios.sort_unstable();
+        let median_duration_ratio_percent = (!duration_ratios.is_empty()).then(|| {
+            let middle = duration_ratios.len() / 2;
+            if duration_ratios.len().is_multiple_of(2) {
+                (u32::from(duration_ratios[middle - 1]) + u32::from(duration_ratios[middle]))
+                    .div_ceil(2) as u16
+            } else {
+                duration_ratios[middle]
+            }
+        });
+        ExpressionSummary {
+            velocity: VelocitySummary {
+                matched_samples: self.velocity_samples,
+                mean_abs_difference: (self.velocity_samples != 0).then(|| {
+                    (self.velocity_difference_sum / self.velocity_samples as u64)
+                        .min(u64::from(u8::MAX)) as u8
+                }),
+                played_min: self.played_min,
+                played_max: self.played_max,
+                target_min: self.target_min,
+                target_max: self.target_max,
+                contour_steps,
+                contour_aligned,
+                contour_flat,
+                contour_inverted,
+            },
+            pedal: PedalSummary {
+                user_changes: self.user_pedal.changes,
+                target_changes: self.target_pedal.changes,
+                user_used: self.user_pedal.used,
+                target_present: self.target_pedal.last_value.is_some(),
+                user_continuous_samples: self.user_pedal.continuous_samples,
+                target_continuous_samples: self.target_pedal.continuous_samples,
+                user_transitions: self.user_pedal.transitions.len(),
+                target_transitions: self.target_pedal.transitions.len(),
+                timing_samples: pedal_timing.matched_samples,
+                median_offset_ms: pedal_timing.median_offset_ms,
+                median_deviation_ms: pedal_timing.median_deviation_ms,
+            },
+            articulation: ArticulationSummary {
+                matched_samples: duration_ratios.len(),
+                median_duration_ratio_percent,
+                shorter_count: duration_ratios.iter().filter(|ratio| **ratio < 75).count(),
+                similar_count: duration_ratios
+                    .iter()
+                    .filter(|ratio| (75..=125).contains(*ratio))
+                    .count(),
+                longer_count: duration_ratios.iter().filter(|ratio| **ratio > 125).count(),
+            },
+        }
+    }
+
+    fn start_articulation(
+        &mut self,
+        note: NoteId,
+        started_at: Duration,
+        released_at: Option<Duration>,
+        target_duration: Duration,
+    ) {
+        if target_duration.is_zero() {
+            return;
+        }
+        if let Some(released_at) = released_at {
+            self.record_duration(started_at, released_at, target_duration);
+        } else {
+            self.active_articulations
+                .entry(note)
+                .or_default()
+                .push_back(ArticulationPress {
+                    started_at,
+                    target_duration,
+                });
+        }
+    }
+
+    fn release_articulation(&mut self, note: NoteId, released_at: Duration) {
+        let Some(active) = pop_front(&mut self.active_articulations, note) else {
+            return;
+        };
+        self.record_duration(active.started_at, released_at, active.target_duration);
+    }
+
+    fn record_duration(
+        &mut self,
+        started_at: Duration,
+        released_at: Duration,
+        target_duration: Duration,
+    ) {
+        let played_duration = released_at.saturating_sub(started_at);
+        if played_duration.is_zero() || target_duration.is_zero() {
+            return;
+        }
+        let ratio = played_duration.as_secs_f64() / target_duration.as_secs_f64() * 100.0;
+        self.duration_ratios
+            .push(ratio.round().clamp(0.0, u16::MAX as f64) as u16);
+    }
+
+    fn clear_pending(&mut self) {
+        self.active_articulations.clear();
+    }
+}
+
+fn update_min_max(minimum: &mut Option<u8>, maximum: &mut Option<u8>, value: u8) {
+    *minimum = Some(minimum.map_or(value, |current| current.min(value)));
+    *maximum = Some(maximum.map_or(value, |current| current.max(value)));
+}
+
+fn summarize_velocity_contour(
+    points: &BTreeMap<Duration, VelocityPoint>,
+) -> (usize, usize, usize, usize) {
+    const TARGET_CHANGE_THRESHOLD: i32 = 6;
+    const PLAYED_FLAT_THRESHOLD: i32 = 3;
+
+    let points: Vec<_> = points
+        .values()
+        .map(|point| {
+            (
+                (point.played_sum / point.samples) as i32,
+                (point.target_sum / point.samples) as i32,
+            )
+        })
+        .collect();
+    let mut steps = 0;
+    let mut aligned = 0;
+    let mut flat = 0;
+    let mut inverted = 0;
+    for pair in points.windows(2) {
+        let played_change = pair[1].0 - pair[0].0;
+        let target_change = pair[1].1 - pair[0].1;
+        if target_change.abs() < TARGET_CHANGE_THRESHOLD {
+            continue;
+        }
+        steps += 1;
+        if played_change.abs() < PLAYED_FLAT_THRESHOLD {
+            flat += 1;
+        } else if played_change.signum() == target_change.signum() {
+            aligned += 1;
+        } else {
+            inverted += 1;
+        }
+    }
+    (steps, aligned, flat, inverted)
+}
+
+fn summarize_pedal_timing(user: &PedalEvidence, target: &PedalEvidence) -> TimingSummary {
+    let mut offsets = Vec::new();
+    for is_down in [true, false] {
+        let user = user
+            .transitions
+            .iter()
+            .filter(|transition| transition.is_down == is_down);
+        let target = target
+            .transitions
+            .iter()
+            .filter(|transition| transition.is_down == is_down);
+        offsets.extend(
+            user.zip(target)
+                .map(|(user, target)| signed_duration_millis(user.at, target.at)),
+        );
+    }
+    summarize_timing_offsets(&offsets)
+}
+
+fn signed_duration_millis(actual: Duration, target: Duration) -> i32 {
+    if actual >= target {
+        duration_millis_i32(actual - target)
+    } else {
+        -duration_millis_i32(target - actual)
+    }
+}
+
+/// Matches score note events with live keyboard input.
+///
+/// All timestamps come from the caller's monotonic session clock. This keeps
+/// the matcher deterministic in tests and lets the clock continue while
+/// wait-for-notes pauses the MIDI timeline.
+#[derive(Debug)]
+pub struct PracticeMatcher {
+    user_keyboard_range: KeyboardRange,
+    windows: PracticeWindows,
+
+    required_notes: HashMap<NoteId, VecDeque<TargetPress>>,
+    user_pressed_recently: HashMap<NoteId, VecDeque<NotePress>>,
+
+    snapshot: PracticeSnapshot,
+    results: Arc<Vec<PracticeResult>>,
+    last_target: Option<PracticeTarget>,
+    expression: Arc<ExpressionTracker>,
+    timing_offsets_ms: Arc<Vec<i32>>,
+}
+
+impl PracticeMatcher {
+    pub fn new(user_keyboard_range: KeyboardRange) -> Self {
+        Self::with_windows(user_keyboard_range, PracticeWindows::default())
+    }
+
+    pub fn with_windows(user_keyboard_range: KeyboardRange, windows: PracticeWindows) -> Self {
+        Self {
+            user_keyboard_range,
+            windows,
+            required_notes: HashMap::new(),
+            user_pressed_recently: HashMap::new(),
+            snapshot: PracticeSnapshot::default(),
+            results: Arc::default(),
+            last_target: None,
+            expression: Arc::default(),
+            timing_offsets_ms: Arc::default(),
+        }
+    }
+
+    pub fn tick(&mut self, now: Duration) {
+        let context = self.current_context();
+        let expired = drain_expired(
+            &mut self.user_pressed_recently,
+            now,
+            self.windows.early_match,
+        );
+        if expired.is_empty() { return; }
+        self.snapshot.wrong_notes += expired.len();
+        Arc::make_mut(&mut self.results)
+            .extend(expired.into_iter().map(|press| PracticeResult {
+                reference: None,
+                input: press.input,
+                target: context,
+                judgement: PracticeJudgement::Wrong {
+                    played_note: press.note,
+                },
+                timing_offset_ms: None,
+            }));
+    }
+
+    /// Finalizes score notes that were not played in the allowed late window.
+    ///
+    /// Guided wait mode should not call this: its required notes intentionally
+    /// remain pending until the pianist plays them.
+    pub fn finalize_missed(&mut self, now: Duration) {
+        let expired = drain_expired(&mut self.required_notes, now, self.windows.late_match);
+        if expired.is_empty() { return; }
+        self.snapshot.missed_notes += expired.len();
+        Arc::make_mut(&mut self.results)
+            .extend(expired.into_iter().map(|press| PracticeResult {
+                reference: press.reference,
+                input: None,
+                target: Some(press.target),
+                judgement: PracticeJudgement::Missed,
+                timing_offset_ms: None,
+            }));
+        self.update_required_count();
+    }
+
+    pub fn user_note(&mut self, now: Duration, note: NoteId, active: bool) -> Option<MatchedNote> {
+        self.user_note_with_velocity(now, note, active, 100)
+    }
+
+    pub fn user_note_with_velocity(
+        &mut self,
+        now: Duration,
+        note: NoteId,
+        active: bool,
+        velocity: u8,
+    ) -> Option<MatchedNote> {
+        self.user_note_with_input(now, note, active, velocity, None)
+    }
+    pub fn user_note_with_input(
+        &mut self,
+        now: Duration,
+        note: NoteId,
+        active: bool,
+        velocity: u8,
+        input: Option<usize>,
+    ) -> Option<MatchedNote> {
+        if !self.user_keyboard_range.contains(note) {
+            return None;
+        }
+        if !active {
+            if let Some(press) = self
+                .user_pressed_recently
+                .get_mut(&note)
+                .and_then(|queue| queue.iter_mut().find(|press| press.released_at.is_none()))
+            {
+                press.released_at = Some(now);
+            } else if self.expression.active_articulations.contains_key(&note) {
+                Arc::make_mut(&mut self.expression).release_articulation(note, now);
+            }
+            return None;
+        }
+
+        if let Some(required) = pop_front(&mut self.required_notes, note) {
+            self.update_required_count();
+            return Some(self.record_match(
+                required.target,
+                if now < required.timestamp {TimingGrade::Early(required.timestamp-now)} else {TimingGrade::Late(now-required.timestamp)},
+                velocity,
+                now,
+                None,
+                required.reference,
+                input,
+            ));
+        }
+
+        self.user_pressed_recently
+            .entry(note)
+            .or_default()
+            .push_back(NotePress {
+                input,
+                timestamp: now,
+                note,
+                velocity,
+                released_at: None,
+            });
+
+        None
+    }
+
+    pub fn score_note(&mut self, now: Duration, note: NoteId, active: bool) -> Option<MatchedNote> {
+        self.score_target(now, PracticeTarget::unknown(note), active)
+    }
+
+    pub fn score_target(
+        &mut self,
+        now: Duration,
+        target: PracticeTarget,
+        active: bool,
+    ) -> Option<MatchedNote> {
+        self.score_target_with_reference(now, target, active, None)
+    }
+    pub fn score_target_with_reference(
+        &mut self,
+        now: Duration,
+        target: PracticeTarget,
+        active: bool,
+        reference: Option<usize>,
+    ) -> Option<MatchedNote> {
+        let note = target.note;
+        if !self.user_keyboard_range.contains(note) {
+            return None;
+        }
+
+        if !active {
+            return None;
+        }
+
+        self.last_target = Some(target);
+
+        if let Some(press) = pop_front(&mut self.user_pressed_recently, note) {
+            return Some(self.record_match(
+                target,
+                if press.timestamp < now {TimingGrade::Early(now-press.timestamp)} else {TimingGrade::Late(press.timestamp-now)},
+                press.velocity,
+                press.timestamp,
+                press.released_at,
+                reference,
+                press.input,
+            ));
+        }
+
+        self.required_notes
+            .entry(note)
+            .or_default()
+            .push_back(TargetPress {
+                reference,
+                timestamp: now,
+                target,
+            });
+        self.update_required_count();
+        None
+    }
+
+    pub fn user_pedal(&mut self, now: Duration, value: u8) {
+        if self.expression.user_pedal.last_value == Some(value) { return; }
+        Arc::make_mut(&mut self.expression).user_pedal.record(now, value);
+    }
+
+    pub fn score_pedal(&mut self, now: Duration, value: u8) {
+        if self.expression.target_pedal.last_value == Some(value) { return; }
+        Arc::make_mut(&mut self.expression).target_pedal.record(now, value);
+    }
+
+    pub fn snapshot(&self) -> PracticeSnapshot {
+        self.snapshot
+    }
+
+    pub fn results(&self) -> &[PracticeResult] {
+        &self.results
+    }
+
+    pub fn finish(&mut self) {
+        let context = self.current_context();
+        for (_, queue) in self.user_pressed_recently.drain() {
+            for press in queue {
+                self.snapshot.wrong_notes += 1;
+                Arc::make_mut(&mut self.results).push(PracticeResult {
+                    reference: None,
+                    input: press.input,
+                    target: context,
+                    judgement: PracticeJudgement::Wrong {
+                        played_note: press.note,
+                    },
+                    timing_offset_ms: None,
+                });
+            }
+        }
+
+        for (_, queue) in self.required_notes.drain() {
+            for press in queue {
+                self.snapshot.missed_notes += 1;
+                Arc::make_mut(&mut self.results).push(PracticeResult {
+                    reference: press.reference,
+                    input: None,
+                    target: Some(press.target),
+                    judgement: PracticeJudgement::Missed,
+                    timing_offset_ms: None,
+                });
+            }
+        }
+        self.snapshot.required_notes = 0;
+    }
+
+    /// Retain one exact attempt without copying every judgement on the playback thread.
+    pub fn report(&self) -> PracticeReport {
+        PracticeReport {
+            snapshot: self.snapshot,
+            results: self.results.clone(),
+            expression: self.expression.clone(),
+            timing_offsets_ms: self.timing_offsets_ms.clone(),
+        }
+    }
+
+    pub fn summary(&self) -> AttemptSummary { self.report().summary() }
+
+    pub fn are_required_notes_pressed(&self) -> bool {
+        self.required_notes.is_empty()
+    }
+
+    pub fn required_note_pitches(&self) -> Vec<NoteId> {
+        let mut notes: Vec<_> = self
+            .required_notes
+            .iter()
+            .flat_map(|(&note, occurrences)| std::iter::repeat_n(note, occurrences.len()))
+            .collect();
+        notes.sort_unstable();
+        notes
+    }
+
+    /// Clears transient matching state while retaining the session totals.
+    pub fn clear_pending(&mut self) {
+        self.required_notes.clear();
+        self.user_pressed_recently.clear();
+        self.snapshot.required_notes = 0;
+        self.last_target = None;
+        if !self.expression.active_articulations.is_empty() {
+            Arc::make_mut(&mut self.expression).clear_pending();
+        }
+    }
+
+    pub fn reset(&mut self) {
+        // Replacing an attempt must not detach and then discard a shared expression tree.
+        self.required_notes.clear();
+        self.user_pressed_recently.clear();
+        self.last_target = None;
+        self.snapshot = PracticeSnapshot::default();
+        self.results = Arc::default();
+        self.expression = Arc::default();
+        self.timing_offsets_ms = Arc::default();
+    }
+
+    fn record_match(
+        &mut self,
+        target: PracticeTarget,
+        timing: TimingGrade,
+        played_velocity: u8,
+        played_at: Duration,
+        released_at: Option<Duration>,
+        reference: Option<usize>,
+        input: Option<usize>,
+    ) -> MatchedNote {
+        let timing_offset_ms = match timing {
+            TimingGrade::Early(delta) => -duration_millis_i32(delta),
+            TimingGrade::OnTime => 0,
+            TimingGrade::Late(delta) => duration_millis_i32(delta),
+        };
+        Arc::make_mut(&mut self.timing_offsets_ms).push(timing_offset_ms);
+        let timing = match timing {
+            TimingGrade::Early(delta) if delta <= self.windows.on_time => TimingGrade::OnTime,
+            TimingGrade::Late(delta) if delta <= self.windows.on_time => TimingGrade::OnTime,
+            timing => timing,
+        };
+
+        self.snapshot.matched_notes += 1;
+        match timing {
+            TimingGrade::Early(_) => self.snapshot.early_notes += 1,
+            TimingGrade::OnTime => self.snapshot.on_time_notes += 1,
+            TimingGrade::Late(_) => self.snapshot.late_notes += 1,
+        }
+
+        Arc::make_mut(&mut self.results).push(PracticeResult {
+            reference,
+            input,
+            target: Some(target),
+            judgement: PracticeJudgement::Matched(timing),
+            timing_offset_ms: Some(timing_offset_ms),
+        });
+        Arc::make_mut(&mut self.expression)
+            .record_velocity(target.score_time, played_velocity, target.velocity);
+        Arc::make_mut(&mut self.expression)
+            .start_articulation(target.note, played_at, released_at, target.duration);
+
+        MatchedNote {
+            note: target.note,
+            timing,
+        }
+    }
+
+    fn update_required_count(&mut self) {
+        self.snapshot.required_notes = self.required_notes.values().map(VecDeque::len).sum();
+    }
+
+    fn current_context(&self) -> Option<PracticeTarget> {
+        self.required_notes
+            .values()
+            .filter_map(|queue| queue.front())
+            .min_by_key(|press| press.timestamp)
+            .map(|press| press.target)
+            .or(self.last_target)
+    }
+}
+
+pub fn summarize_exercise_passes(
+    results: &[PracticeResult],
+    phrase_duration: Duration,
+    repetitions: u8,
+) -> Vec<ExercisePassSummary> {
+    if repetitions < 2 || phrase_duration.is_zero() {
+        return Vec::new();
+    }
+    let mut breakdowns = vec![PracticeBreakdown::default(); usize::from(repetitions)];
+    let mut timing = vec![Vec::<i32>::new(); usize::from(repetitions)];
+    let phrase_nanos = phrase_duration.as_nanos();
+    for result in results {
+        let Some(target) = result.target else {
+            continue;
+        };
+        let pass =
+            (target.score_time.as_nanos() / phrase_nanos).min(u128::from(repetitions - 1)) as usize;
+        breakdowns[pass].record(result.judgement);
+        if let Some(offset) = result.timing_offset_ms {
+            timing[pass].push(offset);
+        }
+    }
+    breakdowns
+        .into_iter()
+        .zip(timing)
+        .enumerate()
+        .map(|(pass, (breakdown, offsets))| ExercisePassSummary {
+            pass: pass + 1,
+            breakdown,
+            timing: summarize_timing_offsets(&offsets),
+        })
+        .collect()
+}
+
+/// An immutable attempt for background feedback, archive preparation and saving.
+#[derive(Debug, Clone)]
+pub struct PracticeReport {
+    snapshot: PracticeSnapshot,
+    results: Arc<Vec<PracticeResult>>,
+    expression: Arc<ExpressionTracker>,
+    timing_offsets_ms: Arc<Vec<i32>>,
+}
+impl PracticeReport {
+    pub fn same_snapshot(&self, other: &Self) -> bool {
+        self.snapshot == other.snapshot
+            && Arc::ptr_eq(&self.results, &other.results)
+            && Arc::ptr_eq(&self.expression, &other.expression)
+            && Arc::ptr_eq(&self.timing_offsets_ms, &other.timing_offsets_ms)
+    }
+    pub fn results(&self) -> &[PracticeResult] { &self.results }
+    pub fn expression_summary(&self) -> ExpressionSummary { self.expression.summary() }
+    pub fn summary(&self) -> AttemptSummary {
+        match self.summary_checked(|| Ok::<(), std::convert::Infallible>(())) {
+            Ok(summary) => summary,
+            Err(never) => match never {},
+        }
+    }
+    /// Background consumers can stop an obsolete report during aggregation.
+    pub fn summary_checked<E>(&self, mut check: impl FnMut() -> Result<(), E>) -> Result<AttemptSummary, E> {
+        check()?;
+        let mut measures = BTreeMap::<usize, PracticeBreakdown>::new();
+        let mut measure_timing = BTreeMap::<usize, Vec<i32>>::new();
+        let mut parts = BTreeMap::<PracticePart, PracticeBreakdown>::new();
+        let mut part_timing = BTreeMap::<PracticePart, Vec<i32>>::new();
+        let mut measure_parts = BTreeMap::<(usize, PracticePart, usize), PracticeBreakdown>::new();
+        let mut measure_part_timing = BTreeMap::<(usize, PracticePart, usize), Vec<i32>>::new();
+        let mut chords = BTreeMap::<(Duration, usize), (usize, Vec<i32>)>::new();
+
+        for (index, result) in self.results.iter().enumerate() {
+            if index % 256 == 0 { check()?; }
+            let Some(target) = result.target else {
+                continue;
+            };
+
+            if target.measure != 0 {
+                measures
+                    .entry(target.measure)
+                    .or_default()
+                    .record(result.judgement);
+                if let Some(offset) = result.timing_offset_ms {
+                    measure_timing
+                        .entry(target.measure)
+                        .or_default()
+                        .push(offset);
+                }
+                // The contextual target carried by a wrong press is only the nearest
+                // score note, not the note that press actually attempted to play.
+                if matches!(result.judgement, PracticeJudgement::Matched(_) | PracticeJudgement::Missed) {
+                    let key = (target.measure, target.part, target.track_id);
+                    measure_parts.entry(key).or_default().record(result.judgement);
+                    if let Some(offset) = result.timing_offset_ms {
+                        measure_part_timing.entry(key).or_default().push(offset);
+                    }
+                }
+            }
+            parts
+                .entry(target.part)
+                .or_default()
+                .record(result.judgement);
+            if let Some(offset) = result.timing_offset_ms {
+                part_timing.entry(target.part).or_default().push(offset);
+            }
+            if matches!(
+                result.judgement,
+                PracticeJudgement::Matched(_) | PracticeJudgement::Missed
+            ) && target.measure != 0
+            {
+                let (target_notes, offsets) = chords
+                    .entry((target.score_time, target.measure))
+                    .or_default();
+                *target_notes += 1;
+                if let Some(offset) = result.timing_offset_ms {
+                    offsets.push(offset);
+                }
+            }
+        }
+
+        check()?;
+        let summary = AttemptSummary {
+            overall: self.snapshot,
+            measures: measures
+                .into_iter()
+                .enumerate()
+                .map(|(index, (measure, breakdown))| {
+                    if index % 256 == 0 { check()?; }
+                    Ok(MeasureSummary {
+                        measure,
+                        breakdown,
+                        timing: summarize_timing_offsets(
+                            measure_timing
+                                .get(&measure)
+                                .map(Vec::as_slice)
+                                .unwrap_or_default(),
+                        ),
+                    })
+                })
+                .collect::<Result<_, E>>()?,
+            parts: parts
+                .into_iter()
+                .map(|(part, breakdown)| {
+                    check()?;
+                    Ok(PartSummary {
+                        part,
+                        breakdown,
+                        timing: summarize_timing_offsets(
+                            part_timing
+                                .get(&part)
+                                .map(Vec::as_slice)
+                                .unwrap_or_default(),
+                        ),
+                    })
+                })
+                .collect::<Result<_, E>>()?,
+            measure_parts: measure_parts
+                .into_iter()
+                .enumerate()
+                .map(|(index, ((measure, part, track_id), breakdown))| {
+                    if index % 256 == 0 { check()?; }
+                    Ok(MeasurePartSummary {
+                        measure,
+                        part,
+                        track_id,
+                        breakdown,
+                        timing: summarize_timing_offsets(
+                            measure_part_timing
+                                .get(&(measure, part, track_id))
+                                .map(Vec::as_slice)
+                                .unwrap_or_default(),
+                        ),
+                    })
+                })
+                .collect::<Result<_, E>>()?,
+            timing: summarize_timing_offsets(&self.timing_offsets_ms),
+            chords: summarize_chords(chords, &mut check)?,
+            expression: self.expression.summary(),
+            exercise_passes: Vec::new(),
+        };
+        check()?;
+        Ok(summary)
+    }
+}
+
+fn duration_millis_i32(duration: Duration) -> i32 {
+    duration.as_millis().min(i32::MAX as u128) as i32
+}
+
+fn summarize_timing_offsets(offsets: &[i32]) -> TimingSummary {
+    let mut ordered = offsets.to_vec();
+    ordered.sort_unstable();
+    let median_offset_ms = median_i32(&ordered);
+    let median_deviation_ms = median_offset_ms.and_then(|median| {
+        let mut deviations = ordered
+            .iter()
+            .map(|offset| offset.abs_diff(median))
+            .collect::<Vec<_>>();
+        deviations.sort_unstable();
+        median_u32(&deviations)
+    });
+    TimingSummary {
+        matched_samples: ordered.len(),
+        median_offset_ms,
+        median_deviation_ms,
+    }
+}
+
+fn summarize_chords<E>(chords: BTreeMap<(Duration, usize), (usize, Vec<i32>)>, check: &mut impl FnMut() -> Result<(), E>) -> Result<ChordSummary, E> {
+    check()?;
+    let mut eligible_chords = 0;
+    let mut complete_chords = 0;
+    let mut incomplete_chords = 0;
+    let mut spans = Vec::new();
+    for (index, (_, (target_notes, mut offsets))) in chords.into_iter().enumerate() {
+        if index % 256 == 0 { check()?; }
+        if target_notes < 2 {
+            continue;
+        }
+        eligible_chords += 1;
+        if offsets.len() != target_notes {
+            incomplete_chords += 1;
+            continue;
+        }
+        complete_chords += 1;
+        offsets.sort_unstable();
+        spans.push(offsets.last().unwrap().abs_diff(offsets[0]));
+    }
+    spans.sort_unstable();
+    check()?;
+    Ok(ChordSummary {
+        eligible_chords,
+        complete_chords,
+        incomplete_chords,
+        median_attack_span_ms: median_u32(&spans),
+        maximum_attack_span_ms: spans.last().copied(),
+    })
+}
+
+fn median_i32(values: &[i32]) -> Option<i32> {
+    let middle = values.len() / 2;
+    match values.len() {
+        0 => None,
+        len if len.is_multiple_of(2) => {
+            Some(((i64::from(values[middle - 1]) + i64::from(values[middle])) / 2) as i32)
+        }
+        _ => Some(values[middle]),
+    }
+}
+
+fn median_u32(values: &[u32]) -> Option<u32> {
+    let middle = values.len() / 2;
+    match values.len() {
+        0 => None,
+        len if len.is_multiple_of(2) => {
+            Some((u64::from(values[middle - 1]) + u64::from(values[middle])).div_ceil(2) as u32)
+        }
+        _ => Some(values[middle]),
+    }
+}
+
+trait Timestamped {
+    fn timestamp(&self) -> Duration;
+}
+
+impl Timestamped for NotePress {
+    fn timestamp(&self) -> Duration {
+        self.timestamp
+    }
+}
+
+impl Timestamped for TargetPress {
+    fn timestamp(&self) -> Duration {
+        self.timestamp
+    }
+}
+
+fn pop_front<T>(notes: &mut HashMap<NoteId, VecDeque<T>>, note: NoteId) -> Option<T> {
+    let queue = notes.get_mut(&note)?;
+    let press = queue.pop_front();
+    if queue.is_empty() {
+        notes.remove(&note);
+    }
+    press
+}
+
+fn drain_expired<T: Timestamped>(
+    notes: &mut HashMap<NoteId, VecDeque<T>>,
+    now: Duration,
+    window: Duration,
+) -> Vec<T> {
+    let mut expired = Vec::new();
+    notes.retain(|_, queue| {
+        while queue
+            .front()
+            .is_some_and(|press| now.saturating_sub(press.timestamp()) > window)
+        {
+            if let Some(press) = queue.pop_front() {
+                expired.push(press);
+            }
+        }
+        !queue.is_empty()
+    });
+    expired
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn matcher() -> PracticeMatcher {
+        PracticeMatcher::with_windows(
+            KeyboardRange::new(21..=108),
+            PracticeWindows {
+                early_match: Duration::from_millis(500),
+                on_time: Duration::from_millis(80),
+                late_match: Duration::from_millis(500),
+            },
+        )
+    }
+
+    #[test]
+    fn calibrated_timestamp_order_keeps_signed_offsets_and_caller_ids() {
+        let mut early=matcher();
+        early.score_target_with_reference(Duration::from_millis(250),PracticeTarget::unknown(60),true,Some(4));
+        let result=early.user_note_with_input(Duration::from_millis(160),60,true,90,Some(9)).unwrap();
+        assert_eq!(result.timing,TimingGrade::Early(Duration::from_millis(90)));
+        assert_eq!(early.results[0].timing_offset_ms,Some(-90));assert_eq!((early.results[0].reference,early.results[0].input),(Some(4),Some(9)));
+        let mut late=matcher();late.user_note_with_input(Duration::from_millis(340),60,true,90,Some(3));
+        let result=late.score_target_with_reference(Duration::from_millis(250),PracticeTarget::unknown(60),true,Some(7)).unwrap();
+        assert_eq!(result.timing,TimingGrade::Late(Duration::from_millis(90)));
+        assert_eq!(late.results[0].timing_offset_ms,Some(90));assert_eq!((late.results[0].reference,late.results[0].input),(Some(7),Some(3)));
+    }
+
+    #[test]
+    fn matches_early_on_time_and_late_notes_deterministically() {
+        let mut matcher = matcher();
+
+        matcher.user_note(Duration::from_millis(950), 60, true);
+        assert_eq!(
+            matcher.score_note(Duration::from_millis(1_000), 60, true),
+            Some(MatchedNote {
+                note: 60,
+                timing: TimingGrade::OnTime,
+            })
+        );
+
+        matcher.user_note(Duration::from_millis(1_200), 62, true);
+        assert_eq!(
+            matcher.score_note(Duration::from_millis(1_400), 62, true),
+            Some(MatchedNote {
+                note: 62,
+                timing: TimingGrade::Early(Duration::from_millis(200)),
+            })
+        );
+
+        matcher.score_note(Duration::from_millis(2_000), 64, true);
+        assert_eq!(
+            matcher.user_note(Duration::from_millis(2_220), 64, true),
+            Some(MatchedNote {
+                note: 64,
+                timing: TimingGrade::Late(Duration::from_millis(220)),
+            })
+        );
+
+        assert_eq!(
+            matcher.snapshot(),
+            PracticeSnapshot {
+                matched_notes: 3,
+                on_time_notes: 1,
+                early_notes: 1,
+                late_notes: 1,
+                wrong_notes: 0,
+                missed_notes: 0,
+                required_notes: 0,
+            }
+        );
+        assert_eq!(
+            matcher.summary().timing,
+            TimingSummary {
+                matched_samples: 3,
+                median_offset_ms: Some(-50),
+                median_deviation_ms: Some(150),
+            }
+        );
+    }
+
+    #[test]
+    fn expires_unmatched_user_notes_as_wrong() {
+        let mut matcher = matcher();
+        matcher.user_note(Duration::from_secs(1), 61, true);
+
+        matcher.tick(Duration::from_millis(1_500));
+        assert_eq!(matcher.snapshot().wrong_notes, 0);
+
+        matcher.tick(Duration::from_millis(1_501));
+        assert_eq!(matcher.snapshot().wrong_notes, 1);
+        assert_eq!(matcher.snapshot().accuracy(), Some(0.0));
+    }
+
+    #[test]
+    fn tracks_required_chord_notes_without_order_penalty() {
+        let mut matcher = matcher();
+        let target_time = Duration::from_secs(2);
+
+        matcher.score_note(target_time, 60, true);
+        matcher.score_note(target_time, 64, true);
+        matcher.score_note(target_time, 67, true);
+        assert_eq!(matcher.snapshot().required_notes, 3);
+        assert_eq!(matcher.required_note_pitches(), vec![60, 64, 67]);
+        assert!(!matcher.are_required_notes_pressed());
+
+        matcher.user_note(Duration::from_millis(2_100), 67, true);
+        matcher.user_note(Duration::from_millis(2_110), 60, true);
+        matcher.user_note(Duration::from_millis(2_120), 64, true);
+
+        assert!(matcher.are_required_notes_pressed());
+        assert_eq!(matcher.snapshot().matched_notes, 3);
+    }
+
+    #[test]
+    fn ignores_notes_outside_the_configured_keyboard_range() {
+        let mut matcher = PracticeMatcher::new(KeyboardRange::new(48..=72));
+
+        matcher.user_note(Duration::ZERO, 36, true);
+        matcher.score_note(Duration::ZERO, 84, true);
+        matcher.tick(Duration::from_secs(1));
+
+        assert_eq!(matcher.snapshot(), PracticeSnapshot::default());
+    }
+
+    #[test]
+    fn repeated_same_pitch_presses_match_distinct_score_occurrences() {
+        let mut matcher = matcher();
+        matcher.user_note(Duration::from_millis(100), 60, true);
+        matcher.user_note(Duration::from_millis(200), 60, true);
+
+        assert_eq!(
+            matcher.score_note(Duration::from_millis(250), 60, true),
+            Some(MatchedNote {
+                note: 60,
+                timing: TimingGrade::Early(Duration::from_millis(150)),
+            })
+        );
+        assert_eq!(
+            matcher.score_note(Duration::from_millis(260), 60, true),
+            Some(MatchedNote {
+                note: 60,
+                timing: TimingGrade::OnTime,
+            })
+        );
+        assert_eq!(matcher.snapshot().matched_notes, 2);
+        assert_eq!(matcher.snapshot().wrong_notes, 0);
+    }
+
+    #[test]
+    fn overlapping_same_pitch_targets_keep_separate_occurrences() {
+        let mut matcher = matcher();
+        matcher.score_note(Duration::from_millis(100), 60, true);
+        matcher.score_note(Duration::from_millis(200), 60, true);
+
+        assert_eq!(matcher.snapshot().required_notes, 2);
+        matcher.user_note(Duration::from_millis(300), 60, true);
+        assert_eq!(matcher.snapshot().required_notes, 1);
+        matcher.user_note(Duration::from_millis(400), 60, true);
+        assert_eq!(matcher.snapshot().required_notes, 0);
+    }
+
+    #[test]
+    fn matcher_keeps_exact_ids_for_repeated_notes_early_late_and_wrong() {
+        let mut m = PracticeMatcher::new(KeyboardRange::new(21..=108));
+        m.user_note_with_input(Duration::from_millis(100), 60, true, 80, Some(10));
+        m.user_note_with_input(Duration::from_millis(200), 60, true, 90, Some(11));
+        m.score_target_with_reference(
+            Duration::from_millis(300),
+            PracticeTarget::unknown(60),
+            true,
+            Some(20),
+        );
+        m.score_target_with_reference(
+            Duration::from_millis(400),
+            PracticeTarget::unknown(60),
+            true,
+            Some(21),
+        );
+        assert_eq!(
+            (m.results()[0].reference, m.results()[0].input),
+            (Some(20), Some(10))
+        );
+        assert_eq!(
+            (m.results()[1].reference, m.results()[1].input),
+            (Some(21), Some(11))
+        );
+        m.score_target_with_reference(
+            Duration::from_millis(500),
+            PracticeTarget::unknown(62),
+            true,
+            Some(22),
+        );
+        m.user_note_with_input(Duration::from_secs(2), 62, true, 100, Some(12));
+        assert_eq!(
+            (m.results()[2].reference, m.results()[2].input),
+            (Some(22), Some(12))
+        );
+        m.user_note_with_input(Duration::from_secs(2), 65, true, 99, Some(13));
+        m.tick(Duration::from_secs(3));
+        let wrong = m.results().last().unwrap();
+        assert_eq!(wrong.reference, None);
+        assert_eq!(wrong.input, Some(13));
+        assert!(matches!(
+            wrong.judgement,
+            PracticeJudgement::Wrong { played_note: 65 }
+        ));
+    }
+    #[test]
+    fn flow_practice_finalizes_late_targets_as_missed() {
+        let mut matcher = matcher();
+        matcher.score_note(Duration::from_secs(1), 60, true);
+        matcher.score_note(Duration::from_millis(1_200), 64, true);
+
+        matcher.finalize_missed(Duration::from_millis(1_500));
+        assert_eq!(matcher.snapshot().missed_notes, 0);
+        assert_eq!(matcher.snapshot().required_notes, 2);
+
+        matcher.finalize_missed(Duration::from_millis(1_501));
+        assert_eq!(matcher.snapshot().missed_notes, 1);
+        assert_eq!(matcher.snapshot().required_notes, 1);
+        assert_eq!(matcher.snapshot().accuracy(), Some(0.0));
+    }
+
+    #[test]
+    fn summary_groups_results_by_measure_and_hand() {
+        let mut matcher = matcher();
+        let right = PracticeTarget {
+            note: 72,
+            velocity: 90,
+            score_time: Duration::from_secs(2),
+            duration: Duration::from_millis(500),
+            track_id: 1,
+            measure: 3,
+            part: PracticePart::RightHand,
+        };
+        let left = PracticeTarget {
+            note: 48,
+            velocity: 70,
+            score_time: Duration::from_secs(4),
+            duration: Duration::from_millis(500),
+            track_id: 2,
+            measure: 5,
+            part: PracticePart::LeftHand,
+        };
+
+        matcher.score_target(Duration::from_secs(2), right, true);
+        matcher.user_note(Duration::from_millis(2_040), 72, true);
+
+        matcher.score_target(Duration::from_secs(4), left, true);
+        matcher.user_note(Duration::from_millis(4_100), 49, true);
+        matcher.tick(Duration::from_millis(4_601));
+        matcher.finish();
+
+        let summary = matcher.summary();
+        assert_eq!(summary.overall.matched_notes, 1);
+        assert_eq!(summary.overall.wrong_notes, 1);
+        assert_eq!(summary.overall.missed_notes, 1);
+
+        let measure_3 = summary
+            .measures
+            .iter()
+            .find(|item| item.measure == 3)
+            .unwrap();
+        assert_eq!(measure_3.breakdown.matched_notes, 1);
+        assert_eq!(measure_3.breakdown.on_time_notes, 1);
+        assert_eq!(measure_3.timing.median_offset_ms, Some(40));
+
+        let measure_5 = summary
+            .measures
+            .iter()
+            .find(|item| item.measure == 5)
+            .unwrap();
+        assert_eq!(measure_5.breakdown.missed_notes, 1);
+        assert_eq!(measure_5.breakdown.wrong_notes, 1);
+
+        let left_hand = summary
+            .parts
+            .iter()
+            .find(|item| item.part == PracticePart::LeftHand)
+            .unwrap();
+        assert_eq!(left_hand.breakdown.missed_notes, 1);
+        assert_eq!(left_hand.breakdown.wrong_notes, 1);
+
+        assert_eq!(summary.measure_parts.len(), 2);
+        let right_cell = summary.measure_parts.iter().find(|item| item.measure == 3).unwrap();
+        assert_eq!((right_cell.part, right_cell.track_id), (PracticePart::RightHand, 1));
+        assert_eq!(right_cell.breakdown.target_notes, 1);
+        assert_eq!(right_cell.breakdown.matched_notes, 1);
+        assert_eq!(right_cell.timing.median_offset_ms, Some(40));
+        let left_cell = summary.measure_parts.iter().find(|item| item.measure == 5).unwrap();
+        assert_eq!((left_cell.part, left_cell.track_id), (PracticePart::LeftHand, 2));
+        assert_eq!(left_cell.breakdown.target_notes, 1);
+        assert_eq!(left_cell.breakdown.missed_notes, 1);
+        assert_eq!(left_cell.breakdown.wrong_notes, 0);
+    }
+
+    #[test]
+    fn measure_part_summary_keeps_track_and_note_level_hand_separate() {
+        let mut matcher = matcher();
+        let target = |note, part, track_id| PracticeTarget {
+            note,
+            velocity: 90,
+            score_time: Duration::from_secs(2),
+            duration: Duration::from_millis(300),
+            track_id,
+            measure: 4,
+            part,
+        };
+        matcher.score_target(Duration::from_secs(2), target(72, PracticePart::RightHand, 3), true);
+        matcher.user_note(Duration::from_millis(1_850), 72, true);
+        matcher.score_target(Duration::from_secs(2), target(48, PracticePart::LeftHand, 3), true);
+        matcher.score_target(Duration::from_secs(2), target(76, PracticePart::RightHand, 4), true);
+        // An accompaniment note that was not selected for human scoring has no cell.
+        matcher.score_target(Duration::from_secs(2), target(80, PracticePart::Other, 9), false);
+        matcher.user_note(Duration::from_millis(2_140), 77, true);
+        matcher.finish();
+
+        let cells = matcher.summary().measure_parts;
+        assert_eq!(cells.len(), 3);
+        let right_track_3 = cells.iter().find(|cell| cell.part == PracticePart::RightHand && cell.track_id == 3).unwrap();
+        assert_eq!(right_track_3.breakdown.target_notes, 1);
+        assert_eq!(right_track_3.breakdown.early_notes, 1);
+        assert_eq!(right_track_3.timing.median_offset_ms, Some(-150));
+        let left_track_3 = cells.iter().find(|cell| cell.part == PracticePart::LeftHand && cell.track_id == 3).unwrap();
+        assert_eq!(left_track_3.breakdown.target_notes, 1);
+        assert_eq!(left_track_3.breakdown.missed_notes, 1);
+        let right_track_4 = cells.iter().find(|cell| cell.part == PracticePart::RightHand && cell.track_id == 4).unwrap();
+        assert_eq!(right_track_4.breakdown.missed_notes, 1);
+        assert!(cells.iter().all(|cell| cell.breakdown.wrong_notes == 0));
+        assert_eq!(matcher.summary().overall.wrong_notes, 1);
+    }
+
+    #[test]
+    fn exercise_pass_summary_uses_exact_phrase_boundaries() {
+        let target = |score_time| PracticeTarget {
+            note: 60,
+            velocity: 80,
+            score_time,
+            duration: Duration::from_millis(800),
+            track_id: 1,
+            measure: 1,
+            part: PracticePart::RightHand,
+        };
+        let matched = |score_time, offset| PracticeResult {
+            reference: None,
+            input: None,
+            target: Some(target(score_time)),
+            judgement: PracticeJudgement::Matched(TimingGrade::OnTime),
+            timing_offset_ms: Some(offset),
+        };
+        let missed = |score_time| PracticeResult {
+            reference: None,
+            input: None,
+            target: Some(target(score_time)),
+            judgement: PracticeJudgement::Missed,
+            timing_offset_ms: None,
+        };
+        let results = vec![
+            matched(Duration::ZERO, 20),
+            missed(Duration::from_millis(500)),
+            matched(Duration::from_secs(1), 5),
+            matched(Duration::from_millis(1_500), -5),
+        ];
+
+        let passes = summarize_exercise_passes(&results, Duration::from_secs(1), 2);
+
+        assert_eq!(passes.len(), 2);
+        assert_eq!(passes[0].pass, 1);
+        assert_eq!(passes[0].breakdown.accuracy(), Some(0.5));
+        assert_eq!(passes[1].pass, 2);
+        assert_eq!(passes[1].breakdown.accuracy(), Some(1.0));
+        assert_eq!(passes[1].timing.median_offset_ms, Some(0));
+    }
+
+    #[test]
+    fn one_pass_exercise_does_not_emit_redundant_pass_evidence() {
+        assert!(summarize_exercise_passes(&[], Duration::from_secs(1), 1).is_empty());
+    }
+
+    #[test]
+    fn summary_keeps_left_and_right_timing_profiles_separate() {
+        let mut matcher = matcher();
+        for index in 0..8 {
+            let base = Duration::from_millis(1_000 + index * 200);
+            for (note, part, lateness) in [
+                (72, PracticePart::RightHand, 20),
+                (48, PracticePart::LeftHand, 60),
+            ] {
+                matcher.score_target(
+                    base,
+                    PracticeTarget {
+                        note,
+                        velocity: 80,
+                        score_time: base,
+                        duration: Duration::ZERO,
+                        track_id: usize::from(note),
+                        measure: index as usize + 1,
+                        part,
+                    },
+                    true,
+                );
+                matcher.user_note(base + Duration::from_millis(lateness), note, true);
+            }
+        }
+
+        let summary = matcher.summary();
+        let timing = |part| {
+            summary
+                .parts
+                .iter()
+                .find(|summary| summary.part == part)
+                .unwrap()
+                .timing
+        };
+        assert_eq!(timing(PracticePart::RightHand).median_offset_ms, Some(20));
+        assert_eq!(timing(PracticePart::LeftHand).median_offset_ms, Some(60));
+        assert_eq!(timing(PracticePart::RightHand).median_deviation_ms, Some(0));
+        assert!(timing(PracticePart::LeftHand).has_profile());
+    }
+
+    #[test]
+    fn chord_profile_uses_only_complete_exact_onset_score_chords() {
+        let mut matcher = matcher();
+        let target = |note, score_time, measure| PracticeTarget {
+            note,
+            velocity: 80,
+            score_time,
+            duration: Duration::from_millis(400),
+            track_id: 1,
+            measure,
+            part: PracticePart::RightHand,
+        };
+
+        for (index, span) in [20, 30, 40, 50].into_iter().enumerate() {
+            let onset = Duration::from_millis(1_000 + index as u64 * 1_000);
+            for note in [60, 64, 67] {
+                matcher.score_target(onset, target(note, onset, index + 1), true);
+            }
+            for (note, offset) in [(60, 0), (64, span / 2), (67, span)] {
+                matcher.user_note(onset + Duration::from_millis(offset), note, true);
+            }
+        }
+
+        let incomplete_onset = Duration::from_secs(6);
+        for note in [60, 64, 67] {
+            matcher.score_target(incomplete_onset, target(note, incomplete_onset, 6), true);
+        }
+        matcher.user_note(incomplete_onset, 60, true);
+        matcher.user_note(incomplete_onset + Duration::from_millis(20), 64, true);
+
+        for (index, note) in [72, 76, 79].into_iter().enumerate() {
+            let score_time = Duration::from_millis(7_000 + index as u64 * 40);
+            matcher.score_target(score_time, target(note, score_time, 7), true);
+            matcher.user_note(score_time, note, true);
+        }
+        matcher.finish();
+
+        assert_eq!(
+            matcher.summary().chords,
+            ChordSummary {
+                eligible_chords: 5,
+                complete_chords: 4,
+                incomplete_chords: 1,
+                median_attack_span_ms: Some(35),
+                maximum_attack_span_ms: Some(50),
+            }
+        );
+        assert!(matcher.summary().chords.has_profile());
+    }
+
+    #[test]
+    fn expression_summary_pairs_velocity_and_tracks_pedal_evidence() {
+        let mut matcher = matcher();
+        let target = |note, velocity, millis| PracticeTarget {
+            note,
+            velocity,
+            score_time: Duration::from_millis(millis),
+            duration: Duration::from_millis(100),
+            track_id: 1,
+            measure: 1,
+            part: PracticePart::RightHand,
+        };
+
+        matcher.score_target(Duration::from_millis(100), target(60, 40, 100), true);
+        matcher.user_note_with_velocity(Duration::from_millis(110), 60, true, 55);
+        matcher.user_note(Duration::from_millis(210), 60, false);
+        matcher.user_note_with_velocity(Duration::from_millis(190), 62, true, 100);
+        matcher.user_note(Duration::from_millis(290), 62, false);
+        matcher.score_target(Duration::from_millis(200), target(62, 80, 200), true);
+        matcher.score_target(Duration::from_millis(300), target(64, 70, 300), true);
+        matcher.user_note_with_velocity(Duration::from_millis(310), 64, true, 60);
+        matcher.user_note(Duration::from_millis(360), 64, false);
+        matcher.score_target(Duration::from_millis(400), target(65, 90, 400), true);
+        matcher.user_note_with_velocity(Duration::from_millis(410), 65, true, 85);
+        matcher.user_note(Duration::from_millis(610), 65, false);
+
+        matcher.user_pedal(Duration::from_millis(1_000), 0);
+        matcher.user_pedal(Duration::from_millis(1_100), 64);
+        matcher.user_pedal(Duration::from_millis(1_200), 127);
+        matcher.user_pedal(Duration::from_millis(1_300), 127);
+        matcher.score_pedal(Duration::from_millis(1_000), 0);
+        matcher.score_pedal(Duration::from_millis(1_080), 127);
+
+        let expression = matcher.summary().expression;
+        assert!(expression.has_velocity_evidence());
+        assert!(expression.has_pedal_evidence());
+        assert_eq!(
+            expression.velocity,
+            VelocitySummary {
+                matched_samples: 4,
+                mean_abs_difference: Some(12),
+                played_min: Some(55),
+                played_max: Some(100),
+                target_min: Some(40),
+                target_max: Some(90),
+                contour_steps: 3,
+                contour_aligned: 3,
+                contour_flat: 0,
+                contour_inverted: 0,
+            }
+        );
+        assert_eq!(
+            expression.pedal,
+            PedalSummary {
+                user_changes: 2,
+                target_changes: 1,
+                user_used: true,
+                target_present: true,
+                user_continuous_samples: 1,
+                target_continuous_samples: 0,
+                user_transitions: 1,
+                target_transitions: 1,
+                timing_samples: 1,
+                median_offset_ms: Some(20),
+                median_deviation_ms: Some(0),
+            }
+        );
+        assert_eq!(
+            expression.articulation,
+            ArticulationSummary {
+                matched_samples: 4,
+                median_duration_ratio_percent: Some(100),
+                shorter_count: 1,
+                similar_count: 2,
+                longer_count: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn expression_profiles_pedal_timing_and_onset_averaged_contour() {
+        let mut matcher = matcher();
+        let target_velocities = [40, 50, 60, 70, 60, 50, 40];
+        let played_velocities = [45, 55, 65, 75, 65, 55, 45];
+
+        for (index, (&target_velocity, &played_velocity)) in
+            target_velocities.iter().zip(&played_velocities).enumerate()
+        {
+            let onset = Duration::from_millis(100 + index as u64 * 100);
+            for note in [48 + index as u8 * 2, 49 + index as u8 * 2] {
+                matcher.score_target(
+                    onset,
+                    PracticeTarget {
+                        note,
+                        velocity: target_velocity,
+                        score_time: onset,
+                        duration: Duration::from_millis(80),
+                        track_id: 1,
+                        measure: 1,
+                        part: PracticePart::RightHand,
+                    },
+                    true,
+                );
+                matcher.user_note_with_velocity(onset, note, true, played_velocity);
+            }
+        }
+
+        for (target_ms, user_ms, value) in [
+            (0, 0, 0),
+            (100, 140, 127),
+            (300, 340, 0),
+            (500, 540, 127),
+            (700, 740, 0),
+        ] {
+            matcher.score_pedal(Duration::from_millis(target_ms), value);
+            matcher.user_pedal(Duration::from_millis(user_ms), value);
+        }
+
+        let expression = matcher.summary().expression;
+        assert_eq!(expression.velocity.contour_steps, 6);
+        assert_eq!(expression.velocity.contour_aligned, 6);
+        assert_eq!(expression.velocity.contour_flat, 0);
+        assert_eq!(expression.velocity.contour_inverted, 0);
+        assert!(expression.has_velocity_contour_evidence());
+        assert_eq!(expression.pedal.timing_samples, 4);
+        assert_eq!(expression.pedal.median_offset_ms, Some(40));
+        assert_eq!(expression.pedal.median_deviation_ms, Some(0));
+        assert!(expression.has_pedal_timing_evidence());
+    }
+
+    #[test]
+    fn expression_evidence_resets_between_attempts() {
+        let mut matcher = matcher();
+        matcher.user_pedal(Duration::ZERO, 127);
+        matcher.score_pedal(Duration::ZERO, 0);
+        matcher.reset();
+
+        assert_eq!(matcher.summary().expression, ExpressionSummary::default());
+    }
+
+    #[test]
+    fn expression_saved_before_articulation_remains_readable() {
+        let legacy = r#"(
+            velocity: (
+                matched_samples: 0,
+                mean_abs_difference: None,
+                played_min: None,
+                played_max: None,
+                target_min: None,
+                target_max: None,
+            ),
+            pedal: (
+                user_changes: 0,
+                target_changes: 0,
+                user_used: false,
+                target_present: false,
+                user_continuous_samples: 0,
+                target_continuous_samples: 0,
+            ),
+        )"#;
+
+        let expression: ExpressionSummary = ron::from_str(legacy).unwrap();
+        assert_eq!(expression.articulation, ArticulationSummary::default());
+        assert_eq!(expression.velocity.contour_steps, 0);
+        assert_eq!(expression.pedal.timing_samples, 0);
+        assert_eq!(expression.pedal.user_transitions, 0);
+    }
+
+    #[test]
+    fn part_summaries_saved_before_timing_profiles_remain_readable() {
+        let legacy = r#"(
+            part: RightHand,
+            breakdown: (
+                target_notes: 1,
+                matched_notes: 1,
+                on_time_notes: 1,
+                early_notes: 0,
+                late_notes: 0,
+                wrong_notes: 0,
+                missed_notes: 0,
+            ),
+        )"#;
+
+        let part: PartSummary = ron::from_str(legacy).unwrap();
+        assert_eq!(part.timing, TimingSummary::default());
+    }
+
+    #[test]
+    fn measure_summaries_saved_before_timing_profiles_remain_readable() {
+        let legacy = r#"(
+            measure: 3,
+            breakdown: (
+                target_notes: 1,
+                matched_notes: 1,
+                on_time_notes: 1,
+                early_notes: 0,
+                late_notes: 0,
+                wrong_notes: 0,
+                missed_notes: 0,
+            ),
+        )"#;
+
+        let measure: MeasureSummary = ron::from_str(legacy).unwrap();
+        assert_eq!(measure.timing, TimingSummary::default());
+    }
+
+    #[test]
+    fn timing_profile_uses_signed_median_and_robust_deviation() {
+        let summary = summarize_timing_offsets(&[-40, -20, -10, 0, 10, 20, 40, 100]);
+
+        assert!(summary.has_profile());
+        assert_eq!(summary.matched_samples, 8);
+        assert_eq!(summary.median_offset_ms, Some(5));
+        assert_eq!(summary.median_deviation_ms, Some(20));
+        assert_eq!(summarize_timing_offsets(&[]), TimingSummary::default());
+    }
+
+    #[test]
+    fn calibration_requires_enough_stable_and_meaningfully_biased_evidence() {
+        let timing = |samples, offset, deviation| TimingSummary {
+            matched_samples: samples,
+            median_offset_ms: Some(offset),
+            median_deviation_ms: Some(deviation),
+        };
+
+        assert_eq!(
+            timing_calibration_status(timing(23, 40, 10), 0),
+            TimingCalibrationStatus::InsufficientSamples {
+                captured: 23,
+                required: 24,
+            }
+        );
+        assert_eq!(
+            timing_calibration_status(timing(24, 40, 36), 0),
+            TimingCalibrationStatus::Unstable {
+                deviation_ms: 36,
+                maximum_ms: 35,
+            }
+        );
+        assert_eq!(
+            timing_calibration_status(timing(24, 9, 5), 0),
+            TimingCalibrationStatus::Centered
+        );
+    }
+
+    #[test]
+    fn calibration_caps_each_confirmed_step_and_respects_global_limits() {
+        let timing = |offset| TimingSummary {
+            matched_samples: 24,
+            median_offset_ms: Some(offset),
+            median_deviation_ms: Some(10),
+        };
+
+        assert_eq!(
+            timing_calibration_status(timing(90), 20),
+            TimingCalibrationStatus::Suggested(TimingCalibrationSuggestion {
+                current_ms: 20,
+                adjustment_ms: 50,
+                suggested_ms: 70,
+            })
+        );
+        assert_eq!(
+            timing_calibration_status(timing(-30), 10),
+            TimingCalibrationStatus::Suggested(TimingCalibrationSuggestion {
+                current_ms: 10,
+                adjustment_ms: -30,
+                suggested_ms: -20,
+            })
+        );
+        assert_eq!(
+            timing_calibration_status(timing(20), 250),
+            TimingCalibrationStatus::AtLimit
+        );
+    }
+
+    #[test]
+    fn attempt_history_keeps_last_and_best_results() {
+        let summary = |matched, on_time, wrong, missed| AttemptSummary {
+            overall: PracticeSnapshot {
+                matched_notes: matched,
+                on_time_notes: on_time,
+                wrong_notes: wrong,
+                missed_notes: missed,
+                ..PracticeSnapshot::default()
+            },
+            ..AttemptSummary::default()
+        };
+
+        let mut history = AttemptHistory::default();
+        history.record(summary(8, 5, 2, 0));
+        history.record(summary(9, 6, 1, 0));
+        history.record(summary(8, 8, 2, 0));
+
+        assert_eq!(history.completed(), 3);
+        assert_eq!(history.current_attempt(), 4);
+        assert_eq!(history.last().unwrap().overall.on_time_notes, 8);
+        assert_eq!(history.best().unwrap().overall.matched_notes, 9);
+    }
+
+    #[test]
+    fn attempt_history_uses_on_time_notes_as_accuracy_tiebreaker() {
+        let mut history = AttemptHistory::default();
+        let attempt = |on_time| AttemptSummary {
+            overall: PracticeSnapshot {
+                matched_notes: 8,
+                on_time_notes: on_time,
+                wrong_notes: 2,
+                ..PracticeSnapshot::default()
+            },
+            ..AttemptSummary::default()
+        };
+
+        history.record(attempt(4));
+        history.record(attempt(7));
+
+        assert_eq!(history.best().unwrap().overall.on_time_notes, 7);
+    }
+
+    fn tempo_summary(matched: usize, on_time: usize, wrong: usize) -> AttemptSummary {
+        AttemptSummary {
+            overall: PracticeSnapshot {
+                matched_notes: matched,
+                on_time_notes: on_time,
+                wrong_notes: wrong,
+                ..PracticeSnapshot::default()
+            },
+            ..AttemptSummary::default()
+        }
+    }
+
+    #[test]
+    fn adaptive_tempo_requires_two_mastered_takes_before_increasing() {
+        let mut coach = AdaptiveTempoCoach::default();
+        let rules = AdaptiveTempoRules::default();
+        let mastered = tempo_summary(19, 16, 1);
+
+        let first = coach.evaluate(&mastered, 0.7, rules);
+        assert_eq!(first.speed, 0.7);
+        assert_eq!(
+            first.reason,
+            AdaptiveTempoReason::BuildingMastery {
+                completed: 1,
+                required: 2,
+            }
+        );
+
+        let second = coach.evaluate(&mastered, 0.7, rules);
+        assert_eq!(second.speed, 0.75);
+        assert_eq!(second.reason, AdaptiveTempoReason::Mastered);
+    }
+
+    #[test]
+    fn adaptive_tempo_reduces_speed_after_a_weak_take() {
+        let mut coach = AdaptiveTempoCoach::default();
+        let weak = tempo_summary(6, 5, 4);
+
+        let decision = coach.evaluate(&weak, 0.8, AdaptiveTempoRules::default());
+
+        assert_eq!(decision.speed, 0.75);
+        assert_eq!(decision.reason, AdaptiveTempoReason::NeedsAccuracy);
+    }
+
+    #[test]
+    fn adaptive_tempo_holds_moderate_take_and_respects_limits() {
+        let mut coach = AdaptiveTempoCoach::default();
+        let moderate = tempo_summary(8, 6, 2);
+        let weak = tempo_summary(1, 1, 9);
+
+        let hold = coach.evaluate(&moderate, 0.8, AdaptiveTempoRules::default());
+        assert_eq!(hold.speed, 0.8);
+        assert_eq!(hold.reason, AdaptiveTempoReason::KeepPractising);
+
+        let minimum = coach.evaluate(&weak, 0.5, AdaptiveTempoRules::default());
+        assert_eq!(minimum.speed, 0.5);
+        assert_eq!(minimum.reason, AdaptiveTempoReason::AtMinimum);
+    }
+}

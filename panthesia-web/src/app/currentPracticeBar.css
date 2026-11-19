@@ -1,0 +1,125 @@
+.current-practice-bar {
+  display: flex;
+  align-items: center;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 13px 20px;
+  border-bottom: 1px solid #3e4b43;
+  background: linear-gradient(110deg, #2e3b30, #242f32 70%);
+}
+.current-practice-symbol {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #728a575e;
+  border-radius: 11px;
+  color: #c2e59a;
+  background: #8fb05c14;
+}
+.current-practice-summary {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.current-practice-summary > span {
+  color: #afc2ab;
+  font-size: 11px;
+}
+.current-practice-summary strong {
+  color: #ecf3e7;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current-practice-summary small {
+  color: #b6c4c7;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.current-practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.current-practice-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 35px;
+  font-size: 12px;
+}
+.current-practice-unavailable {
+  flex-basis: 100%;
+  margin: 0 0 0 56px;
+  color: #d8c39e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .current-practice-bar {
+    padding: 10px 12px;
+    gap: 8px 10px;
+  }
+  .current-practice-symbol {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+  .current-practice-actions {
+    flex-basis: 100%;
+    padding-left: 44px;
+  }
+  .current-practice-unavailable {
+    margin-left: 44px;
+  }
+}
+@media (max-height: 700px) and (min-width: 761px) {
+  .current-practice-bar {
+    padding-block: 8px;
+  }
+  .current-practice-symbol {
+    width: 34px;
+    height: 34px;
+  }
+  .current-practice-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+  .current-practice-summary > span {
+    flex-basis: 100%;
+  }
+  .current-practice-summary strong {
+    max-width: min(38vw, 500px);
+  }
+}
+@media (max-height: 590px) {
+  .current-practice-bar {
+    padding-block: 7px;
+  }
+  .current-practice-summary > span {
+    display: none;
+  }
+  .current-practice-symbol {
+    width: 30px;
+    height: 30px;
+  }
+  .current-practice-actions {
+    flex-basis: auto;
+    padding-left: 0;
+  }
+  .current-practice-actions button {
+    min-height: 30px;
+    padding-block: 4px;
+  }
+  .current-practice-unavailable {
+    margin-left: 0;
+  }
+}

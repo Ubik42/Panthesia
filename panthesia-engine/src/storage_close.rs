@@ -1,0 +1,251 @@
+//! Native shutdown waits for both storage writes and their playback-side continuations.
+use crate::*;
+
+/// Uncommitted performance input remains available if the user returns to the window.
+/// The desktop may discard it only after all durable writes have drained.
+#[derive(Clone, Copy)]
+pub enum CloseInput {
+    StorageRecovery,
+    StorageProblem,
+    SettingsUnsaved,
+    RoundUnsaved,
+    ProgressUnsaved,
+    Recording,
+    RecordingUnsaved,
+    IncompleteRecital,
+    SoundUnavailable,
+}
+impl CloseInput {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::StorageRecovery => "storage-recovery",
+            Self::StorageProblem => "storage-problem",
+            Self::SettingsUnsaved => "settings-unsaved",
+            Self::RoundUnsaved => "round-unsaved",
+            Self::ProgressUnsaved => "progress-unsaved",
+            Self::Recording => "recording-active",
+            Self::RecordingUnsaved => "recording-unsaved",
+            Self::IncompleteRecital => "recital-incomplete",
+            Self::SoundUnavailable => "sound-unavailable",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::StorageRecovery => "资料等待下次启动恢复",
+            Self::StorageProblem => "练习资料需要检查",
+            Self::SettingsUnsaved => "尚未保存的练习修改",
+            Self::RoundUnsaved => "本轮成绩尚未保存",
+            Self::ProgressUnsaved => "本轮练习进度待登记",
+            Self::Recording | Self::RecordingUnsaved => "本次录音",
+            Self::IncompleteRecital => "完整演奏成绩",
+            Self::SoundUnavailable => "声音输出",
+        }
+    }
+    pub fn detail(self) -> &'static str {
+        match self {
+            Self::StorageRecovery => {
+                "当前写入已停止，关闭会保留磁盘中的现有文件与恢复资料。下次启动会接续恢复。"
+            }
+            Self::StorageProblem => {
+                "本次保存或资料核对未能完成。磁盘中的原文件继续保留；继续关闭不会完成恢复，请在下次启动时检查资料状态。"
+            }
+            Self::SettingsUnsaved => {
+                "部分练习设置或历史修改尚未写入文件。返回后可重试保存；继续关闭会丢失这些修改。"
+            }
+            Self::RoundUnsaved => {
+                "本轮演奏结果仍保留在本次运行中。返回后可重试保存；继续关闭会丢失尚未写入的本轮结果。"
+            }
+            Self::ProgressUnsaved => {
+                "本轮成绩已保存，练习计划、阶梯或轮次进度尚待登记。返回并完成资料恢复后可继续登记；继续关闭可能缺少这轮练习进度。"
+            }
+            Self::Recording => "录音仍在记录，尚未保存的录音会在退出后丢失。",
+            Self::RecordingUnsaved => "最近的录音尚未保存，可返回停止录音并保存。",
+            Self::IncompleteRecital => "本轮完整演奏尚未结束，当前成绩还未保存。可返回继续演奏。",
+            Self::SoundUnavailable => {
+                "声音输出暂时无法响应。可返回检查音频或 MIDI 设备；其他保存状态见本次退出说明。"
+            }
+        }
+    }
+}
+pub(crate) struct Fence {
+    pub recording: bool,
+    pub recording_unsaved: bool,
+    pub unsaved_round: bool,
+    pub round_pending: bool,
+    pub incomplete_recital: bool,
+    pub progress_pending: bool,
+    pub exclusive: bool,
+    pub error: Option<String>,
+    pub storage: crate::pending_save::Status,
+}
+fn temporary_inputs(status: &Fence) -> Vec<CloseInput> {
+    let mut issues = Vec::new();
+    if status.recording {
+        issues.push(CloseInput::Recording);
+    } else if status.recording_unsaved {
+        issues.push(CloseInput::RecordingUnsaved);
+    }
+    if status.incomplete_recital {
+        issues.push(CloseInput::IncompleteRecital);
+    }
+    if status.progress_pending {
+        issues.push(CloseInput::ProgressUnsaved);
+    }
+    issues
+}
+impl Engine {
+    pub(super) fn storage_fence(&self) -> Result<Fence, String> {
+        let (reply, receiver) = mpsc::sync_channel(1);
+        self.tx
+            .send(runtime_request::Request::StorageFence(reply))
+            .map_err(|_| "音乐引擎已关闭")?;
+        receiver
+            .recv_timeout(Duration::from_secs(125))
+            .map_err(|_| "等待资料保存状态超时，请稍后重试当前操作")?
+    }
+    pub fn prepare_close(&self) -> Result<(), String> {
+        self.prepare_close_with_cancel(Arc::new(AtomicBool::new(false)))
+    }
+    pub fn prepare_close_with_cancel(&self, cancelled: Arc<AtomicBool>) -> Result<(), String> {
+        self.prepare_close_inner(cancelled, false).map(|_| ())
+    }
+    pub fn prepare_desktop_close(
+        &self,
+        cancelled: Arc<AtomicBool>,
+    ) -> Result<Vec<CloseInput>, String> {
+        self.prepare_close_inner(cancelled, true)
+    }
+    fn prepare_close_inner(
+        &self,
+        cancelled: Arc<AtomicBool>,
+        report_temporary: bool,
+    ) -> Result<Vec<CloseInput>, String> {
+        struct Reset {
+            closing: Arc<AtomicBool>,
+            complete: bool,
+        }
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                if !self.complete {
+                    self.closing.store(false, Ordering::Release);
+                }
+            }
+        }
+        self.closing.store(true, Ordering::Release);
+        if !self.startup.finished.load(Ordering::Acquire) {
+            self.startup.skip.store(true, Ordering::Release);
+        }
+        let mut reset = Reset {
+            closing: self.closing.clone(),
+            complete: false,
+        };
+        self.command(Command::Panic)?;
+        let deadline = Instant::now() + Duration::from_secs(125);
+        while Instant::now() < deadline {
+            if cancelled.load(Ordering::Acquire) {
+                return Err("已取消本次退出".into());
+            }
+            let before = self.storage_fence()?;
+            if cancelled.load(Ordering::Acquire) {
+                return Err("已取消本次退出".into());
+            }
+            let before_inputs = temporary_inputs(&before);
+            if !report_temporary {
+                if let Some(input) = before_inputs.first() {
+                    return Err(input.detail().into());
+                }
+            }
+            if before.round_pending
+                && !before.exclusive
+                && !before.incomplete_recital
+                && (!report_temporary || before.error.is_none())
+            {
+                if let Err(error) = self.save_round_task() {
+                    if !report_temporary {
+                        return Err(error);
+                    }
+                }
+            }
+            let engine = self.clone();
+            let cancel = cancelled.clone();
+            let drained = Arc::new(AtomicBool::new(false));
+            let worker_drained = drained.clone();
+            let saved = self
+                .storage_tasks
+                .run_owned("关闭前保存练习资料", move |token| {
+                    if cancel.load(Ordering::Acquire) {
+                        return Err("已取消本次退出".into());
+                    }
+                    token.begin_commit()?;
+                    let result = engine.pending_saves.flush();
+                    engine.pending_saves.observe_recovery();
+                    worker_drained.store(true, Ordering::Release);
+                    result?;
+                    Ok(serde_json::json!({"ok":true}))
+                });
+            if let Err(error) = saved {
+                // A rejected/cancelled job never proved that the storage lane drained.
+                if !report_temporary || !drained.load(Ordering::Acquire) {
+                    return Err(error);
+                }
+            }
+            if cancelled.load(Ordering::Acquire) {
+                return Err("已取消本次退出".into());
+            }
+            let after = self.storage_fence()?;
+            let mut after_inputs = temporary_inputs(&after);
+            if !report_temporary {
+                if let Some(input) = after_inputs.first() {
+                    return Err(input.detail().into());
+                }
+            }
+            if !report_temporary && let Some(error) = &after.error {
+                return Err(format!("资料尚未保存，程序暂未关闭。请重试保存：{error}"));
+            }
+            if !report_temporary && after.unsaved_round && !after.incomplete_recital {
+                return Err("本轮演奏结果尚未保存，请先重试保存当前结果".into());
+            }
+            let storage_idle = if report_temporary {
+                !after.storage.writing && after.storage.recovery.checked
+            } else {
+                !after.storage.pending
+            };
+            if !after.exclusive
+                && (!after.round_pending || report_temporary)
+                && storage_idle
+                && self.imports_in_flight.load(Ordering::Acquire) == 0
+                && self.startup.finished.load(Ordering::Acquire)
+            {
+                if report_temporary {
+                    if after.storage.recovery.required() {
+                        after_inputs.push(CloseInput::StorageRecovery);
+                    } else if after.error.is_some() {
+                        after_inputs.push(CloseInput::StorageProblem);
+                    }
+                    if after.storage.unsaved_changes {
+                        after_inputs.push(CloseInput::SettingsUnsaved);
+                    }
+                    if after.round_pending
+                        && !after.incomplete_recital
+                        && !after.storage.recovery.round
+                    {
+                        after_inputs.push(CloseInput::RoundUnsaved);
+                    }
+                }
+                if let Err(error) = self.sound.flush() {
+                    if !report_temporary {
+                        return Err(error);
+                    }
+                    after_inputs.push(CloseInput::SoundUnavailable);
+                }
+                reset.complete = true;
+                return Ok(after_inputs);
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        Err("保存任务仍在处理，程序暂未关闭，请稍后重试".into())
+    }
+    pub fn cancel_close(&self) {
+        self.closing.store(false, Ordering::Release);
+    }
+}

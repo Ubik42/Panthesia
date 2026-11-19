@@ -1,0 +1,2206 @@
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use ron::extensions::Extensions;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    exercise::ExerciseSpec,
+    practice::{AttemptSummary, PracticeBreakdown, PracticeHands, PracticePart},
+};
+
+const MAX_SESSIONS_PER_SONG: usize = 200;
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+pub enum PracticeSessionKind {
+    WholeSong,
+    Loop {
+        start_measure: usize,
+        end_measure: usize,
+    },
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Serialize)]
+pub struct PracticeAnnotation {
+    pub note: String,
+    pub teacher: String,
+    pub next: String,
+    pub updated_at_unix_ms: u64,
+}
+#[derive(Debug,Clone,Deserialize,PartialEq,Serialize)]
+#[serde(rename_all="camelCase")]
+pub struct ReplayClip {
+    pub id: String,
+    pub name: String,
+    pub start: f64,
+    pub end: f64,
+    pub notes: String,
+    pub updated_at_unix_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub performance_revision: Option<String>,
+}
+pub fn validate_replay_clips(clips:&[ReplayClip],duration:Option<f64>)->Result<(),String>{
+    if clips.len()>100{return Err("每次演奏最多收藏 100 个回放片段".into());}
+    let mut ids=std::collections::BTreeSet::new();
+    for clip in clips {
+        if clip.performance_revision.as_deref().is_some_and(|value| value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit())) {
+            return Err("回放片段的演奏版本无效".into());
+        }
+    }
+    for c in clips{if c.id.is_empty() || c.id.len()>160 || c.id.chars().any(char::is_control) || !ids.insert(&c.id) || c.name.trim().is_empty() || c.name.len()>320 || c.name.chars().any(char::is_control) || c.notes.len()>8192 || !c.start.is_finite() || !c.end.is_finite() || c.start<0. || c.end-c.start<0.1 || duration.is_some_and(|d|c.end>d+0.001){return Err("回放片段名称、身份或范围无效".into());}}
+    Ok(())
+}
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
+pub struct PracticeSession {
+    #[serde(default,skip_serializing_if="Vec::is_empty")]
+    pub replay_clips:Vec<ReplayClip>,
+    /// Wall time with practice transport running; excludes pause and count-in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playing_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub annotation: Option<PracticeAnnotation>,
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub context: Option<PracticeSessionContext>,
+    pub recorded_at_unix_ms: u64,
+    pub kind: PracticeSessionKind,
+    #[serde(default)]
+    pub hands: PracticeHands,
+    pub speed: f32,
+    #[serde(default)]
+    pub mode: Option<String>,
+    #[serde(default)]
+    pub scope: Option<String>,
+    #[serde(default)]
+    pub effective_tempo_bpm: Option<u16>,
+    pub summary: AttemptSummary,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
+pub struct PracticeLadderCondition {
+    pub plan_id:String,
+    pub plan_name:String,
+    pub stage:usize,
+    pub speed_percent:u16,
+    pub target_percent:u16,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub accuracy_percent:Option<u8>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub on_time_percent:Option<u8>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub passes_required:Option<u8>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub round_passed:Option<bool>,
+}
+
+#[derive(Debug,Clone,Default,Deserialize,PartialEq,Serialize)]
+pub struct PracticeExpressionCondition {pub velocity_difference:Option<u8>,#[serde(default,skip_serializing_if="Option::is_none")] pub note_velocity_difference:Option<u8>,#[serde(default,skip_serializing_if="Option::is_none")] pub note_pedal_mismatch_count:Option<u8>,pub contour_percent:Option<u8>,pub pedal_offset_ms:Option<u16>}
+
+#[derive(Debug,Clone,Deserialize,PartialEq,Serialize)]
+pub struct PracticeRoutineCondition {
+    #[serde(default,skip_serializing_if="Option::is_none")] pub expression:Option<PracticeExpressionCondition>,
+    #[serde(default)] pub item_notes:String,
+    #[serde(default)] pub consecutive:bool,
+    pub routine_id:String,pub routine_name:String,pub day:String,pub item_id:String,pub item_title:String,
+    pub passes_required:u16,pub accuracy_percent:u8,pub on_time_percent:Option<u8>,
+}
+
+/// Immutable conditions of a saved attempt. Absent in older histories.
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
+pub struct PracticeSessionContext {
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub expression: Option<PracticeExpressionCondition>,
+    #[serde(default)]
+    pub routine:Option<PracticeRoutineCondition>,
+    #[serde(default)]
+    pub ladder: Option<PracticeLadderCondition>,
+    #[serde(default)]
+    pub target_notes: usize,
+    #[serde(default)]
+    pub judged_notes: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub note_playback: Vec<crate::song_config::NotePlaybackRule>,
+    pub tracks: Vec<PracticeTrackSetup>,
+    pub parts: BTreeMap<usize, PracticePart>,
+    pub hands: String,
+    pub count_in: u8,
+    pub metronome: bool,
+    pub latency: i32,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub pedal_latency_ms:Option<i32>,
+    pub rounds: usize,
+    pub adaptive: bool,
+    pub grid: String,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub passage_bounds: Option<PracticePassageBounds>,
+    pub source_path: Option<PathBuf>,
+    pub exercise_spec: Option<ExerciseSpec>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PracticePassageBounds {
+    pub start_tick: u64,
+    pub end_tick: u64,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+pub enum PracticeTrackMode {
+    Mute,
+    Auto,
+    Human,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PracticeTrackSetup {
+    pub track_id: usize,
+    pub mode: PracticeTrackMode,
+    pub visible: bool,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PracticeLoopSetup {
+    pub enabled: bool,
+    pub start_measure: usize,
+    pub end_measure: usize,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Serialize)]
+pub struct SongPracticeSetup {
+    pub tracks: Vec<PracticeTrackSetup>,
+    pub speed: f32,
+    pub loop_setup: Option<PracticeLoopSetup>,
+    #[serde(default)]
+    pub source_path: Option<PathBuf>,
+    #[serde(default)]
+    pub exercise_spec: Option<ExerciseSpec>,
+    #[serde(default)]
+    pub last_used_unix_ms: u64,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SongLibraryState {
+    pub source_path: Option<PathBuf>,
+    pub favorite: bool,
+    pub queue_position: Option<usize>,
+}
+
+impl PracticeSession {
+    pub fn stable_id(&self) -> String {
+        self.id.clone().unwrap_or_else(|| {
+            let mut original=self.clone();original.annotation=None;original.replay_clips.clear();
+            format!("legacy-{}",blake3::hash(&serde_json::to_vec(&original).unwrap_or_default()))
+        })
+    }
+    pub fn same_performance(&self, other:&Self)->bool {
+        let mut a=self.clone();let mut b=other.clone();
+        a.annotation=None;b.annotation=None;a.replay_clips.clear();b.replay_clips.clear();a.id=None;b.id=None;
+        if a.playing_ms.is_some() && b.playing_ms.is_some() && a.playing_ms!=b.playing_ms {return false;}
+        a.playing_ms=None;b.playing_ms=None;a==b
+    }
+    pub fn new(
+        kind: PracticeSessionKind,
+        hands: PracticeHands,
+        speed: f32,
+        summary: AttemptSummary,
+    ) -> Self {
+        Self {
+            replay_clips:Vec::new(),
+            playing_ms: None,
+            annotation: None,
+            id: Some(format!("attempt-{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos())),
+            context: None,
+            recorded_at_unix_ms: unix_time_ms(),
+            kind,
+            hands,
+            speed,
+            mode: None,
+            scope: None,
+            effective_tempo_bpm: None,
+            summary,
+        }
+    }
+
+    pub fn with_playing_ms(mut self, millis: u64) -> Self {
+        self.playing_ms = Some(millis);
+        self
+    }
+
+    pub fn with_context(mut self, context: PracticeSessionContext) -> Self {
+        self.context = Some(context);
+        self
+    }
+    pub fn with_scope(mut self, scope: String) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+    pub fn with_mode(mut self, mode: &str) -> Self {
+        self.mode = Some(mode.into());
+        self
+    }
+    pub fn with_effective_tempo_bpm(mut self, tempo_bpm: Option<u16>) -> Self {
+        self.effective_tempo_bpm = tempo_bpm;
+        self
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Serialize)]
+pub struct SongPracticeHistory {
+    pub display_name: String,
+    #[serde(default)]
+    pub setup: Option<SongPracticeSetup>,
+    #[serde(default)]
+    pub library: SongLibraryState,
+    pub sessions: Vec<PracticeSession>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeakMeasure {
+    pub measure: usize,
+    pub accuracy: f32,
+    pub judged_notes: usize,
+    pub attempts: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeakPassageRecommendation {
+    pub start_measure: usize,
+    pub end_measure: usize,
+    pub weakest_accuracy: f32,
+    pub judged_notes: usize,
+    pub attempts: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RhythmMeasure {
+    pub measure: usize,
+    pub median_offset_ms: i32,
+    pub median_deviation_ms: u32,
+    pub matched_notes: usize,
+    pub attempts: usize,
+    pub severity_ms: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RhythmPassageRecommendation {
+    pub start_measure: usize,
+    pub end_measure: usize,
+    pub median_offset_ms: i32,
+    pub median_deviation_ms: u32,
+    pub matched_notes: usize,
+    pub attempts: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RecentPracticeSummary {
+    pub kind: PracticeSessionKind,
+    pub hands: PracticeHands,
+    pub recorded_at_unix_ms: u64,
+    pub accuracy: Option<f32>,
+    pub speed: f32,
+    pub effective_tempo_bpm: Option<u16>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PracticeHistoryOverview {
+    pub total_sessions: usize,
+    /// Oldest to newest, so the UI can read it as a progression.
+    pub recent: Vec<RecentPracticeSummary>,
+    pub trend_kind: Option<PracticeSessionKind>,
+    pub trend_hands: Option<PracticeHands>,
+    pub trend_attempts: usize,
+    pub accuracy_delta: Option<f32>,
+    pub speed_delta: Option<f32>,
+    pub tempo_bpm_delta: Option<i32>,
+    pub weak_measures: Vec<WeakMeasure>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecentSongSummary {
+    pub content_id: String,
+    pub display_name: String,
+    pub source_path: Option<PathBuf>,
+    pub exercise_spec: Option<ExerciseSpec>,
+    pub last_used_unix_ms: u64,
+    pub session_count: usize,
+    pub latest_accuracy: Option<f32>,
+    pub favorite: bool,
+    pub queue_position: Option<usize>,
+    pub recommended_measures: Option<(usize, usize)>,
+    pub review: Option<ReviewStatus>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ReviewReason {
+    NeedsEvidence,
+    IncompleteConditions,
+    NeedsReinforcement,
+    FirstMastery,
+    Consolidating,
+    Stable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ReviewStatus {
+    pub due_at_unix_ms: u64,
+    pub source_at_unix_ms: u64,
+    pub source_is_whole_song: bool,
+    pub is_due: bool,
+    pub interval_days: u16,
+    pub days_until_due: u16,
+    pub mastery_streak: usize,
+    pub latest_accuracy: Option<f32>,
+    pub reason: ReviewReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PassageReviewStatus {
+    pub start_measure: usize,
+    pub end_measure: usize,
+    pub session_index: usize,
+    pub due_at_unix_ms: u64,
+    pub interval_days: u16,
+    pub mastery_streak: usize,
+    pub latest_accuracy: f32,
+}
+
+impl SongPracticeHistory {
+    pub fn due_passage_reviews(&self, now_unix_ms: u64, limit: usize) -> Vec<PassageReviewStatus> {
+        if limit == 0 { return Vec::new(); }
+        let mut seen = BTreeSet::new();
+        let mut due = Vec::new();
+        for (session_index, latest) in self.sessions.iter().enumerate().rev() {
+            let PracticeSessionKind::Loop { start_measure, end_measure } = latest.kind else {
+                continue;
+            };
+            if !ordinary_passage_context(latest) { continue; }
+            let Some(bounds) = latest.context.as_ref().and_then(|context| context.passage_bounds)
+                .filter(|bounds| bounds.start_tick < bounds.end_tick) else { continue; };
+            if start_measure == 0 || end_measure < start_measure
+                || !seen.insert((bounds.start_tick, bounds.end_tick)) {
+                continue;
+            }
+            if !review_conditions_complete(latest) { continue; }
+            let mastery_streak = self.sessions[..=session_index].iter().rev()
+                .filter(|session| session.kind == latest.kind && ordinary_passage_context(session))
+                .take_while(|session| same_review_conditions(latest, session)
+                    && session_is_mastered(session))
+                .count();
+            if mastery_streak == 0 { continue; }
+            let interval_days = match mastery_streak {
+                1 => 1,
+                2 => 3,
+                3 | 4 => 7,
+                _ => 14,
+            };
+            let due_at_unix_ms = latest.recorded_at_unix_ms
+                .saturating_add(u64::from(interval_days) * 24 * 60 * 60 * 1_000);
+            if now_unix_ms < due_at_unix_ms { continue; }
+            let Some(latest_accuracy) = latest.summary.overall.accuracy() else { continue; };
+            due.push(PassageReviewStatus {
+                start_measure, end_measure, session_index, due_at_unix_ms,
+                interval_days, mastery_streak, latest_accuracy,
+            });
+            if due.len() >= limit { break; }
+        }
+        due
+    }
+    pub fn latest_regular_whole_song(&self) -> Option<&PracticeSession> {
+        self.sessions.iter().rev().find(|session| regular_whole_song(session))
+    }
+
+    pub fn review_status(&self, now_unix_ms: u64) -> Option<ReviewStatus> {
+        let regular_latest = self.latest_regular_whole_song();
+        let latest = regular_latest.or_else(|| self.sessions.last())?;
+        let complete = review_conditions_complete(latest);
+        let mastery_streak = if complete {
+            self.sessions.iter().rev()
+                .filter(|session| regular_latest.is_none() || regular_whole_song(session))
+                .take_while(|session| {
+                    same_review_conditions(latest, session) && session_is_mastered(session)
+                })
+                .count()
+        } else { 0 };
+        let latest_accuracy = latest.summary.overall.accuracy();
+        let (interval_days, reason) = if latest_accuracy.is_none() {
+            (0, ReviewReason::NeedsEvidence)
+        } else if !complete {
+            (0, ReviewReason::IncompleteConditions)
+        } else if mastery_streak == 0 {
+            (0, ReviewReason::NeedsReinforcement)
+        } else if mastery_streak == 1 {
+            (1, ReviewReason::FirstMastery)
+        } else if mastery_streak == 2 {
+            (3, ReviewReason::Consolidating)
+        } else if mastery_streak < 5 {
+            (7, ReviewReason::Stable)
+        } else {
+            (14, ReviewReason::Stable)
+        };
+        let due_at_unix_ms = latest
+            .recorded_at_unix_ms
+            .saturating_add(u64::from(interval_days) * 24 * 60 * 60 * 1_000);
+        let day_ms = 24 * 60 * 60 * 1_000_u64;
+        let days_until_due = due_at_unix_ms
+            .saturating_sub(now_unix_ms)
+            .div_ceil(day_ms)
+            .min(u64::from(u16::MAX)) as u16;
+        Some(ReviewStatus {
+            due_at_unix_ms,
+            source_at_unix_ms: latest.recorded_at_unix_ms,
+            source_is_whole_song: regular_latest.is_some(),
+            is_due: now_unix_ms >= due_at_unix_ms,
+            interval_days,
+            days_until_due,
+            mastery_streak,
+            latest_accuracy,
+            reason,
+        })
+    }
+
+    pub fn weak_measures(&self, limit: usize) -> Vec<WeakMeasure> {
+        self.weak_measures_for_scope(None, limit)
+    }
+
+    fn weak_measures_for_scope(
+        &self,
+        hands: Option<PracticeHands>,
+        limit: usize,
+    ) -> Vec<WeakMeasure> {
+        let scope_mode = self.sessions.last().and_then(|s| s.mode.as_deref());
+        let scope_revision = self.sessions.last().and_then(|s| s.scope.as_deref());
+        let mut measures = BTreeMap::<usize, (PracticeBreakdown, usize)>::new();
+        for session in self.sessions.iter().filter(|session| {
+            hands.is_none_or(|hands| session.hands == hands)
+                && session.mode.as_deref() == scope_mode
+                && session.scope.as_deref() == scope_revision
+        }) {
+            for item in &session.summary.measures {
+                let (total, attempts) = measures.entry(item.measure).or_default();
+                total.target_notes += item.breakdown.target_notes;
+                total.matched_notes += item.breakdown.matched_notes;
+                total.on_time_notes += item.breakdown.on_time_notes;
+                total.early_notes += item.breakdown.early_notes;
+                total.late_notes += item.breakdown.late_notes;
+                total.wrong_notes += item.breakdown.wrong_notes;
+                total.missed_notes += item.breakdown.missed_notes;
+                *attempts += 1;
+            }
+        }
+
+        let mut weak: Vec<_> = measures
+            .into_iter()
+            .filter_map(|(measure, (breakdown, attempts))| {
+                let judged =
+                    breakdown.matched_notes + breakdown.wrong_notes + breakdown.missed_notes;
+                Some(WeakMeasure {
+                    measure,
+                    accuracy: breakdown.accuracy()?,
+                    judged_notes: judged,
+                    attempts,
+                })
+            })
+            .collect();
+        weak.sort_by(|left, right| {
+            left.accuracy
+                .total_cmp(&right.accuracy)
+                .then_with(|| right.judged_notes.cmp(&left.judged_notes))
+                .then_with(|| left.measure.cmp(&right.measure))
+        });
+        weak.truncate(limit);
+        weak
+    }
+
+    /// Returns a conservative two-measure practice target. A recommendation
+    /// needs repeated evidence so a single exploratory take cannot create a
+    /// persistent "weak" label.
+    pub fn recommended_passage(&self) -> Option<WeakPassageRecommendation> {
+        let hands = self.sessions.last()?.hands;
+        let weakest = self
+            .weak_measures_for_scope(Some(hands), usize::MAX)
+            .into_iter()
+            .find(is_reliable_weakness)?;
+
+        Some(WeakPassageRecommendation {
+            start_measure: weakest.measure,
+            end_measure: weakest.measure.saturating_add(1),
+            weakest_accuracy: weakest.accuracy,
+            judged_notes: weakest.judged_notes,
+            attempts: weakest.attempts,
+        })
+    }
+
+    pub fn rhythm_measures(&self, limit: usize) -> Vec<RhythmMeasure> {
+        let Some(scope) = self.sessions.last().map(|session| {
+            (
+                session.kind,
+                session.hands,
+                session.mode.as_deref(),
+                session.scope.as_deref(),
+            )
+        }) else {
+            return Vec::new();
+        };
+        let mut measures = BTreeMap::<usize, (Vec<i32>, Vec<u32>, usize)>::new();
+        for session in self.sessions.iter().filter(|session| {
+            (
+                session.kind,
+                session.hands,
+                session.mode.as_deref(),
+                session.scope.as_deref(),
+            ) == scope
+        }) {
+            for item in &session.summary.measures {
+                if item.timing.matched_samples < 4 {
+                    continue;
+                }
+                let (offsets, deviations, matched_notes) =
+                    measures.entry(item.measure).or_default();
+                if let Some(offset) = item.timing.median_offset_ms {
+                    offsets.push(offset);
+                }
+                if let Some(deviation) = item.timing.median_deviation_ms {
+                    deviations.push(deviation);
+                }
+                *matched_notes += item.timing.matched_samples;
+            }
+        }
+
+        let mut rhythm: Vec<_> = measures
+            .into_iter()
+            .filter_map(|(measure, (mut offsets, mut deviations, matched_notes))| {
+                let attempts = offsets.len().min(deviations.len());
+                if attempts < 2 || matched_notes < 12 {
+                    return None;
+                }
+                offsets.sort_unstable();
+                deviations.sort_unstable();
+                let median_offset_ms = median_i32(&offsets)?;
+                let median_deviation_ms = median_u32(&deviations)?;
+                let severity_ms = median_offset_ms
+                    .unsigned_abs()
+                    .saturating_add(median_deviation_ms);
+                (median_offset_ms.unsigned_abs() >= 60 || median_deviation_ms >= 40).then_some(
+                    RhythmMeasure {
+                        measure,
+                        median_offset_ms,
+                        median_deviation_ms,
+                        matched_notes,
+                        attempts,
+                        severity_ms,
+                    },
+                )
+            })
+            .collect();
+        rhythm.sort_by(|left, right| {
+            right
+                .severity_ms
+                .cmp(&left.severity_ms)
+                .then_with(|| right.matched_notes.cmp(&left.matched_notes))
+                .then_with(|| left.measure.cmp(&right.measure))
+        });
+        rhythm.truncate(limit);
+        rhythm
+    }
+
+    pub fn recommended_rhythm_passage(&self) -> Option<RhythmPassageRecommendation> {
+        let weakest = self.rhythm_measures(1).into_iter().next()?;
+        Some(RhythmPassageRecommendation {
+            start_measure: weakest.measure,
+            end_measure: weakest.measure.saturating_add(1),
+            median_offset_ms: weakest.median_offset_ms,
+            median_deviation_ms: weakest.median_deviation_ms,
+            matched_notes: weakest.matched_notes,
+            attempts: weakest.attempts,
+        })
+    }
+
+    pub fn overview(
+        &self,
+        recent_limit: usize,
+        weak_measure_limit: usize,
+    ) -> PracticeHistoryOverview {
+        let mut recent: Vec<_> = self
+            .sessions
+            .iter()
+            .rev()
+            .take(recent_limit)
+            .map(|session| RecentPracticeSummary {
+                kind: session.kind,
+                hands: session.hands,
+                recorded_at_unix_ms: session.recorded_at_unix_ms,
+                accuracy: session.summary.overall.accuracy(),
+                speed: session.speed,
+                effective_tempo_bpm: session.effective_tempo_bpm,
+            })
+            .collect();
+        recent.reverse();
+
+        let trend_scope = self.sessions.last().map(|session| {
+            (
+                session.kind,
+                session.hands,
+                session.mode.as_deref(),
+                session.scope.as_deref(),
+            )
+        });
+        let mut comparable: Vec<_> = self
+            .sessions
+            .iter()
+            .rev()
+            .filter(|session| {
+                Some((
+                    session.kind,
+                    session.hands,
+                    session.mode.as_deref(),
+                    session.scope.as_deref(),
+                )) == trend_scope
+            })
+            .take(recent_limit)
+            .collect();
+        comparable.reverse();
+        let accuracy_delta = first_last_delta(
+            comparable
+                .iter()
+                .filter_map(|session| session.summary.overall.accuracy()),
+        );
+        let speed_delta = first_last_delta(
+            comparable
+                .iter()
+                .map(|session| session.speed)
+                .filter(|speed| speed.is_finite()),
+        );
+        let tempo_bpm_delta = first_last_delta(
+            comparable
+                .iter()
+                .filter_map(|session| session.effective_tempo_bpm)
+                .map(f32::from),
+        )
+        .map(|delta| delta.round() as i32);
+
+        PracticeHistoryOverview {
+            total_sessions: self.sessions.len(),
+            recent,
+            trend_kind: trend_scope.map(|(kind, _, _, _)| kind),
+            trend_hands: trend_scope.map(|(_, hands, _, _)| hands),
+            trend_attempts: comparable.len(),
+            accuracy_delta,
+            speed_delta,
+            tempo_bpm_delta,
+            weak_measures: self
+                .weak_measures_for_scope(trend_scope.map(|(_, hands, _, _)| hands), usize::MAX)
+                .into_iter()
+                .filter(is_reliable_weakness)
+                .take(weak_measure_limit)
+                .collect(),
+        }
+    }
+}
+
+fn regular_whole_song(session: &PracticeSession) -> bool {
+    matches!(session.kind, PracticeSessionKind::WholeSong)
+        && session.context.as_ref().is_none_or(|context| {
+            context.ladder.is_none() && context.rounds == 0 && !context.adaptive
+        })
+}
+
+fn ordinary_passage_context(session: &PracticeSession) -> bool {
+    session.context.as_ref().is_some_and(|context| {
+        context.routine.is_none() && context.ladder.is_none()
+            && context.rounds == 0 && !context.adaptive
+    })
+}
+
+/// A review interval is earned only by attempts whose saved task is complete
+/// and identical. Older records without the frozen context remain readable,
+/// but cannot establish a comparable mastery streak.
+fn review_conditions_complete(session: &PracticeSession) -> bool {
+    let Some(context) = session.context.as_ref() else { return false; };
+    session.scope.as_deref().is_some_and(|value| !value.is_empty())
+        && session.mode.as_deref().is_some_and(|value| !value.is_empty())
+        && session.speed.is_finite()
+        && !context.grid.is_empty()
+        && !context.hands.is_empty()
+        && context.target_notes > 0
+        && context.judged_notes > 0
+        && context.ladder.as_ref().is_none_or(|ladder| ladder.accuracy_percent.is_some() && ladder.passes_required.is_some() && ladder.round_passed.is_some())
+}
+
+fn same_review_conditions(a: &PracticeSession, b: &PracticeSession) -> bool {
+    if !review_conditions_complete(a) || !review_conditions_complete(b)
+        || a.scope != b.scope || a.mode != b.mode || a.kind != b.kind
+        || a.hands != b.hands || (a.speed - b.speed).abs() >= 0.0001
+        || a.effective_tempo_bpm != b.effective_tempo_bpm
+    { return false; }
+    let (a, b) = (a.context.as_ref().unwrap(), b.context.as_ref().unwrap());
+    a.grid == b.grid
+        && a.passage_bounds == b.passage_bounds
+        && a.ladder.as_ref().map(|ladder| (ladder.target_percent,ladder.accuracy_percent,ladder.on_time_percent,ladder.passes_required))
+            == b.ladder.as_ref().map(|ladder| (ladder.target_percent,ladder.accuracy_percent,ladder.on_time_percent,ladder.passes_required))
+        && a.tracks == b.tracks
+        && a.parts == b.parts
+        && a.hands == b.hands
+        && a.exercise_spec == b.exercise_spec
+        && a.target_notes == b.target_notes
+        && a.count_in == b.count_in
+        && a.metronome == b.metronome
+        && a.latency == b.latency
+        && a.pedal_latency_ms.unwrap_or(a.latency) == b.pedal_latency_ms.unwrap_or(b.latency)
+        && a.rounds == b.rounds
+        && a.adaptive == b.adaptive
+        && a.expression.as_ref().or_else(|| a.routine.as_ref().and_then(|r| r.expression.as_ref()))
+            == b.expression.as_ref().or_else(|| b.routine.as_ref().and_then(|r| r.expression.as_ref()))
+}
+
+fn is_reliable_weakness(measure: &WeakMeasure) -> bool {
+    measure.attempts >= 2 && measure.judged_notes >= 8 && measure.accuracy < 0.9
+}
+
+fn session_is_mastered(session: &PracticeSession) -> bool {
+    if session.context.as_ref().and_then(|c|c.ladder.as_ref()).and_then(|l|l.round_passed)==Some(false) {
+        return false;
+    }
+    if session.context.as_ref().and_then(|c|c.ladder.as_ref()).is_some_and(|l|l.speed_percent<l.target_percent) {
+        return false;
+    }
+    if session.context.as_ref().is_some_and(|c|c.target_notes==0 || c.judged_notes<c.target_notes) {
+        return false;
+    }
+    let snapshot = session.summary.overall;
+    let Some(accuracy) = snapshot.accuracy() else {
+        return false;
+    };
+    let on_time_ratio = if snapshot.matched_notes != 0 {
+        snapshot.on_time_notes as f32 / snapshot.matched_notes as f32
+    } else {
+        0.0
+    };
+    accuracy >= 0.9 && (session.mode.as_deref() == Some("wait") || on_time_ratio >= 0.7)
+}
+
+fn first_last_delta(mut values: impl Iterator<Item = f32>) -> Option<f32> {
+    let first = values.next()?;
+    let mut last = first;
+    let mut count = 1;
+    for value in values {
+        last = value;
+        count += 1;
+    }
+    (count >= 2).then_some(last - first)
+}
+
+fn median_i32(values: &[i32]) -> Option<i32> {
+    let middle = values.len() / 2;
+    match values.len() {
+        0 => None,
+        len if len.is_multiple_of(2) => {
+            Some(((i64::from(values[middle - 1]) + i64::from(values[middle])) / 2) as i32)
+        }
+        _ => Some(values[middle]),
+    }
+}
+
+fn median_u32(values: &[u32]) -> Option<u32> {
+    let middle = values.len() / 2;
+    match values.len() {
+        0 => None,
+        len if len.is_multiple_of(2) => {
+            Some((u64::from(values[middle - 1]) + u64::from(values[middle])).div_ceil(2) as u32)
+        }
+        _ => Some(values[middle]),
+    }
+}
+
+/// UTC half-open intervals. running_ms can be shorter when a measured interval has a gap.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
+pub struct PracticeTimeSlice { pub from:u64,pub to:u64,pub running_ms:u64 }
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq, Serialize)]
+pub struct PracticeTimeEntry { pub saved_at_unix_ms:u64,pub slices:Vec<PracticeTimeSlice>,#[serde(default)] pub untracked_ms:u64 }
+pub type PracticeTimeLedger=BTreeMap<String,BTreeMap<String,PracticeTimeEntry>>;
+pub fn validate_time_ledger(ledger:&PracticeTimeLedger)->Result<(),String>{
+    let mut saves=0usize;let mut slices=0usize;let mut total_ms=0u128;
+    for (cid,entries) in ledger {if cid.is_empty()||cid.len()>160{return Err("计时账本的曲目标识无效".into())}saves=saves.checked_add(entries.len()).ok_or("计时账本数量超限")?;
+        for (id,entry) in entries {if id.is_empty()||id.len()>200||entry.saved_at_unix_ms>9_000_000_000_000_000||entry.slices.len()>20_000{return Err("计时账本条目无效".into())}total_ms+=u128::from(entry.untracked_ms);let mut end=0;
+            for slice in &entry.slices {if slice.from<end||slice.from>=slice.to||slice.to>9_000_000_000_000_000||slice.running_ms==0||slice.running_ms>slice.to-slice.from{return Err("计时账本区间无效或重叠".into())}end=slice.to;total_ms+=u128::from(slice.running_ms);}
+            slices=slices.checked_add(entry.slices.len()).ok_or("计时账本区间数量超限")?;
+        }
+    }
+    if total_ms>9_000_000_000_000_000||saves>200_000||slices>2_000_000{return Err("计时账本容量已达上限，请先导出备份".into())}Ok(())
+}
+impl PracticeTimeSlice {
+    pub fn intersection_ms(&self,from:u64,to:u64)->u64{let a=self.from.max(from);let b=self.to.min(to);if a>=b{return 0}let length=u128::from(self.to-self.from);let part=|at:u64|u128::from(self.running_ms)*u128::from(at-self.from)/length;(part(b)-part(a)) as u64}
+}
+
+/// Shared in memory, transparent in the existing RON file. Updating one song does not
+/// duplicate the sessions and timing ledger of every other song held by a reader.
+#[derive(Debug, Clone, PartialEq)]
+struct SharedHistory<T>(Arc<T>);
+impl<T: Default> Default for SharedHistory<T> {
+    fn default() -> Self { Self(Arc::new(T::default())) }
+}
+impl<T> From<T> for SharedHistory<T> {
+    fn from(value: T) -> Self { Self(Arc::new(value)) }
+}
+impl<T> std::ops::Deref for SharedHistory<T> {
+    type Target = T;
+    fn deref(&self) -> &T { self.0.as_ref() }
+}
+impl<T: Clone> std::ops::DerefMut for SharedHistory<T> {
+    fn deref_mut(&mut self) -> &mut T { Arc::make_mut(&mut self.0) }
+}
+impl<T: Serialize> Serialize for SharedHistory<T> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for SharedHistory<T> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        T::deserialize(deserializer).map(Self::from)
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Serialize)]
+struct PracticeHistoryV1 {
+    #[serde(default)]
+    time_ledger:SharedHistory<PracticeTimeLedger>,
+    songs: BTreeMap<String, SharedHistory<SongPracticeHistory>>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
+enum PracticeHistoryFile {
+    V1(PracticeHistoryV1),
+    V2(PracticeHistoryV1),
+}
+
+impl Default for PracticeHistoryFile {
+    fn default() -> Self {
+        Self::V1(PracticeHistoryV1::default())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PracticeHistoryStore {
+    path: PathBuf,
+    file: Arc<PracticeHistoryFile>,
+    write_block: Option<String>,
+}
+
+impl PracticeHistoryStore {
+    pub fn empty(path:impl Into<PathBuf>) -> Self { Self { path:path.into(),file:Arc::new(PracticeHistoryFile::default()),write_block:None } }
+    /// Observe damaged/recovery-blocked storage without quarantining or changing its files.
+    pub fn load_read_only(path: impl Into<PathBuf>, reason: String) -> Self {
+        let path=path.into();
+        let file=fs::read_to_string(&path).ok().and_then(|text|ron_options().from_str::<PracticeHistoryFile>(&text).ok()).unwrap_or_default();
+        let mut store=Self{path,file:Arc::new(file),write_block:Some(reason)};
+        if validate_time_ledger(store.time_ledger()).is_err(){store.file=Arc::new(PracticeHistoryFile::default());}
+        store
+    }
+    pub fn load(path:impl Into<PathBuf>) -> Self { Self::load_report(path).0 }
+    /// Read a persisted snapshot without repairing, moving, or rewriting its source.
+    pub fn load_snapshot(path: impl Into<PathBuf>) -> Result<Self, String> {
+        let path = path.into();
+        let file = match crate::utils::atomic_file::read_to_string(&path) {
+            Ok(contents) => ron_options().from_str::<PracticeHistoryFile>(&contents)
+                .map_err(|error| format!("练习历史无法读取，原文件保持原状：{}：{error}", path.display()))?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => PracticeHistoryFile::default(),
+            Err(error) => return Err(format!("练习历史无法读取：{}：{error}", path.display())),
+        };
+        match &file {
+            PracticeHistoryFile::V1(value) | PracticeHistoryFile::V2(value) => validate_time_ledger(&value.time_ledger)
+                .map_err(|error| format!("练习累计时长资料无法读取，原文件保持原状：{error}"))?,
+        }
+        Ok(Self {
+            path,
+            file: Arc::new(file),
+            write_block: Some("这份练习历史仅供读取".into()),
+        })
+    }
+    pub fn write_block_reason(&self) -> Option<&str> { self.write_block.as_deref() }
+    pub fn load_report(path: impl Into<PathBuf>) -> (Self,Option<String>) {
+        let path = path.into();
+        let mut warning=None;
+        let file = match crate::utils::atomic_file::read_to_string(&path) {
+            Ok(contents) => match ron_options().from_str(&contents) {
+                Ok(file) => file,
+                Err(error) => {
+                    log::error!("Practice history is damaged and will be quarantined: {error:#?}");
+                    warning=Some(format!("练习历史无法读取，原件已保留：{}：{error}",path.display()));
+                    quarantine_corrupt_file(&path);
+                    PracticeHistoryFile::default()
+                }
+            },
+            Err(error) if error.kind() == io::ErrorKind::NotFound => PracticeHistoryFile::default(),
+            Err(error) => {
+                warning=Some(format!("练习历史无法读取：{}：{error}",path.display()));
+                log::error!("Could not read practice history: {error}");
+                PracticeHistoryFile::default()
+            }
+        };
+
+        let file=match &file {PracticeHistoryFile::V1(value) | PracticeHistoryFile::V2(value) if validate_time_ledger(&value.time_ledger).is_err()=>{warning=Some(format!("练习累计时长资料损坏，原件已保留：{}",path.display()));log::error!("Practice time ledger is damaged and will be quarantined");quarantine_corrupt_file(&path);PracticeHistoryFile::default()},_=>file};
+        let write_block=warning.as_ref().filter(|_|path.try_exists().unwrap_or(true)).cloned();
+        (Self { path,file:Arc::new(file),write_block },warning)
+    }
+
+    pub fn set_replay_clips(&mut self,song_id:&str,id:&str,expected:Vec<ReplayClip>,clips:Vec<ReplayClip>)->Result<(),String>{
+        validate_replay_clips(&clips,None)?;
+        let mut candidate=self.clone();let song=candidate.songs_mut().get_mut(song_id).ok_or("曲目记录不存在")?;
+        let session=song.sessions.iter_mut().find(|s|s.stable_id()==id).ok_or("这条记录已不在历史中")?;
+        if session.replay_clips!=expected{return Err("回放片段已被其他操作更新，请重新读取后再保存".into());}
+        if session.id.is_none(){session.id=Some(id.into());}session.replay_clips=clips;
+        candidate.save().map_err(|e|e.to_string())?;*self=candidate;Ok(())
+    }
+    pub fn annotate_session(&mut self, song_id:&str, id:&str, expected:Option<PracticeAnnotation>, annotation:PracticeAnnotation) -> Result<(),String> {
+        if [&annotation.note,&annotation.teacher,&annotation.next].iter().any(|v|v.len()>8192) {return Err("每项评语最多 8192 字节".into());}
+        let mut candidate=self.clone();
+        let song=candidate.songs_mut().get_mut(song_id).ok_or("曲目记录不存在")?;
+        let session=song.sessions.iter_mut().find(|s|s.stable_id()==id).ok_or("这条记录已不在历史中")?;
+        if session.annotation!=expected {return Err("评语已被其他操作更新，请放弃本地修改并重新打开记录".into());}
+        if session.id.is_none(){session.id=Some(id.to_owned());}
+        session.annotation=Some(annotation);
+        candidate.save().map_err(|e|e.to_string())?;
+        *self=candidate;Ok(())
+    }
+    pub fn time_ledger(&self)->&PracticeTimeLedger {match self.file.as_ref(){PracticeHistoryFile::V1(file) | PracticeHistoryFile::V2(file)=>&file.time_ledger}}
+    pub fn merge_time_ledger(&mut self,incoming:PracticeTimeLedger)->Result<usize,String>{
+        validate_time_ledger(&incoming)?;let mut merged=self.time_ledger().clone();let mut added=0;
+        for (cid,entries) in incoming {let target=merged.entry(cid).or_default();for(id,entry)in entries{if let Some(existing)=target.get(&id){if existing!=&entry{return Err("相同保存记录的计时账本内容冲突，资料未合并".into())}}else{target.insert(id,entry);added+=1;}}}
+        validate_time_ledger(&merged)?;match Arc::make_mut(&mut self.file){PracticeHistoryFile::V1(file) | PracticeHistoryFile::V2(file)=>file.time_ledger=merged.into()};Ok(added)
+    }
+    pub fn block_writes(&mut self, reason: String) { self.write_block = Some(reason); }
+    pub fn stage_session_with_time(&self,song_id:&str,display_name:&str,session:PracticeSession,entry:PracticeTimeEntry)->Result<Option<Self>,String>{
+        if let Some(reason)=&self.write_block { return Err(reason.clone()); }
+        let id=session.stable_id();let mut candidate=self.clone();let mut incoming=PracticeTimeLedger::new();incoming.entry(song_id.into()).or_default().insert(id.clone(),entry);
+        let added=candidate.merge_time_ledger(incoming)?;if added==0{return Ok(None)}
+        let song=candidate.ensure_song(song_id,display_name);song.display_name=display_name.into();song.sessions.push(session);let excess=song.sessions.len().saturating_sub(MAX_SESSIONS_PER_SONG);if excess>0{song.sessions.drain(..excess);}
+        Ok(Some(candidate))
+    }
+    pub fn record_session_with_time(&mut self,song_id:&str,display_name:&str,session:PracticeSession,entry:PracticeTimeEntry)->Result<(),String>{
+        if let Some(candidate)=self.stage_session_with_time(song_id,display_name,session,entry)? {
+            candidate.save().map_err(|e|e.to_string())?;*self=candidate;
+        }
+        Ok(())
+    }
+    pub fn record_session(
+        &mut self,
+        song_id: &str,
+        display_name: &str,
+        session: PracticeSession,
+    ) -> Result<(), PracticeHistoryError> {
+        let song = self
+            .songs_mut()
+            .entry(song_id.to_owned())
+            .or_insert_with(|| SharedHistory::from(SongPracticeHistory {
+                display_name: display_name.to_owned(),
+                setup: None,
+                library: SongLibraryState::default(),
+                sessions: Vec::new(),
+            }));
+        song.display_name = display_name.to_owned();
+        song.sessions.push(session);
+        let excess = song.sessions.len().saturating_sub(MAX_SESSIONS_PER_SONG);
+        if excess != 0 {
+            song.sessions.drain(..excess);
+        }
+        self.save()
+    }
+
+    pub fn save_setup(
+        &mut self,
+        song_id: &str,
+        display_name: &str,
+        mut setup: SongPracticeSetup,
+    ) -> Result<(), PracticeHistoryError> {
+        setup.last_used_unix_ms = unix_time_ms();
+        let song = self
+            .songs_mut()
+            .entry(song_id.to_owned())
+            .or_insert_with(|| SharedHistory::from(SongPracticeHistory {
+                display_name: display_name.to_owned(),
+                setup: None,
+                library: SongLibraryState::default(),
+                sessions: Vec::new(),
+            }));
+        song.display_name = display_name.to_owned();
+        if setup.source_path.is_some() {
+            song.library.source_path = setup.source_path.clone();
+        }
+        song.setup = Some(setup);
+        self.save()
+    }
+
+    pub fn setup(&self, song_id: &str) -> Option<&SongPracticeSetup> {
+        self.song(song_id)?.setup.as_ref()
+    }
+
+    pub fn recent_songs(&self, limit: usize) -> Vec<RecentSongSummary> {
+        let now_unix_ms = unix_time_ms();
+        let mut songs: Vec<_> = self
+            .songs()
+            .iter()
+            .filter_map(|(content_id, song)| {
+                let setup = song.setup.as_ref();
+                if setup.is_none()
+                    && song.sessions.is_empty()
+                    && !song.library.favorite
+                    && song.library.queue_position.is_none()
+                {
+                    return None;
+                }
+                let latest_session = song.sessions.last();
+                let last_used_unix_ms = setup.map_or(0, |setup| setup.last_used_unix_ms).max(
+                    latest_session
+                        .map(|session| session.recorded_at_unix_ms)
+                        .unwrap_or_default(),
+                );
+                Some(RecentSongSummary {
+                    content_id: content_id.clone(),
+                    display_name: song.display_name.clone(),
+                    source_path: song
+                        .library
+                        .source_path
+                        .clone()
+                        .or_else(|| setup.and_then(|setup| setup.source_path.clone())),
+                    exercise_spec: setup.and_then(|setup| setup.exercise_spec),
+                    last_used_unix_ms,
+                    session_count: song.sessions.len(),
+                    latest_accuracy: latest_session
+                        .and_then(|session| session.summary.overall.accuracy()),
+                    favorite: song.library.favorite,
+                    queue_position: song.library.queue_position,
+                    recommended_measures: song
+                        .recommended_passage()
+                        .map(|passage| (passage.start_measure, passage.end_measure)),
+                    review: song.review_status(now_unix_ms),
+                })
+            })
+            .collect();
+        songs.sort_by(|left, right| {
+            right
+                .last_used_unix_ms
+                .cmp(&left.last_used_unix_ms)
+                .then_with(|| left.display_name.cmp(&right.display_name))
+                .then_with(|| left.content_id.cmp(&right.content_id))
+        });
+        songs.truncate(limit);
+        songs
+    }
+
+    pub fn set_favorite(
+        &mut self,
+        song_id: &str,
+        display_name: &str,
+        source_path: Option<PathBuf>,
+        favorite: bool,
+    ) -> Result<(), PracticeHistoryError> {
+        let song = self.ensure_song(song_id, display_name);
+        song.library.favorite = favorite;
+        if source_path.is_some() {
+            song.library.source_path = source_path;
+        }
+        self.save()
+    }
+
+    pub fn set_queued(
+        &mut self,
+        song_id: &str,
+        display_name: &str,
+        source_path: Option<PathBuf>,
+        queued: bool,
+    ) -> Result<(), PracticeHistoryError> {
+        if queued {
+            let next = self
+                .songs()
+                .values()
+                .filter_map(|song| song.library.queue_position)
+                .max()
+                .map_or(0, |position| position + 1);
+            let song = self.ensure_song(song_id, display_name);
+            if song.library.queue_position.is_none() {
+                song.library.queue_position = Some(next);
+            }
+            if source_path.is_some() {
+                song.library.source_path = source_path;
+            }
+        } else if let Some(song) = self.songs_mut().get_mut(song_id) {
+            song.library.queue_position = None;
+        }
+        self.normalize_queue();
+        self.save()
+    }
+
+    pub fn move_in_queue(
+        &mut self,
+        song_id: &str,
+        direction: isize,
+    ) -> Result<bool, PracticeHistoryError> {
+        let mut queue: Vec<_> = self
+            .songs()
+            .iter()
+            .filter_map(|(id, song)| Some((song.library.queue_position?, id.clone())))
+            .collect();
+        queue.sort();
+        let Some(index) = queue.iter().position(|(_, id)| id == song_id) else {
+            return Ok(false);
+        };
+        let target = index.saturating_add_signed(direction).min(queue.len() - 1);
+        if target == index {
+            return Ok(false);
+        }
+        queue.swap(index, target);
+        for (position, (_, id)) in queue.into_iter().enumerate() {
+            if let Some(song) = self.songs_mut().get_mut(&id) {
+                song.library.queue_position = Some(position);
+            }
+        }
+        self.save()?;
+        Ok(true)
+    }
+
+    /// Borrow immutable records without cloning the complete history or computing summaries.
+    pub fn iter_songs(&self) -> impl Iterator<Item = (&str, &SongPracticeHistory)> {
+        self.songs().iter().map(|(id, song)| (id.as_str(), &**song))
+    }
+    pub fn snapshot(&self) -> BTreeMap<String, SongPracticeHistory> {self.songs().iter().map(|(id,song)|(id.clone(),(**song).clone())).collect()}
+    pub fn replace_snapshot(&mut self, songs:BTreeMap<String,SongPracticeHistory>) { *self.songs_mut()=songs.into_iter().map(|(id,song)|(id,song.into())).collect(); self.normalize_queue(); }
+    pub fn from_snapshot_bytes(path:impl Into<PathBuf>,bytes:&[u8])->Result<Self,String> {
+        let contents=std::str::from_utf8(bytes).map_err(|e|e.to_string())?;
+        let file:PracticeHistoryFile=ron_options().from_str(contents).map_err(|e|e.to_string())?;
+        let store=Self {path:path.into(),file:Arc::new(file),write_block:None};
+        validate_time_ledger(store.time_ledger())?;
+        Ok(store)
+    }
+    fn serialized_file(&self) -> PracticeHistoryFile {
+        let (PracticeHistoryFile::V1(value) | PracticeHistoryFile::V2(value)) = self.file.as_ref();
+        if value.songs.values().flat_map(|s| &s.sessions).any(|s| s.context.as_ref().is_some_and(|c| !c.note_playback.is_empty())) {
+            PracticeHistoryFile::V2(value.clone())
+        } else { PracticeHistoryFile::V1(value.clone()) }
+    }
+    pub fn snapshot_bytes(&self) -> Result<Vec<u8>,PracticeHistoryError> {Ok(ron_options().to_string_pretty(&self.serialized_file(),ron::ser::PrettyConfig::default().struct_names(true))?.into_bytes())}
+    /// Detect replacement of the exact song used by a background editor.
+    /// The in-memory identity is deliberately independent of serialized data equality.
+    pub fn same_song_snapshot(&self, other: &Self, song_id: &str) -> bool {
+        match (self.songs().get(song_id), other.songs().get(song_id)) {
+            (Some(left), Some(right)) => Arc::ptr_eq(&left.0, &right.0),
+            _ => false,
+        }
+    }
+    pub fn song(&self, song_id: &str) -> Option<&SongPracticeHistory> {
+        self.songs().get(song_id).map(|song| &**song)
+    }
+
+    pub fn session_count(&self, song_id: &str) -> usize {
+        self.song(song_id).map_or(0, |song| song.sessions.len())
+    }
+
+    pub fn save(&self) -> Result<(), PracticeHistoryError> {
+        if let Some(reason)=&self.write_block { return Err(io::Error::other(reason.clone()).into()); }
+        if crate::utils::atomic_file::is_capturing(&self.path) {
+            let snapshot=self.clone();
+            crate::utils::atomic_file::write_generated(&self.path,move||snapshot.snapshot_bytes().map_err(io::Error::other))?;
+            return Ok(());
+        }
+        let contents = ron_options().to_string_pretty(
+            &self.serialized_file(),
+            ron::ser::PrettyConfig::default().struct_names(true),
+        )?;
+        atomic_write(&self.path, contents.as_bytes())?;
+        Ok(())
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn songs(&self) -> &BTreeMap<String, SharedHistory<SongPracticeHistory>> {
+        match self.file.as_ref() {
+            PracticeHistoryFile::V1(file) | PracticeHistoryFile::V2(file) => &file.songs,
+        }
+    }
+
+    fn songs_mut(&mut self) -> &mut BTreeMap<String, SharedHistory<SongPracticeHistory>> {
+        match Arc::make_mut(&mut self.file) {
+            PracticeHistoryFile::V1(file) | PracticeHistoryFile::V2(file) => &mut file.songs,
+        }
+    }
+
+    fn ensure_song(&mut self, song_id: &str, display_name: &str) -> &mut SongPracticeHistory {
+        let song = self
+            .songs_mut()
+            .entry(song_id.to_owned())
+            .or_insert_with(|| SharedHistory::from(SongPracticeHistory {
+                display_name: display_name.to_owned(),
+                setup: None,
+                library: SongLibraryState::default(),
+                sessions: Vec::new(),
+            }));
+        song.display_name = display_name.to_owned();
+        song
+    }
+
+    fn normalize_queue(&mut self) {
+        let mut queue: Vec<_> = self
+            .songs()
+            .iter()
+            .filter_map(|(id, song)| Some((song.library.queue_position?, id.clone())))
+            .collect();
+        queue.sort();
+        for (position, (_, id)) in queue.into_iter().enumerate() {
+            if let Some(song) = self.songs_mut().get_mut(&id) {
+                song.library.queue_position = Some(position);
+            }
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PracticeHistoryError {
+    #[error("could not serialize practice history: {0}")]
+    Serialize(#[from] ron::Error),
+    #[error("could not write practice history: {0}")]
+    Io(#[from] io::Error),
+}
+
+fn ron_options() -> ron::Options {
+    ron::Options::default().with_default_extension(Extensions::UNWRAP_VARIANT_NEWTYPES)
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+fn quarantine_corrupt_file(path: &Path) {
+    let stem = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("practice-history");
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("ron");
+    let quarantine =
+        path.with_file_name(format!("{stem}.corrupt-{}.{}", unix_time_ms(), extension));
+    if let Err(error) = fs::rename(path, &quarantine) {
+        log::error!("Could not quarantine damaged practice history: {error}");
+    }
+}
+
+fn atomic_write(path: &Path, contents: &[u8]) -> io::Result<()> {
+    crate::utils::atomic_file::write(path, contents)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn older_expression_condition_keeps_its_serialized_identity_without_note_goal() {
+        let old=r#"{"velocity_difference":12,"contour_percent":null,"pedal_offset_ms":null}"#;
+        let condition:super::PracticeExpressionCondition=serde_json::from_str(old).unwrap();
+        assert_eq!(condition.note_velocity_difference,None);
+        assert_eq!(condition.note_pedal_mismatch_count,None);
+        assert_eq!(serde_json::to_string(&condition).unwrap(),old);
+        let with_note=super::PracticeExpressionCondition{note_velocity_difference:Some(8),..condition.clone()};
+        assert_eq!(serde_json::to_value(with_note).unwrap()["note_velocity_difference"],8);
+        let with_pedal=super::PracticeExpressionCondition{note_pedal_mismatch_count:Some(0),..condition};
+        assert_eq!(serde_json::to_value(with_pedal).unwrap()["note_pedal_mismatch_count"],0);
+    }
+    use super::*;
+    use crate::practice::{MeasurePartSummary, MeasureSummary, PracticeSnapshot, TimingSummary};
+
+    fn temp_history_path(name: &str) -> PathBuf {
+        let directory = std::env::temp_dir().join(format!(
+            "neothesia-history-test-{}-{}-{name}",
+            std::process::id(),
+            unix_time_ms()
+        ));
+        fs::create_dir_all(&directory).unwrap();
+        directory.join("practice-history.ron")
+    }
+
+    fn session(measure: usize, matched: usize, missed: usize) -> PracticeSession {
+        PracticeSession {
+            replay_clips:Vec::new(),
+            playing_ms: None,
+            annotation: None,
+            id: None,
+            context: None,
+            scope: None,
+            mode: None,
+            recorded_at_unix_ms: 1,
+            kind: PracticeSessionKind::WholeSong,
+            hands: PracticeHands::Both,
+            speed: 0.75,
+            effective_tempo_bpm: None,
+            summary: AttemptSummary {
+                overall: PracticeSnapshot {
+                    matched_notes: matched,
+                    missed_notes: missed,
+                    ..PracticeSnapshot::default()
+                },
+                measures: vec![MeasureSummary {
+                    measure,
+                    breakdown: PracticeBreakdown {
+                        target_notes: matched + missed,
+                        matched_notes: matched,
+                        missed_notes: missed,
+                        ..PracticeBreakdown::default()
+                    },
+                    timing: Default::default(),
+                }],
+                parts: Vec::new(),
+                measure_parts: Vec::new(),
+                timing: Default::default(),
+                chords: Default::default(),
+                expression: Default::default(),
+                exercise_passes: Vec::new(),
+            },
+        }
+    }
+
+    fn review_session(recorded_at_unix_ms: u64) -> PracticeSession {
+        let mut item = session(2, 10, 0);
+        item.recorded_at_unix_ms = recorded_at_unix_ms;
+        item.summary.overall.on_time_notes = 8;
+        item.scope = Some("practice-v1-same-notes".into());
+        item.mode = Some("flow".into());
+        item.context = Some(PracticeSessionContext {
+                note_playback: vec![],
+            expression: None, routine: None, ladder: None,
+            target_notes: 10, judged_notes: 10,
+            tracks: vec![PracticeTrackSetup {track_id: 1, mode: PracticeTrackMode::Human, visible: true}],
+            parts: BTreeMap::new(), hands: "both".into(),
+            count_in: 1, metronome: true, latency: 12,
+            pedal_latency_ms: Some(9), rounds: 1, adaptive: false,
+            grid: "grid-v1-original".into(), passage_bounds: None,
+            source_path: None, exercise_spec: None,
+        });
+        item
+    }
+
+    fn rhythm_session(
+        measure: usize,
+        samples: usize,
+        offset_ms: i32,
+        deviation_ms: u32,
+    ) -> PracticeSession {
+        let mut session = session(measure, samples, 0);
+        session.summary.measures[0].timing = TimingSummary {
+            matched_samples: samples,
+            median_offset_ms: Some(offset_ms),
+            median_deviation_ms: Some(deviation_ms),
+        };
+        session
+    }
+
+    #[test]
+    fn round_trip_survives_rename_of_the_source_song() {
+        let path = temp_history_path("round-trip");
+        let mut store = PracticeHistoryStore::load(&path);
+        store
+            .record_session("content-id", "Old Name.mid", session(2, 8, 2))
+            .unwrap();
+        store
+            .record_session("content-id", "New Name.mid", session(3, 9, 1))
+            .unwrap();
+
+        let loaded = PracticeHistoryStore::load(&path);
+        let song = loaded.song("content-id").unwrap();
+        assert_eq!(song.display_name, "New Name.mid");
+        assert_eq!(song.sessions.len(), 2);
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn summaries_saved_before_expression_feedback_remain_readable() {
+        let legacy = r#"(
+            overall: (
+                matched_notes: 1,
+                on_time_notes: 1,
+                early_notes: 0,
+                late_notes: 0,
+                wrong_notes: 0,
+                missed_notes: 0,
+                required_notes: 0,
+            ),
+            measures: [],
+            parts: [],
+        )"#;
+
+        let summary: AttemptSummary = ron::from_str(legacy).unwrap();
+        assert_eq!(summary.timing, Default::default());
+        assert_eq!(summary.chords, Default::default());
+        assert_eq!(summary.expression, Default::default());
+        assert!(summary.exercise_passes.is_empty());
+        assert!(summary.measure_parts.is_empty());
+    }
+
+    #[test]
+    fn measured_part_evidence_survives_history_save_and_reopen() {
+        let path = temp_history_path("measure-part-evidence");
+        let mut attempt = session(7, 2, 1);
+        attempt.summary.measure_parts.push(MeasurePartSummary {
+            measure: 7,
+            part: PracticePart::LeftHand,
+            track_id: 4,
+            breakdown: PracticeBreakdown {
+                target_notes: 3,
+                matched_notes: 2,
+                late_notes: 1,
+                on_time_notes: 1,
+                missed_notes: 1,
+                ..PracticeBreakdown::default()
+            },
+            timing: TimingSummary {
+                matched_samples: 2,
+                median_offset_ms: Some(58),
+                median_deviation_ms: Some(22),
+            },
+        });
+        let mut store = PracticeHistoryStore::load(&path);
+        store.record_session("song-content", "Test.mid", attempt).unwrap();
+        let reopened = PracticeHistoryStore::load(&path);
+        let cell = &reopened.song("song-content").unwrap().sessions[0].summary.measure_parts[0];
+        assert_eq!((cell.measure, cell.part, cell.track_id), (7, PracticePart::LeftHand, 4));
+        assert_eq!((cell.breakdown.target_notes, cell.breakdown.missed_notes), (3, 1));
+        assert_eq!(cell.timing.median_offset_ms, Some(58));
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn histories_saved_before_hand_scopes_remain_readable() {
+        let path = temp_history_path("legacy-hand-scope");
+        let mut store = PracticeHistoryStore::load(&path);
+        store
+            .record_session("content-id", "Song.mid", session(2, 8, 2))
+            .unwrap();
+
+        let legacy_contents = fs::read_to_string(&path)
+            .unwrap()
+            .lines()
+            .filter(|line| {
+                let line = line.trim_start();
+                !line.starts_with("hands:") && !line.starts_with("setup:")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&path, legacy_contents).unwrap();
+
+        let loaded = PracticeHistoryStore::load(&path);
+        assert_eq!(
+            loaded.song("content-id").unwrap().sessions[0].hands,
+            PracticeHands::Unspecified
+        );
+        assert_eq!(loaded.setup("content-id"), None);
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn legacy_song_history_defaults_to_unorganized_library_state() {
+        let history: SongPracticeHistory = ron_options()
+            .from_str("(display_name:\"Legacy.mid\",sessions:[])")
+            .unwrap();
+        assert_eq!(history.library, SongLibraryState::default());
+    }
+
+    #[test]
+    fn session_saved_before_effective_tempo_remains_readable() {
+        let original = session(2, 8, 2);
+        let serialized = ron_options().to_string(&original).unwrap();
+        let legacy = serialized.replace("effective_tempo_bpm:None,", "");
+        assert_ne!(legacy, serialized);
+
+        let loaded: PracticeSession = ron_options().from_str(&legacy).unwrap();
+
+        assert_eq!(loaded.effective_tempo_bpm, None);
+        assert_eq!(loaded.summary, original.summary);
+    }
+
+    #[test]
+    fn song_setup_is_saved_by_content_identity() {
+        let path = temp_history_path("song-setup");
+        let mut store = PracticeHistoryStore::load(&path);
+        let setup = SongPracticeSetup {
+            tracks: vec![PracticeTrackSetup {
+                track_id: 3,
+                mode: PracticeTrackMode::Human,
+                visible: true,
+            }],
+            speed: 0.65,
+            loop_setup: Some(PracticeLoopSetup {
+                enabled: true,
+                start_measure: 7,
+                end_measure: 8,
+            }),
+            source_path: Some(PathBuf::from("C:/Music/Old Name.mid")),
+            exercise_spec: None,
+            last_used_unix_ms: 0,
+        };
+        store
+            .save_setup("content-id", "Old Name.mid", setup.clone())
+            .unwrap();
+        store
+            .save_setup("content-id", "New Name.mid", setup.clone())
+            .unwrap();
+
+        let loaded = PracticeHistoryStore::load(&path);
+        let loaded_setup = loaded.setup("content-id").unwrap();
+        assert_eq!(loaded_setup.tracks, setup.tracks);
+        assert_eq!(loaded_setup.speed, setup.speed);
+        assert_eq!(loaded_setup.loop_setup, setup.loop_setup);
+        assert_eq!(loaded_setup.source_path, setup.source_path);
+        assert!(loaded_setup.last_used_unix_ms > 0);
+        assert_eq!(
+            loaded.song("content-id").unwrap().display_name,
+            "New Name.mid"
+        );
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn generated_exercise_source_survives_setup_and_recent_library_round_trip() {
+        let path = temp_history_path("exercise-source");
+        let mut store = PracticeHistoryStore::load(&path);
+        let spec = ExerciseSpec {
+            tonic: 1,
+            tempo_bpm: 70,
+            ..Default::default()
+        };
+        store
+            .save_setup(
+                "exercise-id",
+                "C# Major Scale",
+                SongPracticeSetup {
+                    tracks: Vec::new(),
+                    speed: 1.0,
+                    loop_setup: None,
+                    source_path: None,
+                    exercise_spec: Some(spec),
+                    last_used_unix_ms: 0,
+                },
+            )
+            .unwrap();
+
+        let loaded = PracticeHistoryStore::load(&path);
+
+        assert_eq!(
+            loaded.setup("exercise-id").unwrap().exercise_spec,
+            Some(spec)
+        );
+        assert_eq!(loaded.recent_songs(1)[0].exercise_spec, Some(spec));
+        assert_eq!(loaded.recent_songs(1)[0].source_path, None);
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn setup_saved_before_generated_sources_remains_readable() {
+        let setup = SongPracticeSetup {
+            tracks: Vec::new(),
+            speed: 0.8,
+            loop_setup: None,
+            source_path: Some(PathBuf::from("C:/Music/Legacy.mid")),
+            exercise_spec: None,
+            last_used_unix_ms: 7,
+        };
+        let serialized = ron_options().to_string(&setup).unwrap();
+        let legacy = serialized.replace("exercise_spec:None,", "");
+        assert_ne!(legacy, serialized);
+
+        let loaded: SongPracticeSetup = ron_options().from_str(&legacy).unwrap();
+
+        assert_eq!(loaded.exercise_spec, None);
+        assert_eq!(loaded.source_path, setup.source_path);
+    }
+
+    #[test]
+    fn recent_songs_are_ordered_by_latest_activity() {
+        let path = temp_history_path("recent-songs");
+        let mut store = PracticeHistoryStore::load(&path);
+        let setup = |path: &str| SongPracticeSetup {
+            tracks: Vec::new(),
+            speed: 1.0,
+            loop_setup: None,
+            source_path: Some(PathBuf::from(path)),
+            exercise_spec: None,
+            last_used_unix_ms: 0,
+        };
+        store
+            .save_setup("older", "Older.mid", setup("C:/Older.mid"))
+            .unwrap();
+        store
+            .save_setup("newer", "Newer.mid", setup("C:/Newer.mid"))
+            .unwrap();
+        store
+            .songs_mut()
+            .get_mut("older")
+            .unwrap()
+            .setup
+            .as_mut()
+            .unwrap()
+            .last_used_unix_ms = 1;
+        store
+            .songs_mut()
+            .get_mut("newer")
+            .unwrap()
+            .setup
+            .as_mut()
+            .unwrap()
+            .last_used_unix_ms = 2;
+
+        let recent = store.recent_songs(1);
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].content_id, "newer");
+        assert_eq!(recent[0].source_path, Some(PathBuf::from("C:/Newer.mid")));
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn favorites_and_queue_order_persist_and_move_deterministically() {
+        let path = temp_history_path("library-organization");
+        let mut store = PracticeHistoryStore::load(&path);
+        store
+            .set_favorite(
+                "alpha",
+                "Alpha.mid",
+                Some(PathBuf::from("C:/Alpha.mid")),
+                true,
+            )
+            .unwrap();
+        store.set_queued("alpha", "Alpha.mid", None, true).unwrap();
+        store.set_queued("beta", "Beta.mid", None, true).unwrap();
+        store.set_queued("gamma", "Gamma.mid", None, true).unwrap();
+
+        assert!(store.move_in_queue("gamma", -1).unwrap());
+        assert!(store.move_in_queue("gamma", -1).unwrap());
+        assert!(!store.move_in_queue("gamma", -1).unwrap());
+        store.set_queued("alpha", "Alpha.mid", None, false).unwrap();
+
+        let loaded = PracticeHistoryStore::load(&path);
+        let summaries = loaded.recent_songs(10);
+        assert!(
+            summaries
+                .iter()
+                .find(|song| song.content_id == "alpha")
+                .unwrap()
+                .favorite
+        );
+        let mut queued: Vec<_> = summaries
+            .iter()
+            .filter_map(|song| Some((song.queue_position?, song.content_id.as_str())))
+            .collect();
+        queued.sort();
+        assert_eq!(queued, vec![(0, "gamma"), (1, "beta")]);
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn damaged_history_is_quarantined_and_does_not_block_startup() {
+        let path = temp_history_path("corrupt");
+        fs::write(&path, "this is not valid RON").unwrap();
+
+        let store = PracticeHistoryStore::load(&path);
+
+        assert_eq!(store.session_count("anything"), 0);
+        assert!(!path.exists());
+        assert!(
+            fs::read_dir(path.parent().unwrap())
+                .unwrap()
+                .flatten()
+                .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt-"))
+        );
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn weak_measures_aggregate_across_sessions() {
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![session(4, 5, 5), session(4, 8, 2), session(7, 9, 1)],
+        };
+
+        let weak = history.weak_measures(2);
+
+        assert_eq!(weak[0].measure, 4);
+        assert_eq!(weak[0].judged_notes, 20);
+        assert_eq!(weak[0].attempts, 2);
+        assert!((weak[0].accuracy - 0.65).abs() < f32::EPSILON);
+        assert_eq!(weak[1].measure, 7);
+    }
+
+    #[test]
+    fn rhythm_recommendation_requires_repeated_measure_evidence() {
+        let mut history = SongPracticeHistory::default();
+        history.sessions.push(rhythm_session(7, 6, 80, 30));
+        assert!(history.rhythm_measures(4).is_empty());
+        assert_eq!(history.recommended_rhythm_passage(), None);
+
+        history.sessions.push(rhythm_session(7, 6, 100, 50));
+        let rhythm = history.rhythm_measures(4);
+        assert_eq!(
+            rhythm,
+            vec![RhythmMeasure {
+                measure: 7,
+                median_offset_ms: 90,
+                median_deviation_ms: 40,
+                matched_notes: 12,
+                attempts: 2,
+                severity_ms: 130,
+            }]
+        );
+        assert_eq!(
+            history.recommended_rhythm_passage(),
+            Some(RhythmPassageRecommendation {
+                start_measure: 7,
+                end_measure: 8,
+                median_offset_ms: 90,
+                median_deviation_ms: 40,
+                matched_notes: 12,
+                attempts: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn rhythm_ranking_ignores_stable_measures_and_other_hand_scopes() {
+        let mut history = SongPracticeHistory::default();
+        let mut unrelated = rhythm_session(9, 20, 150, 80);
+        unrelated.kind = PracticeSessionKind::Loop {
+            start_measure: 9,
+            end_measure: 10,
+        };
+        history.sessions.push(unrelated);
+        history.sessions.extend([
+            rhythm_session(2, 8, 10, 15),
+            rhythm_session(2, 8, 12, 17),
+            rhythm_session(4, 6, -70, 20),
+            rhythm_session(4, 6, -90, 20),
+        ]);
+
+        let rhythm = history.rhythm_measures(4);
+        assert_eq!(rhythm.len(), 1);
+        assert_eq!(rhythm[0].measure, 4);
+        assert_eq!(rhythm[0].median_offset_ms, -80);
+    }
+
+    #[test]
+    fn passage_recommendation_requires_repeated_evidence() {
+        let mut history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![session(4, 4, 6), session(8, 9, 1)],
+        };
+
+        assert_eq!(history.recommended_passage(), None);
+
+        history.sessions.push(session(4, 6, 4));
+        let recommendation = history.recommended_passage().unwrap();
+        assert_eq!(recommendation.start_measure, 4);
+        assert_eq!(recommendation.end_measure, 5);
+        assert_eq!(recommendation.attempts, 2);
+        assert_eq!(recommendation.judged_notes, 20);
+        assert!((recommendation.weakest_accuracy - 0.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn passage_recommendation_ignores_small_samples_and_mastered_measures() {
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![
+                session(2, 2, 0),
+                session(2, 1, 1),
+                session(6, 9, 1),
+                session(6, 9, 1),
+            ],
+        };
+
+        assert_eq!(history.recommended_passage(), None);
+    }
+
+    #[test]
+    fn overview_orders_recent_attempts_and_computes_visible_trends() {
+        let mut first = session(2, 5, 5);
+        first.recorded_at_unix_ms = 10;
+        first.speed = 0.6;
+        let mut second = session(2, 7, 3);
+        second.recorded_at_unix_ms = 20;
+        second.speed = 0.7;
+        let mut third = session(2, 9, 1);
+        third.recorded_at_unix_ms = 30;
+        third.speed = 0.8;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![first, second, third],
+        };
+
+        let overview = history.overview(2, 1);
+
+        assert_eq!(overview.total_sessions, 3);
+        assert_eq!(overview.trend_kind, Some(PracticeSessionKind::WholeSong));
+        assert_eq!(overview.trend_hands, Some(PracticeHands::Both));
+        assert_eq!(overview.trend_attempts, 2);
+        assert_eq!(
+            overview
+                .recent
+                .iter()
+                .map(|item| item.recorded_at_unix_ms)
+                .collect::<Vec<_>>(),
+            vec![20, 30]
+        );
+        assert!((overview.accuracy_delta.unwrap() - 0.2).abs() < f32::EPSILON);
+        assert!((overview.speed_delta.unwrap() - 0.1).abs() < f32::EPSILON);
+        assert_eq!(overview.weak_measures.len(), 1);
+    }
+
+    #[test]
+    fn overview_omits_trends_without_two_judged_attempts() {
+        let mut empty = session(2, 0, 0);
+        empty.speed = f32::NAN;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![empty],
+        };
+
+        let overview = history.overview(5, 4);
+
+        assert_eq!(overview.accuracy_delta, None);
+        assert_eq!(overview.speed_delta, None);
+    }
+
+    #[test]
+    fn overview_reports_effective_tempo_progression_when_available() {
+        let mut slow = session(2, 8, 2);
+        slow.effective_tempo_bpm = Some(60);
+        let mut fast = session(2, 9, 1);
+        fast.effective_tempo_bpm = Some(84);
+        let history = SongPracticeHistory {
+            display_name: "C Major Scale".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![slow, fast],
+        };
+
+        let overview = history.overview(5, 4);
+
+        assert_eq!(overview.tempo_bpm_delta, Some(24));
+        assert_eq!(overview.recent[0].effective_tempo_bpm, Some(60));
+        assert_eq!(overview.recent[1].effective_tempo_bpm, Some(84));
+    }
+
+    #[test]
+    fn overview_does_not_compare_whole_song_and_loop_accuracy() {
+        let mut whole_old = session(2, 5, 5);
+        whole_old.speed = 0.6;
+        let mut unrelated_loop = session(8, 1, 9);
+        unrelated_loop.kind = PracticeSessionKind::Loop {
+            start_measure: 8,
+            end_measure: 9,
+        };
+        unrelated_loop.speed = 0.9;
+        let mut whole_new = session(2, 8, 2);
+        whole_new.speed = 0.7;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![whole_old, unrelated_loop, whole_new],
+        };
+
+        let overview = history.overview(5, 4);
+
+        assert_eq!(overview.trend_attempts, 2);
+        assert!((overview.accuracy_delta.unwrap() - 0.3).abs() < f32::EPSILON);
+        assert!((overview.speed_delta.unwrap() - 0.1).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn overview_does_not_compare_different_hand_goals() {
+        let mut both_old = session(2, 5, 5);
+        both_old.speed = 0.6;
+        let mut right_only = session(2, 1, 9);
+        right_only.hands = PracticeHands::Right;
+        right_only.speed = 0.9;
+        let mut both_new = session(2, 8, 2);
+        both_new.speed = 0.7;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![both_old, right_only, both_new],
+        };
+
+        let overview = history.overview(5, 4);
+
+        assert_eq!(overview.trend_hands, Some(PracticeHands::Both));
+        assert_eq!(overview.trend_attempts, 2);
+        assert!((overview.accuracy_delta.unwrap() - 0.3).abs() < f32::EPSILON);
+        assert!((overview.speed_delta.unwrap() - 0.1).abs() < f32::EPSILON);
+        assert!((overview.weak_measures[0].accuracy - 0.65).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn spaced_review_uses_mastery_streak_and_explains_due_state() {
+        let day = 24 * 60 * 60 * 1_000_u64;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![review_session(day), review_session(day * 2), review_session(day * 3)],
+        };
+
+        let waiting = history.review_status(day * 9).unwrap();
+        assert_eq!(waiting.reason, ReviewReason::Stable);
+        assert_eq!(waiting.mastery_streak, 3);
+        assert_eq!(waiting.interval_days, 7);
+        assert_eq!(waiting.days_until_due, 1);
+        assert!(!waiting.is_due);
+
+        let due = history.review_status(day * 10).unwrap();
+        assert!(due.is_due);
+        assert_eq!(due.days_until_due, 0);
+    }
+
+    #[test]
+    fn ordinary_passage_review_uses_saved_conditions_and_latest_result() {
+        let day = 86_400_000_u64;
+        let passage = |at| {
+            let mut item = review_session(at);
+            item.kind = PracticeSessionKind::Loop { start_measure: 8, end_measure: 12 };
+            item.context.as_mut().unwrap().rounds = 0;
+            item.context.as_mut().unwrap().passage_bounds = Some(PracticePassageBounds {
+                start_tick: 7200, end_tick: 11520,
+            });
+            item
+        };
+        let history = SongPracticeHistory {
+            sessions: vec![passage(day), passage(day * 2)],
+            ..Default::default()
+        };
+        assert!(history.due_passage_reviews(day * 4, 10).is_empty());
+        let due = history.due_passage_reviews(day * 5, 10);
+        assert_eq!(due.len(), 1);
+        assert_eq!((due[0].start_measure, due[0].end_measure), (8, 12));
+        assert_eq!(due[0].mastery_streak, 2);
+        assert_eq!(due[0].interval_days, 3);
+        assert_eq!(due[0].session_index, 1);
+
+        let mut failed = passage(day * 6);
+        failed.summary.overall.matched_notes = 5;
+        failed.summary.overall.missed_notes = 5;
+        let history = SongPracticeHistory {
+            sessions: vec![passage(day), passage(day * 2), failed],
+            ..Default::default()
+        };
+        assert!(history.due_passage_reviews(day * 20, 10).is_empty());
+
+        let mut special = passage(day * 7);
+        special.context.as_mut().unwrap().rounds = 2;
+        let history = SongPracticeHistory {
+            sessions: vec![passage(day), passage(day * 2), special],
+            ..Default::default()
+        };
+        assert_eq!(history.due_passage_reviews(day * 20, 10)[0].mastery_streak, 2);
+
+        let mut another_range = passage(day * 8);
+        another_range.context.as_mut().unwrap().passage_bounds = Some(PracticePassageBounds {
+            start_tick: 7680, end_tick: 11040,
+        });
+        let history = SongPracticeHistory {
+            sessions: vec![passage(day), passage(day * 2), another_range],
+            ..Default::default()
+        };
+        let due = history.due_passage_reviews(day * 20, 10);
+        assert_eq!(due.len(), 2);
+        assert_eq!(due[0].mastery_streak, 1);
+        assert_eq!(due[1].mastery_streak, 2);
+
+        let mut old = passage(day * 9);
+        old.context.as_mut().unwrap().passage_bounds = None;
+        let history = SongPracticeHistory { sessions: vec![old], ..Default::default() };
+        assert!(history.due_passage_reviews(day * 20, 10).is_empty());
+    }
+
+    #[test]
+    fn passage_and_special_take_do_not_replace_whole_song_review() {
+        let day = 86_400_000_u64;
+        let mut whole = review_session(day);
+        whole.context.as_mut().unwrap().rounds = 0;
+        let mut passage = review_session(day * 2);
+        passage.kind = PracticeSessionKind::Loop {
+            start_measure: 2,
+            end_measure: 3,
+        };
+        let mut special = review_session(day * 3);
+        special.context.as_mut().unwrap().rounds = 2;
+        let history = SongPracticeHistory {
+            sessions: vec![whole, passage, special],
+            ..Default::default()
+        };
+
+        assert_eq!(history.latest_regular_whole_song().unwrap().recorded_at_unix_ms, day);
+        let review = history.review_status(day * 3).unwrap();
+        assert!(review.is_due);
+        assert_eq!(review.source_at_unix_ms, day);
+        assert!(review.source_is_whole_song);
+        assert_eq!(review.reason, ReviewReason::FirstMastery);
+        assert_eq!(review.mastery_streak, 1);
+    }
+
+    #[test]
+    fn changed_whole_song_conditions_break_the_review_streak() {
+        let day = 86_400_000_u64;
+        let mut first = review_session(day);
+        first.context.as_mut().unwrap().rounds = 0;
+        let mut changed = review_session(day * 2);
+        changed.context.as_mut().unwrap().rounds = 0;
+        changed.speed = 0.6;
+        let mut latest = review_session(day * 3);
+        latest.context.as_mut().unwrap().rounds = 0;
+        let history = SongPracticeHistory {
+            sessions: vec![first.clone(), changed, latest.clone()],
+            ..Default::default()
+        };
+        assert_eq!(history.review_status(day * 3).unwrap().mastery_streak, 1);
+
+        let mut passage = review_session(day * 2);
+        passage.kind = PracticeSessionKind::Loop {
+            start_measure: 2,
+            end_measure: 3,
+        };
+        let history = SongPracticeHistory {
+            sessions: vec![first, passage, latest],
+            ..Default::default()
+        };
+        assert_eq!(history.review_status(day * 3).unwrap().mastery_streak, 2);
+    }
+
+    #[test]
+    fn judged_note_count_is_an_outcome_not_a_review_condition() {
+        let complete = review_session(1);
+        let mut incomplete = complete.clone();
+        incomplete.context.as_mut().unwrap().judged_notes = 9;
+        incomplete.summary.overall.matched_notes = 9;
+        assert!(same_review_conditions(&complete, &incomplete));
+        assert!(session_is_mastered(&complete));
+        assert!(!session_is_mastered(&incomplete));
+    }
+
+    #[test]
+    fn weak_latest_take_is_due_immediately() {
+        let mut weak = review_session(100);
+        weak.summary.overall.matched_notes = 7;
+        weak.summary.overall.missed_notes = 3;
+        weak.recorded_at_unix_ms = 100;
+        weak.summary.overall.on_time_notes = 7;
+        let history = SongPracticeHistory {
+            display_name: "Song.mid".to_owned(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![weak],
+        };
+
+        let review = history.review_status(100).unwrap();
+        assert!(review.is_due);
+        assert_eq!(review.interval_days, 0);
+        assert_eq!(review.reason, ReviewReason::NeedsReinforcement);
+    }
+
+    #[test]
+    fn review_streak_requires_same_frozen_practice_conditions() {
+        let day = 86_400_000_u64;
+        let baseline = review_session(day);
+        let mut variants = Vec::new();
+        let mut grid = baseline.clone(); grid.context.as_mut().unwrap().grid = "grid-v1-revised".into(); variants.push(grid);
+        let mut range = baseline.clone(); range.kind = PracticeSessionKind::Loop {start_measure: 2, end_measure: 3}; variants.push(range);
+        let mut scope = baseline.clone(); scope.scope = Some("practice-v1-other-notes".into()); variants.push(scope);
+        let mut track = baseline.clone(); track.context.as_mut().unwrap().tracks[0].mode = PracticeTrackMode::Auto; variants.push(track);
+        let mut speed = baseline.clone(); speed.speed = 0.6; variants.push(speed);
+        let mut tempo = baseline.clone(); tempo.effective_tempo_bpm = Some(80); variants.push(tempo);
+        let mut input = baseline.clone(); input.context.as_mut().unwrap().latency = 13; variants.push(input);
+        let mut pedal = baseline.clone(); pedal.context.as_mut().unwrap().pedal_latency_ms = Some(10); variants.push(pedal);
+        let mut mode = baseline.clone(); mode.mode = Some("wait".into()); variants.push(mode);
+        for variant in variants {
+            let latest = review_session(day * 2);
+            let history = SongPracticeHistory {sessions: vec![variant, latest], ..Default::default()};
+            let status = history.review_status(day * 2).unwrap();
+            assert_eq!(status.mastery_streak, 1);
+            assert_eq!(status.interval_days, 1);
+            assert_eq!(status.reason, ReviewReason::FirstMastery);
+        }
+    }
+
+    #[test]
+    fn old_attempts_without_frozen_conditions_are_preserved_but_do_not_extend_review() {
+        let day = 86_400_000_u64;
+        let mut legacy = review_session(day);
+        legacy.context = None;
+        let mut latest = review_session(day * 2);
+        latest.context.as_mut().unwrap().rounds = 0;
+        let history = SongPracticeHistory {sessions: vec![legacy.clone(), latest], ..Default::default()};
+        assert_eq!(history.review_status(day * 2).unwrap().mastery_streak, 1);
+        assert_eq!(history.sessions.len(), 2);
+        let legacy_latest = SongPracticeHistory {sessions: vec![legacy], ..Default::default()};
+        let status = legacy_latest.review_status(day).unwrap();
+        assert_eq!(status.reason, ReviewReason::IncompleteConditions);
+        assert_eq!(status.mastery_streak, 0);
+        assert!(status.is_due);
+    }
+
+    #[test]
+    fn history_retains_only_the_most_recent_sessions() {
+        let path = temp_history_path("retention");
+        let mut store = PracticeHistoryStore::load(&path);
+        for index in 0..(MAX_SESSIONS_PER_SONG + 3) {
+            let mut item = session(1, 1, 0);
+            item.recorded_at_unix_ms = index as u64;
+            store.record_session("song", "Song.mid", item).unwrap();
+        }
+
+        let song = store.song("song").unwrap();
+        assert_eq!(song.sessions.len(), MAX_SESSIONS_PER_SONG);
+        assert_eq!(song.sessions.first().unwrap().recorded_at_unix_ms, 3);
+
+        fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+    #[test]
+    fn grid_and_target_scope_changes_are_not_mixed_in_trends_or_weak_measures() {
+        let a = session(2, 2, 8).with_scope("old-grid".into());
+        let b = session(2, 8, 2).with_scope("new-grid".into());
+        let history = SongPracticeHistory {
+            display_name: "Scoped".into(),
+            setup: None,
+            library: SongLibraryState::default(),
+            sessions: vec![a, b],
+        };
+        let overview = history.overview(20, 5);
+        assert_eq!(overview.trend_attempts, 1);
+        assert!(overview.accuracy_delta.is_none());
+        let weak = history.weak_measures(5);
+        assert_eq!(weak.len(), 1);
+        assert_eq!(weak[0].attempts, 1);
+        assert!((weak[0].accuracy - 0.8).abs() < 0.0001);
+    }
+}

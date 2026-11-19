@@ -1,0 +1,289 @@
+.practice-draft-strip {
+  border: 1px solid var(--border, #3d4855);
+  border-radius: 10px;
+  background: #202b34;
+  padding: 0.8rem 1rem;
+  margin: 0.7rem 0;
+}
+.settings-dialog.practice-editor-dialog {
+  display: block;
+  width: min(1100px, 96vw);
+  max-height: 91vh;
+  overflow: auto;
+  padding: 24px;
+}
+.practice-editor-dialog .dialog-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 12px 0;
+  background: var(--panel, #272e38);
+}
+.practice-editor-dialog .dialog-heading > div {
+  min-width: 0;
+}
+.practice-editor-dialog .dialog-heading p {
+  overflow-wrap: anywhere;
+}
+.practice-editor-dialog .passage-layout,
+.practice-editor-dialog .ladder-layout {
+  grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1.2fr);
+  align-items: start;
+  overflow: visible;
+}
+.practice-editor-dialog .passage-list,
+.practice-editor-dialog .ladder-library {
+  max-height: 63vh;
+  overflow: auto;
+  min-width: 0;
+  scrollbar-width: thin;
+  padding-right: 10px;
+}
+.practice-editor-dialog .passage-form,
+.practice-editor-dialog .ladder-editor {
+  min-width: 0;
+}
+.practice-editor-dialog .passage-select strong,
+.practice-editor-dialog .ladder-preset strong {
+  overflow-wrap: anywhere;
+}
+.practice-editor-dialog .ladder-preset .passage-stale {
+  color: #f3c981;
+}
+.practice-draft-strip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.practice-draft-strip-heading strong {
+  color: #e4edf2;
+  font-size: 13px;
+}
+.practice-draft-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.65rem 0 0.3rem;
+  scrollbar-width: thin;
+}
+.practice-draft-tabs > button {
+  display: flex;
+  flex: 0 0 auto;
+  max-width: 200px;
+  text-align: left;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.7rem;
+  background: #17212a;
+  border-radius: 7px;
+}
+.practice-draft-tabs > button[aria-pressed="true"] {
+  border-color: #80c6b7;
+  background: #28483f;
+}
+.practice-draft-tabs > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.practice-draft-tabs small,
+.practice-draft-strip > p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.practice-draft-strip > p {
+  margin: 0.45rem 0;
+}
+.practice-forget-draft {
+  font-size: 11px;
+  min-height: 28px;
+}
+.practice-forget-draft + .practice-forget-draft {
+  margin-left: 0.5rem;
+}
+.practice-catalog-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.2rem 0.4rem;
+}
+.practice-catalog-filters label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+.practice-catalog-filters select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem;
+  font-size: 11px;
+}
+.practice-save-receipt,
+.practice-draft-conflict {
+  margin: 0.8rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #796543;
+  background: #352f24;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.practice-save-receipt p,
+.practice-draft-conflict p {
+  margin: 0.45rem 0;
+}
+.practice-save-receipt button,
+.practice-draft-conflict button {
+  margin: 0.3rem 0.5rem 0.3rem 0;
+}
+.practice-receipt-result {
+  border-top: 1px solid #796543;
+  padding-top: 0.7rem;
+  margin-top: 0.6rem;
+}
+.practice-receipt-result pre {
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 12px;
+}
+.practice-saved-details {
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  background: #191d2280;
+  font-size: 12px;
+}
+.practice-saved-details dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 1rem;
+  margin: 0.3rem 0;
+}
+.practice-saved-details dl > div {
+  min-width: 0;
+}
+.practice-saved-details dt {
+  color: #a6b6c2;
+  font-size: 11px;
+}
+.practice-saved-details dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+.practice-saved-notes {
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow: auto;
+}
+.practice-draft-notice {
+  color: #aed8c8;
+  font-size: 13px;
+}
+.practice-list-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.65rem 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.practice-list-pager button {
+  min-height: 30px;
+  padding: 0.25rem 0.5rem;
+}
+.practice-input-problem {
+  border-left: 3px solid #d4ad6c;
+  padding: 0.6rem 0.8rem;
+  background: #3b3224;
+  color: #efdcba;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.practice-editor-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid #39434e;
+}
+.practice-editor-summary strong {
+  font-size: 15px;
+}
+.practice-editor-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.practice-editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+.practice-editor-tools button {
+  font-size: 11px;
+  min-height: 30px;
+}
+.practice-reveal-selection {
+  font-size: 11px;
+  margin-bottom: 0.6rem;
+  color: #c3e4d4;
+}
+.ladder-library > .passage-search {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+}
+.practice-settings-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+}
+.practice-settings-summary > span {
+  padding: 0.6rem;
+  border-radius: 7px;
+  background: #202c34;
+  font-size: 12px;
+  color: #bfd1d9;
+}
+@media (max-width: 650px) {
+  .practice-draft-strip {
+    padding: 0.7rem;
+  }
+  .practice-settings-summary {
+    grid-template-columns: 1fr;
+  }
+  .practice-editor-summary {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 760px) {
+  .settings-dialog.practice-editor-dialog {
+    padding: 16px;
+  }
+  .practice-editor-dialog .dialog-heading {
+    top: 0;
+  }
+  .practice-editor-dialog .passage-layout,
+  .practice-editor-dialog .ladder-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .practice-editor-dialog .passage-list,
+  .practice-editor-dialog .ladder-library {
+    max-height: 38vh;
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 1px solid #3b4451;
+    padding-bottom: 12px;
+  }
+}

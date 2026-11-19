@@ -1,0 +1,105 @@
+.startup-notice {
+  max-height: calc(100% - 140px);
+  min-height: 0;
+  overflow: auto;
+  flex-shrink: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  width: min(680px, calc(100% - 48px));
+  margin: auto;
+  padding: 36px;
+  border: 1px solid #3f4c38;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #252e24, #1c2025);
+  box-shadow: 0 20px 70px #0003;
+}
+.startup-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #a9df7415;
+  color: var(--accent);
+}
+.startup-copy {
+  min-width: 0;
+}
+.startup-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.startup-copy h1 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #edf1e9;
+  margin: 10px 0;
+}
+.startup-copy p {
+  color: #bac2b8;
+  line-height: 1.8;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.startup-copy .startup-preserved {
+  color: var(--muted);
+  font-size: 12px;
+}
+.startup-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.startup-actions > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.startup-actions button {
+  border-color: #68884c;
+  background: #40552e;
+  color: #ecf5e4;
+}
+.startup-spinner {
+  animation: startup-spin 1.5s linear infinite;
+}
+.startup-failed {
+  border-color: #786044;
+  background: linear-gradient(135deg, #30291f, #1c2025);
+}
+.startup-failed .startup-symbol {
+  background: #dfb07415;
+  color: #dfb074;
+}
+@keyframes startup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-spinner {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  .startup-notice {
+    gap: 16px;
+    padding: 24px;
+    width: calc(100% - 24px);
+  }
+  .startup-symbol {
+    flex-basis: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .startup-copy h1 {
+    font-size: 20px;
+  }
+}

@@ -1,0 +1,57 @@
+name: Desktop feature checks
+
+on:
+  push:
+    branches:
+      - "feature/**"
+    paths:
+      - ".github/workflows/desktop-feature.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "panthesia-core/**"
+      - "panthesia-engine/**"
+      - "panthesia-web/**"
+      - "scripts/**"
+      - "midi-file/**"
+      - "midi-io/**"
+      - "piano-layout/**"
+      - "wgpu-jumpstart/**"
+      - "panthesia-image/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-feature-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  targeted:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: panthesia-web/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Prepare frontend dependencies
+        run: |
+          npm ci --prefix panthesia-web
+      - name: Build practice room and check core logic
+        run: ./scripts/build-practice.ps1 -Target Web,Service -Verify
+      - name: Prepare browser
+        working-directory: panthesia-web
+        run: npx playwright install chromium
+      - name: Check daily practice and engine restart
+        run: ./scripts/verify-practice.ps1 -SkipBuild -Workspaces -Expression -Background -Playback -Imports
+      - name: Review Audiveris desktop commands
+        run: cargo test --locked -p panthesia-desktop --bin panthesia-desktop audiveris_paper::tests -- --quiet

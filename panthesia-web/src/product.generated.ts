@@ -1,0 +1,9 @@
+// Generated from product.json by scripts/sync-product.mjs.
+export const product = {
+  "name": "Panthesia",
+  "identifier": "com.ubik.panthesia",
+  "version": "0.1.0",
+  "maintainer": "Ubik42",
+  "repository": "https://github.com/Ubik42/Panthesia",
+  "description": "本地钢琴练习、乐谱与音乐制作工作台"
+} as const;

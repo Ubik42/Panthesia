@@ -1,0 +1,79 @@
+.library-open-recovery {
+  margin: 0 20px 12px;
+  padding: 12px 15px;
+  border: 1px solid var(--line, #30333a);
+  border-radius: 12px;
+  background: var(--surface, #21242a);
+  max-height: 36vh;
+  overflow: auto;
+}
+.library-open-recovery-heading,
+.library-open-recovery-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.library-open-recovery-heading > span {
+  margin-left: auto;
+  color: var(--muted, #939aa6);
+  font-size: 12px;
+}
+.library-open-recovery-heading {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.library-open-recovery-heading > svg {
+  color: var(--accent);
+}
+.library-open-recovery li:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+.library-open-recovery ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.library-open-recovery li {
+  border-top: 1px solid var(--line, #30333a);
+  padding: 10px 0;
+}
+.library-open-recovery li > div:first-child {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+.library-open-recovery li > div:first-child > span,
+.library-open-recovery p {
+  color: var(--muted, #939aa6);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.library-open-recovery p {
+  margin: 6px 0 9px;
+}
+.library-open-recovery button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.library-open-recovery textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+@media (max-width: 600px) {
+  .library-open-recovery {
+    margin-inline: 8px;
+    padding: 10px;
+  }
+  .library-open-recovery-actions button {
+    min-height: 36px;
+  }
+}

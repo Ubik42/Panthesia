@@ -1,0 +1,42 @@
+.task-activity {
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid #536443;
+  border-radius: 6px;
+  background: #293226;
+  font-size: 13px;
+}
+.task-activity > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.task-activity > div > span {
+  flex: 1;
+}
+.task-activity p {
+  margin: 8px 0;
+  color: #b5c4ae;
+  line-height: 1.6;
+}
+
+.saved-edit-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid #658655;
+  border-radius: 6px;
+  background: #293226;
+  color: #e0edda;
+  line-height: 1.6;
+}
+.saved-edit-notice > span { flex: 1 1 160px; }
+.task-activity > div { flex-wrap: wrap; }
+.task-activity > div > span { flex-basis: 160px; }
+
+.task-activity-error { color: #f0c7b8; }
+.task-activity-error button { flex-shrink: 0; }

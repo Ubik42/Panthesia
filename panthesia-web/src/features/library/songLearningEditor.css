@@ -1,0 +1,118 @@
+.song-learning-dialog.settings-dialog {
+  width: min(850px, 95vw);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.song-learning-dialog .browse-detail-actions {
+  margin-top: 12px;
+}
+.song-learning-dialog .song-learning-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.song-learning-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.song-learning-fields small {
+  color: #a2b3c4;
+  font-size: 11px;
+}
+.song-learning-dialog .song-learning-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 18px 0;
+}
+.song-learning-dialog .song-learning-goal textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+.learning-editor-receipt,
+.learning-editor-conflict {
+  margin: 0 0 18px;
+  padding: 13px;
+  border: 1px solid #8d7956;
+  border-radius: 8px;
+  background: #373225;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.learning-editor-receipt .dialog-actions,
+.learning-editor-conflict .dialog-actions {
+  flex-wrap: wrap;
+}
+.learning-merge-field {
+  padding: 12px 0;
+  border-top: 1px solid #655943;
+}
+.learning-merge-field p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 110px;
+  overflow: auto;
+  margin: 6px 0;
+}
+.learning-transition-list h3 {
+  font-size: 15px;
+  margin-top: 0;
+}
+.learning-transition-list article {
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid #465461;
+  border-radius: 8px;
+  background: #27323d;
+}
+.learning-transition-list article header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.learning-transition-list article time {
+  color: #a5b7c7;
+  font-size: 11px;
+}
+.learning-transition-list article p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 9px 0 0;
+  color: #bccbd7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.song-learning-dialog .learning-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  bottom: -20px;
+  padding: 12px 0 6px;
+  background: #222a33;
+  border-top: 1px solid #465461;
+}
+.learning-editor-footer > span {
+  font-size: 11px;
+  color: #a5b7c7;
+}
+@media (max-width: 560px) {
+  .song-learning-dialog .song-learning-fields {
+    grid-template-columns: 1fr;
+  }
+  .learning-transition-list article header {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+.learning-editor-message {
+  max-height: 90px;
+  overflow: auto;
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

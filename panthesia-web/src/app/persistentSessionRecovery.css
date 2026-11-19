@@ -1,0 +1,82 @@
+.persistent-session-recovery {
+  margin: 14px 0;
+  padding: 13px 15px;
+  border: 1px solid #6c6248;
+  border-radius: 9px;
+  background: #302d25;
+  color: #e1d6bd;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.persistent-session-problem > strong {
+  font-size: 13px;
+  color: #f2dfb8;
+}
+.persistent-session-recovery p {
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.persistent-session-problem > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0;
+}
+.persistent-session-recovery button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.persistent-session-recovery details {
+  margin-top: 10px;
+  border-top: 1px solid #635b47;
+  padding-top: 10px;
+}
+.persistent-session-recovery summary {
+  cursor: pointer;
+}
+.persistent-session-recovery ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+}
+.persistent-session-recovery li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #534e40;
+}
+.persistent-session-message {
+  color: #c9dfb8;
+}
+.persistent-session-failure {
+  color: #ffd0b6;
+}
+.persistent-session-text {
+  margin-top: 13px;
+}
+.persistent-session-text > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.persistent-session-text textarea {
+  width: 100%;
+  min-height: 160px;
+  box-sizing: border-box;
+  margin-top: 9px;
+  resize: vertical;
+  font-size: 12px;
+  line-height: 1.7;
+  background: #191f25;
+  color: #d4dee8;
+}

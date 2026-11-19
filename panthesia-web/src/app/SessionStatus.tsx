@@ -1,0 +1,165 @@
+import { api } from "../api";
+import { useSyncExternalStore } from "react";
+import { CheckCircle2, LifeBuoy, LoaderCircle, X } from "lucide-react";
+import {
+  recoveryActionLabels,
+  type RecoveryAction,
+  type RecoveryIssue,
+} from "./recovery/sessionRecoveryModel";
+import type { SessionRecoveryStore } from "./recovery/sessionRecoveryStore";
+import type { RecoveryActor } from "./recovery/SessionRecovery";
+import "./SessionStatus.css";
+
+export function SessionStatus({
+  store,
+  act,
+  openRecovery,
+}: {
+  store: SessionRecoveryStore;
+  act: RecoveryActor;
+  openRecovery: () => void;
+}) {
+  const state = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
+  );
+  const problems = state.issues.filter((issue) => issue.severity !== "info"),
+    primary = problems[0];
+  const progress = state.issues.find(
+      (issue) =>
+        issue.severity === "info" &&
+        issue.id !== "recording-saved" &&
+        !issue.startupWarning,
+    ),
+    recording = state.issues.find((issue) => issue.id === "recording-saved");
+  const startupNotes = state.issues.filter(
+    (issue) => issue.severity === "info" && issue.startupWarning,
+  );
+  const primaryAction = primary?.actions.find(
+    (action) =>
+      !["dismissAction", "dismissStartup"].includes(action) &&
+      (action !== "dataFolder" || api.desktop),
+  );
+  const actionButton = (
+    issue: RecoveryIssue,
+    action: RecoveryAction,
+    key?: string,
+  ) => (
+    <button
+      key={key}
+      type="button"
+      disabled={
+        !!state.availability[issue.id]?.[action] ||
+        state.operations.some((operation) => operation.issueId === issue.id)
+      }
+      title={state.availability[issue.id]?.[action]}
+      onClick={() => {
+        void act(issue, action).catch(() => {});
+      }}
+    >
+      {state.operations.some(
+        (operation) =>
+          operation.issueId === issue.id && operation.action === action,
+      ) && <LoaderCircle size={14} className="session-reading" />}
+      {recoveryActionLabels[action]}
+    </button>
+  );
+  return (
+    <div className="session-status-stack">
+      {progress && (
+        <div
+          className="session-save-status session-compact-progress"
+          role="status"
+        >
+          <LoaderCircle size={14} className="session-reading" />
+          <span>{progress.title}</span>
+          {progress.id === "connection" || progress.id === "binding"
+            ? actionButton(progress, "readSession")
+            : null}
+        </div>
+      )}
+      {startupNotes.map((issue) => (
+        <div
+          className="app-notice startup-result-notice"
+          role="status"
+          key={issue.id}
+        >
+          <CheckCircle2 size={16} aria-hidden="true" />
+          <div>
+            <strong>{issue.title}</strong>
+            <span>{issue.detail}</span>
+          </div>
+          {issue.actions
+            .filter((action) => action !== "dismissStartup")
+            .map((action) => actionButton(issue, action, action))}
+          {actionButton(issue, "dismissStartup")}
+        </div>
+      ))}
+      {primary && (
+        <div
+          className={`session-problem-strip severity-${primary.severity}`}
+          role="alert"
+        >
+          <LifeBuoy size={17} />
+          <div>
+            <strong>{primary.title}</strong>
+            <span title={primary.detail}>{primary.detail}</span>
+          </div>
+          {primaryAction && actionButton(primary, primaryAction)}
+          <button type="button" onClick={openRecovery}>
+            查看原因与恢复
+            {problems.length > 1 ? ` · ${problems.length} 项` : ""}
+          </button>
+          {(primary.actions.includes("dismissAction") ||
+            primary.actions.includes("dismissStartup")) && (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="收起这条操作提示"
+              disabled={
+                state.closing ||
+                !!state.availability[primary.id]?.[
+                  primary.actions.includes("dismissStartup")
+                    ? "dismissStartup"
+                    : "dismissAction"
+                ] ||
+                state.operations.some(
+                  (operation) => operation.issueId === primary.id,
+                )
+              }
+              onClick={() => {
+                void act(
+                  primary,
+                  primary.actions.includes("dismissStartup")
+                    ? "dismissStartup"
+                    : "dismissAction",
+                ).catch(() => {});
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
+      {!primary && state.outcome && !state.outcome.ok && (
+        <div className="session-problem-strip severity-attention" role="alert">
+          <div>
+            <strong>上次恢复操作尚未完成</strong>
+            <span>{state.outcome.detail}</span>
+          </div>
+          <button type="button" onClick={openRecovery}>
+            查看处理结果
+          </button>
+        </div>
+      )}
+      {recording && (
+        <div className="app-notice recording-saved-notice" role="status">
+          <CheckCircle2 size={15} />
+          <span>{recording.title}</span>
+          {actionButton(recording, "openRecording")}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,412 @@
+//! Owned exercise preparation shared by generated and historical practice.
+use crate::{Player, legacy_exercise_tracks, load_pipeline};
+use midi_file::MidiFile;
+use panthesia_core::{
+    exercise::{ExercisePattern, ExercisePlan, ExerciseSpec, ExerciseTonality},
+    piano_layout::KeyboardRange,
+};
+
+pub(crate) struct Prepared {
+    pub file: MidiFile,
+    pub title: String,
+    pub(crate) plan: ExercisePlan,
+    pub(crate) timeline: load_pipeline::Timeline,
+    assets: Option<crate::exercise_assets::Prepared>,
+}
+pub(crate) fn prepare(spec: ExerciseSpec) -> Result<Prepared, String> {
+    prepare_checked(spec, &|| Ok(()))
+}
+pub(crate) fn prepare_checked(
+    spec: ExerciseSpec,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<Prepared, String> {
+    check()?;
+    let plan =
+        ExercisePlan::generate(spec, &KeyboardRange::new(21..=108)).map_err(|e| e.to_string())?;
+    check()?;
+    let mut file = plan.to_midi_file()?;
+    check()?;
+    file.content_id = plan.practice_id();
+    let timeline = load_pipeline::Timeline::new_checked(&file, check)?;
+    let title = format!(
+        "{}{} · {}",
+        [
+            "C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"
+        ][spec.tonic as usize],
+        if matches!(spec.tonality, ExerciseTonality::Major) {
+            "大调"
+        } else {
+            "小调"
+        },
+        match spec.pattern {
+            ExercisePattern::Scale => "音阶",
+            ExercisePattern::Arpeggio => "琶音",
+            _ => "主三和弦",
+        }
+    );
+    Ok(Prepared {
+        file,
+        title,
+        plan,
+        timeline,
+        assets: None,
+    })
+}
+impl Prepared {
+    pub(crate) fn install_startup(self, player: &mut Player) -> Result<(), String> {
+        self.check()?;
+        player.install_prepared(
+            self.file,
+            self.title,
+            Some(self.plan),
+            Some(load_pipeline::InstallData {
+                assets: self.assets.map(|a| a.assets),
+                timeline: self.timeline,
+            }),
+        )
+    }
+    pub(crate) fn read_assets(
+        self,
+        data: &std::path::Path,
+        versions: &[crate::preferences::ScoreVersion],
+    ) -> Result<Self, String> {
+        self.read_assets_checked(data, versions, &|| Ok(()))
+    }
+    pub(crate) fn read_assets_checked(
+        mut self,
+        data: &std::path::Path,
+        versions: &[crate::preferences::ScoreVersion],
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<Self, String> {
+        check()?;
+        self.assets = Some(crate::exercise_assets::Prepared::read_checked(
+            data,
+            &self.file,
+            self.plan.spec,
+            versions,
+            check,
+        )?);
+        Ok(self)
+    }
+    pub(crate) fn check(&self) -> Result<(), String> {
+        match &self.assets {
+            Some(assets) => assets.check(),
+            None => Ok(()),
+        }
+    }
+    pub(crate) fn notes(&self) -> &[crate::PracticeNote] {
+        &self.timeline.notes
+    }
+    pub fn install(self, player: &mut Player) -> Result<(), String> {
+        self.check()?;
+        legacy_exercise_tracks::capture_before_install(player, &self.file, self.plan.spec)?;
+        let assets = match self.assets {
+            Some(assets) => {
+                assets.store(&player.data, &self.file.content_id)?;
+                Some(assets.assets)
+            }
+            None => None,
+        };
+        player.install_prepared(
+            self.file,
+            self.title,
+            Some(self.plan),
+            Some(load_pipeline::InstallData {
+                assets,
+                timeline: self.timeline,
+            }),
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        Command, Engine,
+        background_tasks::TaskPool,
+        data_root_lock::DataRootLock,
+        history_loading::tests::seeded,
+        runtime_request::{self, Request},
+    };
+    use panthesia_core::{exercise::ExerciseHands, library};
+    use std::{
+        sync::{Arc, Mutex, mpsc},
+        thread,
+        time::{Duration, Instant},
+    };
+
+    fn ready(player: &Player, spec: ExerciseSpec) -> Prepared {
+        prepare(spec)
+            .unwrap()
+            .read_assets(&player.data, &[])
+            .unwrap()
+    }
+    fn commit(
+        player: &mut Player,
+        origin: crate::import_pipeline::Origin,
+        prepared: Prepared,
+        cancel: bool,
+    ) -> Result<serde_json::Value, String> {
+        let pool = TaskPool::new(1, 2).unwrap();
+        let work = pool.clone();
+        let (send, recv) = mpsc::channel();
+        let (release, gate) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            work.run("held exercise", None, move |token| {
+                send.send(token).unwrap();
+                gate.recv().unwrap();
+                Ok(serde_json::Value::Null)
+            })
+        });
+        let token = recv.recv_timeout(Duration::from_secs(3)).unwrap();
+        if cancel {
+            pool.cancel(&pool.list().unwrap()[0].id).unwrap();
+        }
+        let (reply, response) = mpsc::sync_channel(1);
+        let shared = Arc::new(Mutex::new(player.snapshot()));
+        runtime_request::handle(
+            player,
+            Request::ExerciseCommit(origin, prepared, token, reply),
+            &shared,
+        );
+        let result = response.recv().unwrap();
+        release.send(()).unwrap();
+        let _ = worker.join().unwrap();
+        result
+    }
+    #[test]
+    fn public_generate_recent_and_history_restore_personal_annotations() {
+        let (player, cid, id) = seeded(true, false);
+        let data = player.data.clone();
+        drop(player);
+        let lock = DataRootLock::acquire(&data).unwrap();
+        let engine = Engine::start(data, lock, std::path::PathBuf::new(), true).unwrap();
+        for command in [
+            Command::Generate {
+                spec: ExerciseSpec::default(),
+            },
+            Command::OpenRecent {
+                content_id: cid.clone(),
+            },
+            Command::HistoryOpen {
+                content_id: cid.clone(),
+                id,
+                restore: true,
+            },
+        ] {
+            let song = engine.command(command).unwrap();
+            assert_eq!(song["contentId"], cid);
+            assert!(
+                song["notes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|n| n["index"] == 0 && n["finger"] == 4 && n["part"] == "left")
+            );
+        }
+        let tasks = engine.command(Command::Tasks).unwrap();
+        assert!(
+            tasks
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|t| t["label"] == "生成技术练习与恢复资料" && t["state"] == "succeeded")
+                .count()
+                >= 2
+        );
+    }
+    #[test]
+    fn generated_score_preparation_restores_owned_bytes_and_checks_source_changes() {
+        let (mut player, cid, _) = seeded(true, false);
+        let xml =
+            include_bytes!("../../panthesia-core/src/score_performance_test.musicxml").to_vec();
+        player
+            .command(Command::PairScore {
+            expected: None,                bytes: xml.clone(),
+                name: "生成练习原谱.musicxml".into(),
+                content_id: cid.clone(),
+            })
+            .unwrap();
+        let prepared = ready(&player, ExerciseSpec::default());
+        let assets = &prepared.assets.as_ref().unwrap().assets;
+        assert_eq!(assets.notation.as_ref().unwrap().bytes, xml);
+        let path = player
+            .annotation_path(player.file.as_ref().unwrap())
+            .unwrap();
+        let sidecar = library::load_song_sidecar(&path, &cid).unwrap();
+        let source = library::resolve_score_path(&path, sidecar.score.as_ref().unwrap());
+        let origin = player.begin_import().unwrap();
+        commit(&mut player, origin, prepared, false).unwrap();
+        assert_eq!(player.notation.as_deref().unwrap().bytes, xml);
+        let stale = ready(&player, ExerciseSpec::default());
+        std::fs::write(&source, b"changed score").unwrap();
+        assert!(stale.check().is_err());
+        assert_eq!(player.notation.as_deref().unwrap().bytes, xml);
+    }
+    #[test]
+    fn preparing_missing_cache_is_read_only_until_commit() {
+        let (mut player, _, _) = seeded(false, false);
+        let spec = ExerciseSpec::default();
+        let prepared = ready(&player, spec);
+        let cid = prepared.file.content_id.clone();
+        assert!(!player.data.join("song-assets").exists());
+        prepared.check().unwrap();
+        let origin = player.begin_import().unwrap();
+        commit(&mut player, origin, prepared, false).unwrap();
+        assert_eq!(player.file.as_ref().unwrap().content_id, cid);
+        assert!(
+            player
+                .data
+                .join("song-assets")
+                .join(format!("{cid}.mid"))
+                .exists()
+        );
+    }
+    #[test]
+    fn prepared_generated_cache_preserves_conflicting_original_and_personal_data() {
+        let (mut player, cid, _) = seeded(true, false);
+        let original = player
+            .annotation_path(player.file.as_ref().unwrap())
+            .unwrap();
+        let sidecar = library::metadata_sidecar_path(&original);
+        let saved = std::fs::read(&sidecar).unwrap();
+        let foreign = include_bytes!("../assets/basic-chords.mid");
+        std::fs::write(&original, foreign).unwrap();
+        let spec = ExerciseSpec {
+            hands: ExerciseHands::Left,
+            repetitions: 3,
+            ..Default::default()
+        };
+        let prepared = ready(&player, spec);
+        let destination = prepared.assets.as_ref().unwrap().destination_for_test();
+        assert!(!destination.exists());
+        assert_eq!(std::fs::read(&original).unwrap(), foreign);
+        let origin = player.begin_import().unwrap();
+        commit(&mut player, origin, prepared, false).unwrap();
+        assert_eq!(player.file.as_ref().unwrap().content_id, cid);
+        assert_eq!(std::fs::read(&original).unwrap(), foreign);
+        assert_eq!(std::fs::read(&sidecar).unwrap(), saved);
+        assert!(destination.exists());
+        assert_eq!(
+            library::load_song_sidecar(&destination, &cid)
+                .unwrap()
+                .fingerings[0]
+                .finger,
+            4
+        );
+    }
+    #[test]
+    fn generated_commit_rejects_changed_assets_cancel_or_new_performance() {
+        for change in [
+            "sidecar",
+            "cache",
+            "cancel",
+            "playing",
+            "pressed",
+            "recording",
+            "song",
+        ] {
+            let (mut player, cid, _) = seeded(true, false);
+            let spec = ExerciseSpec {
+                hands: ExerciseHands::Left,
+                ..Default::default()
+            };
+            let prepared = ready(&player, spec);
+            let path = player
+                .annotation_path(player.file.as_ref().unwrap())
+                .unwrap();
+            let origin = player.begin_import().unwrap();
+            match change {
+                "sidecar" => {
+                    std::fs::write(library::metadata_sidecar_path(&path), b"changed").unwrap()
+                }
+                "cache" => std::fs::write(&path, b"changed").unwrap(),
+                "playing" => {
+                    player.state.status = "playing".into();
+                }
+                "pressed" => {
+                    player
+                        .command(Command::Note {
+                            pitch: 60,
+                            velocity: 80,
+                            active: true,
+                        })
+                        .unwrap();
+                }
+                "recording" => {
+                    player.command(Command::Recording { active: true }).unwrap();
+                }
+                "song" => {
+                    player
+                        .command(Command::Generate {
+                            spec: ExerciseSpec {
+                                tonic: 2,
+                                ..Default::default()
+                            },
+                        })
+                        .unwrap();
+                }
+                _ => {}
+            }
+            let retained = player.file.as_ref().unwrap().content_id.clone();
+            assert!(
+                commit(&mut player, origin, prepared, change == "cancel").is_err(),
+                "{change}"
+            );
+            assert_eq!(
+                player.file.as_ref().unwrap().content_id,
+                retained,
+                "{change}"
+            );
+            assert!(player.history.song(&cid).unwrap().sessions.len() == 1);
+        }
+    }
+    #[test]
+    fn queued_public_generation_can_be_cancelled_while_controls_continue() {
+        let (player, cid, _) = seeded(false, false);
+        let data = player.data.clone();
+        drop(player);
+        let lock = DataRootLock::acquire(&data).unwrap();
+        let mut engine = Engine::start(data, lock, std::path::PathBuf::new(), true).unwrap();
+        engine.tasks = TaskPool::new(1, 4).unwrap();
+        let occupied = engine.tasks.clone();
+        let (entered, recv) = mpsc::channel();
+        let (release, gate) = mpsc::channel();
+        let holder = thread::spawn(move || {
+            occupied.run("hold worker", None, move |_| {
+                entered.send(()).unwrap();
+                gate.recv().unwrap();
+                Ok(serde_json::Value::Null)
+            })
+        });
+        recv.recv_timeout(Duration::from_secs(3)).unwrap();
+        let waiting = engine.clone();
+        let generator = thread::spawn(move || {
+            waiting.command(Command::Generate {
+                spec: ExerciseSpec::default(),
+            })
+        });
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let task = loop {
+            let tasks = engine.tasks.list().unwrap();
+            if let Some(t) = tasks
+                .iter()
+                .find(|t| t.label == "生成技术练习与恢复资料" && t.state == "queued")
+            {
+                break t.id.clone();
+            }
+            assert!(Instant::now() < deadline);
+            thread::yield_now();
+        };
+        engine.command(Command::Panic).unwrap();
+        engine.command(Command::CancelTask { id: task }).unwrap();
+        assert!(generator.join().unwrap().is_err());
+        assert_eq!(
+            engine.command(Command::CurrentSong).unwrap()["contentId"],
+            cid
+        );
+        release.send(()).unwrap();
+        holder.join().unwrap().unwrap();
+    }
+}

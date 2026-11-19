@@ -1,0 +1,169 @@
+.practice-welcome {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px clamp(18px, 4vw, 56px) 34px;
+  background: radial-gradient(ellipse at 50% 18%, #4a665a28, transparent 65%);
+}
+.practice-welcome-art {
+  position: relative;
+  width: min(300px, 72%);
+  flex: none;
+  margin: auto 0 12px;
+}
+.practice-welcome-art svg {
+  display: block;
+  width: 100%;
+  filter: drop-shadow(0 10px 12px #0004);
+}
+.welcome-key {
+  fill: #a8b8b9;
+  stroke: #bdcecd;
+  stroke-width: 0.7;
+}
+.welcome-key-lit {
+  fill: #c0df9c;
+  stroke: #e1f5c8;
+}
+.welcome-key-black {
+  fill: #202932;
+  stroke: #56636a;
+  stroke-width: 1;
+}
+.practice-welcome-note {
+  position: absolute;
+  top: -18px;
+  right: 12px;
+  color: #b4d993;
+  font-size: 27px;
+  transform: rotate(15deg);
+}
+.practice-welcome-intro {
+  text-align: center;
+  max-width: 460px;
+  flex: none;
+}
+.practice-welcome-eyebrow {
+  color: #b9cfac;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.practice-welcome-intro h2 {
+  margin: 8px 0;
+  font-size: clamp(22px, 2.3vw, 30px);
+  color: #e4ece6;
+  font-weight: 600;
+}
+.practice-welcome-intro p {
+  color: #adbac9;
+  margin: 8px 0 18px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.practice-welcome-resume {
+  width: min(470px, 100%);
+  flex: none;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 13px 16px;
+  border: 1px solid #768e5d;
+  border-radius: 9px;
+  background: #34442c;
+  color: #e0edcb;
+  text-align: left;
+}
+.practice-welcome-resume > span {
+  flex: 1;
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.practice-welcome-resume small {
+  color: #bed2ad;
+  font-size: 11px;
+}
+.practice-welcome-resume strong {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.practice-welcome-choices {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: min(630px, 100%);
+  margin: 16px 0 10px;
+  flex: none;
+}
+.practice-welcome-choices button {
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 68px;
+  flex: 1 1 175px;
+  padding: 10px 13px;
+  border-color: #405160;
+  border-radius: 8px;
+  background: #222c36;
+  text-align: left;
+}
+.practice-welcome-choices button > span {
+  display: grid;
+  gap: 5px;
+}
+.practice-welcome-choices strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: #d4e0e9;
+}
+.practice-welcome-choices small {
+  font-size: 11px;
+  color: #a7b5c6;
+  line-height: 1.5;
+}
+.practice-welcome-device {
+  max-width: 100%;
+  min-height: 36px;
+  flex: none;
+  margin-bottom: auto;
+  border-color: transparent;
+  background: transparent;
+  color: #aabccb;
+  font-size: 12px;
+}
+.practice-welcome-device span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-height: 740px) {
+  .practice-welcome {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .practice-welcome-art {
+    width: 190px;
+    margin-top: 0;
+    margin-bottom: 5px;
+  }
+  .practice-welcome-intro p {
+    margin-bottom: 12px;
+  }
+  .practice-welcome-choices {
+    margin-top: 10px;
+  }
+}
+@media (max-height: 590px) {
+  .practice-welcome-art {
+    display: none;
+  }
+  .practice-welcome-choices small {
+    display: none;
+  }
+  .practice-welcome-choices button {
+    min-height: 42px;
+  }
+}
