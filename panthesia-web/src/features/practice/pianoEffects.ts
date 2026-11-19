@@ -1,3 +1,4 @@
+import { EffectSprites } from "./effectSprites";
 /** Read-only visual state. Musical timing, input and grading stay in the engine. */
 export const effectPalettes = {
   aurora: { right: "#66edce", left: "#96a3ff", glow: "#a0fff0" },
@@ -8,6 +9,7 @@ type Strike = { pitch: number; color: string; wrong?: boolean };
 type Pulse = Strike & { born: number; life: number };
 type Particle = { pitch: number; x: number; y: number; vx: number; vy: number; size: number; born: number; life: number; color: string };
 export class PianoEffects {
+  private sprites = new EffectSprites();
   private pulses: Pulse[] = [];
   private particles: Particle[] = [];
   private held = new Set<number>();
@@ -45,7 +47,7 @@ export class PianoEffects {
     this.held = new Set(strikes.map(s => s.pitch));
   }
   paint(ctx: CanvasRenderingContext2D, now: number, baseline: number, width: number,
-    geometry: (pitch: number) => { x: number; w: number } | undefined, performance: boolean, strength: number, reduced: boolean, style: "bloom" | "ripple" | "comet" = "bloom") {
+    geometry: (pitch: number) => { x: number; w: number } | undefined, performance: boolean, strength: number, reduced: boolean, style: "bloom" | "ripple" | "comet" = "bloom", ratio = 1) {
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, width, baseline + 1); ctx.clip();
     ctx.globalCompositeOperation = "lighter";
@@ -53,13 +55,10 @@ export class PianoEffects {
       const key = geometry(p.pitch); if (!key) continue;
       const t = Math.min(1, (now - p.born) / p.life), fade = (1 - t) ** 2 * strength;
       const center = key.x + key.w / 2, radius = key.w * (performance ? 2.6 : 1.5);
-      const glow = ctx.createRadialGradient(center, baseline, 0, center, baseline, Math.max(1, radius));
-      glow.addColorStop(0, p.color); glow.addColorStop(1, "transparent");
-      ctx.globalAlpha = fade * .65; ctx.fillStyle = glow; ctx.fillRect(center - radius, baseline - radius, radius * 2, radius);
+      ctx.globalAlpha = fade * .65; this.sprites.glow(ctx,p.color,center,baseline,Math.max(1,radius),ratio);
       if ((performance || style !== "bloom") && !reduced) {
-        const height = 220 * (1 - t), beam = ctx.createLinearGradient(0, baseline - height, 0, baseline);
-        beam.addColorStop(0, "transparent"); beam.addColorStop(1, p.color);
-        ctx.globalAlpha = fade * .22; ctx.fillStyle = beam; ctx.fillRect(key.x, baseline - height, key.w, height);
+        const height = 220 * (1 - t);
+        ctx.globalAlpha = fade * .22; this.sprites.beam(ctx,p.color,key.x,baseline,key.w,height);
         ctx.globalAlpha = fade * .55; ctx.strokeStyle = p.color; ctx.lineWidth = 1.4;
         if (style === "ripple") {
           for (let ring=0; ring<3; ring++) {const wave=(t+ring/3)%1;ctx.globalAlpha=fade*(1-wave)*.8;ctx.beginPath();ctx.ellipse(center,baseline,key.w*(.4+wave*5),6+wave*30,0,Math.PI,Math.PI*2);ctx.stroke();}

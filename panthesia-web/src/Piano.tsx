@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { PianoKeyboard } from "./features/practice/pianoKeyboard";
 import { WaterfallClock } from "./features/practice/waterfallClock";
 import { WaterfallSprites } from "./features/practice/waterfallSprites";
 import type { PlaybackStore } from "./features/practice/playbackStore";
@@ -11,7 +12,6 @@ import {
 import type { LoadedSong, Snapshot } from "./engine/sessionTypes";
 import {
   displayDefaults,
-  displayPitch,
   noteLabel,
   handColor,
   type DisplayPreferences,
@@ -125,8 +125,26 @@ export function Piano({
     }[]
   >([]);
   useEffect(() => {
+    let previous: Snapshot | undefined;
     const update = () => {
       const frame = store?.getSnapshot() ?? state;
+      if (
+        previous &&
+        frame.position === previous.position &&
+        frame.status === previous.status &&
+        frame.mode === previous.mode &&
+        frame.pressed === previous.pressed &&
+        frame.required === previous.required &&
+        frame.speed === previous.speed &&
+        frame.noteEpoch === previous.noteEpoch &&
+        frame.score.wrong_notes === previous.score.wrong_notes &&
+        frame.contentId === previous.contentId &&
+        frame.scoreRevision === previous.scoreRevision &&
+        frame.stateOrder?.engineId === previous.stateOrder?.engineId &&
+        frame.passage === previous.passage
+      )
+        return;
+      previous = frame;
       const matches = !song || frame.contentId === song.contentId;
       const live =
         frame.mode === "memory"
@@ -184,8 +202,13 @@ export function Piano({
     let previousWrong = 0;
     const palette = effectPalettes[display.effectsPalette];
     const performanceStyle = display.effectsPreset === "performance";
-    const keyboardImage = document.createElement("canvas");
-    let keyboardKey = "";
+    const keyboard = new PianoKeyboard(
+      display,
+      white,
+      black,
+      geometry,
+      palette.right,
+    );
     let frame = 0;
     const draw = () => {
       frame = 0;
@@ -402,7 +425,11 @@ export function Piano({
                 : note.part === "left"
                   ? palette.left
                   : palette.right;
-          visualNotes.set(note.pitch, noteColor);
+          if (
+            (position >= note.start && position < note.start + note.duration) ||
+            required
+          )
+            visualNotes.set(note.pitch, noteColor);
           if (
             state.status === "playing" &&
             position >= note.start &&
@@ -434,12 +461,16 @@ export function Piano({
             display,
           );
           if (label && w > 10 && h > 16) {
-            const fitted = sprites.label(ctx, label, w, display.fontSize, fill);
-            if (fitted.size < 8) return;
-            ctx.fillStyle = fitted.color;
-            ctx.font = `${fitted.size}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.fillText(label, x + w / 2, y - 8);
+            sprites.paintLabel(
+              ctx,
+              label,
+              x + w / 2,
+              y - 8,
+              w,
+              display.fontSize,
+              fill,
+              dpr,
+            );
           }
         });
       }
@@ -479,165 +510,19 @@ export function Piano({
           strength,
           reduced,
           display.effectStyle,
+          dpr,
         );
       } else effects.clear();
-      const paintKeys = (ctx: CanvasRenderingContext2D, base: boolean) => {
-        // A raised fallboard and felt rail give the keyboard a physical edge.
-        if (base) {
-          ctx.fillStyle = display.skin === "rosewood" ? "#70523a" : "#303544";
-          ctx.fillRect(0, baseline - 7, width, 5);
-          ctx.fillStyle = display.skin === "rosewood" ? "#b78458" : "#777b91";
-          ctx.fillRect(0, baseline - 7, width, 1);
-          ctx.fillStyle = "#a6475a";
-          ctx.fillRect(0, baseline - 2, width, 2);
-        }
-        for (const pitch of white) {
-          const { x, w } = geometry(pitch, width);
-          const active =
-            !base && (state.pressed.includes(pitch) || playedNotes.has(pitch));
-          const required = !base && state.required.includes(pitch);
-          if (!base && !active && !required) continue;
-          const keys = ctx.createLinearGradient(0, baseline, 0, height);
-          keys.addColorStop(
-            0,
-            active
-              ? (visualNotes.get(pitch) ?? palette.right)
-              : required
-                ? "#f4db9e"
-                : display.pianoMaterial === "glass"
-                  ? "#789bac"
-                  : display.pianoMaterial === "porcelain"
-                    ? "#dce4ef"
-                    : "#c3c1b1",
-          );
-          keys.addColorStop(
-            0.14,
-            active
-              ? (visualNotes.get(pitch) ?? palette.right)
-              : display.pianoMaterial === "glass"
-                ? "#abcbd8"
-                : display.pianoMaterial === "porcelain"
-                  ? "#ffffff"
-                  : "#fff6df",
-          );
-          keys.addColorStop(
-            1,
-            active
-              ? "#e0fff3"
-              : display.pianoMaterial === "glass"
-                ? "#496c83"
-                : display.pianoMaterial === "porcelain"
-                  ? "#dae4f2"
-                  : "#dfd4b9",
-          );
-          ctx.fillStyle = keys;
-          ctx.fillRect(x + 1, baseline, w - 2, keyboardHeight - 2);
-          ctx.fillStyle = "#101b3025";
-          ctx.fillRect(x + w - 3, baseline, 1, keyboardHeight - 2);
-          ctx.fillStyle = active ? "#ffffffa0" : "#ffffff80";
-          ctx.fillRect(x + 2, height - 6, w - 4, 2);
-          if (
-            display.keyLabels !== "none" &&
-            (display.keyLabels !== "c" || pitch % 12 === 0)
-          ) {
-            ctx.fillStyle = "#53635e";
-            ctx.font = `${display.fontSize}px sans-serif`;
-            const label = displayPitch(pitch, display);
-            const size = Math.min(
-              display.fontSize,
-              (display.fontSize * (w - 3)) /
-                Math.max(1, ctx.measureText(label).width),
-            );
-            if (size < 8) continue;
-            ctx.font = `${size}px sans-serif`;
-            ctx.textAlign = "center";
-            ctx.fillText(label, x + w / 2, height - 14);
-          }
-        }
-        for (const pitch of black) {
-          const { x, w } = geometry(pitch, width);
-          const darkKey = ctx.createLinearGradient(
-            x,
-            baseline,
-            x + w,
-            baseline + keyboardHeight * 0.62,
-          );
-          const active =
-            !base && (state.pressed.includes(pitch) || playedNotes.has(pitch));
-          const required = !base && state.required.includes(pitch);
-          const covered =
-            !base &&
-            [pitch - 1, pitch + 1].some(
-              (p) =>
-                state.pressed.includes(p) ||
-                playedNotes.has(p) ||
-                state.required.includes(p),
-            );
-          if (!base && !active && !required && !covered) continue;
-          darkKey.addColorStop(
-            0,
-            active ? (visualNotes.get(pitch) ?? palette.right) : "#303b4d",
-          );
-          darkKey.addColorStop(0.4, active ? "#3f807e" : "#182230");
-          darkKey.addColorStop(1, "#080d15");
-          ctx.fillStyle = active ? darkKey : required ? "#b68e43" : darkKey;
-          ctx.beginPath();
-          ctx.roundRect(x, baseline, w, keyboardHeight * 0.62, [0, 0, 3, 3]);
-          ctx.fill();
-          const topFace = ctx.createLinearGradient(
-            0,
-            baseline,
-            0,
-            baseline + keyboardHeight * 0.56,
-          );
-          topFace.addColorStop(0, "#ffffff20");
-          topFace.addColorStop(0.3, "#ffffff04");
-          topFace.addColorStop(1, "#ffffff0c");
-          ctx.fillStyle = topFace;
-          ctx.fillRect(
-            x + 2,
-            baseline + 1,
-            Math.max(1, w - 4),
-            keyboardHeight * 0.54,
-          );
-          ctx.strokeStyle = "#ffffff25";
-          ctx.lineWidth = 0.6;
-          ctx.beginPath();
-          ctx.moveTo(x + 2, baseline + keyboardHeight * 0.56);
-          ctx.lineTo(x + w - 2, baseline + keyboardHeight * 0.56);
-          ctx.stroke();
-          if (display.keyLabels === "all") {
-            const label = displayPitch(pitch, display);
-            ctx.font = `${display.fontSize}px sans-serif`;
-            const size = Math.min(
-              display.fontSize,
-              (display.fontSize * (w - 3)) /
-                Math.max(1, ctx.measureText(label).width),
-            );
-            if (size >= 8) {
-              ctx.font = `${size}px sans-serif`;
-              ctx.fillStyle = "#e9edf1";
-              ctx.textAlign = "center";
-              ctx.fillText(
-                label,
-                x + w / 2,
-                baseline + keyboardHeight * 0.62 - 10,
-              );
-            }
-          }
-        }
-      };
-      const cacheKey = `${width}:${height}:${keyboardHeight}:${dpr}`;
-      if (keyboardKey !== cacheKey) {
-        keyboardImage.width = Math.ceil(width * dpr);
-        keyboardImage.height = Math.ceil((keyboardHeight + 7) * dpr);
-        const cached = keyboardImage.getContext("2d")!;
-        cached.setTransform(dpr, 0, 0, dpr, 0, -(baseline - 7) * dpr);
-        paintKeys(cached, true);
-        keyboardKey = cacheKey;
-      }
-      ctx.drawImage(keyboardImage, 0, baseline - 7, width, keyboardHeight + 7);
-      paintKeys(ctx, false);
+      keyboard.paint(ctx, {
+        width,
+        height,
+        dpr,
+        keyboardHeight,
+        pressed: state.pressed,
+        required: state.required,
+        played: playedNotes,
+        colors: visualNotes,
+      });
       if (song && ["auto", "finger", "both"].includes(display.noteLabels)) {
         for (const { note: n, action: a } of keyActions) {
           const { x, w } = geometry(n.pitch, width);

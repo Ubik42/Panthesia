@@ -1,8 +1,16 @@
 import type { LoadedSong } from "../../api";
 import type { Variant } from "../../engine/commands.generated";
+import {useEffect,useRef} from "react";
 
 const names = ["C", "C♯ / D♭", "D", "D♯ / E♭", "E", "F", "F♯ / G♭", "G", "G♯ / A♭", "A", "A♯ / B♭", "B"];
 export function PracticeVariantPanel({song, disabled, apply}: {song: LoadedSong; disabled: boolean; apply: (value: Variant) => Promise<unknown>}) {
+  const panel=useRef<HTMLDetailsElement>(null);
+  useEffect(()=>{
+    const outside=(event:PointerEvent)=>{if(panel.current?.open&&!panel.current.contains(event.target as Node))panel.current.open=false;};
+    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"&&panel.current?.open){event.stopPropagation();panel.current.open=false;panel.current.querySelector("summary")?.focus();}};
+    document.addEventListener("pointerdown",outside);document.addEventListener("keydown",escape);
+    return()=>{document.removeEventListener("pointerdown",outside);document.removeEventListener("keydown",escape);};
+  },[]);
   const info = song.practiceVariant;
   if (!info) return null;
   const v = {transpose:0,quantize:0,durations:true,tonic:null,minor:null,...info.settings};
@@ -14,7 +22,7 @@ export function PracticeVariantPanel({song, disabled, apply}: {song: LoadedSong;
       return penalty(a)-penalty(b);
     })[0] ?? 0;
   const outside = (info.minPitch ?? 60)+v.transpose<21 || (info.maxPitch ?? 60)+v.transpose>108;
-  return <details className="practice-variant" key={song.contentId}>
+  return <details ref={panel} className="practice-variant" key={song.contentId}>
     <summary><span>转调与量化</span><strong>{names[target]} {info.minor ? "小调" : "大调"} · {v.transpose ? `${v.transpose>0?"+":""}${v.transpose} 半音` : "原调"} · {v.quantize ? `1/${v.quantize} 量化` : "原始时序"}</strong></summary>
     <div className="variant-body">
       <fieldset disabled={disabled}>
@@ -34,7 +42,7 @@ export function PracticeVariantPanel({song, disabled, apply}: {song: LoadedSong;
         <button onClick={()=>change({transpose:0,quantize:0})} disabled={!info.active}>恢复原始演奏</button>
       </fieldset>
       <p>设置按曲目自动保存。切换后暂停播放；音符、声音、等音和 MIDI 简谱同步更新。转调保留大小调性质。量化保留速度变化与踏板时序。</p>
-      {info.active && info.sourceHasScore && <p>关联谱随转调显示，演奏光标跟随当前练习时序。原谱的书面节奏保持原样，原文件单独保存。</p>}
+      {info.active && info.sourceHasScore && <p>量化练习谱按当前网格重新记谱，可切换查看所选原谱。谱面随转调显示，并跟随当前练习时序。</p>}
       {outside && <p className="variant-warning">转调后部分音符超出 88 键钢琴音域。请缩小转调幅度，以便用实体钢琴练习。</p>}
     </div>
   </details>;

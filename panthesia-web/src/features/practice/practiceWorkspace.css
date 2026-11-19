@@ -215,9 +215,22 @@
   color: #c2ccda;
 }
 .practice-speed {
+  position: relative;
   flex: 1;
   min-width: 180px;
   max-width: 300px;
+}
+.practice-bpm-error {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--instrument-line, #d8dce4);
+  border-radius: 5px;
+  background: var(--instrument-panel, #fff);
+  color: #ac4938;
+  box-shadow: 0 3px 12px #0002;
+  white-space: nowrap;
 }
 .practice-speed > label {
   flex: 1;

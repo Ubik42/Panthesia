@@ -8,6 +8,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import type { EngineCommand } from "../../api";
+import { useState } from "react";
 import { usePlaybackFields } from "./PlaybackView";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
@@ -58,6 +59,8 @@ export function PracticeTransport({
   restartShortcut: string;
 }) {
   const state = usePlaybackFields(store, transportFields);
+  const [bpmText, setBpmText] = useState<string | null>(null);
+  const [bpmError, setBpmError] = useState("");
   const playing = ["playing", "countIn"].includes(state.status);
   const recital = ["recital", "memory"].includes(state.mode);
   const speedUnavailable =
@@ -245,14 +248,41 @@ export function PracticeTransport({
           min={Math.round(state.bpm * 0.25)}
           max={Math.round(state.bpm * 2)}
           step={1}
-          value={Math.round(speed.value)}
+          value={bpmText ?? Math.round(speed.value)}
           disabled={speedUnavailable || busy}
-          onFocus={speed.begin}
-          onChange={(e) => speed.stage(Number(e.target.value))}
-          onBlur={speed.apply}
+          aria-invalid={!!bpmError || undefined}
+          onFocus={() => {
+            speed.begin();
+            setBpmText(String(Math.round(speed.value)));
+            setBpmError("");
+          }}
+          onChange={(e) => setBpmText(e.target.value)}
+          onBlur={(e) => {
+            const text = e.currentTarget.value.trim(),
+              value = Number(text);
+            setBpmText(null);
+            if (!text) {
+              speed.cancel();
+              return;
+            }
+            const min = Math.round(state.bpm * 0.25),
+              max = Math.round(state.bpm * 2);
+            if (!Number.isFinite(value) || value < min || value > max) {
+              speed.cancel();
+              setBpmError(`请输入 ${min}–${max} BPM`);
+              return;
+            }
+            speed.stage(value);
+            speed.apply();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              speed.apply();
+              e.currentTarget.blur();
+            } else if (e.key === "Escape") {
+              e.currentTarget.value = "";
+              speed.cancel();
+              setBpmText(null);
+              setBpmError("");
               e.currentTarget.blur();
             }
           }}
@@ -268,6 +298,11 @@ export function PracticeTransport({
         >
           原速
         </button>
+        {bpmError && (
+          <span className="practice-bpm-error" role="status">
+            {bpmError}
+          </span>
+        )}
       </div>
       <label
         className="practice-volume"

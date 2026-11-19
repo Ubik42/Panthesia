@@ -633,7 +633,7 @@ export default function App() {
     }
     if (!startupReady || binding || !connected) return;
     if (songOpeningActive.current) { setNotice("正在准备曲目，可在打开进度中取消或接续。"); return; }
-    if (value.type === "speed" || value.type === "volume" || value.type === "seek") {
+    if (value.type === "speed" || value.type === "volume" || value.type === "seek" || value.type === "mode") {
       if (value.type === "seek") clearLiveNotes();
       const { stateOrder, contentId, scoreRevision } = playback.getSnapshot();
       pendingAdjust.current.set(value.type, { command: value, source: { stateOrder, contentId, scoreRevision }, createdAtMs: Date.now() });
@@ -2340,8 +2340,8 @@ export default function App() {
             open={openQueuedSong}
             manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
             repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
-          {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
           <div className="instrument-controls">
+            {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
             <button onClick={()=>{getInterfaceWorkbench().update({section:"display"});setDisplayDialog(true);}}>外观与网格</button>
             <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
             <button className="instrument-loop" disabled={!song||busy||routineActive||ladderActive||recital} onClick={()=>panels.revealInspector("setup")}>小节循环 {state.passage?"· 已启用":""}</button>

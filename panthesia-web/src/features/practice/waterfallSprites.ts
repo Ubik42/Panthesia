@@ -14,6 +14,10 @@ export class WaterfallSprites {
   private background = document.createElement("canvas");
   private backgroundKey = "";
   private labels = new Map<string, { size: number; color: string }>();
+  private labelImages = new Map<
+    string,
+    { image: HTMLCanvasElement; width: number; height: number; descent: number }
+  >();
 
   backdrop(
     ctx: CanvasRenderingContext2D,
@@ -170,5 +174,43 @@ export class WaterfallSprites {
       this.labels.set(key, label);
     }
     return label;
+  }
+  paintLabel(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    baseline: number,
+    width: number,
+    size: number,
+    fill: string,
+    ratio: number,
+  ) {
+    const key = `${text}:${width}:${size}:${fill}:${ratio}`;
+    let sprite = this.labelImages.get(key);
+    if (!sprite) {
+      const fitted = this.label(ctx, text, width, size, fill);
+      if (fitted.size < 8) return;
+      const image = document.createElement("canvas");
+      const height = Math.ceil(fitted.size * 1.8),
+        descent = Math.ceil(fitted.size * 0.4);
+      image.width = Math.max(1, Math.ceil(width * ratio));
+      image.height = Math.max(1, Math.ceil(height * ratio));
+      const paint = image.getContext("2d")!;
+      paint.setTransform(ratio, 0, 0, ratio, 0, 0);
+      paint.font = `${fitted.size}px sans-serif`;
+      paint.fillStyle = fitted.color;
+      paint.textAlign = "center";
+      paint.fillText(text, width / 2, height - descent);
+      sprite = { image, width, height, descent };
+      if (this.labelImages.size >= 256) this.labelImages.clear();
+      this.labelImages.set(key, sprite);
+    }
+    ctx.drawImage(
+      sprite.image,
+      x - sprite.width / 2,
+      baseline - sprite.height + sprite.descent,
+      sprite.width,
+      sprite.height,
+    );
   }
 }

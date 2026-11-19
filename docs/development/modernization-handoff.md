@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 8043562。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 de7c0a2。
 
 ## 当前主线
 
@@ -73,6 +73,20 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 检查：一个复合样例覆盖和弦、重叠声部、跨小节延音、拍号变化和打击乐排除；生成 MusicXML 再解码后有音高音符的音高与时值一致。转调检查覆盖双谱表调号、和弦、装饰记号、八度和来源 ID。实际桌面中，9 音低音练习在 +2 半音 / 1/16 条件下得到 9 个谱面对应、unmapped=0、following=true；切回原谱后为 9 音，解除关联后继续由 MIDI 生成量化谱；点击末音定位 4.8 秒，末小节循环为 4.8 至 5.25 秒。
 
 证据：work/practice-engraving-test.log、practice-transpose-test.log、practice-engraving-desktop.log；work/song-core-duet-runtime/practice-engraving.json、practice-engraving.png、practice-engraving-midi-only.png。全部使用隔离资料目录，未执行全套回归。下一批进入 P3 演奏工作区：主次操作收敛、实时模式 / BPM / 定位循环 / 音源状态，以及瀑布性能；DuET 环境设置页仍待接入。
+
+## P3：演奏工具栏与瀑布绘制批次
+
+- 转调 / 量化移入练习工具栏，详情以浮层展开，支持 Escape 和外部点击收起。日常状态少占一整行，1440×1000 样例的瀑布画布由 483 增至 517 像素高。原练习参数、外观、手别、循环和音源入口继续可用。
+- BPM 数字输入使用独立文本草稿：允许清空和输入中间值，Enter / 失焦提交，Escape 取消，超出范围给出明确提示。提交仍使用当前曲目的实时速度通道。模式切换纳入按类型合并的实时队列，避免经过全局请求锁时静默丢失操作。
+- 新增 PianoKeyboard，集中管理琴键材质、静态底图和当前高亮图。只有按键、必弹音、自动播放音或对应颜色改变时重画高亮；修复非当前音符覆盖琴键颜色的行为。Piano 的循环负责时间、可见音符与合成，琴键绘制移出主组件。
+- 瀑布音符标签缓存为位图；EffectSprites 缓存光晕及光束纹理，限制数量与总像素内存。发光位置、透明度和粒子继续逐帧运动，不在每个脉冲上重复创建渐变。
+- Piano 的订阅过滤音频电平、性能计数及同值快照；暂停时无需因这些后台读数重画。最新桌面实际暂停 1.5 秒记录 0 次绘制，虚拟键按下得到 MIDI 62、松开后清空。
+
+对照使用隔离资料目录和合成的 6,144 音符 MIDI，连续播放 8.5 秒，1440×1000 窗口。最终结果为：渐变创建 78,489 → 9,712，文字绘制 7,552 → 5,324。两版帧间隔中位数均 6.9ms、P95 均 7.1ms，均无超过 33ms 的样本；这次证据证明绘制工作减少，不能据此声称所有歌曲的掉帧已解决。本轮未降低分辨率、网格透明度、音符数量或关闭特效。
+
+实际控件检查：85 BPM 提交成功，120 草稿取消后恢复 85，999 被拒绝并提示范围，随后恢复 100；等音模式确实等待 6 个必弹音，切到连续后无需输入继续推进。宽 / 窄窗口浮层在屏幕内，无横向溢出。只执行受影响构建和这条实际操作 / 绘制对照，没有运行全套回归。
+
+证据：work/practice-workspace-desktop.log；work/practice-workspace-runtime 下 waterfall-before.json、waterfall-final.json、controls.json、keyboard-smoke.json 及 workspace-final.png、transform-popover-wide.png、transform-popover-narrow.png、live-keyboard.png。下一批继续 P3 音源与制谱环境设置、演奏主次操作及谱面 / 瀑布一致操作，随后进入 P4 成品外观与运行包。
 
 ## 交付状态
 
