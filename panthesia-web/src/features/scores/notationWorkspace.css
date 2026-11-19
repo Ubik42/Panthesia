@@ -1,0 +1,24 @@
+.daily-workbench .notation-pane {
+  background: var(--instrument-surface);
+  color: var(--instrument-text);
+}
+.daily-workbench .notation-toolbar,
+.daily-workbench .score-route {
+  background: var(--instrument-panel);
+  color: var(--instrument-text);
+  border-bottom: 1px solid var(--instrument-line);
+}
+.daily-workbench .notation-toolbar { gap: 8px 12px; padding: 9px 14px; }
+.daily-workbench .notation-pane :is(.notation-toolbar,.score-route) :is(button,select) {
+  background: var(--instrument-surface);
+  color: var(--instrument-text);
+  border: 1px solid var(--instrument-line);
+  border-radius: 5px;
+  min-height: 28px;
+}
+.daily-workbench .notation-toolbar button:disabled { opacity: .45; }
+.daily-workbench .notation-toolbar .notation-alignment-status { margin-left: auto; color: var(--instrument-muted); }
+.daily-workbench .score-route summary { color: var(--instrument-text); }
+.daily-workbench .notation-pane .score-message { color: var(--instrument-muted); }
+.daily-workbench .notation-pane .score-rhythm-note { border-bottom: 1px solid var(--instrument-line); }
+.daily-workbench .score-paper { box-shadow: 0 2px 10px #18243c16; }

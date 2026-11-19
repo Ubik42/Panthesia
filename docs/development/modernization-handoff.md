@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 c235a67。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 d788f24。
 
 ## 当前主线
 
@@ -124,6 +124,18 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 实际桌面检查三种皮肤与落键演示，1440×1000、720×800 外观窗口无横向溢出；重启后仍为 rosewood / ivory / ripple / performance，外观设置已恢复。当前短曲切回谱面没有增加排版 worker，测得 124 ms；改变转调后产生新排版，恢复原调未新增排版。初次检查直接比较运行中 SVG 全文受动态高亮影响，后改用实际 worker 计数判断是否重新排版，动态高亮不作为缓存失效证据。无页面运行错误。
 
 证据：work/appearance-cache-desktop.log；work/practice-range-runtime/appearance-cache-evidence.json、appearance-studio.png、appearance-midnight.png、appearance-rosewood.png、appearance-narrow.png、appearance-reopen.png、appearance-reopen-evidence.json。使用前批隔离资料，未运行全套回归。本批仍为开发版源码；后续继续统一演奏表面及剩余设置弹窗、整理解耦退出项，再制作新运行包并独立启动核对。
+
+## P4：统一纯 MIDI 谱面批次
+
+- 原始时序且没有关联谱面的 MIDI 也由 core::practice_engraving 生成临时 MusicXML。simplified 显示角色采用 1/16 书面网格，quantized 仍按有效演奏记谱；两者分别进入显示派生身份。记谱器版本升级 v2。
+- 简化谱的逐音身份和延音分段映射回原演奏时序，点击、跟随与 A/B 选段继续消费有效 MIDI；显示整理不更改 Variant、播放数据或源文件。score_mapping 在纯 MIDI 上使用对应的简化记谱身份核验。
+- 删除 MidiPracticeScore 和其专用 CSS，清理主界面、主题和范围高亮中的旧路径。纯 MIDI、量化练习谱和所选 MusicXML 统一使用 Notation / Verovio / 逐音映射 / 缓存。
+- 谱面工具栏和演奏顺序栏采用当前皮肤，简化谱隐藏不能使用的正式谱面导出操作，并说明显示节奏与实际演奏的区别。演奏版本栏同步谱面名称。
+- 重写运行包使用说明，按选曲、音源、三类谱面、练习变换、循环、DuET、外观和资料保护组织，替代累计开发日志。
+
+核心仅执行 practice_engraving 两项相关检查，通过复调往返和非网格演奏时序独立性。实际桌面导入隔离 MIDI：原音起点 0.105208 / 0.3125 秒，时值 0.122917 / 1.25 秒。简化谱点选定位到 0.105208，循环范围 0.105208–1.5625，5 个片段高亮；切 1/16 演奏量化再恢复原始时序，音高 / 起点 / 时值与导入时完全一致。1000×800 无横向溢出，无页面错误。证据 work/unified-midi-engraving-test.log、work/practice-range-runtime/unified-midi-evidence.json 及 unified-midi-wide.png / unified-midi-narrow.png。
+
+本批准备制作当前源码的练习预览运行包，运行包状态在完成独立启动后更新。其余设置界面统一与整体目标审计继续待做。
 
 ## 交付状态
 

@@ -299,58 +299,6 @@ summary:focus-visible {
 .daily-workbench .practice-panel > .piano-effects-settings.compact {
   display: none;
 }
-.daily-workbench .midi-practice-score {
-  background: #e8ecf3;
-  color: #303c54;
-}
-.daily-workbench .midi-score-toolbar {
-  padding: 10px 22px;
-  background: #f3f5fa;
-  border-bottom: 1px solid #d8dfea;
-  color: #7787a3;
-  font-size: 11px;
-}
-.daily-workbench .midi-score-toolbar > span {
-  color: #586c91;
-  font-weight: 500;
-}
-.daily-workbench .midi-score-toolbar button {
-  border-color: #d9e0ec;
-  color: #7a8aa7;
-  background: #fff;
-  font-size: 11px;
-}
-.daily-workbench .midi-score-paper {
-  margin: 26px 34px;
-  padding: 25px 32px 20px;
-  border: 1px solid #d7dfeb;
-  box-shadow: 0 3px 10px #34466c0b;
-  border-radius: 2px;
-}
-.daily-workbench .midi-score-paper h2 {
-  font-weight: 500;
-  color: #283850;
-  font-size: 22px;
-}
-.daily-workbench .midi-score-paper p {
-  color: #8491a8;
-  font-size: 10px;
-}
-.daily-workbench .midi-score-note {
-  color: #394c6b;
-}
-.daily-workbench .midi-score-note.left-hand {
-  color: #77819b;
-}
-.daily-workbench .midi-score-note.active {
-  color: #6a75d8;
-}
-.daily-workbench .score-playhead {
-  stroke: #7280dc;
-}
-.daily-workbench .score-bar-number {
-  fill: #9ca9be;
-}
 .daily-workbench .practice-passage-details {
   background: #eef1f8;
   border-color: #dce2ee;
@@ -834,10 +782,6 @@ summary:focus-visible {
   .instrument-controls {
     padding: 7px 18px;
   }
-  .daily-workbench .midi-score-paper {
-    margin: 18px;
-    padding: 20px;
-  }
   .daily-workbench .practice-panel .song-toolbar {
     padding: 10px 18px;
   }
@@ -916,4 +860,4 @@ summary:focus-visible {
     transition: none;
   }
 }
-@media(max-height:760px){.daily-workbench .piano-stage{min-height:80px}.daily-workbench .practice-panel .song-toolbar{min-height:52px;padding-top:7px;padding-bottom:7px}.daily-workbench .practice-transport{min-height:55px;padding-top:8px;padding-bottom:8px}.daily-workbench .practice-view-toolbar{min-height:37px}.time-ruler.practice-timeline{padding-top:6px;padding-bottom:5px}.instrument-controls{padding-top:5px;padding-bottom:5px}.daily-workbench .midi-score-paper{margin:12px;padding:15px 22px}.daily-workbench .practice-passage-details>summary{padding-top:4px;padding-bottom:4px}}
+@media(max-height:760px){.daily-workbench .piano-stage{min-height:80px}.daily-workbench .practice-panel .song-toolbar{min-height:52px;padding-top:7px;padding-bottom:7px}.daily-workbench .practice-transport{min-height:55px;padding-top:8px;padding-bottom:8px}.daily-workbench .practice-view-toolbar{min-height:37px}.time-ruler.practice-timeline{padding-top:6px;padding-bottom:5px}.instrument-controls{padding-top:5px;padding-bottom:5px}.daily-workbench .practice-passage-details>summary{padding-top:4px;padding-bottom:4px}}

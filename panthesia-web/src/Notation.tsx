@@ -1,4 +1,5 @@
 import { renderScore } from "./features/scores/scoreRenderCache";
+import "./features/scores/notationWorkspace.css";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import type { ScoreMappingRequest } from "./features/scores/mappingTypes";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
@@ -32,6 +33,7 @@ interface Asset {
   coverage: number;
   alignmentSource?: "duetIdentity"|"matching"|"practiceIdentity";
   practiceNotation?: boolean;
+  practiceNotationKind?: "simplified" | "quantized";
   confidence: number;
   readiness: string;
   diagnostics: string[];
@@ -740,18 +742,18 @@ export function Notation({
             ))}
           </select>
         </label>
-        <ScoreExportButton song={song} disabled={editorBusy || !song.hasScore || asset?.practiceNotation} expanded={exporting} open={() => setExporting(true)} />
-        <button
+        {song.hasScore && !asset?.practiceNotation && <ScoreExportButton song={song} disabled={editorBusy} expanded={exporting} open={() => setExporting(true)} />}
+        {song.hasScore && !asset?.practiceNotation && <button
           disabled={loading || editorBusy || asset?.practiceNotation || asset?.readiness !== "Ready" || !asset.sourceFingerprint || !mappingToken || !mapping.length || !pages.length}
           onClick={() => setLocatingPaper(true)}
           title="根据已核对的 MusicXML 谱页，生成可从练习历史逐音定位的纸谱"
         >
           生成可定位纸谱
-        </button>
+        </button>}
         {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>setSourceRhythm(event.target.value==="source")}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
-        <span title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
+        <span className="notation-alignment-status" title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
-            ? `${asset.practiceNotation ? "量化练习谱" : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
+            ? `${asset.practiceNotation ? (asset.practiceNotationKind === "simplified" ? "MIDI 简化谱" : "量化练习谱") : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
             : ""}
         </span>
       </div>
@@ -848,6 +850,7 @@ export function Notation({
           close={() => setLocatingPaper(false)}
         />
       )}
+      {asset?.practiceNotationKind === "simplified" && <p className="score-rhythm-note">书面节奏按十六分音符整理，演奏保持原时序。复杂节奏可从“添加 / 管理谱面”使用 DuET 制谱。</p>}
       <TaskActivity contentId={song.contentId} label="对应乐谱音符" cancelLabel="取消对应" />
       {loading && <p className="score-message" role="status">{renderStage}</p>}
       {error && (

@@ -16,11 +16,11 @@ impl Player {
     }
     pub(super) fn score_payload(&self, practice: bool) -> Result<serde_json::Value, String> {
         let variant = self.variant();
-        if self.notation.is_none() && (!practice || variant.quantize == 0) {
+        if self.notation.is_none() && !practice {
             return Ok(serde_json::Value::Null);
         }
         let mut payload = self.notation.as_ref().map_or_else(||serde_json::json!({"name":self.title,"sourceFingerprint":self.score_display_origin(),"warnings":[]}),|asset|asset.route_payload(self.file.as_deref()));
-        if practice && variant.quantize != 0 {
+        if practice && (variant.quantize != 0 || self.notation.is_none()) {
             let file = self.file.as_ref().ok_or("请先选择曲目")?;
             let info = self.variant_document();
             let minor = info["minor"].as_bool().unwrap_or(false);
@@ -30,33 +30,36 @@ impl Player {
                 .filter(|f| (i64::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
                 .min_by_key(|f| f.abs())
                 .unwrap_or(0);
-            let engraving = panthesia_core::practice_engraving::engrave(
-                file,
-                &self.title,
-                fifths,
-                minor,
-                &|| Ok(()),
-            )?;
+            let simplified = variant.quantize == 0;
+            let engraving = if simplified {
+                panthesia_core::practice_engraving::engrave_simplified(file, &self.title, fifths, minor, &|| Ok(()))
+            } else {
+                panthesia_core::practice_engraving::engrave(file, &self.title, fifths, minor, &|| Ok(()))
+            }?;
             let edition = panthesia_core::song_project::PracticeEdition::new(
                 &file.content_id,
                 variant.clone(),
             )?;
             payload["displayEditionId"] = serde_json::json!(format!(
-                "{}:{}",
+                "{}:{}:{}",
                 edition.id,
-                panthesia_core::practice_engraving::GENERATOR
+                panthesia_core::practice_engraving::GENERATOR,
+                if simplified { "simplified-16" } else { "performance" }
             ));
             payload["displayFingerprint"] =
                 serde_json::json!(blake3::hash(&engraving.bytes).to_hex().to_string());
             payload["bytes"] = serde_json::json!(engraving.bytes);
             payload["compressed"] = serde_json::json!(false);
             payload["practiceNotation"] = serde_json::json!(true);
+            payload["practiceNotationKind"] = serde_json::json!(if simplified { "simplified" } else { "quantized" });
             payload["alignmentSource"] = serde_json::json!("practiceIdentity");
             payload["coverage"] = serde_json::json!(100);
             payload["confidence"] = serde_json::json!(100);
             payload["readiness"] = serde_json::json!("Ready");
             payload["diagnostics"] = serde_json::json!([]);
-            payload["warnings"] = serde_json::json!([if variant.durations {
+            payload["warnings"] = serde_json::json!([if simplified {
+                "MIDI 简化谱：书面节奏按十六分音符整理；发声、跟随和选段使用原演奏时序。复杂节奏与分手可用 DuET 制谱。"
+            } else if variant.durations {
                 "按当前量化演奏重新记谱；谱表按音区分配"
             } else {
                 "按当前量化起点重新记谱，书面时值取至 1/128；演奏仍使用原始时值"

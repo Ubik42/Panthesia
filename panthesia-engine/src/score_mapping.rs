@@ -40,8 +40,11 @@ impl Context {
         if notes.len() > 100_000 {
             return Err("练习谱映射超过十万个音符".into());
         }
-        let engraving =
-            panthesia_core::practice_engraving::engrave(&self.file, "", 0, false, check)?;
+        let engraving = if self.quantize == 0 {
+            panthesia_core::practice_engraving::engrave_simplified(&self.file, "", 0, false, check)
+        } else {
+            panthesia_core::practice_engraving::engrave(&self.file, "", 0, false, check)
+        }?;
         let tracks: HashMap<_, _> = self
             .file
             .tracks
@@ -111,8 +114,8 @@ impl Context {
             note.pitch = (i16::from(note.pitch) - i16::from(self.transpose)).clamp(0, 127) as u8;
         }
         let mut result = if input.practice_notation {
-            if self.quantize == 0 {
-                return Err("量化条件已改变，请重新读取练习谱".into());
+            if self.quantize == 0 && self.asset.is_some() {
+                return Err("谱面条件已改变，请重新读取当前谱面".into());
             }
             self.practice_mapping(input.notes, &check)?
         } else {
@@ -185,9 +188,6 @@ impl Player {
         fingerprint: Option<&str>,
     ) -> Result<Context, String> {
         let file = self.file.as_ref().ok_or("请先打开 MIDI")?;
-        if self.notation.is_none() && self.variant().quantize == 0 {
-            return Err("尚未配对乐谱或启用量化练习谱".into());
-        }
         let display_origin = self.score_display_origin();
         if file.content_id != content_id
             || revision.is_some_and(|revision| revision != self.score_revision)

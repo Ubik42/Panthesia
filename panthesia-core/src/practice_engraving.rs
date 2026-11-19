@@ -3,7 +3,7 @@ use midi_file::MidiFile;
 use std::{collections::HashMap, fmt::Write};
 
 const DIVISIONS: u64 = 32;
-pub const GENERATOR: &str = "panthesia-practice-engraving-v1";
+pub const GENERATOR: &str = "panthesia-practice-engraving-v2";
 pub struct Engraving {
     pub bytes: Vec<u8>,
     pub notes: HashMap<String, PracticeNote>,
@@ -21,6 +21,8 @@ struct Note {
     pitch: u8,
     start: u64,
     end: u64,
+    source_start: u64,
+    source_end: u64,
 }
 struct Lane {
     staff: u8,
@@ -128,11 +130,35 @@ pub fn engrave(
     minor: bool,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Engraving, String> {
+    engrave_with_rhythm(file, title, fifths, minor, false, check)
+}
+
+/// A disposable 1/16 display grid. Playback and source note timing stay untouched.
+pub fn engrave_simplified(
+    file: &MidiFile,
+    title: &str,
+    fifths: i8,
+    minor: bool,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<Engraving, String> {
+    engrave_with_rhythm(file, title, fifths, minor, true, check)
+}
+
+fn engrave_with_rhythm(
+    file: &MidiFile,
+    title: &str,
+    fifths: i8,
+    minor: bool,
+    simplified: bool,
+    check: &impl Fn() -> Result<(), String>,
+) -> Result<Engraving, String> {
     check()?;
     let ppq = file.tempo_track.ppq();
     if ppq == 0 {
         return Err("MIDI 缺少有效的拍位精度".into());
     }
+    let score_end = file.musical_time.measures.last().map(|m| units(m.end_tick as f64, ppq)).unwrap_or(0);
+    if score_end == 0 { return Err("当前演奏缺少可用的小节范围".into()); }
     let mut notes = Vec::new();
     for track in file.tracks.iter() {
         check()?;
@@ -142,21 +168,20 @@ pub fn engrave(
             .enumerate()
             .filter(|(_, n)| n.channel != 9)
         {
-            let start = units(
-                file.tempo_track.seconds_to_pulses(note.start.as_secs_f64()),
-                ppq,
-            );
-            let end = units(
-                file.tempo_track.seconds_to_pulses(note.end.as_secs_f64()),
-                ppq,
-            )
-            .max(start + 1);
+            let source_start = file.tempo_track.seconds_to_pulses(note.start.as_secs_f64()).round().max(0.) as u64;
+            let source_end = (file.tempo_track.seconds_to_pulses(note.end.as_secs_f64()).round().max(0.) as u64).max(source_start + 1);
+            let step = if simplified { DIVISIONS / 4 } else { 1 };
+            let align = |tick| (units(tick as f64, ppq) + step / 2) / step * step;
+            let start = align(source_start).min(score_end - 1);
+            let end = align(source_end).max(start + step).min(score_end);
             notes.push(Note {
                 track: track.track_id,
                 index,
                 pitch: note.note,
                 start,
                 end,
+                source_start,
+                source_end,
             });
         }
     }
@@ -164,7 +189,7 @@ pub fn engrave(
         return Err("当前演奏没有可记谱的有音高音符".into());
     }
     if notes.len() > 100_000 {
-        return Err("量化练习谱超过十万个音符".into());
+            return Err("练习谱超过十万个音符".into());
     }
     let source_notes = notes.len();
     notes.sort_by_key(|note| (note.start, note.end, note.track, note.index));
@@ -195,7 +220,7 @@ pub fn engrave(
             });
         }
         if lanes.len() > 128 {
-            return Err("量化练习谱的同时声部超过 128 个".into());
+            return Err("练习谱的同时声部超过 128 个".into());
         }
     }
     // An empty staff still receives a measure rest, keeping the piano grand staff explicit.
@@ -303,13 +328,18 @@ pub fn engrave(
                             note.track, note.index, segment
                         );
                         *segment += 1;
+                        let performance_tick = |display: u64| {
+                            if simplified {
+                                note.source_start + (display - note.start) * (note.source_end - note.source_start) / (note.end - note.start)
+                            } else { display * u64::from(ppq) / DIVISIONS }
+                        };
                         identities.insert(
                             id.clone(),
                             PracticeNote {
                                 track: note.track,
                                 index: note.index,
-                                start_tick: position * u64::from(ppq) / DIVISIONS,
-                                end_tick: (position + length) * u64::from(ppq) / DIVISIONS,
+                                start_tick: performance_tick(position),
+                                end_tick: performance_tick(position + length),
                             },
                         );
                         write!(
@@ -345,7 +375,7 @@ pub fn engrave(
                         }
                         xml.push_str("</note>");
                         if xml.len() > 4_000_000 || identities.len() > 100_000 {
-                            return Err("量化练习谱过大，请缩短练习范围".into());
+                            return Err("练习谱过大，请缩短练习范围".into());
                         }
                     }
                 }
@@ -360,7 +390,7 @@ pub fn engrave(
         }
         xml.push_str("</measure>");
         if xml.len() > 4_000_000 {
-            return Err("量化练习谱超过 4 MB，请缩短练习范围".into());
+            return Err("练习谱超过 4 MB，请缩短练习范围".into());
         }
     }
     xml.push_str("</part></score-partwise>");
@@ -380,6 +410,36 @@ mod tests {
     use midi_file::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind as K,
     };
+    #[test]
+    fn simplified_notation_uses_readable_grid_and_original_performance_time() {
+        let on = |pitch: u8| K::Midi { channel: 0.into(), message: MidiMessage::NoteOn { key: pitch.into(), vel: 90.into() } };
+        let off = |pitch: u8| K::Midi { channel: 0.into(), message: MidiMessage::NoteOff { key: pitch.into(), vel: 0.into() } };
+        let file = MidiFile::from_smf("human-timing", &Smf {
+            header: Header::new(Format::SingleTrack, Timing::Metrical(480.into())),
+            tracks: vec![vec![
+                TrackEvent { delta:101.into(), kind:on(60u8) },
+                TrackEvent { delta:118.into(), kind:off(60u8) },
+                TrackEvent { delta:81.into(), kind:on(64u8) },
+                TrackEvent { delta:1200.into(), kind:off(64u8) },
+                TrackEvent { delta:0.into(), kind:K::Meta(MetaMessage::EndOfTrack) },
+            ]],
+        }).unwrap();
+        let original = file.tracks[0].notes[0].clone();
+        let result = engrave_simplified(&file, "简化谱", 0, false, &||Ok(())).unwrap();
+        let first = result.notes.values().find(|note| note.index == 0).unwrap();
+        assert_eq!((first.start_tick,first.end_tick),(101,219));
+        let sustained:Vec<_> = result.notes.values().filter(|note|note.index==1).collect();
+        assert_eq!(sustained.iter().map(|note|note.start_tick).min(),Some(300));
+        assert_eq!(sustained.iter().map(|note|note.end_tick).max(),Some(1500));
+        assert!(sustained.len()>1);
+        let score = crate::musicxml::import_musicxml_document(&result.bytes).unwrap();
+        let performed = crate::score_performance::generate(&score,120).unwrap();
+        let displayed = MidiFile::from_smf("display",&performed.smf).unwrap();
+        let first_displayed = displayed.tracks.iter().flat_map(|track|track.notes.iter()).find(|note|note.note==60).unwrap();
+        assert_eq!(units(displayed.tempo_track.seconds_to_pulses(first_displayed.start.as_secs_f64()),displayed.tempo_track.ppq()),8);
+        assert_eq!(file.tracks[0].notes[0].start,original.start);
+        assert_eq!(file.tracks[0].notes[0].end,original.end);
+    }
     #[test]
     fn polyphonic_practice_round_trip_keeps_chords_ties_meters_and_source_indices() {
         let mut events = vec![

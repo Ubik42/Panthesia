@@ -2,7 +2,6 @@ import { product } from "./product.generated";
 import { SongCredits } from "./features/practice/SongCredits";
 import { SongBrowser } from "./features/library/SongBrowser";
 import { ApplicationMenu } from "./app/ApplicationMenu";
-import { MidiPracticeScore } from "./features/scores/MidiPracticeScore";
 import { PracticeQueueStrip } from "./features/practice/PracticeQueueStrip";
 import { PracticeLibraryPanel } from "./features/practice/PracticeLibraryPanel";
 import { practiceCollectionByPath, collectionSongRow, type PracticeLibraryItem } from "./features/practice/practiceLibraryModel";
@@ -2111,7 +2110,7 @@ export default function App() {
                 store={playback}
                 contentId={song?.contentId ?? null}
               >
-                {(live) => (!song.hasScore && !song.practiceVariant?.settings.quantize ? <MidiPracticeScore song={song} state={live} seek={position=>action({type:"seek",position})} selectPracticeNote={practiceRange.picking?practiceRange.pick:undefined} practiceRange={practiceRange.range}/> :
+                {(live) => (
                   <Notation
                     toolRequest={scoreToolRequest}
                     clearToolRequest={clearScoreToolRequest}

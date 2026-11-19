@@ -165,7 +165,7 @@ export function SongEditionBar({
             });
           }}
         >
-          <option value="">{project ? "MIDI 即时谱" : "正在读取谱面…"}</option>
+          <option value="">{project ? song.practiceVariant?.settings.quantize ? "量化练习谱" : "MIDI 简化谱" : "正在读取谱面…"}</option>
           {project?.notations.map((row) => (
             <option
               key={row.edition.id}
