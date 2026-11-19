@@ -5,7 +5,7 @@ use crate::{
     *,
 };
 use panthesia_core::library::{
-    ScoreAssociation, SongSidecar, load_song_sidecar, resolve_score_path, save_song_sidecar,
+    ScoreAssociation, SongMetadata, SongSidecar, load_song_sidecar, resolve_score_path, save_song_sidecar,
 };
 use std::collections::BTreeMap;
 
