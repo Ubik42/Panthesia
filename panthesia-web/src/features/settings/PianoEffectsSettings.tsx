@@ -1,10 +1,17 @@
 import { Sparkles } from "lucide-react";
 import type { DisplayPreferences } from "../../displayPreferences";
 
-export function PianoEffectsSettings({ value, change, compact = false }: {
-  value: DisplayPreferences; change: (patch: Partial<DisplayPreferences>) => void; compact?: boolean;
+export function PianoEffectsSettings({ value, change, compact = false, openAppearance }: {
+  value: DisplayPreferences; change: (patch: Partial<DisplayPreferences>) => void; compact?: boolean; openAppearance?:()=>void;
 }) {
   return <section className={`piano-effects-settings ${compact ? "compact" : ""}`} aria-label="钢琴光效设置">
+    {!compact && <>
+      <div className="appearance-section-heading"><h3>练习室皮肤</h3><span>切换整体配色</span></div>
+      <div className="skin-options" role="group" aria-label="界面皮肤">
+        {([{id:"studio",name:"练习室",description:"雾白 · 海蓝"},{id:"midnight",name:"午夜",description:"墨紫 · 银光"},{id:"rosewood",name:"玫瑰木",description:"奶油 · 黄铜"}] as const).map(skin=><button type="button" key={skin.id} className="skin-option" data-preview-skin={skin.id} aria-pressed={value.skin===skin.id} onClick={()=>change({skin:skin.id})}><span className="skin-swatch" aria-hidden="true"><i/><i/><i/></span><strong>{skin.name}</strong><small>{skin.description}</small></button>)}
+      </div>
+      <div className="appearance-section-heading"><h3>琴键与光影</h3><span>保留清楚的落键反馈</span></div>
+    </>}
     <div className="effects-heading"><Sparkles size={15} /><span>琴键光影</span>
       <button type="button" role="switch" aria-label="钢琴特效" aria-checked={value.effectsEnabled}
         className={`effects-switch ${value.effectsEnabled ? "enabled" : ""}`} onClick={() => change({ effectsEnabled: !value.effectsEnabled })}>
@@ -20,9 +27,9 @@ export function PianoEffectsSettings({ value, change, compact = false }: {
         <option value="aurora">极光 · 青绿与靛蓝</option><option value="ember">余晖 · 琥珀与珊瑚</option><option value="violet">星云 · 紫藤与冰蓝</option>
       </select>
     </label>
+    {compact && openAppearance && <button type="button" className="open-appearance" onClick={openAppearance}>材质与特效…</button>}
     {!compact && <>
       <div className="appearance-fields">
-        <label>界面皮肤<select aria-label="界面皮肤" value={value.skin} onChange={e=>change({skin:e.target.value as DisplayPreferences["skin"]})}><option value="studio">练习室 · 雾白与海蓝</option><option value="midnight">午夜 · 墨紫与银光</option><option value="rosewood">玫瑰木 · 奶油与黄铜</option></select></label>
         <label>琴键材质<select aria-label="琴键材质" value={value.pianoMaterial} onChange={e=>change({pianoMaterial:e.target.value as DisplayPreferences["pianoMaterial"]})}><option value="ivory">暖象牙</option><option value="porcelain">白瓷</option><option value="glass">冰晶玻璃</option></select></label>
         <label>落键特效<select aria-label="落键特效" value={value.effectStyle} onChange={e=>change({effectStyle:e.target.value as DisplayPreferences["effectStyle"]})}><option value="bloom">辉光 · 光柱与星屑</option><option value="ripple">涟漪 · 多重扩散光环</option><option value="comet">流星 · 光点与拖尾</option></select></label>
       </div>

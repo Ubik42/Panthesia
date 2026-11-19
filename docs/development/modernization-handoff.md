@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 5e5a484。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 c235a67。
 
 ## 当前主线
 
@@ -113,6 +113,17 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 宽度 1440 / 1000 / 720 的范围按钮均在可见窗口内，无根节点横向滚动。窄窗发现过旧 flex 换列造成控件进入右侧隐区，已在实际几何检查后修正。最终截图使用 manual-range-1440.png、manual-range-1000.png、manual-range-720.png；早期 notation-selection-narrow.png 是修正前检查材料，不作最终布局依据。
 
 证据位于 work/practice-range-runtime/range-evidence.json、layout-evidence.json 及上述 PNG；受影响桌面构建 work/practice-range-desktop.log。使用隔离资料与内置练习副本，仅检查这条用户链路与受影响构建，未运行全套回归。后续进入 P4：统一演奏表面、皮肤与特效设置，整理剩余耦合及运行包；视图切换时复用谱面渲染结果仍可继续优化。
+
+## P4：外观工作区与谱面排版复用批次
+
+- 界面设置新增“外观与光效”分区，把皮肤、琴键材质、落键效果和练习网格集中展示；音符名称 / 指法仍在“音符显示”。主演奏页的“外观与网格”和瀑布光效条都可直接进入新分区，分区选择沿用现有持久会话。
+- 三种皮肤改为可视选择，设置窗口、控件、页签与页脚采用相应皮肤变量。增加只恢复外观参数的按钮，保持其他显示、按键与布局设置。修正原深色窗口与浅色文字变量混用造成的低对比度。
+- PianoAppearancePreview 使用演奏页同一 PianoKeyboard / PianoEffects 渲染器，展示实际材质、光效风格和网格透明度。手动演示七个落键，结束后停止逐帧绘制；切分区、关闭窗口或隐藏应用时停止演示。减少动画遵循界面与系统选项。玻璃琴键标签改为浅色，提高暗部对比度。
+- Notation 排版移至 scoreRenderCache，按显示字节内容缓存最多三份 / 估算 32 MiB 的 SVG、MIDI 与渲染逐音证据；命中时不再创建 Verovio worker。每次仍向当前引擎核验映射，缓存不持有跨版本令牌。转调与量化显示以实际字节区分。
+
+实际桌面检查三种皮肤与落键演示，1440×1000、720×800 外观窗口无横向溢出；重启后仍为 rosewood / ivory / ripple / performance，外观设置已恢复。当前短曲切回谱面没有增加排版 worker，测得 124 ms；改变转调后产生新排版，恢复原调未新增排版。初次检查直接比较运行中 SVG 全文受动态高亮影响，后改用实际 worker 计数判断是否重新排版，动态高亮不作为缓存失效证据。无页面运行错误。
+
+证据：work/appearance-cache-desktop.log；work/practice-range-runtime/appearance-cache-evidence.json、appearance-studio.png、appearance-midnight.png、appearance-rosewood.png、appearance-narrow.png、appearance-reopen.png、appearance-reopen-evidence.json。使用前批隔离资料，未运行全套回归。本批仍为开发版源码；后续继续统一演奏表面及剩余设置弹窗、整理解耦退出项，再制作新运行包并独立启动核对。
 
 ## 交付状态
 

@@ -17,7 +17,7 @@ import {
 import { activitySignal } from "../activity/activitySignal";
 
 export type SettingsSection =
-  "display" | "layout" | "keyboard" | "shortcuts" | "backup";
+  "display" | "appearance" | "layout" | "keyboard" | "shortcuts" | "backup";
 export interface InterfacePreview {
   backup: InterfaceBackup;
   baseline: string;
@@ -83,7 +83,7 @@ function decode(raw: string | null): InterfaceWorkbench {
     if (
       !settingsObject(value) ||
       value.version !== 1 ||
-      !["display", "layout", "keyboard", "shortcuts", "backup"].includes(
+      !["display", "appearance", "layout", "keyboard", "shortcuts", "backup"].includes(
         String(value.section),
       )
     )

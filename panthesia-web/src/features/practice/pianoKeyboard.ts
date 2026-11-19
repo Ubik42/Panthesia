@@ -101,7 +101,7 @@ export class PianoKeyboard {
           display.keyLabels !== "none" &&
           (display.keyLabels !== "c" || pitch % 12 === 0)
         ) {
-          ctx.fillStyle = "#53635e";
+          ctx.fillStyle = display.pianoMaterial === "glass" && !active ? "#eff7ff" : "#53635e";
           ctx.font = `${display.fontSize}px sans-serif`;
           const label = displayPitch(pitch, display);
           const size = Math.min(

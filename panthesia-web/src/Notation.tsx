@@ -1,3 +1,4 @@
+import { renderScore } from "./features/scores/scoreRenderCache";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import type { ScoreMappingRequest } from "./features/scores/mappingTypes";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
@@ -42,24 +43,6 @@ interface Asset {
   route?: WrittenRoute | null;
 }
 type Mapping = ScoreMapping;
-function cleanSvg(source: string) {
-  const doc = new DOMParser().parseFromString(source, "image/svg+xml");
-  doc
-    .querySelectorAll("script,foreignObject,image,iframe")
-    .forEach((e) => e.remove());
-  doc.querySelectorAll("*").forEach((e) => {
-    for (const a of Array.from(e.attributes))
-      if (
-        a.name.toLowerCase().startsWith("on") ||
-        (["href", "xlink:href"].includes(a.name) && !a.value.startsWith("#"))
-      )
-        e.removeAttribute(a.name);
-  });
-  doc.querySelectorAll("g.note[data-id]").forEach((n) => {
-    if (!n.id) n.setAttribute("id", n.getAttribute("data-id")!);
-  });
-  return new XMLSerializer().serializeToString(doc.documentElement);
-}
 export function Notation({
   song,
   state,
@@ -325,7 +308,7 @@ export function Notation({
     renderedMapping.current = null;
     mappingSequence.current++;
     mappingWorking.current = false;
-    const worker = new Worker("/verovio/worker.mjs", { type: "module" });
+    const controller = new AbortController();
     setPages([]);
     setAsset(null);
     setAmbiguities(0);
@@ -348,46 +331,22 @@ export function Notation({
           return;
         }
         setAsset(data);
-        worker.postMessage({ bytes: data.bytes, compressed: data.compressed, progress: true });
-        worker.onmessage = async ({ data: result }) => {
+        void renderScore(data, controller.signal, (stage, page, total) => {
+          if (!disposed) setRenderStage(stage === "pages" ? `正在绘制谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
+        }).then(async result => {
           if (disposed) return;
-          if (result.progress) {
-            setRenderStage(result.stage === "pages" ? `正在绘制谱页 ${result.page} / ${result.total}…` : result.stage === "midi" ? "正在整理乐谱演奏顺序…" : result.stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
-            return;
-          }
-          // Final pages and evidence are owned by this message. The renderer
-          // can release its WASM heap while correlation continues on the engine.
-          worker.terminate();
-          if (result.error) {
-            setError(result.error);
-            setLoading(false);
-            return;
-          }
-          try {
-            setRenderStage("正在对应乐谱与演奏…");
-            const midi = Array.from(atob(result.midi), (c: string) =>
-              c.charCodeAt(0),
-            );
-            // Reading the original score remains useful when correlation fails or is cancelled.
-            setPages(result.pages.map(cleanSvg));
-            await correlateRendered({
-              scoreRevision: song.scoreRevision, sourceFingerprint: data.sourceFingerprint,
-              practiceNotation: data.practiceNotation === true,
-              midi, notes: result.notes, contentId: data.contentId,
-            });
-          } catch (e) {
-            if (!disposed) {
-              setError(String(e instanceof Error ? e.message : e));
-              setLoading(false);
-            }
-          }
-        };
-        worker.onerror = (e) => {
+          setPages(result.pages);
+          await correlateRendered({
+            scoreRevision: song.scoreRevision, sourceFingerprint: data.sourceFingerprint,
+            practiceNotation: data.practiceNotation === true,
+            midi: result.midi, notes: result.notes, contentId: data.contentId,
+          });
+        }).catch(cause => {
           if (!disposed) {
-            setError(e.message || "乐谱渲染器启动失败");
+            setError(cause instanceof Error ? cause.message : String(cause));
             setLoading(false);
           }
-        };
+        });
       })
       .catch((e) => {
         if (!disposed) {
@@ -400,7 +359,7 @@ export function Notation({
       mappingSequence.current++;
       renderedMapping.current = null;
       mappingWorking.current = false;
-      worker.terminate();
+      controller.abort();
     };
   }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm]);
   useEffect(() => {

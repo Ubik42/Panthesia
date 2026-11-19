@@ -2090,7 +2090,7 @@ export default function App() {
               </label>
             </ToolbarMore>
           </div>
-          {view === "keyboard" && <PianoEffectsSettings compact value={display} change={patch => setDisplay(previous => ({...previous, ...patch}))} />}
+          {view === "keyboard" && <PianoEffectsSettings compact value={display} change={patch => setDisplay(previous => ({...previous, ...patch}))} openAppearance={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}} />}
           <div className="piano-stage">
             {(view === "keyboard" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
@@ -2353,7 +2353,7 @@ export default function App() {
             repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
           <div className="instrument-controls">
             {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
-            <button onClick={()=>{getInterfaceWorkbench().update({section:"display"});setDisplayDialog(true);}}>外观与网格</button>
+            <button onClick={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}}>外观与网格</button>
             <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
             <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
           </div>

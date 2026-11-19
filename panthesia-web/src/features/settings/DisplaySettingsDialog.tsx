@@ -1,5 +1,6 @@
 import { InterfaceDisplayPreview } from "./InterfaceDisplayPreview";
 import { PianoEffectsSettings } from "./PianoEffectsSettings";
+import { PianoAppearancePreview } from "./PianoAppearancePreview";
 import { BrowseDetailWorkspace } from "../../app/BrowseDetailWorkspace";
 import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
 import {
@@ -161,7 +162,6 @@ export function DisplaySettingsDialog({
               content: (
                 <>
                   <InterfaceDisplayPreview value={value} />
-                  <PianoEffectsSettings value={value} change={update} />
                   <div className="display-settings-fields">
                     <label>
                       音符名称
@@ -320,6 +320,11 @@ export function DisplaySettingsDialog({
                   </p>
                 </>
               ),
+            },
+            {
+              id: "appearance",
+              label: "外观与光效",
+              content: <div className="appearance-workspace">{section === "appearance" && <PianoAppearancePreview value={value} />}<PianoEffectsSettings value={value} change={update} /></div>,
             },
             {
               id: "layout",
@@ -487,7 +492,13 @@ export function DisplaySettingsDialog({
               恢复音符显示默认值
             </button>
           )}
-          {section !== "display" && (
+          {section === "appearance" && <button type="button" onClick={()=>update({
+            skin:displayDefaults.skin,pianoMaterial:displayDefaults.pianoMaterial,effectStyle:displayDefaults.effectStyle,
+            effectsEnabled:displayDefaults.effectsEnabled,effectsPreset:displayDefaults.effectsPreset,
+            effectsPalette:displayDefaults.effectsPalette,effectsIntensity:displayDefaults.effectsIntensity,reduceMotion:displayDefaults.reduceMotion,
+            gridSubdivision:displayDefaults.gridSubdivision,barOpacity:displayDefaults.barOpacity,beatOpacity:displayDefaults.beatOpacity,subdivisionOpacity:displayDefaults.subdivisionOpacity,
+          })}>恢复外观默认值</button>}
+          {section !== "display" && section !== "appearance" && (
             <span className="interface-footer-note">
               {section === "backup"
                 ? "导入预览与已准备的备份会在关闭后保留。"
