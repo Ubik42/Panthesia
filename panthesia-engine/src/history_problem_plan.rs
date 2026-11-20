@@ -167,6 +167,7 @@ impl Player {
             };
             rows.push(json!({"key":key,"title":title,"notes":"","start":start,"end":end,"references":[reference],"problems":[problem],"noteVelocityDifference":problem_limit}));
             items.push(RoutineItem {
+                practice: None,
                 id: key,
                 title,
                 notes: format!(

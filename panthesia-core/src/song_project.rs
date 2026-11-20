@@ -25,6 +25,17 @@ pub struct PracticeEdition {
     pub transform: Variant,
 }
 impl PracticeEdition {
+    /// Resolve an immutable snapshot or infer the transform carried by a legacy grid signature.
+    pub fn resolve(saved: Option<&Self>, performance_id: &str, grid: &str) -> Result<Self, String> {
+        if let Some(saved) = saved {
+            let expected = Self::new(performance_id, saved.transform.clone())?;
+            if saved != &expected {
+                return Err("练习版本身份与当前演奏不一致，请重新核对后保存".into());
+            }
+            return Ok(expected);
+        }
+        Self::new(performance_id, Variant::from_grid(grid)?)
+    }
     pub fn new(performance_id: &str, transform: Variant) -> Result<Self, String> {
         transform.validate()?;
         let bytes =

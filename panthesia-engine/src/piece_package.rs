@@ -252,7 +252,7 @@ impl Package {
                 .as_slice(),
         )
         .map_err(|e| format!("曲目包清单无效：{e}"))?;
-        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].contains(&manifest.version) {
+        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].contains(&manifest.version) {
             return Err("曲目包版本暂不支持".into());
         }
         if let Some(layers) = &manifest.metadata_layers {
@@ -429,6 +429,9 @@ impl Package {
         }
         let mut ladder_ids = BTreeSet::new();
         for l in &manifest.ladders {
+            if l.practice.is_some() && manifest.version < 17 {return Err("阶梯练习版本需要第 17 版曲目包".into());}
+            let edition=panthesia_core::song_project::PracticeEdition::resolve(l.practice.as_ref(), &manifest.content_id, &l.grid)?;
+            let ladder_bars=if l.practice.is_some(){crate::practice_variant::transform(&file,&edition.transform)?.musical_time.measures.len()}else{bars};
             l.plan.validate()?;
             if let Some(goal)=&l.expression { goal.validate(l.settings.mode.as_deref().unwrap_or("wait"))?; }
             if l.id.is_empty()
@@ -438,7 +441,7 @@ impl Package {
                 || l.name.chars().count() > 80
                 || l.start == 0
                 || l.end < l.start
-                || l.end > bars
+                || l.end > ladder_bars
                 || l.grid.len() > 160
                 || l.scope.len() > 160
                 || l.exercise_spec.is_some()

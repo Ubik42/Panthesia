@@ -136,6 +136,7 @@ fn due_review_suggestion(
     };
     goal.validate(mode).ok()?;
     let item = RoutineItem {
+        practice: None,
         id: String::new(),
         title: format!("{} · 到期复习", history.display_name.chars().take(80).collect::<String>()),
         notes: format!(
@@ -244,6 +245,7 @@ impl Player {
                 };
                 if precise.validate().is_err() { continue; }
                 let mut item = RoutineItem {
+                    practice: None,
                     id: String::new(),
                     title: format!("{} · {}复习",
                         history.display_name.chars().take(70).collect::<String>(), range),
@@ -463,6 +465,7 @@ impl Player {
                         "flow"
                     };
                     let mut item = RoutineItem {
+                        practice: None,
                         id: String::new(),
                         title: format!(
                             "{} · 第 {} 小节",

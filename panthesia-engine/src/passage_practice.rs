@@ -4,20 +4,35 @@ use panthesia_core::song_project::PracticeEdition;
 
 impl preferences::PassagePreset {
     pub(super) fn practice_edition(&self, content: &str) -> Result<PracticeEdition, String> {
-        if let Some(saved) = &self.practice {
-            let expected = PracticeEdition::new(content, saved.transform.clone())?;
-            if saved != &expected {
-                return Err("练习段的演奏版本身份不一致，请重新核对后保存".into());
-            }
-            return Ok(expected);
-        }
-        PracticeEdition::new(
+        PracticeEdition::resolve(
+            self.practice.as_ref(),
             content,
-            practice_variant::Variant::from_grid(self.grid.as_deref().unwrap_or(""))?,
+            self.grid.as_deref().unwrap_or(""),
         )
     }
 }
 impl Player {
+    pub(super) fn restore_practice_edition(
+        &mut self,
+        edition: &PracticeEdition,
+    ) -> Result<(), String> {
+        let content = &self.file.as_ref().ok_or("请先选择曲目")?.content_id;
+        PracticeEdition::resolve(Some(edition), content, "")?;
+        let current = self.variant();
+        if (current.transpose, current.quantize, current.durations)
+            != (
+                edition.transform.transpose,
+                edition.transform.quantize,
+                edition.transform.durations,
+            )
+        {
+            self.apply_variant_memory(&edition.transform)?;
+        }
+        self.preferences
+            .variants
+            .insert(edition.performance_id.clone(), edition.transform.clone());
+        Ok(())
+    }
     pub(super) fn passage_practice_snapshot(&self) -> Result<PracticeEdition, String> {
         PracticeEdition::new(
             &self.file.as_ref().ok_or("请先选择曲目")?.content_id,
@@ -37,20 +52,7 @@ impl Player {
         let mut prepared = self.capture_document_context().into_player(true)?;
         prepared.preferences_path = self.preferences_path.clone();
         prepared.restoring = self.restoring;
-        let current = prepared.variant();
-        if (current.transpose, current.quantize, current.durations)
-            != (
-                edition.transform.transpose,
-                edition.transform.quantize,
-                edition.transform.durations,
-            )
-        {
-            prepared.apply_variant_memory(&edition.transform)?;
-        }
-        prepared
-            .preferences
-            .variants
-            .insert(content.clone(), edition.transform.clone());
+        prepared.restore_practice_edition(&edition)?;
         let notation_path = if let Some(range) = &preset.score_range {
             prepared.restore_passage_notation(range)?
         } else {
@@ -87,7 +89,7 @@ impl Player {
     }
 
     /// Resolve the saved content identity across registered locations, without guessing another score.
-    fn restore_passage_notation(
+    pub(super) fn restore_passage_notation(
         &mut self,
         range: &crate::score_ranges::ScoreRange,
     ) -> Result<Option<PathBuf>, String> {
@@ -138,7 +140,7 @@ impl Player {
         self.score_revision = self.score_revision.wrapping_add(1);
         Ok(Some(path))
     }
-    fn open_passage_conditions(
+    pub(super) fn open_passage_conditions(
         &mut self,
         preset: preferences::PassagePreset,
     ) -> Result<serde_json::Value, String> {

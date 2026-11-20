@@ -279,7 +279,7 @@ export function PassageDialog({
           source={source.current}
           rows={passages}
           toForm={passageForm}
-          describe={(row) => <SavedPracticeDetails row={row} />}
+          describe={(row) => <SavedPracticeDetails row={row} song={song} />}
           loaded={loaded}
           readFor={readFor}
           settled={settled}

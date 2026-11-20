@@ -44,6 +44,8 @@ pub enum RoutineTarget {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoutineItem {
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub practice:Option<panthesia_core::song_project::PracticeEdition>,
     pub id: String,
     pub title: String,
     pub notes: String,
@@ -476,6 +478,18 @@ impl Player {
         if title.trim().is_empty() || title.chars().count() > 100 || notes.len() > 8192 {
             return Err("项目名称需 1～100 个字，要求最长 8192 字节".into());
         }
+        // Capture a named passage under its own conditions without adopting it in the live session.
+        if source == Some("passage") {
+            let content = &self.file.as_ref().ok_or("请先打开曲目")?.content_id;
+            let preset = self.preferences.passages.get(content).and_then(|rows| rows.iter().find(|row| Some(row.id.as_str()) == source_id)).cloned().ok_or("练习段不存在")?;
+            let edition = preset.practice_edition(content)?;
+            let mut reader = self.capture_document_context().into_player(true)?;
+            reader.restoring = true;
+            reader.restore_practice_edition(&edition)?;
+            if let Some(range) = &preset.score_range { reader.restore_passage_notation(range)?; }
+            reader.open_passage_conditions(preset)?;
+            return reader.build_routine_item(id, Some("current"), None, title, notes, goal, old);
+        }
         let mut item = if let Some(source) = source {
             let f = self.file.as_ref().ok_or("请先打开要加入计划的曲目")?;
             let mut settings = SessionSettings {
@@ -498,6 +512,7 @@ impl Player {
             let mut grid = self.grid_signature();
             let mut scope = self.practice_scope();
             let mut exercise = self.exercise;
+            let mut practice = Some(self.passage_practice_snapshot()?);
             let target = match source {
                 "current" => {
                     if let Some(range)=self.score_range_for_current_loop() {
@@ -519,23 +534,6 @@ impl Player {
                         RoutineTarget::Whole
                     }
                 }
-                "passage" => {
-                    let p = self
-                        .preferences
-                        .passages
-                        .get(&f.content_id)
-                        .and_then(|ps| ps.iter().find(|p| Some(p.id.as_str()) == source_id))
-                        .ok_or("练习段不存在")?;
-                    if p.grid.as_ref().is_some_and(|g| *g != grid) {
-                        return Err("命名段落的网格已改变，请先核对段落".into());
-                    }
-                    settings = p.settings.clone();
-                    speed = p.speed;
-                    if let Some(range)=&p.score_range {
-                        self.validate_score_range(range)?;
-                        RoutineTarget::ScorePassage {range:range.clone()}
-                    } else if let Some(range)=&p.precise_range {self.validate_tick_range(range)?;RoutineTarget::PrecisePassage{range:range.clone()}} else { RoutineTarget::Passage {start:p.start,end:p.end} }
-                }
                 "ladder" => {
                     let p = self
                         .preferences
@@ -544,6 +542,7 @@ impl Player {
                         .and_then(|ps| ps.iter().find(|p| Some(p.id.as_str()) == source_id))
                         .cloned()
                         .ok_or("阶梯方案不存在")?;
+                    practice = Some(panthesia_core::song_project::PracticeEdition::resolve(p.practice.as_ref(), &f.content_id, &p.grid)?);
                     settings = p.settings.clone();
                     grid = p.grid.clone();
                     scope = p.scope.clone();
@@ -563,25 +562,8 @@ impl Player {
             {
                 return Err("完整演奏/背谱项目必须为全曲".into());
             }
-            // Named passages can carry different track settings; compute their actual target scope without changing the current session.
-            if source == "passage" {
-                let before = self.config.clone();
-                let before_hands = self.state.hands.clone();
-                self.config.apply_practice_setup(&SongPracticeSetup {
-                    tracks: settings.tracks.clone(),
-                    ..Default::default()
-                });
-                for t in &mut self.config.tracks {
-                    if let Some(part) = settings.parts.get(&t.track_id) {
-                        t.practice_part = *part;
-                    }
-                }
-                self.state.hands = settings.hands.clone();
-                scope = self.practice_scope();
-                self.config = before;
-                self.state.hands = before_hands;
-            }
             RoutineItem {
+                practice,
                 id: id.clone().unwrap_or_else(|| new_id("item")),
                 title: String::new(),
                 notes: String::new(),
@@ -990,10 +972,28 @@ impl Player {
         if result.is_err(){self.preferences=previous;}
         result
     }
+    fn restore_routine_edition(&mut self, item: &RoutineItem, associate: bool) -> Result<(), String> {
+        let edition = panthesia_core::song_project::PracticeEdition::resolve(item.practice.as_ref(), &item.content_id, &item.grid)?;
+        if let RoutineTarget::Ladder { preset } = &item.target {
+            let ladder = panthesia_core::song_project::PracticeEdition::resolve(preset.practice.as_ref(), &item.content_id, &preset.grid)?;
+            if edition != ladder { return Err("计划项目与阶梯的练习版本不一致，请重新捕获条件".into()); }
+        }
+        self.restore_practice_edition(&edition)?;
+        if let RoutineTarget::ScorePassage { range } = &item.target {
+            if let Some(path) = self.restore_passage_notation(range)? {
+                if associate {
+                    let file=self.file.as_ref().ok_or("请先选择曲目")?;
+                    panthesia_core::library::save_score_association(&self.annotation_path(file)?, &item.content_id, &path).map_err(|error|error.to_string())?;
+                }
+            }
+        }
+        Ok(())
+    }
     pub(crate) fn preflight_loaded_routine_item(&mut self, item: &RoutineItem) -> Result<(), String> {
         if let Some(error) = &self.state.error {
             return Err(format!("曲目资料无法核对：{error}"));
         }
+        self.restore_routine_edition(item, false)?;
         if self.grid_signature() != item.grid {
             return Err("项目的小节网格已改变，请重新捕获当前条件".into());
         }
@@ -1073,6 +1073,7 @@ impl Player {
         }
         self.ladder = None;
         prepared.install(self)?;
+        self.restore_routine_edition(&item, true)?;
         if self.grid_signature() != item.grid {
             return Err("项目的小节网格已改变，请重新捕获当前条件")?;
         }

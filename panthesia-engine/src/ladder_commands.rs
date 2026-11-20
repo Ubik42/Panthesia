@@ -77,6 +77,7 @@ impl Player {
             )
         });
         let preset = LadderPreset {
+            practice: Some(self.passage_practice_snapshot()?),
             id: id.clone(),
             name: name.trim().into(),
             start,
@@ -110,7 +111,8 @@ impl Player {
             .or_default();
         let mut preserve = false;
         if let Some(old) = rows.iter_mut().find(|p| p.id == id) {
-            preserve = old.start == preset.start
+            preserve = panthesia_core::song_project::PracticeEdition::resolve(old.practice.as_ref(), &content_id, &old.grid).ok() == preset.practice
+                && old.start == preset.start
                 && old.end == preset.end
                 && old.grid == preset.grid
                 && old.scope == preset.scope
@@ -230,6 +232,8 @@ impl Player {
                 self.command(Command::Generate { spec })?;
             }
         }
+        let edition = panthesia_core::song_project::PracticeEdition::resolve(preset.practice.as_ref(), &content_id, &preset.grid)?;
+        self.restore_practice_edition(&edition)?;
         if preset.grid != self.grid_signature() {
             return Err("小节网格已改变，请核对范围并重新保存方案".into());
         }

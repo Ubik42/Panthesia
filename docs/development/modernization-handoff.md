@@ -243,6 +243,15 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 - 证据：work/passage-notation-core-test.log、passage-notation-desktop.log、passage-notation-runtime/{evidence,reopen-evidence,page-evidence}.json 与 reopened.png。使用独立样例目录，未修改用户资产。源码提交 1cefcd3。
 - 下一批集中衔接计划 / 速度阶梯与统一练习版本，之后按功能矩阵处理独立书签等既定缺口。整体 Goal 继续 active。
 
+## P3：日课与速度阶梯统一练习版本
+
+- core::PracticeEdition::resolve 集中快照验证和旧签名推导。LadderPreset / RoutineItem 保存可选快照；直接阶梯、日课阶梯与普通项目打开都会恢复自身的转调、量化及时值，随后核对范围与评分条件。继续使用现有后台准备和事务提交。
+- 命名段落即使与当前练习条件或采用谱面不同，也可直接加入计划。隔离状态先恢复其版本 / 谱面 / 范围，再捕获项目，当前会话与磁盘关联不变。打开项目后才采用原谱。旧重复网格拒绝和临时修改当前声部计算范围的分支已删除。
+- 阶梯方案、表单、级别、运行状态、保存详情和计划来源摘要改用 BPM；方案列表展示转调与量化。BPM 按选段起点换算，保留曲内变速，输入精度沿用 1% 原速。只读阶梯目录向旧记录提供推导快照，不改写原数据。
+- 备份 21 / 曲目包 17 完整带入新语义，并验证演奏归属与内嵌版本一致性。新快照、旧无快照、计划原谱恢复、阶梯开始、曲目包导入后开始、备份及非法身份检查已覆盖。受影响 score_ranges 模块 6 项通过，未执行全套回归。样例根路径使用与桌面相同的绝对目录，保持导入位置检查有效。
+- 桌面实际检查：在 -3 / 1/8 下应用 +2 / 1/16 阶梯，恢复 30 BPM；从日课打开同阶梯同样恢复。界面输入 30 / 60 / 15 BPM，级别与运行状态一致。样例 MIDI 内容哈希不变。重启后阶梯保存进度及日课再次打开均恢复 +2 / 1/16，BPM 表单 30–72 / 步长 6 生成 8 级。证据 work/planned-editions-runtime/{evidence,bpm-evidence,ui-apply-evidence,reopen-evidence}.json 与 ladder.png / applied.png / final-bpm-editor.png；构建及受影响检查日志 work/planned-editions-*.log。
+- 下一批为独立演奏位置书签、MIDI marker 和时间线 / 循环联动，属于既定矩阵缺口。整体 Goal active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-passage-notation，程序源码提交 1cefcd3，加入谱面段落的原谱查找、验证和同步恢复。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 467DA9968B38CA16363773425C009C3C3449FCAC8E0D7CE2C78FAE6A42BFDE3B。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/passage-notation-release.log 及 work/passage-notation-package-check/{release-evidence.json,startup.log}。

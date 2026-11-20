@@ -1,4 +1,9 @@
 import {
+  ladderBpm,
+  passageInitialBpm,
+  passageTransformLabel,
+} from "./passagePractice";
+import {
   useEffect,
   useLayoutEffect,
   useRef,
@@ -348,7 +353,9 @@ export function sortPracticeRows<
 }
 export function SavedPracticeDetails({
   row,
+  song,
 }: {
+  song: LoadedSong;
   row: PassagePreset | LadderPreset;
 }) {
   const ladder = "plan" in row,
@@ -369,9 +376,13 @@ export function SavedPracticeDetails({
           <dt>速度</dt>
           <dd>
             {ladder
-              ? `${row.plan.startPercent}% → ${row.plan.targetPercent}%`
-              : `${Math.round(row.speed * 100)}%`}
+              ? `${ladderBpm(song, row.start, row.plan.startPercent)} → ${ladderBpm(song, row.start, row.plan.targetPercent)} BPM`
+              : `${passageInitialBpm(song, row)} BPM`}
           </dd>
+        </div>
+        <div>
+          <dt>转调与量化</dt>
+          <dd>{passageTransformLabel(row)}</dd>
         </div>
         <div>
           <dt>模式与手别</dt>
@@ -403,8 +414,9 @@ export function SavedPracticeDetails({
       </dl>
       {ladder && (
         <p>
-          每级增加 {row.plan.stepPercent} 个百分点 · 连续达标{" "}
-          {row.plan.passesRequired} 轮 · 正确率 ≥{row.plan.accuracyPercent}%
+          每级增加 {ladderBpm(song, row.start, row.plan.stepPercent)} BPM ·
+          连续达标 {row.plan.passesRequired} 轮 · 正确率 ≥
+          {row.plan.accuracyPercent}%
           {row.plan.onTimePercent !== null &&
             ` · 准时率 ≥${row.plan.onTimePercent}%`}{" "}
           · 本次上限 {row.plan.attemptLimit} 轮

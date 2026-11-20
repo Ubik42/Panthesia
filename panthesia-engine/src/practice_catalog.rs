@@ -62,12 +62,15 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
         }
         Kind::Ladders => {
             let content = &reader.file.as_ref().ok_or("请先选择曲目")?.content_id;
-            let presets = reader
+            let presets: Vec<_> = reader
                 .preferences
                 .ladder_presets
                 .get(content)
                 .cloned()
-                .unwrap_or_default();
+                .unwrap_or_default().into_iter().map(|mut row| {
+                    if row.practice.is_none() {row.practice=panthesia_core::song_project::PracticeEdition::resolve(None,content,&row.grid).ok();}
+                    row
+                }).collect();
             let runs = presets
                 .iter()
                 .filter_map(|preset| {

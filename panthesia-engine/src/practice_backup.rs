@@ -135,6 +135,7 @@ fn routine(r: &PracticeRoutine) -> Result<(), String> {
     for i in &r.items {
         identity(&i.id)?;
         identity(&i.content_id)?;
+        panthesia_core::song_project::PracticeEdition::resolve(i.practice.as_ref(), &i.content_id, &i.grid)?;
         if !ids.insert(&i.id) {
             return Err("备份计划项目编号重复".into());
         }
@@ -159,6 +160,8 @@ fn routine(r: &PracticeRoutine) -> Result<(), String> {
             RoutineTarget::Passage { start, end } => range(*start, *end)?,
             RoutineTarget::Ladder { preset } => {
                 ladder(preset)?;
+                let edition=panthesia_core::song_project::PracticeEdition::resolve(preset.practice.as_ref(), &i.content_id, &preset.grid)?;
+                if edition != panthesia_core::song_project::PracticeEdition::resolve(i.practice.as_ref(), &i.content_id, &i.grid)? {return Err("计划与阶梯的练习版本不一致".into());}
             }
         };
         if let Some(spec) = i.exercise {
@@ -227,6 +230,9 @@ fn finite_numbers(v: &Value) -> Result<(), String> {
 
 impl Backup {
     pub fn version(&self) -> u8 {
+        if self.ladders.values().flatten().any(|row|row.practice.is_some())
+            || self.ladder_runs.values().any(|run|run.preset.practice.is_some())
+            || self.routines.iter().chain(self.runs.values().map(|run|&run.routine)).any(|routine|routine.items.iter().any(|item|item.practice.is_some() || matches!(&item.target,RoutineTarget::Ladder{preset} if preset.practice.is_some()))) { return 21; }
         if self.passages.values().flatten().any(|row| row.practice.is_some()) { return 20; }
         if crate::metadata_templates::required_version(&self.metadata_templates) > 1 { return 19; }
         if self.history.values().flat_map(|s| &s.sessions).any(|s| s.context.as_ref().is_some_and(|c| !c.note_playback.is_empty())) { return 18; }
@@ -540,13 +546,16 @@ impl Backup {
             let mut ids = BTreeSet::new();
             for p in rows {
                 ladder(p)?;
+                panthesia_core::song_project::PracticeEdition::resolve(p.practice.as_ref(), cid, &p.grid)?;
                 if !ids.insert(&p.id) {
                     return Err("备份阶梯编号重复".into());
                 }
             }
         }
-        for r in self.ladder_runs.values() {
+        for (key, r) in &self.ladder_runs {
             ladder(&r.preset)?;
+            let (cid, _) = key.split_once(':').ok_or("阶梯进度归属无效")?;
+            panthesia_core::song_project::PracticeEdition::resolve(r.preset.practice.as_ref(), cid, &r.preset.grid)?;
             if r.progress.stage >= r.preset.plan.speeds().len()
                 || r.progress.success_streak > r.preset.plan.passes_required
                 || r.progress.batch_rounds > r.preset.plan.attempt_limit
@@ -702,7 +711,7 @@ impl Backup {
         if header["format"] != "neothesia-practice"
             || !matches!(
                 header["version"].as_u64(),
-                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20)
+                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21)
             )
             || header["size"].as_u64() != Some(data.len() as u64)
             || header["hash"].as_str() != Some(blake3::hash(data).to_hex().as_str())

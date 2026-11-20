@@ -1,4 +1,9 @@
 import {
+  measureBpm,
+  ladderBpm,
+  passageTransformLabel,
+} from "./features/practice/passagePractice";
+import {
   ladderForm,
   ladderSpeeds,
   readLadderExpression,
@@ -41,10 +46,12 @@ import {
 } from "./api";
 export { ladderSpeeds };
 export function LadderStatus({
+  song,
   state,
   action,
   manage,
 }: {
+  song?: LoadedSong;
   state: Pick<Snapshot, "ladder" | "routine" | "status" | "speed" | "mode">;
   action: (c: EngineCommand) => void;
   manage: () => void;
@@ -61,9 +68,11 @@ export function LadderStatus({
         <strong>{run.preset.name}</strong>
         <span>
           第 {run.progress.stage + 1}/{speeds.length} 级 ·{" "}
-          {speeds[run.progress.stage]}% → {run.preset.plan.targetPercent}% ·
-          连续达标 {run.progress.successStreak}/{run.preset.plan.passesRequired}{" "}
-          轮 · 已练 {run.progress.totalRounds} 轮
+          {ladderBpm(song, run.preset.start, speeds[run.progress.stage])} →{" "}
+          {ladderBpm(song, run.preset.start, run.preset.plan.targetPercent)} BPM
+          · 连续达标 {run.progress.successStreak}/
+          {run.preset.plan.passesRequired} 轮 · 已练 {run.progress.totalRounds}{" "}
+          轮
         </span>
         <span>
           正确率 ≥{run.preset.plan.accuracyPercent}%
@@ -203,7 +212,8 @@ export function LadderDialog({
         : runs.find((row) => row.preset.id === id);
   const dirty =
     !!saved && JSON.stringify(form) !== JSON.stringify(ladderForm(saved));
-  const staleRange = !!saved && !!song.grid && saved.grid !== song.grid;
+  const staleRange =
+    !!saved && !saved.practice && !!song.grid && saved.grid !== song.grid;
   const runMap = new Map(runs.map((run) => [run.preset.id, run]));
   const search = editor.state.query.trim().toLocaleLowerCase("zh-CN"),
     visible = sortPracticeRows(
@@ -249,6 +259,8 @@ export function LadderDialog({
   useEffect(() => {
     if (loaded && editor.state.page !== page) store.update({ page });
   }, [loaded, page, editor.state.page, store]);
+  const baseBpm = measureBpm(song, first);
+  const speedFields = new Set(["startPercent", "targetPercent", "stepPercent"]);
   const problem = ladderInputProblem(
     form,
     plan,
@@ -257,6 +269,7 @@ export function LadderDialog({
     song.measures.length,
     state.mode,
     expression,
+    baseBpm,
   );
   const speedValid =
     [plan.startPercent, plan.targetPercent, plan.stepPercent].every(
@@ -296,14 +309,14 @@ export function LadderDialog({
       min: Number.isFinite(first) ? first : 1,
       max: song.measures.length,
     },
-    { key: "startPercent", label: "起始速度 %", min: 25, max: 200 },
+    { key: "startPercent", label: "起始速度 BPM", min: 25, max: 200 },
     {
       key: "targetPercent",
-      label: "目标速度 %",
+      label: "目标速度 BPM",
       min: Number.isFinite(plan.startPercent) ? plan.startPercent : 25,
       max: 200,
     },
-    { key: "stepPercent", label: "每级增加百分点", min: 1, max: 50 },
+    { key: "stepPercent", label: "每级增加 BPM", min: 1, max: 50 },
     { key: "passesRequired", label: "连续达标轮数", min: 1, max: 10 },
     { key: "accuracyPercent", label: "正确率至少 %", min: 50, max: 100 },
     { key: "attemptLimit", label: "本次轮数上限", min: 1, max: 500 },
@@ -383,7 +396,7 @@ export function LadderDialog({
           source={source.current}
           rows={presets}
           toForm={ladderForm}
-          describe={(row) => <SavedPracticeDetails row={row} />}
+          describe={(row) => <SavedPracticeDetails row={row} song={song} />}
           loaded={loaded}
           readFor={readFor}
           settled={settled}
@@ -454,8 +467,10 @@ export function LadderDialog({
                 >
                   <strong>{row.name}</strong>
                   <span>
-                    第 {row.start}–{row.end} 小节 · {row.plan.startPercent}% →{" "}
-                    {row.plan.targetPercent}%
+                    第 {row.start}–{row.end} 小节 ·{" "}
+                    {ladderBpm(song, row.start, row.plan.startPercent)} →{" "}
+                    {ladderBpm(song, row.start, row.plan.targetPercent)} BPM ·{" "}
+                    {passageTransformLabel(row)}
                   </span>
                   <small>
                     {run
@@ -476,7 +491,7 @@ export function LadderDialog({
                   {editor.state.drafts.some((draft) => draft.id === row.id) && (
                     <small>有暂存输入</small>
                   )}
-                  {!!song.grid && row.grid !== song.grid && (
+                  {!row.practice && !!song.grid && row.grid !== song.grid && (
                     <small className="passage-stale">小节范围待核对</small>
                   )}
                 </button>
@@ -569,13 +584,35 @@ export function LadderDialog({
                   <input
                     aria-label={"阶梯" + field.label}
                     type="number"
-                    min={field.min}
-                    max={field.max}
-                    step={1}
-                    value={form[field.key]}
+                    min={
+                      speedFields.has(field.key)
+                        ? (baseBpm * field.min) / 100
+                        : field.min
+                    }
+                    max={
+                      speedFields.has(field.key)
+                        ? (baseBpm * field.max) / 100
+                        : field.max
+                    }
+                    step={speedFields.has(field.key) ? baseBpm / 100 : 1}
+                    value={
+                      speedFields.has(field.key) && form[field.key] !== ""
+                        ? Math.round(Number(form[field.key]) * baseBpm) / 100
+                        : form[field.key]
+                    }
                     disabled={locked}
                     onChange={(event) =>
-                      store.patch({ [field.key]: event.target.value })
+                      store.patch({
+                        [field.key]:
+                          speedFields.has(field.key) &&
+                          event.target.value !== ""
+                            ? String(
+                                Math.round(
+                                  (Number(event.target.value) * 100) / baseBpm,
+                                ),
+                              )
+                            : event.target.value,
+                      })
                     }
                   />
                 </label>
@@ -648,7 +685,7 @@ export function LadderDialog({
                 <div className="ladder-levels" aria-label="阶梯速度级别">
                   {displayedSpeeds.map((speed, index) => (
                     <span key={speed}>
-                      {index + 1}. {speed}%
+                      {index + 1}. {ladderBpm(song, first, speed)} BPM
                     </span>
                   ))}
                 </div>
@@ -681,7 +718,8 @@ export function LadderDialog({
               </>
             )}
             <p className="parameter-help">
-              保存采用当前模式、声部、左右手、预备拍和节拍器设置。每一级连续达标后晋级，目标级也需达标。
+              保存采用当前转调、量化、模式、声部、左右手、预备拍和节拍器设置。BPM
+              按选段起点显示，保留原曲内部的速度变化。每一级连续达标后晋级，目标级也需达标。
             </p>
             {active && (
               <p className="practice-input-problem" role="status">

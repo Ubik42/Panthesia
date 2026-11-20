@@ -133,6 +133,7 @@ export function ladderInputProblem(
   total: number,
   mode: string,
   expression: ReturnType<typeof readLadderExpression>,
+  baseBpm = 100,
 ) {
   const within = (value: number, min: number, max: number) =>
     Number.isInteger(value) && value >= min && value <= max;
@@ -144,8 +145,9 @@ export function ladderInputProblem(
     !within(plan.startPercent, 25, 200) ||
     !within(plan.targetPercent, plan.startPercent, 200)
   )
-    return "起始与目标速度需在 25%–200%，目标应大于或等于起始速度。";
-  if (!within(plan.stepPercent, 1, 50)) return "每级增加 1–50 个百分点。";
+    return `起始与目标速度需在 ${baseBpm * 0.25}–${baseBpm * 2} BPM，目标应大于或等于起始速度。`;
+  if (!within(plan.stepPercent, 1, 50))
+    return `每级增加 ${baseBpm / 100}–${baseBpm / 2} BPM。`;
   if (!within(plan.passesRequired, 1, 10)) return "连续达标轮数需为 1–10。";
   if (!within(plan.accuracyPercent, 50, 100))
     return "正确率门槛需为 50%–100%。";

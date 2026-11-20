@@ -2315,6 +2315,7 @@ export default function App() {
           )}
           {state.ladder && (
             <LadderStatus
+              song={song ?? undefined}
               state={state}
               action={action}
               manage={() => setLadderDialog(true)}

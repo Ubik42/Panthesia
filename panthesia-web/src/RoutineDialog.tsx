@@ -2016,7 +2016,7 @@ export function RoutineDialog({
                 </p>
               )}
               {ladderItem ? (
-                <RoutineLadderGoalSummary preset={selectedLadder} />
+                <RoutineLadderGoalSummary preset={selectedLadder} song={song} />
               ) : (
                 <RoutineGoalEditor
                   goal={goal}

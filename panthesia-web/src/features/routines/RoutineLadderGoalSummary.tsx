@@ -1,8 +1,11 @@
-import type { LadderPreset } from "../../api";
+import { ladderBpm, passageTransformLabel } from "../practice/passagePractice";
+import type { LoadedSong, LadderPreset } from "../../api";
 
 export function RoutineLadderGoalSummary({
   preset,
+  song,
 }: {
+  song: LoadedSong | null;
   preset: LadderPreset | undefined;
 }) {
   if (!preset)
@@ -16,18 +19,25 @@ export function RoutineLadderGoalSummary({
     <section className="routine-ladder-goal" aria-label="速度阶梯达标目标">
       <h4>速度阶梯目标</h4>
       <p>
-        {preset.name} · 第 {preset.start}–{preset.end} 小节
+        {preset.name} · 第 {preset.start}–{preset.end} 小节 ·{" "}
+        {passageTransformLabel(preset)}
       </p>
       <dl>
         <div>
           <dt>速度范围</dt>
           <dd>
-            {plan.startPercent}% → {plan.targetPercent}%
+            {song
+              ? `${ladderBpm(song, preset.start, plan.startPercent)} → ${ladderBpm(song, preset.start, plan.targetPercent)} BPM`
+              : "打开曲目后显示 BPM"}
           </dd>
         </div>
         <div>
           <dt>每级速度增量</dt>
-          <dd>{plan.stepPercent} 个百分点</dd>
+          <dd>
+            {song
+              ? `${ladderBpm(song, preset.start, plan.stepPercent)} BPM`
+              : "随曲目速度"}
+          </dd>
         </div>
         <div>
           <dt>每级达标要求</dt>

@@ -234,6 +234,7 @@ impl Player {
                 format!("参考 {} 次踏板转换，{} 轮未完整对应；校准后的绝对偏移汇总 {} ms，有向偏移汇总 {} ms，波动汇总 {} ms", metric.reference_transitions, metric.correspondence_failures, number(metric.pedal_absolute_offset_ms), number(metric.pedal_offset_ms), number(metric.pedal_deviation_ms))
             };
             let item = RoutineItem {
+                practice: None,
                 id: String::new(),
                 title: format!("{} · {range} · {label}", history.display_name.chars().take(64).collect::<String>()),
                 notes: format!("最近同条件 {attempts} 次完整范围、正确率至少 90%；{evidence}。按原整曲/选段慢练，连续两轮准确性与专项要求同时达标。偏移/波动汇总为各轮统计量的中位数，不是逐样本中位数。踏板先确认输入有效；不推断姿势问题。"),

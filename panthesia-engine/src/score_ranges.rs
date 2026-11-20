@@ -49,7 +49,7 @@ mod tests {
                     .unwrap()
                     .as_nanos()
             ));
-        let mut p = Player::new(path, PathBuf::new(), true);
+        let mut p = Player::new(std::path::absolute(path).unwrap(), PathBuf::new(), true);
         p.command(Command::ImportScore {
             bytes: XML.as_bytes().to_vec(),
             name: "partial.musicxml".into(),
@@ -57,6 +57,39 @@ mod tests {
         })
         .unwrap();
         p
+    }
+    #[test]
+    fn planned_editions_restore_routine_ladder_and_named_score_passage() {
+        let mut p=player();let cid=p.file.as_ref().unwrap().content_id.clone();
+        let source=p.file.as_ref().unwrap().source_path.clone().unwrap();let original=std::fs::read(&source).unwrap();
+        let transform=crate::practice_variant::Variant{transpose:2,quantize:16,..Default::default()};
+        p.set_variant(&cid,p.score_revision,transform.clone()).unwrap();
+        let range:ScoreRange=serde_json::from_value(p.preview_score_range(0,0).unwrap()["range"].clone()).unwrap();
+        let saved=p.save_score_passage(None,"谱面段落".into(),"".into(),range).unwrap();
+        let passage=saved["passage"]["id"].as_str().unwrap();
+        let ladder=p.save_ladder(None,"提速",1,1,panthesia_core::speed_ladder::SpeedLadderPlan{start_percent:50,target_percent:100,step_percent:25,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:20},None).unwrap();
+        let lid=ladder["id"].as_str().unwrap();
+        let rid=p.save_routine(None,None,"统一条件日课".into(),"".into(),None).unwrap()["id"].as_str().unwrap().to_owned();
+        let goal=RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:20};
+        p.set_variant(&cid,p.score_revision,crate::practice_variant::Variant{transpose:-3,quantize:8,..Default::default()}).unwrap();
+        p.command(Command::PairScore{bytes:XML.replace("Piano</part-name>","Alternate</part-name>").into_bytes(),name:"另一谱面.musicxml".into(),content_id:cid.clone(),expected:None}).unwrap();
+        let alternative=p.notation.as_ref().unwrap().source_fingerprint.clone();
+        let item=p.save_routine_item(&rid,None,None,Some("passage"),Some(passage),"原段落".into(),"".into(),goal.clone()).unwrap()["id"].as_str().unwrap().to_owned();
+        assert_eq!(p.variant().transpose,-3);assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,alternative);
+        let litem=p.save_routine_item(&rid,None,None,Some("ladder"),Some(lid),"提速项目".into(),"".into(),goal).unwrap()["id"].as_str().unwrap().to_owned();
+        p.open_routine_item(&rid,"2026-11-19",&item,true).unwrap();
+        assert_eq!(p.variant(),transform);assert_eq!(p.state.passage.as_ref().unwrap().end,2.);
+        assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,saved["passage"]["scoreRange"]["scoreIdentity"].as_str().unwrap());
+        p.stop_routine().unwrap();p.set_variant(&cid,p.score_revision,Default::default()).unwrap();
+        p.start_ladder(lid,false).unwrap();assert_eq!(p.variant(),transform);assert_eq!(p.state.speed,0.5);p.stop_ladder().unwrap();
+        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();p.open_routine_item(&rid,"2026-11-19",&litem,true).unwrap();assert_eq!(p.variant(),transform);assert_eq!(p.state.speed,0.5);p.stop_routine().unwrap();
+        let backup:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(backup.version(),21);Backup::decode(&backup.encode().unwrap()).unwrap();
+        let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,17);
+        let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.start_ladder(lid,false).unwrap();assert_eq!(target.variant(),transform);
+        p.preferences.ladder_presets.get_mut(&cid).unwrap().iter_mut().find(|row|row.id==lid).unwrap().practice=None;
+        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();p.start_ladder(lid,false).unwrap();assert_eq!(p.variant(),transform);p.stop_ladder().unwrap();
+        let mut invalid:Backup=serde_json::from_value(serde_json::to_value(&backup).unwrap()).unwrap();invalid.routines[0].items[0].practice.as_mut().unwrap().performance_id="another-performance".into();assert!(invalid.encode().is_err());
+        assert_eq!(std::fs::read(source).unwrap(),original);
     }
     #[test]
     fn saved_score_passage_restores_registered_notation_and_rejects_changed_source() {
@@ -93,7 +126,7 @@ mod tests {
         let r:ScoreRange=serde_json::from_value(v["range"].clone()).unwrap();p.apply_score_range(&r).unwrap();assert_eq!(p.score_range_for_current_loop(),Some(r.clone()));
         let saved=p.save_score_passage(None,"反复拍内".into(),"保持连接".into(),r.clone()).unwrap();let id=saved["passage"]["id"].as_str().unwrap().to_string();p.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(p.state.passage.as_ref().unwrap().end,3.75);
         let plan=p.save_routine(None,None,"短句日课".into(),"".into(),None).unwrap();let rid=plan["id"].as_str().unwrap();let goal=RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:4};let item=p.save_routine_item(rid,None,None,Some("passage"),Some(&id),"反复连接".into(),"".into(),goal.clone()).unwrap();p.save_routine_item(rid,None,None,Some("current"),None,"当前原谱".into(),"".into(),goal).unwrap();assert!(matches!(&p.preferences.routines[0].items[1].target,RoutineTarget::ScorePassage{range}if range==&r));
-        let b:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(b.version(),20);let b=Backup::decode(&b.encode().unwrap()).unwrap();assert_eq!(b.passages.values().next().unwrap()[0].score_range,Some(r.clone()));let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,16);let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(target.state.passage.as_ref().unwrap().start,0.5);
+        let b:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(b.version(),21);let b=Backup::decode(&b.encode().unwrap()).unwrap();assert_eq!(b.passages.values().next().unwrap()[0].score_range,Some(r.clone()));let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,16);let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(target.state.passage.as_ref().unwrap().start,0.5);
         let data=p.data.clone();let path=p.file.as_ref().unwrap().source_path.clone().unwrap();drop(p);let mut p=Player::new(data,PathBuf::new(),true);p.command(Command::Load{path,title:"reopen".into()}).unwrap();p.command(Command::OpenPassage{id}).unwrap();p.open_routine_item(rid,"2026-10-02",item["id"].as_str().unwrap(),true).unwrap();p.command(Command::Play).unwrap();for _ in 0..600{p.tick(std::time::Duration::from_millis(10));for pitch in p.snapshot().required{p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();}if p.routine_status().unwrap()["progress"]["completed"]==true{break}}assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);assert_eq!(p.matcher.snapshot().matched_notes,2);
     }
     #[test]
@@ -214,7 +247,7 @@ mod tests {
         let snapshot: Backup =
             serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap())
                 .unwrap();
-        assert_eq!(snapshot.version(), 20);
+        assert_eq!(snapshot.version(), 21);
         let decoded = Backup::decode(&snapshot.encode().unwrap()).unwrap();
         assert_eq!(
             decoded.passages.values().next().unwrap()[0].score_range,

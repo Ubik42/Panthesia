@@ -197,6 +197,8 @@ impl Preferences {
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all="camelCase")]
 pub struct LadderPreset {
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub practice:Option<panthesia_core::song_project::PracticeEdition>,
     pub id:String,
     pub name:String,
     pub start:usize,

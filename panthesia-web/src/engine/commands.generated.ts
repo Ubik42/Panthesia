@@ -2142,6 +2142,7 @@ export interface ExercisePreset {
 }
 
 export interface LadderPreset {
+  "practice"?: PracticeEdition;
   "id": string;
   "name": string;
   "start": number;
@@ -2273,6 +2274,7 @@ export type RoutineTarget =
   | { "kind": "ladder"; "preset": LadderPreset; };
 
 export interface RoutineItem {
+  "practice"?: PracticeEdition;
   "id": string;
   "title": string;
   "notes": string;
