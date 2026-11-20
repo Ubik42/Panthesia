@@ -65,7 +65,7 @@ mod tests {
         let r:ScoreRange=serde_json::from_value(v["range"].clone()).unwrap();p.apply_score_range(&r).unwrap();assert_eq!(p.score_range_for_current_loop(),Some(r.clone()));
         let saved=p.save_score_passage(None,"反复拍内".into(),"保持连接".into(),r.clone()).unwrap();let id=saved["passage"]["id"].as_str().unwrap().to_string();p.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(p.state.passage.as_ref().unwrap().end,3.75);
         let plan=p.save_routine(None,None,"短句日课".into(),"".into(),None).unwrap();let rid=plan["id"].as_str().unwrap();let goal=RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:4};let item=p.save_routine_item(rid,None,None,Some("passage"),Some(&id),"反复连接".into(),"".into(),goal.clone()).unwrap();p.save_routine_item(rid,None,None,Some("current"),None,"当前原谱".into(),"".into(),goal).unwrap();assert!(matches!(&p.preferences.routines[0].items[1].target,RoutineTarget::ScorePassage{range}if range==&r));
-        let b:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(b.version(),11);let b=Backup::decode(&b.encode().unwrap()).unwrap();assert_eq!(b.passages.values().next().unwrap()[0].score_range,Some(r.clone()));let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,8);let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(target.state.passage.as_ref().unwrap().start,0.5);
+        let b:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(b.version(),20);let b=Backup::decode(&b.encode().unwrap()).unwrap();assert_eq!(b.passages.values().next().unwrap()[0].score_range,Some(r.clone()));let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,16);let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(target.state.passage.as_ref().unwrap().start,0.5);
         let data=p.data.clone();let path=p.file.as_ref().unwrap().source_path.clone().unwrap();drop(p);let mut p=Player::new(data,PathBuf::new(),true);p.command(Command::Load{path,title:"reopen".into()}).unwrap();p.command(Command::OpenPassage{id}).unwrap();p.open_routine_item(rid,"2026-10-02",item["id"].as_str().unwrap(),true).unwrap();p.command(Command::Play).unwrap();for _ in 0..600{p.tick(std::time::Duration::from_millis(10));for pitch in p.snapshot().required{p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();}if p.routine_status().unwrap()["progress"]["completed"]==true{break}}assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);assert_eq!(p.matcher.snapshot().matched_notes,2);
     }
     #[test]
@@ -186,7 +186,7 @@ mod tests {
         let snapshot: Backup =
             serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap())
                 .unwrap();
-        assert_eq!(snapshot.version(), 5);
+        assert_eq!(snapshot.version(), 20);
         let decoded = Backup::decode(&snapshot.encode().unwrap()).unwrap();
         assert_eq!(
             decoded.passages.values().next().unwrap()[0].score_range,
@@ -196,7 +196,7 @@ mod tests {
             serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone())
                 .unwrap();
         let package = crate::piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(package.manifest.version, 5);
+        assert_eq!(package.manifest.version, 16);
         assert_eq!(
             package.manifest.passages[0].score_range,
             Some(range.clone())
@@ -451,7 +451,7 @@ impl Player {
         }
         let content = self.file.as_ref().unwrap().content_id.clone();
         let updating = id.is_some();
-        let preset = PassagePreset {
+        let preset = PassagePreset { practice: Some(self.passage_practice_snapshot()?),
             id: id.unwrap_or_else(|| {
                 format!(
                     "passage-{}",

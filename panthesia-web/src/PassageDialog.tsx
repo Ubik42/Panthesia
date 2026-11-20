@@ -1,3 +1,4 @@
+import { passageNeedsReview, passageTransformLabel, passageInitialBpm } from "./features/practice/passagePractice";
 import { CopyPracticeDraft } from "./features/practice/CopyPracticeDraft";
 import {
   passageForm,
@@ -147,7 +148,7 @@ export function PassageDialog({
   };
   const active = passages.find((row) => row.id === id),
     conflict = loaded && practiceDraftConflict(draft, source.current, active);
-  const stale = (row: Passage) => !!(grid && row.grid && row.grid !== grid);
+  const stale = (row: Passage) => passageNeedsReview(row, grid);
   const navigationLocked = busy || pending || sourceChanged;
   const locked = navigationLocked || !draft;
   const search = editor.state.query.trim().toLocaleLowerCase("zh-CN"),
@@ -329,7 +330,7 @@ export function PassageDialog({
                     {row.preciseRange?.description ??
                       row.scoreRange?.description ??
                       `第 ${row.start}–${row.end} 小节`}{" "}
-                    · {Math.round(row.speed * 100)}% ·{" "}
+                    · {passageTransformLabel(row)} · {passageInitialBpm(song,row)} BPM ·{" "}
                     {row.settings.mode === "flow"
                       ? "连续"
                       : row.settings.mode === "listen"

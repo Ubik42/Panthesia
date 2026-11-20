@@ -227,6 +227,7 @@ fn finite_numbers(v: &Value) -> Result<(), String> {
 
 impl Backup {
     pub fn version(&self) -> u8 {
+        if self.passages.values().flatten().any(|row| row.practice.is_some()) { return 20; }
         if crate::metadata_templates::required_version(&self.metadata_templates) > 1 { return 19; }
         if self.history.values().flat_map(|s| &s.sessions).any(|s| s.context.as_ref().is_some_and(|c| !c.note_playback.is_empty())) { return 18; }
         if self.metadata_history.iter().flat_map(|row| &row.records).any(|record|
@@ -510,6 +511,7 @@ impl Backup {
             }
             let mut ids = BTreeSet::new();
             for p in rows {
+                if p.practice.is_some() { p.practice_edition(cid)?; }
                 identity(&p.id)?;
                 if !ids.insert(&p.id) {
                     return Err("备份片段编号重复".into());
@@ -700,7 +702,7 @@ impl Backup {
         if header["format"] != "neothesia-practice"
             || !matches!(
                 header["version"].as_u64(),
-                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19)
+                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20)
             )
             || header["size"].as_u64() != Some(data.len() as u64)
             || header["hash"].as_str() != Some(blake3::hash(data).to_hex().as_str())

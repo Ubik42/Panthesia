@@ -145,6 +145,8 @@ pub struct ScoreVersion {
 #[serde(rename_all = "camelCase")]
 pub struct PassagePreset {
     #[serde(default, skip_serializing_if="Option::is_none")]
+    pub practice: Option<panthesia_core::song_project::PracticeEdition>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
     pub precise_range: Option<crate::tick_ranges::TickRange>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub score_range: Option<crate::score_ranges::ScoreRange>,

@@ -221,6 +221,20 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 早期脚本等待隐藏的原生 option 和短暂提示文本，后续改为检查真实目录、循环状态与选中 ID；保存未因此重复执行，最终目录保留 2 条。未跑全套回归。下一步优先把段落的练习变换条件明确纳入核心快照与迁移，减少转调后重复核对；独立书签与 MIDI marker 仍待实现。整体 Goal active。
 
+## P1 / P3：段落练习版本快照与恢复批次
+
+- PassagePreset 新增可选 practice，直接复用 core::song_project::PracticeEdition / Variant，统一来源、变换参数和身份。普通、精确 A/B、MusicXML、纸谱及两类指法保存入口均记录快照。
+- OpenPassage 从 lib.rs 提取到 passage_practice。通过已有后台 song-switch 准备隔离音乐状态，恢复保存的转调 / 量化、核对网格及范围，再提交偏好和 Playback；无效范围不改变当前演奏。保留正确的偏好写入路径、恢复状态、未变换时的撤销与映射规则。
+- 旧段落从 grid 的 practice-v1 读取变换，目录读取只做兼容投影；成功打开才补齐快照。手工调号缺失时采用原默认信息。新快照核对计算身份与源演奏归属。
+- 快捷栏和管理窗口允许恢复有快照的段落，展示原调 / 移调、量化、BPM 和模式；管理列表的速度改为 BPM。原始文件与当前歌曲投影仍共用同一内容身份。
+- 备份新增版本 20，曲目包新增版本 16；新快照在解码时校验身份与归属，范围按对应变换后的实际演奏验证。旧格式继续可读，更新相关既有谱面 / 拍内往返检查的版本断言。
+
+只执行 1 项组合核心检查，覆盖普通 / 精确段落的条件恢复、旧记录补齐、准备失败保持原变换及音乐快照、备份 20 / 曲目包 16 往返，通过。见 work/passage-practice-core-test.log；受影响 Desktop Debug / 前端构建通过，见 passage-practice-desktop.log。
+
+实际桌面复用隔离资料 work/saved-passage-runtime。先从 +5 / 1/16 打开旧“第三句”，恢复原调 / 原始时序及 2.5–3.75 秒范围，并持久化迁移快照；再在 +2 / 1/16 下保存 0.6–1.8 秒“移调量化选段”，改至 -3 / 1/8 后打开，恢复 +2 / 1/16 与准确范围。段落快照、演奏 practice ID 和歌曲 project.practice.id 三者完全相同；原始 MIDI SHA-256 不变。最终源码重启后再次恢复成功，快捷栏与管理窗口都显示 100 BPM 和 +2 / 1/16，未捕获页面错误。
+
+证据 work/passage-practice-runtime/restore-evidence.json、final-reopen-evidence.json、restored.png、final-reopened.png、manager.png。未执行全套回归。计划 / 速度阶梯的条件协同、独立书签和其他矩阵未完成项继续安排；整体 Goal active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-saved-passages，程序源码提交 416a2ca，加入演奏时间线旁的 A/B 保存及段落重开。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 7F099C7977172C7FACFC7093ADF78CF3C9992A7B1F019F23EE5B9B24076C6029。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/saved-passages-release.log 及 work/saved-passages-package-check/release-evidence.json / startup.log。

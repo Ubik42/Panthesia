@@ -252,7 +252,7 @@ impl Package {
                 .as_slice(),
         )
         .map_err(|e| format!("曲目包清单无效：{e}"))?;
-        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].contains(&manifest.version) {
+        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].contains(&manifest.version) {
             return Err("曲目包版本暂不支持".into());
         }
         if let Some(layers) = &manifest.metadata_layers {
@@ -414,12 +414,15 @@ impl Package {
             return Err("曲目包的练习设置或小节范围无效".into());
         }
         for p in &manifest.passages {
-            if let Some(r)=&p.precise_range {r.validate()?;if manifest.version<7 || r.content_id!=manifest.content_id || p.score_range.is_some() || r.end_tick>file.tempo_track.seconds_to_pulses(file.duration.as_secs_f64()).round()as u64 {return Err("拍内段落需要第 7 版曲目包及正确归属".into())}}
+            if p.practice.is_some() { if manifest.version < 16 { return Err("段落练习版本需要第 16 版曲目包".into()); } p.practice_edition(&manifest.content_id)?; }
+            let effective = if p.practice.is_some() { Some(crate::practice_variant::transform(&file, &p.practice_edition(&manifest.content_id)?.transform)?) } else { None };
+            let passage_file = effective.as_ref().unwrap_or(&file);
+            if let Some(r)=&p.precise_range {r.validate()?;if manifest.version<7 || r.content_id!=manifest.content_id || p.score_range.is_some() || r.end_tick>passage_file.tempo_track.seconds_to_pulses(passage_file.duration.as_secs_f64()).round()as u64 {return Err("拍内段落需要第 7 版曲目包及正确归属".into())}}
             if let Some(range)=&p.score_range {
                 if (range.start_trim>0||range.end_trim>0)&&manifest.version<8{return Err("原谱拍内端点需要第 8 版曲目包".into());}
                 if manifest.version<5{return Err("原谱练习段需要第 5 版曲目包".into());}
                 range.validate()?;
-                if range.end_tick > file.tempo_track.seconds_to_pulses(file.duration.as_secs_f64()).round() as u64 {
+                if range.end_tick > passage_file.tempo_track.seconds_to_pulses(passage_file.duration.as_secs_f64()).round() as u64 {
                     return Err("原谱练习段超出曲目时长".into());
                 }
             }

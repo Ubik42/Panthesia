@@ -99,7 +99,7 @@ impl Player {
    let identity=serde_json::to_vec(&serde_json::json!([proof,&r])).map_err(|e|e.to_string())?;
    let id=format!("finger-pair-practice-{}",blake3::hash(&identity).to_hex());
    let mut settings=settings.clone();settings.rounds=r.rounds;
-   let preset=preferences::PassagePreset{id:id.clone(),name:r.name.trim().into(),start:r.start,end:r.end,notes:r.notes,speed:r.speed,settings,grid:Some(grid.clone()),score_range:None,precise_range:None};
+   let preset=preferences::PassagePreset{practice:Some(self.passage_practice_snapshot()?),id:id.clone(),name:r.name.trim().into(),start:r.start,end:r.end,notes:r.notes,speed:r.speed,settings,grid:Some(grid.clone()),score_range:None,precise_range:None};
    if let Some(old)=rows.iter().find(|p|p.id==id){
     if !crate::finger_practice::same_passage_content(old,&preset)?{return Err("练习条件或已保存练习段发生变化，请重新核对后保存".into());}
     existing+=1;

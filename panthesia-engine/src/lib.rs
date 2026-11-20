@@ -87,6 +87,7 @@ mod history_problem_plan;
 mod history_problem_cuts;
 mod practice_conditions;
 mod practice_variant;
+mod passage_practice;
 mod history_multi_plan;
 mod metadata_history;
 mod metadata_templates;
@@ -1648,7 +1649,7 @@ impl Player {
                             .as_nanos()
                     )
                 });
-                let preset = preferences::PassagePreset {
+                let preset = preferences::PassagePreset { practice: Some(self.passage_practice_snapshot()?),
                     grid: Some(self.grid_signature()),
                     score_range: None,
                     precise_range: None,
@@ -1689,63 +1690,7 @@ impl Player {
                 }
                 return Ok(serde_json::json!({"removed":false}));
             }
-            Command::OpenPassage { id } => {
-                let f = self.file.as_ref().ok_or("请先选择曲目")?;
-                let preset = self
-                    .preferences
-                    .passages
-                    .get(&f.content_id)
-                    .and_then(|ps| ps.iter().find(|p| p.id == id))
-                    .cloned()
-                    .ok_or("该练习段不属于当前曲目")?;
-                if preset
-                    .grid
-                    .as_ref()
-                    .is_some_and(|g| *g != self.grid_signature())
-                {
-                    return Err("小节网格已改变，请重新确认这个练习段的范围并保存".into());
-                }
-                if let Some(range)=&preset.score_range { self.validate_score_range(range)?; }
-                if let Some(range)=&preset.precise_range { self.validate_tick_range(range)?; }
-                if preset.score_range.is_none() && preset.precise_range.is_none() {
-                    let measures=&f.musical_time.measures;
-                    if preset.start==0 || preset.start>preset.end || preset.end>measures.len() {
-                        return Err("练习段的小节范围已失效，请重新确认后保存".into());
-                    }
-                    let start=f.tempo_track.pulses_to_duration(measures[preset.start-1].start_tick).as_secs_f64();
-                    let end=f.tempo_track.pulses_to_duration(measures[preset.end-1].end_tick).as_secs_f64().min(self.state.duration);
-                    if !start.is_finite() || !end.is_finite() || end-start<0.1 {
-                        return Err("练习段时长已失效，请重新确认后保存".into());
-                    }
-                }
-                self.panic();
-                self.state.status = "paused".into();
-                self.config.apply_practice_setup(&SongPracticeSetup {
-                    tracks: preset.settings.tracks.clone(),
-                    ..Default::default()
-                });
-                for t in &mut self.config.tracks {
-                    if let Some(part) = preset.settings.parts.get(&t.track_id) {
-                        t.practice_part = *part;
-                    }
-                }
-                self.state.mode = preset.settings.mode.unwrap_or_else(|| "wait".into());
-                self.state.wait = self.state.mode == "wait";
-                self.state.hands = preset.settings.hands;
-                self.state.count_in = preset.settings.count_in;
-                self.state.metronome = preset.settings.metronome;
-                self.state.latency = preset.settings.latency;
-                self.state.rounds = preset.settings.rounds;
-                self.state.adaptive = preset.settings.adaptive;
-                self.state.speed = preset.speed;
-                if let Some(range)=&preset.score_range {return self.apply_score_range(range);}
-                if let Some(range)=&preset.precise_range {return self.apply_tick_range(range);}
-                return self.command(Command::MeasureLoop {
-                    start: preset.start,
-                    end: preset.end,
-                    enabled: true,
-                });
-            }
+            Command::OpenPassage { id } => return self.open_saved_passage(&id),
             Command::ExercisePresets => {
                 return Ok(serde_json::json!({"presets":self.preferences.exercise_presets}));
             }
@@ -3298,6 +3243,30 @@ mod tests {
         assert_eq!(p.state.latency,7);
         assert_eq!(p.state.mode,"flow");
         assert_eq!(p.state.status,before);
+    }
+    #[test]
+    fn passage_practice_restores_transform_and_migrates_legacy_without_mutating_on_failure() {
+        let mut p=player(); let cid=p.file.as_ref().unwrap().content_id.clone();
+        p.command(Command::SavePassage{content_id:Some(cid.clone()),id:None,name:"原始".into(),start:1,end:1,notes:String::new()}).unwrap();
+        let original=p.preferences.passages[&cid][0].id.clone();
+        p.set_variant(&cid,p.score_revision,practice_variant::Variant{transpose:2,quantize:16,..Default::default()}).unwrap();
+        let range=tick_ranges::TickRange{description:String::new(),content_id:cid.clone(),grid:p.grid_signature(),start_tick:120,end_tick:600};
+        let saved=p.save_tick_passage(None,"转调量化".into(),String::new(),range).unwrap();
+        let transformed=saved["passage"]["id"].as_str().unwrap().to_owned();
+        // Simulate the old persisted shape, whose transform was encoded in its grid.
+        p.preferences.passages.get_mut(&cid).unwrap().iter_mut().find(|r|r.id==transformed).unwrap().practice=None;
+        p.command(Command::OpenPassage{id:original}).unwrap(); assert!(!p.variant().active());
+        p.command(Command::OpenPassage{id:transformed.clone()}).unwrap(); assert_eq!(p.variant().transpose,2); assert_eq!(p.variant().quantize,16);
+        assert!(p.preferences.passages[&cid].iter().find(|r|r.id==transformed).unwrap().practice.is_some());
+        let snapshot:practice_backup::Backup=serde_json::from_value(p.practice_backup_snapshot(&practice_backup::Selection::default()).unwrap()).unwrap();
+        assert_eq!(snapshot.version(),20); practice_backup::Backup::decode(&snapshot.encode().unwrap()).unwrap();
+        let package=p.command(Command::ExportPackage).unwrap(); let bytes:Vec<u8>=serde_json::from_value(package["bytes"].clone()).unwrap();
+        let decoded=piece_package::Package::decode(&bytes).unwrap();assert_eq!(decoded.manifest.version,16);assert!(decoded.manifest.passages.iter().all(|row|row.practice.is_some()));
+        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();
+        let before=p.variant(); let file=p.file.clone(); let state=p.state.status.clone();
+        let row=p.preferences.passages.get_mut(&cid).unwrap().iter_mut().find(|r|r.id==transformed).unwrap();
+        row.grid=Some("changed-grid".into());
+        assert!(p.command(Command::OpenPassage{id:transformed}).is_err()); assert_eq!(p.variant(),before);assert!(p.file.as_ref().unwrap().same_snapshot(file.as_ref().unwrap()));assert_eq!(p.state.status,state);
     }
     #[test]
     fn passage_write_failure_keeps_memory_equal_to_saved_data() {

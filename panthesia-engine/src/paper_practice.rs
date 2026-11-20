@@ -158,7 +158,7 @@ impl Player {
         let rows = prefs.passages.entry(r.content_id.clone()).or_default();
         let mut settings = self.paper_practice_settings();
         settings.rounds = r.rounds;
-        let preset = preferences::PassagePreset {
+        let preset = preferences::PassagePreset { practice: Some(self.passage_practice_snapshot()?),
             id: id.clone(),
             name: r.name.trim().into(),
             start: r.start,

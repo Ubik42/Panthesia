@@ -52,12 +52,10 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
             serde_json::to_value(PassageCatalog {
                 content_id: content.clone(),
                 grid: reader.grid_signature(),
-                passages: reader
-                    .preferences
-                    .passages
-                    .get(content)
-                    .cloned()
-                    .unwrap_or_default(),
+                passages: reader.preferences.passages.get(content).cloned().unwrap_or_default().into_iter().map(|mut row| {
+                    if row.practice.is_none() { row.practice = row.practice_edition(content).ok(); }
+                    row
+                }).collect(),
                 catalog_revision,
                 write_settled: None,
             })

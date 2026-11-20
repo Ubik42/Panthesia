@@ -1,3 +1,8 @@
+import {
+  passageNeedsReview,
+  passageTransformLabel,
+  passageInitialBpm,
+} from "./passagePractice";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookmarkPlus, FolderOpen } from "lucide-react";
 import { api, type LoadedSong } from "../../api";
@@ -121,16 +126,12 @@ export function SavedPassageBar({
     !["playing", "countIn"].includes(state.status) &&
     state.pressed.length === 0;
   const row = catalog?.passages.find((row) => row.id === selected);
-  const stale = !!row?.grid && row.grid !== catalog?.grid;
+  const stale = !!row && passageNeedsReview(row, catalog?.grid);
   const bounds = row ? savedPassageBounds(song, row) : null;
-  const savedTempo = useMemo(() => {
-    if (!row || !bounds) return null;
-    let bpm = 120;
-    for (let i = song.tempo.length - 1; i >= 0; i--) {
-      if (song.tempo[i].seconds <= bounds.start) { bpm = song.tempo[i].bpm; break; }
-    }
-    return Math.round(bpm * row.speed);
-  }, [bounds?.start, row?.speed, song.tempo]);
+  const savedTempo = useMemo(
+    () => (row ? passageInitialBpm(song, row) : null),
+    [row, song.tempo, song.measures],
+  );
   const startNaming = () => {
     if (!canSave || !range.range) return;
     if (!name)
@@ -206,7 +207,9 @@ export function SavedPassageBar({
       range.reset();
       await changed();
       if (alive.current)
-        setMessage(`已打开“${row.name}”，使用保存的速度、声部和练习模式。`);
+        setMessage(
+          `已打开“${row.name}”，使用保存的转调、量化、速度、声部和练习模式。`,
+        );
     });
   return (
     <section className="saved-passage-bar" aria-label="已保存练习选段">
@@ -228,7 +231,7 @@ export function SavedPassageBar({
             {catalog?.passages.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.name}
-                {row.grid && row.grid !== catalog.grid ? " · 条件已变化" : ""}
+                {passageNeedsReview(row, catalog.grid) ? " · 条件需核对" : ""}
               </option>
             ))}
           </select>
@@ -255,8 +258,14 @@ export function SavedPassageBar({
           管理
         </button>
         {bounds && !stale && (
-          <span className="saved-passage-summary" title={`第 ${row!.start}–${row!.end} 小节`}>
-            {rangeTime(bounds.start)}–{rangeTime(bounds.end)} · {savedTempo} BPM · {practiceModes.find(mode => mode.value === row!.settings.mode)?.label ?? "练习"}
+          <span
+            className="saved-passage-summary"
+            title={`第 ${row!.start}–${row!.end} 小节`}
+          >
+            {rangeTime(bounds.start)}–{rangeTime(bounds.end)} · {savedTempo} BPM
+            · {row?.practice ? passageTransformLabel(row) + " · " : ""}{" "}
+            {practiceModes.find((mode) => mode.value === row!.settings.mode)
+              ?.label ?? "练习"}
           </span>
         )}
       </div>
@@ -294,7 +303,7 @@ export function SavedPassageBar({
           >
             收起
           </button>
-          <span>同时保存当前速度、声部和练习模式。</span>
+          <span>同时保存当前转调、量化、速度、声部和练习模式。</span>
         </form>
       )}
       {stale && (

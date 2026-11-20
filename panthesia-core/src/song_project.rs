@@ -17,7 +17,7 @@ pub struct NotationGeneration {
     pub notes_path: String,
     pub report_path: String,
 }
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PracticeEdition {
     pub id: String,

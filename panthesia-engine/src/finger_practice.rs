@@ -47,7 +47,7 @@ impl Player {
             let identity=serde_json::to_vec(&serde_json::json!([&content_id,&fingerprint,&range])).map_err(|e|e.to_string())?;
             let id=format!("finger-practice-{}",blake3::hash(&identity).to_hex());
             let mut settings=settings.clone();settings.rounds=range.rounds;
-            let preset=preferences::PassagePreset {id:id.clone(),name:range.name.trim().into(),start:range.start,end:range.end,
+            let preset=preferences::PassagePreset { practice: Some(self.passage_practice_snapshot()?),id:id.clone(),name:range.name.trim().into(),start:range.start,end:range.end,
                 notes:range.notes,speed:range.speed,settings,grid:Some(grid.clone()),score_range:None,precise_range:None};
             if let Some(saved)=passages.iter().find(|saved|saved.id==id) {
                 if !same_passage_content(saved,&preset)? {

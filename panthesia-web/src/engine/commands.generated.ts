@@ -2122,6 +2122,7 @@ export interface SessionSettings {
 }
 
 export interface PassagePreset {
+  "practice"?: PracticeEdition;
   "preciseRange"?: TickRange;
   "scoreRange"?: ScoreRange;
   "grid": string | null;

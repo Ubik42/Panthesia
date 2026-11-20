@@ -208,7 +208,7 @@ impl Player {
         }) {
             return Err("原练习段已不存在，请重新读取".into());
         }
-        let preset = PassagePreset {
+        let preset = PassagePreset { practice: Some(self.passage_practice_snapshot()?),
             id: id.unwrap_or_else(|| {
                 format!(
                     "passage-{}",
@@ -386,7 +386,7 @@ mod tests {
         assert_eq!(score_preview["start"], 1.25);
         assert_eq!(score_preview["end"], 3.5);
         let b:Backup = serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();
-        assert_eq!(b.version(), 11);
+        assert_eq!(b.version(), 20);
         let b = Backup::decode(&b.encode().unwrap()).unwrap();
         assert_eq!(
             b.passages.values().next().unwrap()[0].precise_range,
@@ -396,7 +396,7 @@ mod tests {
             serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone())
                 .unwrap();
         let pack = crate::piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(pack.manifest.version, 7);
+        assert_eq!(pack.manifest.version, 16);
         assert_eq!(pack.manifest.passages[0].precise_range, Some(r.clone()));
         let mut target = player();
         target
