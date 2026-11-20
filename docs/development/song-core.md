@@ -10,7 +10,13 @@
 
 迁移先读取旧管理副本的 RON，再读取外部来源；原字节按哈希保存到 library/legacy-inputs。旧 preferences.songs[contentId].parts 原先最后生效，首次迁入时沿用该优先级，并保存 preferences-before-annotations.json。采用新文件演奏后不再写回 parts；自动/自己弹/静音及可见性仍是每次练习的会话配置。逐音、指法及旧保存日志经过原有文件事务发布，旧 Sidecar 日志仍指向旧 RON。
 
-workspace 不再逐条追加为选曲结果，旧条目经一次性导入中心目录；部分元数据、位置修复和后台索引仍在过渡缓存。内置模板、生成练习和曲目包等非文件演奏入口仍有旧格式适配器；这部分以及完整谱面资产、备份迁移尚未收束。SongProject 继续作为关系与练习变换的读取投影。
+workspace 不再逐条追加为选曲结果，旧条目经一次性导入中心目录；部分元数据、位置修复和后台索引仍在过渡缓存。内置模板、生成练习和曲目包现已接入持有资产与 JSON 标注。SongProject 继续作为关系与练习变换的读取投影。
+
+MusicXML/MXL 字节保存在 library/assets/notation/<BLAKE3>.musicxml|mxl；命名、版本与采用关系分别保存。已变化的占用文件原地保留，正确字节另存 restored-N。打开歌曲与启动恢复时在后台迁入配套谱面，原始外部文件保持原状。PDF/图片继续使用既有 score-attachments 内容目录与校验，当前没有强制搬到另一目录。
+
+生成练习保存 library/assets/exercises/<practiceId>.mid，以稳定的练习身份关联 library/annotations/<practiceId>.json。practiceId 沿用既有规范，缓存字节由标准速度、双手和一次重复生成；该逻辑身份与 MIDI 原字节哈希分别校验。旧 song-assets 仅作为兼容读取来源，首次迁入时保存旧资料快照。
+
+单演奏曲目包使用 panthesia-piece 第 19 版，包含原始 MIDI、MusicXML 版本、纸谱及标注、手别/指法和练习变换参数。导入恢复至持有目录；旧 neothesia-piece 第 1–18 版继续可读。此格式覆盖一份演奏，同一歌曲多份演奏的完整归档仍待实现。
 
 Look at the Sky 已迁移至真实资料目录：当前五个文件对应四份内容，主演奏与原调自动对齐字节相同。四份演奏属于同一歌曲，四条旧身份可重联；另一份旧内容未命中并保留历史。量化版旧设置 0=Other、1=RightHand、2=LeftHand 已进入内容标注。原源文件与旧资料哈希未变，迁移前冷快照和逐文件回执保存在 work/original-product-reset。摘要见 evidence/annotation-migration-2026-11-20.json。
 

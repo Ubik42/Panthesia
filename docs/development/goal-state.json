@@ -7,7 +7,7 @@
     "B00"
   ],
   "nextBatch": "B02",
-  "currentTask": "B01：文件演奏标注已统一、Look at the Sky 已迁移；继续谱面资产持有、完整备份和兼容写入口退出。",
+  "currentTask": "B01：谱面/内置/生成练习/单演奏包已统一；继续完整歌曲归档、兼容入口退出与其余曲库迁移。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T12:27:43Z",
   "nextDirectionReviewAt": "2026-11-20T14:27:43Z",
@@ -23,36 +23,32 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "文件演奏统一 JSON 内容标注，手别/逐音/指法/小节/采用谱面同属内容",
-    "文件导入与扫描共享管理副本，旧附件/设置迁移快照",
-    "轨道编辑的普通与演奏调节入口均转后台事务",
-    "旧 Sidecar 日志兼容，新文档身份/版本保护",
-    "退出 workspace 条目追加，旧目录记录一次性导入",
-    "独立桌面保存、源文件移动与重开确认",
-    "真实 Look at the Sky 五来源/四演奏/一歌曲迁移完成"
+    "MusicXML/MXL 不可变内容资产，外部路径丢失与已变化占用副本恢复",
+    "内置练习和生成练习迁入持有 MIDI 与统一 JSON，旧资料快照保留",
+    "Panthesia 第 19 版单演奏包保存原始 MIDI、谱面和练习变换",
+    "启动恢复在后台迁移并重建资产观察记录",
+    "导入提交后直接登记中心目录，读取优先持有副本",
+    "三项定向检查通过；桌面原生导入/制谱保存/变换/包往返/重启通过"
   ],
   "remainingCritical": [
-    "其余曲库与谱面资产的迁移、完整歌曲备份",
-    "非文件演奏与旧兼容写入口退出",
+    "完整歌曲多演奏归档、旧兼容写入口收束及其余真实曲库迁移",
     "旧 MIDI/布局实现替换",
     "完整下级交互复刻",
     "实时声音/渲染与长谱边界",
     "退役实现和来源审计"
   ],
   "nextEntry": [
-    "panthesia-engine/src/library_scores.rs",
-    "panthesia-engine/src/score_attachments",
     "panthesia-engine/src/package_commands.rs",
-    "panthesia-engine/src/exercise_assets.rs",
-    "panthesia-engine/src/library.rs",
-    "panthesia-engine/src/practice_backup.rs"
+    "panthesia-engine/src/song_repository.rs",
+    "panthesia-engine/src/library_workspace.rs",
+    "panthesia-engine/src/library_metadata.rs",
+    "panthesia-engine/src/routine_loading.rs"
   ],
   "validation": [
-    "Six focused repository/migration checks passed",
-    "Owned desktop IPC: track/note hand/finger edits, source move and restart passed",
-    "Current Debug desktop built; final binary reopened owned profile successfully",
-    "Owned project migration passed before real migration",
-    "Look at the Sky migrated: 5 sources, 4 contents, 1 song, 4 playable rows, original inputs unchanged"
+    "Three unified asset checks passed",
+    "Owned native desktop: import MIDI, save MusicXML, transpose/quantize, export/import package and immediate directory registration passed",
+    "Owned desktop restart: same managed content restored, startup ready with no warnings",
+    "Debug built successfully; formal release remains a67ea54"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -66,14 +62,15 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T12:27:02.017640+00:00",
-  "implementationRevision": "4613db343149d3b5529ae4483c8953d1ef53e0cb",
+  "lastImplementationCheckpointAt": "2026-11-20T12:51:38.486053+00:00",
+  "implementationRevision": "c72d1fb1a00ace9dcd1b09d1365ef16a7e41da8f",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
-    "4613db3"
+    "4613db3",
+    "c72d1fb"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "F356ACC174D6BC3DCC9663D0559A790E3FD7D2D8A160D7176C7DAE4D8B8501C2",
+  "developmentExecutableSha256": "8F0AA6C7DE4AD38CF3FA48C656A442E8EBD8B456A8F7F6508321709AFFC71F56",
   "developmentIncludesBaselineUncommitted": true
 }
