@@ -11,7 +11,7 @@
     "B04"
   ],
   "nextBatch": "B06",
-  "currentTask": "B05/P15：分页 SVG 与租期回收已接入；继续范围排版/映射和曲中调号投影，然后完成 P16–P17。",
+  "currentTask": "B05/P15：MIDI 练习谱范围生成/排版/映射已接入；继续外部原谱范围化与曲中调号投影，然后完成 P16–P17。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T16:13:51Z",
   "nextDirectionReviewAt": "2026-11-20T18:13:51Z",
@@ -27,19 +27,15 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "in-memory PlaybackSession, immutable timeline adapter and shared musical cursor",
-    "mode/wait/hand switches preserve transport; panic is shared stop generation",
-    "driver tick leaves persistence capture; regular MIDI packets use fixed arrays",
-    "ordinary metronome now pulses; count-in no longer clones full snapshots",
-    "bounded full-note sprites with tall-note fallback; static key labels cached",
-    "Windows GS and Pianoteq WASAPI loopback, complete five-minute playback, input/wait chord and held-key normal close",
-    "SVG pages load on demand with 32 MiB / 16-page LRU; shared initialization leases release WASM workers after last reader",
-    "MEI metadata indexing does not render SVG; current page appears before mapping completes",
-    "MusicXML sounding alterations survive Verovio import; generated notation v3 writes key-aware accidental marks",
-    "Bounded MXL decoder shared by desktop and local service; final desktop opens compressed 21-page score"
+    "MIDI practice notation prepares 32-measure windows through the detached ScoreView command",
+    "Global note/segment IDs, source timing, boundary ties, meter/tempo and assigned hands survive range changes",
+    "Window mapping verifies displayed fingerprint and binds trusted token to measure range; key estimation runs off driver",
+    "Empty rest windows retain following; manual page edges and transport position move between ranges",
+    "Restored notation registry publishes through recoverable storage transaction before startup snapshot installs",
+    "Long timeline labels use viewport width and collision spacing; score diagnostics and DuET guidance live in existing options"
   ],
   "remainingCritical": [
-    "B05 长谱/后台生成及曲中调号投影",
+    "B05 外部 MusicXML 原谱范围化、曲中调号投影、DuET 采用与练习变换/ABC 衔接",
     "B06 完整录音与整体整合",
     "B07 旧应用实现退役、来源审核、正式包和实际使用交付"
   ],
@@ -54,17 +50,13 @@
     "panthesia-web/src-tauri/src/score_jobs.rs"
   ],
   "validation": [
-    "Web and embedded Debug builds passed; 4 targeted session/control cases passed",
-    "Windows GS: actual WASAPI signal and near-zero after panic",
-    "Pianoteq: actual WASAPI signal with metronome and near-zero after panic",
-    "19200-note full five-minute playback completed; frame statistics in evidence",
-    "USB input connected; partial chord waits, full chord advances, continuous resumes",
-    "Playing desktop with held note closed normally with exit code 0",
-    "Owned original MIDI/annotations unchanged; original 9 workspace changes preserved",
-    "P15: Web, engine and final embedded Debug builds passed; one late-page mapping and one key-aware accidental case passed",
-    "Native 21-page / 8000-note compressed score: first SVG only, 8000 located, zero skipped; last page preview works",
-    "Actual worker LRU eviction observed; initializing-reader cancellation, reopen and last-reader release passed",
-    "Current 0fe4dc5 desktop smoke: compressed score ready, worker released, normal exit; MIDI and previous annotations unchanged"
+    "2 targeted core range cases passed, including 100001-note source and overlapping tied/meter/tempo windows",
+    "1 source-bound range mapping case and 1 checked startup registry publication case passed",
+    "Web/protocol and embedded Debug builds passed; original 35 engine warnings and Vite chunk warning remain",
+    "Native 100016-note / 6379-measure song: cross-range pages, far seek, empty rest window and end-note following passed",
+    "Continuous playback crossed 64-second boundary and remained playing with no engine error",
+    "Final 30661bc desktop: 1440x960 and 760x620 rulers have no label overlap or horizontal document overflow; guidance stays in options; normal exit 0",
+    "Source MIDI and previous owned annotations unchanged; original 9 workspace edits preserved"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -78,8 +70,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T16:57:43.780741+00:00",
-  "implementationRevision": "0fe4dc590719e4f28384721f5d1fcf6e6d9e1250",
+  "lastImplementationCheckpointAt": "2026-11-20T17:22:11.322181+00:00",
+  "implementationRevision": "30661bc302ef1a85bbac202e615b2b47c44d1bc6",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -100,10 +92,15 @@
     "2331d0c",
     "63cd930",
     "c35484a",
-    "0fe4dc5"
+    "0fe4dc5",
+    "1fecbbb",
+    "ecab0b1",
+    "8547393",
+    "688df52",
+    "30661bc"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "243613D49F70DC59DC0C9D6B060C064B3763F9EC6CADA8ED5238BBCF29C153D1",
+  "developmentExecutableSha256": "6F60AD44FE6C08D4D4A33B09B19FA8E1A913DA07C2E8F08D91F136B256182E85",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,
