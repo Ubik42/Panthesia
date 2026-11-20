@@ -18,7 +18,6 @@ import {
 import "./interfaceSettings.css";
 import { InterfaceBackupSettings } from "./InterfaceBackupSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
-import { LayoutSettings } from "./LayoutSettings";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { isComposingKey, ownsInputLayer } from "../../app/inputOwnership";
 import { X } from "lucide-react";
@@ -53,7 +52,7 @@ export function DisplaySettingsDialog({
     workbench.getSnapshot,
   );
   const section = draft.section;
-  useEffect(()=>{if(initialSection)workbench.update({section:initialSection});},[initialSection]);
+  useEffect(()=>{if(initialSection)workbench.update({section:initialSection});else if(workbench.getSnapshot().section==="layout")workbench.update({section:"display"});},[initialSection]);
   const changeSection = (section: SettingsSection) => {
     setCapture(null);
     workbench.update({ section });
@@ -177,22 +176,6 @@ export function DisplaySettingsDialog({
                   <div className="display-settings-fields">
                     <LabelSettings value={value} change={update}/>
                     <label>
-                      提示字号
-                      <select
-                        aria-label="键盘提示字号"
-                        value={value.fontSize}
-                        onChange={(event) =>
-                          update({ fontSize: Number(event.target.value) })
-                        }
-                      >
-                        {[10, 12, 14, 16].map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
                       声部配色
                       <select
                         aria-label="键盘声部配色"
@@ -211,25 +194,8 @@ export function DisplaySettingsDialog({
                     <PreviewBarsControl value={value.previewBars} change={previewBars=>update({previewBars})} label="前方预览" ariaLabel="键盘音符预览小节数"/>
                   </div>
                   <KeyboardRangeSettings value={value} change={update} input={input} />
-                  <div className="display-settings-checks">
-                    {[["octave", "显示音区数字"]].map(([key, label]) => (
-                      <label key={key}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(
-                            value[key as keyof DisplayPreferences],
-                          )}
-                          onChange={(event) =>
-                            update({ [key]: event.target.checked })
-                          }
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
                   <p className="parameter-help">
-                    固定唱名以 C 为 Do；级数按大调排列，以所选主音为
-                    1，右下数字表示音区，只改变提示，不移调演奏。窄键上的文字会缩小，放不下时隐藏；指法显示已有标记。
+                    琴键和音符分别设置标签。首调唱名与音阶级数跟随当前练习调性；指法显示已保存的标记。
                   </p>
                 </>
               ),
@@ -238,11 +204,6 @@ export function DisplaySettingsDialog({
               id: "appearance",
               label: "外观与光效",
               content: <div className="appearance-workspace">{section === "appearance" && <PianoAppearancePreview value={value} />}<PianoEffectsSettings value={value} change={update} /></div>,
-            },
-            {
-              id: "layout",
-              label: "练习室布局",
-              content: <LayoutSettings value={value} change={change} />,
             },
             {
               id: "keyboard",
