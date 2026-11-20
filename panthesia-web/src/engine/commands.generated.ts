@@ -2463,6 +2463,9 @@ export type EngineCommand =
   | { type: "audioDevices" }
   | { type: "audioDevice"; "name"?: string | null }
   | { type: "songPreview"; "path": string }
+  | { type: "startSongAudition"; "path": string; "id": string }
+  | { type: "stopSongAudition"; "id": string }
+  | { type: "songAuditionState"; "id": string }
   | { type: "readRepertoire"; "path"?: string | null; "content_id"?: string | null }
   | { type: "songCatalog" }
   | { type: "inspectNotation"; "path": string; "content_id": string; "version_id": string }

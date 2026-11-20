@@ -33,6 +33,7 @@ import {
   songLocation,
   type BrowserSong,
 } from "./songCatalog";
+import { useSongAudition } from "./useSongAudition";
 import { useSongCatalog } from "./useSongCatalog";
 import { BrowserSongVersions } from "./BrowserSongVersions";
 
@@ -163,14 +164,10 @@ export function SongBrowser({
     [tab, setTab] = useState("all"),
     [globalSearch, setGlobalSearch] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null),
-    [previewing, setPreviewing] = useState(false),
     [error, setError] = useState(""),
     [opening, setOpening] = useState(false),
     [refreshing, setRefreshing] = useState(false);
   const queryValue = useDeferredValue(query.trim().toLocaleLowerCase()),
-    timers = useRef<ReturnType<typeof setTimeout>[]>([]),
-    active = useRef(new Set<number>()),
-    previewEpoch = useRef(0),
     list = useRef<HTMLDivElement>(null);
   const grouping = useSongCatalog(rows);
   const catalogIndex = useMemo(
@@ -184,18 +181,6 @@ export function SongBrowser({
     () => new Map(rows.map((row) => [libraryPath(row.path), row])),
     [rows],
   );
-  const stopPreview = () => {
-    ++previewEpoch.current;
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
-    for (const pitch of active.current)
-      void api
-        .command({ type: "note", pitch, active: false, velocity: 0 })
-        .catch(() => {});
-    active.current.clear();
-    setPreviewing(false);
-  };
-  useEffect(() => () => stopPreview(), []);
   const readRoots = async () => {
     try {
       const value = await api.command<{ folders: LibraryFolder[] }>({
@@ -386,6 +371,8 @@ export function SongBrowser({
   const selected = selectedGroup
     ? songLocation(selectedGroup, selectedPath)
     : undefined;
+  const audition = useSongAudition(selected?.path);
+  const stopPreview = () => { void audition.stop().catch(e => setError(String(e))); };
   const selectedPerformance = selectedGroup?.performances.find(
     (performance) =>
       performance.id ===
@@ -436,44 +423,14 @@ export function SongBrowser({
     };
   }, [selected?.path]);
   const listen = () => {
-    if (previewing) {
-      stopPreview();
-      return;
-    }
-    if (!preview || unavailable) return;
-    stopPreview();
-    setPreviewing(true);
-    const epoch = previewEpoch.current,
-      first = preview.preview[0]?.start ?? 0;
-    const send = (pitch: number, on: boolean) => {
-      if (epoch !== previewEpoch.current) return;
-      on ? active.current.add(pitch) : active.current.delete(pitch);
-      void api
-        .command({ type: "note", pitch, active: on, velocity: on ? 88 : 0 })
-        .catch((e) => {
-          if (epoch === previewEpoch.current) {
-            setError(String(e));
-            stopPreview();
-          }
-        });
-    };
-    for (const note of preview.preview) {
-      if (note.start - first >= 8) break;
-      timers.current.push(
-        setTimeout(() => send(note.pitch, true), (note.start - first) * 1000),
-        setTimeout(
-          () => send(note.pitch, false),
-          Math.min(8, note.start - first + note.duration) * 1000,
-        ),
-      );
-    }
-    timers.current.push(setTimeout(stopPreview, 8100));
+    if (audition.active) stopPreview();
+    else void audition.start();
   };
   const begin = async () => {
     if (!selected || opening || unavailable) return;
-    stopPreview();
     setOpening(true);
     try {
+      await audition.stop();
       await open(selected);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
@@ -653,7 +610,7 @@ export function SongBrowser({
             <button
               className="browser-resume"
               disabled={!!unavailable}
-              onClick={resume}
+              onClick={() => { void audition.stop().then(resume).catch(e => setError(String(e))); }}
             >
               <span>
                 <small>继续上次演奏</small>
@@ -756,9 +713,9 @@ export function SongBrowser({
             </p>
           )}
           {groups.slice(page * 60, (page + 1) * 60).map((group) => {
-            const isCurrent = group.performances.some(
+            const isCurrent = !!current && group.performances.some(
               (performance) =>
-                performance.contentId === current?.contentId ||
+                (!!performance.contentId && performance.contentId === current.contentId) ||
                 performance.locations.some(
                   (row) =>
                     libraryPath(row.path) ===
@@ -890,13 +847,16 @@ export function SongBrowser({
                 <dd>{preview?.tracks ?? "—"}</dd>
               </div>
             </dl>
+            <div className="browser-song-actions">
             <button
-              className="browser-audition"
+              className={`browser-audition${audition.active ? " is-playing" : ""}`}
+              aria-pressed={audition.active}
               disabled={!preview || !!unavailable || opening}
               onClick={listen}
             >
-              {previewing ? <Pause size={17} /> : <Headphones size={17} />}{" "}
-              {previewing ? "停止试听" : "试听开头 8 秒"}
+              {audition.active ? <Pause size={17} /> : <Headphones size={17} />}{" "}
+              {audition.phase === "preparing" ? "取消准备" : audition.active ? "停止试听" : "试听开头 8 秒"}
+              {audition.phase === "playing" && <span className="browser-audition-time">{audition.position.toFixed(1)} / {audition.duration.toFixed(1)} 秒</span>}
             </button>
             <button
               className="browser-begin"
@@ -906,6 +866,8 @@ export function SongBrowser({
               <Play size={17} fill="currentColor" />
               {opening ? "正在准备…" : "开始演奏"}
             </button>
+            {audition.error && <p className="browser-audition-error" role="alert">{audition.error}</p>}
+            </div>
             <div className="browser-sound-status">
               <i className={state.sound?.ready ? "ready" : ""} />
               <span>

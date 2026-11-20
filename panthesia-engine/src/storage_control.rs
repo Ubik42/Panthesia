@@ -24,6 +24,8 @@ pub(super) fn allowed(command: &Command) -> bool {
             | Command::ReadLibraryOpen { .. }
             | Command::CancelLibraryOpen { .. }
             | Command::Pause
+            | Command::StopSongAudition { .. }
+            | Command::SongAuditionState { .. }
             | Command::StopFingerDemo { .. }
             | Command::FingerDemoState
             | Command::CurrentSong

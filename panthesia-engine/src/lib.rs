@@ -1,4 +1,5 @@
 mod loop_practice;
+mod song_audition;
 mod bookmarks;
 pub mod state_order;
 pub mod music_import;
@@ -243,7 +244,7 @@ mod playback_driver;
 /// Only bounded control commands may use the reserved service and runtime lane.
 pub fn is_control_command(command: &Command) -> bool {
     matches!(command, Command::Panic | Command::Pause | Command::Note { .. }
-        | Command::StopFingerDemo { .. } | Command::FingerDemoState | Command::Tasks | Command::CancelTask { .. } | Command::CancelHistoryRead { .. }
+        | Command::StopSongAudition { .. } | Command::SongAuditionState { .. } | Command::StopFingerDemo { .. } | Command::FingerDemoState | Command::Tasks | Command::CancelTask { .. } | Command::CancelHistoryRead { .. }
         | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. })
 }
 
@@ -370,6 +371,9 @@ struct Player {
     expression_attempt_started:bool,
     last_click: Option<(usize, usize)>,
     finger_demo: Option<finger_demo::Demo>,
+    song_audition: Option<song_audition::Playback>,
+    song_audition_pending: Option<String>,
+    cancelled_song_auditions: std::collections::VecDeque<String>,
     audio_stop_epoch: u64,
     cancelled_replay_starts: std::collections::VecDeque<String>,
     recorder: panthesia_core::recorder::FreeplayRecorder,
@@ -485,6 +489,9 @@ impl Player {
             expression_attempt_started:false,
             last_click: None,
             finger_demo: None,
+            song_audition: None,
+            song_audition_pending: None,
+            cancelled_song_auditions: Default::default(),
         }
     }
     fn annotation_path(&self, file: &MidiFile) -> Result<PathBuf, String> {
@@ -499,6 +506,7 @@ impl Player {
 
     }
     fn begin_play(&mut self) {
+        self.stop_song_audition(None);
         if self.session_clock == Duration::ZERO {
             self.active_expression_goal = self.effective_expression_goal();
         }
@@ -1069,6 +1077,10 @@ impl Player {
         self.install_soundfont_owned(revision,prepared)
     }
     fn panic(&mut self) {
+        let audition = self.song_audition.take();
+        let restore_audition = audition.is_some();
+        self.retire(audition);
+        self.song_audition_pending = None;
         self.audio_stop_epoch = self.audio_stop_epoch.wrapping_add(1);
         self.performance_capture.close(self.session_clock.as_secs_f64(),self.state.position);
         self.finger_demo = None;
@@ -1088,6 +1100,7 @@ impl Player {
         }
         self.state.pressed.clear();
         self.state.pedal = 0;
+        if restore_audition { self.restore_track_sound(); }
     }
     fn send(&mut self, bytes: &[u8]) {
         if self.sound_change.is_some(){return;}
@@ -1211,6 +1224,11 @@ impl Player {
         self.end_hold = 0.;
     }
     fn command(&mut self, command: Command) -> Result<serde_json::Value, String> {
+        match &command {
+            Command::StopSongAudition{id}=>{self.stop_song_audition(Some(id));return Ok(self.song_audition_state(Some(id)));},
+            Command::SongAuditionState{id}=>return Ok(self.song_audition_state(Some(id))),
+            _=>{}
+        }
         if !(matches!(command,Command::Note{..})&&self.recorder.is_recording()) { storage_control::check_command(&self.storage_busy, &command)?; }
         if self.storage_busy.load(Ordering::Acquire) && matches!(command, Command::Panic | Command::Pause) {
             self.panic();
@@ -1517,7 +1535,7 @@ impl Player {
             Command::ExportPracticeVariant=>return self.export_practice_variant(),
             Command::AudioDevices=>return Ok(serde_json::json!({"devices":audio::Audio::devices()?})),
             Command::AudioDevice{..}=>return Err("请使用设备连接流程".into()),
-            Command::SongPreview{..}=>return Err("请使用曲目预览流程".into()),
+            Command::SongPreview{..}|Command::StartSongAudition{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}=>return Err("请使用曲目预览流程".into()),
             Command::TrackAppearance{id,appearance} => return self.set_track_appearance(id,appearance),
             Command::TrackSound{id,sound} => return self.set_track_sound(id,sound),
             Command::SoundFont { path } => return self.set_soundfont(path),
@@ -2759,6 +2777,9 @@ impl Player {
         }
     }
     fn midi(&mut self, bytes: &[u8]) {
+        if bytes.first().is_some_and(|b| (128..240).contains(b)) {
+            self.stop_song_audition(None);
+        }
         if self.closing.load(Ordering::Acquire) && !self.recorder.is_recording() { return; }
         // Storage freezes assessment, not the keyboard monitor. In particular,
         // key releases must still reach the instrument while a writer is active.
@@ -2840,6 +2861,7 @@ impl Player {
     }
     fn tick(&mut self, delta: Duration) {
         if self.closing.load(Ordering::Acquire) { return; }
+        self.tick_song_audition(delta);
         if self.storage_busy.load(Ordering::Acquire) { return; }
         self.tick_finger_demo(delta);
         if let Some(vst) = &self.vst {

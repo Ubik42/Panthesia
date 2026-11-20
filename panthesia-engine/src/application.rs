@@ -108,6 +108,9 @@ impl Engine {
         if let Command::AudioDevices = command {
             return Ok(serde_json::json!({"devices":audio::Audio::devices()?}));
         }
+        if let Command::StartSongAudition { path, id } = command {
+            return self.start_song_audition(path, id);
+        }
         if let Command::SongPreview { path } = command {
             if std::fs::metadata(&path).map_err(|e| e.to_string())?.len() > 32_000_000 {
                 return Err("MIDI 超过预览大小限制".into());

@@ -804,3 +804,41 @@
     display: none;
   }
 }
+.browser-audition.is-playing {
+  border-color: #8b95da;
+  color: #424f9e;
+  background: #edf0ff;
+}
+.browser-audition-time {
+  margin-left: auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.browser-audition-error {
+  color: #a63b40;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+.browser-song-actions {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 9px;
+}
+.browser-song-actions .browser-audition,
+.browser-song-actions .browser-begin {
+  width: 100%;
+  margin: 0;
+  min-width: 0;
+}
+.browser-song-actions .browser-audition-error {
+  grid-column: 1 / -1;
+}
+@media (max-width: 850px) {
+  .browser-detail .browser-version { display: none; }
+  .browser-song-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin: 12px 0 0;
+  }
+}

@@ -7,6 +7,9 @@ pub(crate) enum RecentSource {
     Exercise(panthesia_core::exercise::ExerciseSpec),
 }
 pub(crate) enum Request {
+    SongAuditionBegin { id: String, reply: mpsc::SyncSender<Result<crate::song_audition::Origin,String>> },
+    SongAuditionCommit { origin: crate::song_audition::Origin, prepared: crate::song_audition::Prepared, token: TaskToken, reply: Reply },
+    SongAuditionAbort(String),
     RegisterImportedScore { content_id: String, version: crate::preferences::ScoreVersion, reply: mpsc::SyncSender<Result<bool, String>> },
     PaperNavigationContext { content_id: String, reply: mpsc::SyncSender<Result<crate::paper_navigation::Context, String>> },
     PaperNavigationInstall { prepared: crate::paper_navigation::Prepared, sequence: u64, latest: Arc<std::sync::atomic::AtomicU64>, received: std::time::Instant, token: TaskToken, reply: Reply },
@@ -141,7 +144,7 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
         {
             let barrier=match &request {
                 Request::PlaybackAdjustment(..) => true,
-                Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
+                Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
                 Request::InputCommit{..}|Request::SoundOutputCommit{..}|Request::SoundFontLiveCommit{..}|Request::CatalogCommit{..}|Request::RoutineEditCommit{..}|Request::RoutineDaysCommit{..}|Request::ClipEditCommit{..}|Request::HistoryAnnotation{..}|Request::AssetEditFinish{..}|Request::RegisterImportedScore{..}|Request::RecordingSaveFinish {..}|Request::BasicCommit(..)=>true,
                 #[cfg(test)]
                 Request::RoutineCommit(..)|Request::LoadCommit(..)|Request::ExerciseCommit(..)|Request::HistoryCommit(..)|Request::ImportCommit(..)=>true,
@@ -157,7 +160,7 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
-        Request::LiveNotes(..) | Request::FeedbackContext(_) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::BackupImportFinish { .. } | Request::RoundAnalysisReady { .. } | Request::RoundSaveFinish { .. } | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
+        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::FeedbackContext(_) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::BackupImportFinish { .. } | Request::RoundAnalysisReady { .. } | Request::RoundSaveFinish { .. } | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
         Request::RegisterImportedScore{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         Request::ScoreMappingContext{..} | Request::ScoreMappingInstall{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         Request::BackupImportBegin { .. } | Request::RoundSaveBegin { .. } if player.closing.load(std::sync::atomic::Ordering::Acquire) && !player.storage_busy.load(std::sync::atomic::Ordering::Acquire) => true,
@@ -168,6 +171,9 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         return;
     }
     match request {
+        Request::SongAuditionBegin {id,reply} => {let _=reply.send(player.begin_song_audition(id));}
+        Request::SongAuditionCommit {origin,prepared,token,reply} => {crate::pending_save::respond(reply,player.install_song_audition(origin,prepared,&token));}
+        Request::SongAuditionAbort(id) => {player.stop_song_audition(Some(&id));}
         Request::RegisterImportedScore { content_id, version, reply } => {
             if player.storage_busy.load(std::sync::atomic::Ordering::Acquire) {
                 let _ = reply.send(Ok(false));
@@ -542,6 +548,9 @@ impl Request {
     fn reject(self, message: &str) {
         macro_rules! fail { ($reply:expr) => { let _ = $reply.send(Err(message.into())); }; }
         match self {
+            Self::SongAuditionBegin{reply,..} => {fail!(reply);}
+            Self::SongAuditionCommit{reply,..} => {fail!(reply);}
+            Self::SongAuditionAbort(_) => {}
             Self::LiveNotes(_,_,reply) => {fail!(reply);}
             Self::FeedbackContext(reply) => {fail!(reply);}
             Self::InputContext{reply,..}=>{fail!(reply);}
