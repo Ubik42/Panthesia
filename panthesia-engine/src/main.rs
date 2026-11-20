@@ -273,8 +273,7 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     engine.read_history(command)
                 }
                 (&Method::Post, "/api/notation-document") => {
-                    #[derive(serde::Deserialize)] struct Input { bytes:Vec<u8> }
-                    let input:Input=client_json(&mut request,32_000_000,"谱面解压请求")?;
+                    let input:panthesia_engine::NotationDocumentRequest=client_json(&mut request,32_000_000,"谱面解压请求")?;
                     serde_json::to_value(panthesia_engine::notation_document(input.bytes)?).map_err(|e|e.to_string())
                 }
                 (&Method::Post, "/api/score-map") => {

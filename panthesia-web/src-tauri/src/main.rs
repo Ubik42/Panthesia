@@ -534,8 +534,8 @@ async fn start_practice_demo(
         .await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
-async fn notation_document(bytes:Vec<u8>)->Result<Vec<u8>,String> {
-    tauri::async_runtime::spawn_blocking(move||panthesia_engine::notation_document(bytes)).await.map_err(|error|error.to_string())?
+async fn notation_document(request:panthesia_engine::NotationDocumentRequest)->Result<Vec<u8>,String> {
+    tauri::async_runtime::spawn_blocking(move||panthesia_engine::notation_document(request.bytes)).await.map_err(|error|error.to_string())?
 }
 #[tauri::command]
 async fn map_score(state: tauri::State<'_, State>, request: panthesia_engine::ScoreMappingRequest) -> Result<serde_json::Value, String> {
