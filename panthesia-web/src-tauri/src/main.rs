@@ -198,7 +198,7 @@ async fn open_practice_data_folder(state:tauri::State<'_,State>)->Result<(),Stri
 #[tauri::command]
 async fn reveal_library_file(state:tauri::State<'_,State>,path:PathBuf)->Result<(),String>{
     let known=state.engine.command(Command::Collection)?;let indexed=state.engine.command(Command::LibraryWorkspace)?;
-    {let rows=state.songs.lock().map_err(|e|e.to_string())?;library::validate_paths(vec![path.clone()],&rows,&known,&indexed)?;}
+    {let rows=state.songs.lock().map_err(|e|e.to_string())?;library::validate_repository_paths(&state.data,vec![path.clone()],&rows,&known,&indexed)?;}
     tauri::async_runtime::spawn_blocking(move||{
         let requested_file=path.is_file();
         let mut target=path.clone();
@@ -609,7 +609,7 @@ async fn engine_command(
         let known = state.engine.command(Command::Collection)?;
         let indexed = state.engine.command(Command::LibraryWorkspace)?;
         let songs = state.songs.lock().map_err(|e| e.to_string())?;
-        library::validate_paths(paths, &songs, &known, &indexed)?;
+        library::validate_repository_paths(&state.data,paths, &songs, &known, &indexed)?;
     }
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || engine.command(command))

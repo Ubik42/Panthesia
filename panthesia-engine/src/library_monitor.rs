@@ -113,7 +113,7 @@ impl Worker {
             .ok()
             .and_then(|b| serde_json::from_slice::<Settings>(&b).ok())
             .is_none_or(|s| s.enabled);
-        let local = library::local_cache(&data)
+        let local = library::local_cache(&data,&root)
             .unwrap_or_else(|_| {
                 initial
                     .iter()
@@ -166,7 +166,7 @@ impl Worker {
             Ok((updates,unavailable,changed))=>{self.status.paper_updates=updates;self.status.paper_unavailable=unavailable;if changed{self.status.revision+=1;}}
             Err(e)=>self.status.errors.push(format!("纸谱原件检查：{e}")),
         }
-        let roots = library::folders(&self.data)?;
+        let roots = library::folders_at(&self.data,&self.root)?;
         let folders = roots
             .iter()
             .map(|r| (key(r), r.is_dir()))
@@ -264,6 +264,7 @@ impl Worker {
                 .map(|(k, e)| (k.clone(), e.path.clone())),
         );
         self.status.files = paths.len();
+        let retained=crate::song_repository::SongRepository::open(&self.data)?.retained_ids()?;
         let mut stable = BTreeMap::new();
         self.unstable.clear();
         for (k, path) in paths {
@@ -283,6 +284,7 @@ impl Worker {
                     || e.modified != st.modified
                     || e.annotation_modified != st.annotations
                     || e.analysis_version != 2
+                    || e.content_id.as_ref().is_some_and(|id|!retained.contains(id))
             });
             if changed {
                 // Wait for two observations so a half-written MIDI is never treated as a replacement.
@@ -325,6 +327,7 @@ impl Worker {
         let _guard = lock.lock().map_err(|_| "曲库更新锁不可用")?;
         crate::storage_control::workspace_writable(&self.data)?;
         let mut w = Workspace::load(&self.data)?;
+        let mut repository=crate::song_repository::SongRepository::open(&self.data)?;
         for path in paths {
             if self.stop.load(Ordering::Acquire){break;}
             let k = key(&path);
@@ -355,6 +358,20 @@ impl Worker {
                             Ok(()) => entry = w.inspect(path.clone(), true)?,
                             Err(e) => self.status.errors.push(format!("{}：{e}", path.display())),
                         }
+                    }
+                }
+            }
+            if entry.available && entry.error.is_none() {
+                if let Some(cid)=entry.content_id.as_deref() {
+                    let title=entry.metadata.title.clone().unwrap_or_else(||path.file_stem().unwrap_or_default().to_string_lossy().into());
+                    let composer=entry.metadata.composer.clone().unwrap_or_default();
+                    let stop=self.stop.clone();
+                    match repository.retain(&path,cid,&title,&composer,&||if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}) {
+                        Ok(_) => {
+                            let row=self.local.iter().chain(self.catalog.iter()).chain(self.recordings.iter()).find(|r|key(&r.path)==k).cloned().unwrap_or_else(||SongRow{arranger:None,id:format!("owned/{cid}"),title:title.clone(),composer:composer.clone(),source:"我的曲目".into(),category:String::new(),license:"本地文件".into(),source_url:String::new(),path:path.clone(),content_id:Some(cid.into()),tags:vec![],difficulty:None,rating:0});
+                            repository.register_row(&row,cid)?;
+                        },
+                        Err(error)=>self.status.errors.push(format!("演奏副本保存失败：{error}")),
                     }
                 }
             }
@@ -569,11 +586,12 @@ mod tests {
         let rows = Arc::new(Mutex::new(Vec::new()));
         let mut w = Worker::new(data.clone(), data.join("public"), rows.clone());
         w.discover().unwrap();
-        assert!(w.pending.is_empty());
+        assert!(w.pending.is_empty(), "pending={:?}", w.pending);
         w.discover().unwrap();
         w.batch().unwrap();
         let mut index = Workspace::load(&data).unwrap();
         let id = index.entries[&key(&first)].content_id.clone().unwrap();
+        assert!(crate::song_repository::SongRepository::managed_path(&data,&id).unwrap().is_file());
         let group = index.group(None, "日课".into(), None).unwrap();
         index
             .assign(vec![first.clone()], Some(group.clone()), Some(4))
@@ -592,7 +610,7 @@ mod tests {
         assert_eq!(index.entries[&key(&second)].rating, 4);
         std::fs::write(&second, include_bytes!("../assets/basic-chords.mid")).unwrap();
         w.discover().unwrap();
-        assert!(w.pending.is_empty());
+        assert!(w.pending.is_empty(), "pending={:?}", w.pending);
         w.discover().unwrap();
         w.batch().unwrap();
         let e = &Workspace::load(&data).unwrap().entries[&key(&second)];

@@ -1,3 +1,4 @@
+pub mod song_repository;
 mod loop_practice;
 mod note_guidance;
 mod practice_policy;
@@ -498,7 +499,8 @@ impl Player {
     }
     fn annotation_path(&self, file: &MidiFile) -> Result<PathBuf, String> {
         if let Some(path) = &file.source_path {
-            return Ok(path.clone());
+            let owned = song_repository::SongRepository::managed_path(&self.data,&file.content_id)?;
+            return Ok(if owned.is_file(){owned}else{path.clone()});
         }
         let root = self.data.join("song-assets");
         let spec=self.exercise.ok_or("曲目缺少可保存的内容")?;

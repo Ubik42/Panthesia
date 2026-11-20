@@ -42,21 +42,11 @@ pub struct RepertoireEdit {
     pub quality: Option<ScoreQuality>,
     pub source: Option<String>,
 }
-pub(crate) fn read(data: &Path) -> Result<(RepertoireRegistry, String), String> {
-    let bytes = match atomic_file::read_limited(&data.join("repertoire.json"), 64_000_000) {
-        Ok(bytes) => bytes,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-        Err(e) => return Err(format!("作品资料读取失败：{e}")),
-    };
-    let registry = if bytes.is_empty() {
-        RepertoireRegistry::default()
-    } else {
-        serde_json::from_slice::<RepertoireRegistry>(&bytes)
-            .map_err(|e| format!("作品资料格式无效，原文件保留：{e}"))?
-    };
-    registry.validate()?;
-    Ok((registry, blake3::hash(&bytes).to_hex().to_string()))
+pub(crate) fn read(data:&Path)->Result<(RepertoireRegistry,String),String>{
+    let repository=crate::song_repository::SongRepository::open(data)?;
+    repository.snapshot()
 }
+
 fn migrate(
     registry: &mut RepertoireRegistry,
     data: &Path,
@@ -259,17 +249,20 @@ impl Engine {
                     Command::EditRepertoire { request } => (None, None, Some(request)),
                     _ => return Err("作品操作无效".into()),
                 };
+                let manual_group=edit.as_ref().filter(|e|e.work_id.is_some() || e.independent.is_some()).map(|e|e.content_id.clone());
                 let selected = content
                     .clone()
                     .or_else(|| edit.as_ref().map(|e| e.content_id.clone()));
                 let data = engine.data.clone();
                 let capture_data = data.clone();
+                let mut expected_revision=None;
                 let (result, writes, observed) = atomic_file::capture_matching(
                     std::sync::Arc::new(move |path: &Path| {
                         crate::asset_storage::captures(&capture_data, path)
                     }),
                     || {
                         let (mut registry, revision) = read(&data)?;
+                        expected_revision=Some(revision.clone());
                         migrate(
                             &mut registry,
                             &data,
@@ -328,15 +321,6 @@ impl Engine {
                         let bytes =
                             serde_json::to_vec_pretty(&registry).map_err(|e| e.to_string())?;
                         if catalog {return Ok::<_,String>(Reply::Catalog(panthesia_core::song_catalog::SongCatalog::from_registry(&registry,blake3::hash(&bytes).to_hex().to_string())));}
-                        // Even the initial migration uses the existing optimistic transaction lane.
-                        let destination = data.join("repertoire.json");
-                        if atomic_file::read_limited(&destination, 64_000_000)
-                            .ok()
-                            .as_deref()
-                            != Some(&bytes)
-                        {
-                            atomic_file::write(&destination, &bytes).map_err(|e| e.to_string())?;
-                        }
                         let mut notation_statuses = std::collections::BTreeMap::new();
                         for notation in registry
                             .notations
@@ -400,9 +384,16 @@ impl Engine {
                         }))
                     },
                 );
-                let result = result?;
+                let mut result = result?;
                 token.check()?;
-                crate::asset_storage::commit_at(&data, writes, observed, || token.begin_commit())?;
+                if let Reply::View(view)=&mut result {
+                    if !writes.is_empty(){return Err("歌曲整理产生了未迁移的文件写入，已取消".into());}
+                    crate::asset_storage::validate_observations(&observed)?;
+                    token.begin_commit()?;
+                    let mut repository=crate::song_repository::SongRepository::open(&data)?;
+                    repository.save_registry(&view.registry,expected_revision.as_deref().ok_or("歌曲资料版本缺失")?,manual_group.as_deref())?;
+                    view.revision=repository.revision()?;
+                }
                 serde_json::to_value(result).map_err(|e| e.to_string())
             })
     }

@@ -245,7 +245,7 @@ pub(crate) fn recording_rows(data:&Path)->Result<Vec<SongRow>,String> {
     }
     rows.sort_by(|a,b|b.path.cmp(&a.path));Ok(rows)
 }
-pub(crate) fn local_cache(data:&Path)->Result<Vec<SongRow>,String> {
+pub(crate) fn local_cache(data:&Path,root:&Path)->Result<Vec<SongRow>,String> {
     use std::io::Read;
     const MAX_BYTES:u64=64*1024*1024;
     let file=match std::fs::File::open(data.join("library-monitor-files.json")) {
@@ -257,16 +257,16 @@ pub(crate) fn local_cache(data:&Path)->Result<Vec<SongRow>,String> {
     if bytes.len() as u64>MAX_BYTES {return Err("曲库缓存过大，将通过文件夹扫描重建".into());}
     let rows:Vec<SongRow>=serde_json::from_slice(&bytes).map_err(|e|e.to_string())?;
     if rows.len()>100_000{return Err("曲库缓存条目过多，将通过文件夹扫描重建".into());}
-    let roots=folders(data)?;
+    let roots=folders_at(data,root)?;
     Ok(rows.into_iter().filter(|row|row.id.starts_with("folder/")&&row.path.is_absolute()&&roots.iter().any(|root|row.path.starts_with(root))).collect())
 }
 /// First paint uses the last index; the monitor discovers filesystem changes afterwards.
 pub(crate) fn initial_rows(root:&Path,data:&Path) -> Result<Vec<SongRow>,String> {
     let mut rows=builtin_rows(data)?;
-    for folder in discovered_folders(data)? { if let Ok(found)=scan_folder(&folder) { rows.splice(0..0,found); } }
+    for folder in discovered_folders(data,root)? { if let Ok(found)=scan_folder(&folder) { rows.splice(0..0,found); } }
     if let Ok(external)=read(root) {rows.extend(external);}
     if let Ok(recordings)=recording_rows(data){rows.extend(recordings);}
-    if let Ok(cached)=local_cache(data){rows.extend(cached);}
+    if let Ok(cached)=local_cache(data,root){rows.extend(cached);}
     let mut seen=std::collections::HashSet::new();rows.retain(|row|seen.insert(row.path.clone()));
     Ok(rows)
 }
@@ -277,7 +277,7 @@ pub fn load(root: &Path, data: &Path) -> Result<Vec<SongRow>, String> {
         Ok(external) => rows.extend(external),
         Err(e) => eprintln!("{e}；仍可使用内置练习和导入 MIDI"),
     }
-    match folders(data) {
+    match folders_at(data,root) {
         Ok(folders) => {
             for folder in folders {
                 match scan_folder(&folder) {
@@ -307,35 +307,58 @@ pub(crate) fn catalog_root() -> PathBuf {
 fn folder_key(path: &Path) -> String {
     crate::library_workspace::key(path).trim_start_matches("//?/").to_owned()
 }
-fn discovered_folders(data: &Path) -> Result<Vec<PathBuf>,String> {
-    let root=catalog_root();
+fn discovered_folders(data: &Path,root:&Path) -> Result<Vec<PathBuf>,String> {
     let ignored:Vec<PathBuf>=match panthesia_core::utils::atomic_file::read(&data.join("library-hidden-defaults.json")) {
         Ok(bytes)=>serde_json::from_slice(&bytes).map_err(|e|e.to_string())?,
         Err(e) if e.kind()==std::io::ErrorKind::NotFound=>vec![],
         Err(e)=>return Err(e.to_string()),
     };
-    let output=root.parent().unwrap_or(&root).join("Output");
-    Ok(if output.is_dir() && !ignored.iter().any(|p|folder_key(p)==folder_key(&output)) {vec![output]} else {vec![]})
+    let base=root.parent().unwrap_or(&root);
+    let mut candidates=vec![base.join("Output")];
+    // The music workspace may reorganize its collections beside Datasets. Discover
+    // actual MIDI-containing sibling folders; a former Output name is not an identity.
+    if root.file_name().is_some_and(|n|n=="Datasets" || n=="PracticeLibrary") {
+        if let Ok(entries)=std::fs::read_dir(base){
+            for entry in entries.flatten().take(256){
+                let path=entry.path();
+                if entry.file_type().is_ok_and(|kind|kind.is_dir()&&!kind.is_symlink()) && folder_key(&path)!=folder_key(&root) && !path.starts_with(data) && contains_midi(&path,2) {candidates.push(path);}
+            }
+        }
+    }
+    let mut seen=std::collections::HashSet::new();
+    Ok(candidates.into_iter().filter(|path|path.is_dir() && !ignored.iter().any(|p|folder_key(p)==folder_key(path)) && seen.insert(folder_key(path))).collect())
 }
-pub fn folders(data: &Path) -> Result<Vec<PathBuf>,String> {
+fn contains_midi(root:&Path,depth:u8)->bool {
+    let Ok(entries)=std::fs::read_dir(root) else{return false;};
+    for entry in entries.flatten().take(512){
+        let Ok(kind)=entry.file_type() else{continue;};if kind.is_symlink(){continue;}
+        let path=entry.path();
+        if kind.is_file()&&path.extension().is_some_and(|e|e.eq_ignore_ascii_case("mid")||e.eq_ignore_ascii_case("midi")){return true;}
+        if kind.is_dir()&&depth>0&&contains_midi(&path,depth-1){return true;}
+    }false
+
+}
+pub fn folders(data: &Path) -> Result<Vec<PathBuf>,String> { folders_at(data,&catalog_root()) }
+pub(crate) fn folders_at(data:&Path,root:&Path)->Result<Vec<PathBuf>,String>{
     let mut roots=registered_folders(data)?;
-    for path in discovered_folders(data)? {if !roots.iter().any(|p|folder_key(p)==folder_key(&path)){roots.push(path);}}
+    for path in discovered_folders(data,root)? {if !roots.iter().any(|p|folder_key(p)==folder_key(&path)){roots.push(path);}}
     Ok(roots)
 }
 pub fn folder_status(data: &Path) -> Result<serde_json::Value, String> {
-    let defaults=discovered_folders(data)?;
+    let defaults=discovered_folders(data,&catalog_root())?;
     let mut entries:Vec<_>=folders(data)?.into_iter().map(|path|serde_json::json!({"available":path.is_dir(),"automatic":defaults.iter().any(|p|folder_key(p)==folder_key(&path)),"kind":"folder","path":path})).collect();
     let catalog=catalog_root();
     if catalog.join("catalog.csv").is_file() && !entries.iter().any(|e|e["path"].as_str().is_some_and(|p|folder_key(Path::new(p))==folder_key(&catalog))) {entries.insert(0,serde_json::json!({"available":true,"automatic":true,"kind":"catalog","path":catalog}));}
     Ok(serde_json::json!({"folders":entries}))
 }
 pub fn remove_folder(data: &Path, path: &Path) -> Result<(), String> {
-    let mut roots = folders(data)?;
-    if !roots.iter().any(|p| folder_key(p) == folder_key(path)) {
+    let mut roots = registered_folders(data)?;
+    let automatic=discovered_folders(data,&catalog_root())?.iter().any(|p|folder_key(p)==folder_key(path));
+    if !automatic && !roots.iter().any(|p| folder_key(p) == folder_key(path)) {
         return Err("该文件夹未登记".into());
     }
     roots.retain(|p| folder_key(p) != folder_key(path));
-    if discovered_folders(data)?.iter().any(|p|folder_key(p)==folder_key(path)) {
+    if automatic {
         let file=data.join("library-hidden-defaults.json");
         let mut hidden:Vec<PathBuf>=panthesia_core::utils::atomic_file::read(&file).ok().map(|b|serde_json::from_slice(&b)).transpose().map_err(|e|e.to_string())?.unwrap_or_default();
         hidden.push(path.to_owned());
@@ -380,7 +403,7 @@ pub fn command_paths(command: &crate::Command) -> Vec<PathBuf> {
 }
 pub fn add_folder(data: &Path, folder: PathBuf) -> Result<Vec<SongRow>, String> {
     let rows = scan_folder(&folder)?;
-    let mut roots = folders(data)?;
+    let mut roots = registered_folders(data)?;
     if !roots.contains(&folder) {
         roots.push(folder);
         let temporary = data.join("library-folders.json.tmp");
@@ -534,6 +557,16 @@ pub fn enriched(rows: &[SongRow], data: &Path) -> Vec<SongRow> {
             }
         }
     }
+    match crate::song_repository::SongRepository::open(data) {
+        Ok(repository)=>{
+            rows.retain_mut(|row|match repository.resolve(&row.path,row.content_id.as_deref()){
+                Ok(path)=>{row.path=path;true},Err(_)=>false,
+            });
+            match repository.rows(){Ok(owned)=>rows.extend(owned),Err(error)=>eprintln!("{error}")}
+        },
+        Err(error)=>{eprintln!("{error}");rows.retain(|row|row.path.is_file());},
+    }
+    let mut seen=std::collections::HashSet::new();rows.retain(|row|seen.insert(folder_key(&row.path)));
     rows
 }
 /// Recover the portable annotations of an identical MIDI at a new location.
@@ -597,6 +630,14 @@ pub(crate) fn recover_annotations_report(
     }))
 }
 
+pub fn validate_repository_paths(
+    data:&Path, paths:Vec<PathBuf>, rows:&[SongRow], known:&serde_json::Value, indexed:&serde_json::Value,
+)->Result<(),String>{
+    let repository=crate::song_repository::SongRepository::open(data)?;
+    let mut legacy=Vec::new();
+    for path in paths {if !repository.contains_path(&path)?{legacy.push(path);}}
+    validate_paths(legacy,rows,known,indexed)
+}
 pub fn validate_paths(
     paths: Vec<PathBuf>,
     rows: &[SongRow],
@@ -644,7 +685,9 @@ pub(crate) fn read_midi_limited(path:&Path, limit:usize)->Result<midi_file::Midi
 }
 pub fn verified_file(data:&Path,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
  let index=crate::library_workspace::Workspace::load_hint(data)?;
- verified_file_in_workspace(&index,content_id,preferred)
+ let repository=crate::song_repository::SongRepository::open(data)?;
+ let owned=repository.resolve(Path::new(""),Some(content_id)).ok();
+ verified_file_in_workspace(&index,content_id,owned.into_iter().chain(preferred))
 }
 pub fn verified_file_in_workspace(index:&crate::library_workspace::Workspace,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
  for path in candidate_paths(index,content_id,preferred) {if let Ok(file)=read_midi(&path){if file.content_id==content_id{return Ok(file);}}}

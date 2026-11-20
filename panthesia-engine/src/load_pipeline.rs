@@ -286,14 +286,24 @@ impl Input {
                 path,
                 title,
                 expected,
-            } => Prepared::read_checked(path, title, expected.as_deref(), names, &check),
+            } => {
+                let repository=crate::song_repository::SongRepository::open(data)?;
+                let resolved=match expected.as_deref(){
+                    Some(id)=>repository.resolve(Path::new(""),Some(id)).or_else(|_|repository.resolve(&path,Some(id)))?,
+                    None=>repository.resolve(&path,None)?,
+                };
+                Prepared::read_checked(resolved,title,expected.as_deref(),names,&check)
+            },
             Self::Recent {
                 content_id,
                 title,
                 paths,
             } => {
                 let index = crate::library_workspace::Workspace::load_hint(data)?;
-                for path in crate::library::candidate_paths(&index, &content_id, paths) {
+                let repository=crate::song_repository::SongRepository::open(data)?;
+                let mut paths=crate::library::candidate_paths(&index,&content_id,paths);
+                if let Ok(path)=repository.resolve(Path::new(""),Some(&content_id)){paths.insert(0,path);}
+                for path in paths {
                     check()?;
                     if let Ok(prepared) = Prepared::read_checked(
                         path,

@@ -832,6 +832,8 @@ pub(super) fn selected(mut b: Backup, s: &Selection) -> Backup {
 #[derive(Deserialize, Serialize)]
 struct Journal {
     #[serde(default)]
+    song_directory: bool,
+    #[serde(default)]
     performances: BTreeMap<String, bool>,
     #[serde(default)]
     metadata_histories: BTreeMap<String, bool>,
@@ -933,6 +935,10 @@ pub fn recover(data: &Path) -> Result<(), String> {
                 std::fs::remove_file(path).map_err(|e| e.to_string())?;
             }
         }
+        if j.song_directory {
+            let snapshot:crate::song_repository::DirectorySnapshot=serde_json::from_slice(&std::fs::read(old.join("song-directory.json")).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+            crate::song_repository::SongRepository::open(data)?.restore_directory(&snapshot)?;
+        }
     }
     std::fs::remove_file(journal).map_err(|e| e.to_string())
 }
@@ -962,6 +968,7 @@ pub(super) fn commit(
     let root = data.join("practice-restore-points").join(&folder);
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     let mut j = Journal {
+        song_directory: repertoire.is_some(),
         performances: BTreeMap::new(),
         metadata_histories: BTreeMap::new(),
         pending_metadata_history: pending_metadata_history.map(|_| false),
@@ -973,6 +980,10 @@ pub(super) fn commit(
         repertoire: repertoire.map(|_| false),
         committed: false,
     };
+    if j.song_directory {
+        let snapshot=crate::song_repository::SongRepository::open(data)?.export_directory()?;
+        atomic(&root.join("song-directory.json"),&serde_json::to_vec(&snapshot).map_err(|e|e.to_string())?)?;
+    }
     for (name, exists) in [
         ("web-preferences.json", &mut j.prefs),
         ("web-practice-history.ron", &mut j.history),
@@ -1053,6 +1064,11 @@ pub(super) fn commit(
         }
         for (name, bytes) in metadata_histories {
             atomic(&data.join("metadata-history").join(name), bytes)?;
+        }
+        if let Some(bytes)=repertoire {
+            let registry:panthesia_core::repertoire::RepertoireRegistry=serde_json::from_slice(bytes).map_err(|e|e.to_string())?;
+            let locked=registry.performances.keys().cloned().collect();
+            crate::song_repository::SongRepository::open(data)?.restore_directory(&crate::song_repository::DirectorySnapshot{registry,locked})?;
         }
         j.committed = true;
         atomic(&journal, &serde_json::to_vec(&j).unwrap())?;
@@ -2150,6 +2166,7 @@ mod tests {
         std::fs::write(restore.join("metadata-templates.json"), &original).unwrap();
         std::fs::write(&path, b"partial new templates").unwrap();
         let journal = Journal {
+            song_directory: false,
             performances: BTreeMap::new(),
             metadata_histories: BTreeMap::new(),
             pending_metadata_history: None,
@@ -2376,6 +2393,7 @@ mod tests {
         std::fs::write(&path, b"partial").unwrap();
         std::fs::write(&new_path, b"new").unwrap();
         let j = Journal {
+            song_directory: false,
             folder: "restore-performance-test".into(),
             metadata_histories: BTreeMap::new(),
             pending_metadata_history: None,
@@ -2417,6 +2435,7 @@ mod tests {
         std::fs::write(restore.join("web-practice-history.ron"), &old_history).unwrap();
         std::fs::write(&p.preferences_path, b"partial new preferences").unwrap();
         let journal = Journal {
+            song_directory: false,
             performances: BTreeMap::new(),
             metadata_histories: BTreeMap::new(),
             pending_metadata_history: None,
@@ -2721,6 +2740,7 @@ mod tests {
         std::fs::write(p.data.join("metadata-history").join(&old), b"partial").unwrap();
         std::fs::write(p.data.join("metadata-history").join(&new), b"new").unwrap();
         let journal = Journal {
+            song_directory: false,
             folder: "restore-metadata-test".into(),
             prefs: false,
             history: false,

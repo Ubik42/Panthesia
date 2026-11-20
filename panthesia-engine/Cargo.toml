@@ -11,6 +11,7 @@ midir.workspace = true
 cpal.workspace = true
 oxisynth.workspace = true
 rtrb = "0.3.4"
+rusqlite = { version = "0.43", features = ["bundled"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 csv.workspace = true

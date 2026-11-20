@@ -203,6 +203,11 @@ impl Engine {
         Ok(published.song)
     }
     pub(super) fn finish_catalog_registration(&self, published: &Published) -> Result<(), String> {
+        let source=std::path::Path::new(&published.song.source_path);
+        let mut repository=crate::song_repository::SongRepository::open(&self.data)?;
+        repository.retain(source,&published.song.content_id,&published.song.title,"",&||Ok(()))?;
+        let row=crate::library::SongRow{arranger:None,id:format!("owned/{}",published.song.content_id),title:published.song.title.clone(),composer:String::new(),source:"我的曲目".into(),category:String::new(),license:"本地文件".into(),source_url:String::new(),path:source.into(),content_id:Some(published.song.content_id.clone()),tags:vec![],difficulty:None,rating:0};
+        repository.register_row(&row,&published.song.content_id)?;
         if let Some(version) = &published.score {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
             loop {

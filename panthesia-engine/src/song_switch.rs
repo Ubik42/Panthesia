@@ -54,10 +54,16 @@ impl Input {
     }
     pub(super) fn install_prepared_file(
         reader: &mut Player,
-        prepared: load_pipeline::Prepared,
+        mut prepared: load_pipeline::Prepared,
         token: &background_tasks::TaskToken,
     ) -> Result<(), String> {
         prepared.check()?;
+        if let Some(source)=prepared.file.source_path.as_ref() {
+            let mut repository=crate::song_repository::SongRepository::open(&reader.data)?;
+            let managed=repository.retain(source,&prepared.file.content_id,&prepared.title,"",&||token.check())?;
+            prepared.assets=crate::load_pipeline::Assets::read_checked(&prepared.file,&managed,
+                reader.preferences.score_versions.get(&prepared.file.content_id).map(Vec::as_slice).unwrap_or_default(),&||token.check())?;
+        }
         token.source(
             prepared.file.content_id.clone(),
             prepared
