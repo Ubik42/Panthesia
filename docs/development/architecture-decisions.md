@@ -88,3 +88,9 @@ panthesia-music 的 tick-native 源演奏保持原字节身份，NoteId 按原�
 fb37bd7：useProductScreens 拥有主页/设置与歌曲设置/声部/分手/演奏/自由演奏的呈现状态，既有 WorkspaceNavigation 暂时承担准备与锁保护。二者是职责明确的过渡适配，P11 继续统一导航准备与编辑会话。选曲页保持同一实例；隐藏演奏页不运行昂贵的琴键/谱面组件。旧主检查栏从产品 JSX 退出，变换和版本设置从“歌曲选项”按需进入。
 
 SetPartHands 绑定 contentId、轨号和手别 proof，在 practice_edit 的 Hands 事务中构造整首分手并合并稀疏修正；不会把全曲音符作为巨大前端请求传入。整轨手别选择明确替换该轨的旧逐音覆盖，其他轨与指法保留。变换只改变视图，分手仍按源身份保存；无效 proof 在写入前拒绝。普通播放控制不进入该工作。
+
+## A14 声部设置与标签呈现
+
+usePartSettings 拥有声部选择、异步保存、拖动复制与预听租期；useProductNavigation 将引擎切换与页面切换组织为单个受保护操作。连续声部编辑从当前已绑定会话取得修订，contentId/engineId 必须仍与编辑来源一致；分手/恢复默认额外核对 proof。TrackAppearance 通过 practice_edit 的 Preferences 路径保存；颜色/显示选择按 left/right/other 存在现有外观设置中，并随曲目包往返。ResetPartSettings 在同一后台文件事务中恢复当前轨默认手别/外观/声音与逐音播放规则，指法和其他轨不受影响。
+
+乐器预听使用已有独立试听调度器的短内存乐句，循环由引擎驱动；前端只续租、停止和换音色。关闭/失焦/丢失租期及实际输入会停止预听，演奏位置、录音、用户 MIDI 计数与判定均不接收预听音符。琴键/音符标签分别持久化，所有权来自实际手别和播放方式；调性使用 effectiveTonic/effectiveFifths，与原始 tonic 分开，避免转调后仍显示原调唱名。

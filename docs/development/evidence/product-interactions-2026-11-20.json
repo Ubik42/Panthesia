@@ -1,0 +1,130 @@
+{
+  "at": "2026-11-20T15:25:42.009238+00:00",
+  "batch": "B03",
+  "status": "in-progress",
+  "implementationRevision": "026001aa720a5e9b394780a8b162e96530ce00bd",
+  "commits": [
+    "0784d41",
+    "b8660d2",
+    "472cdda",
+    "8941d9b",
+    "026001a"
+  ],
+  "implemented": [
+    "part preview/source instrument, drag-copy/all parts, hand-specific color/hide, auto-color/reset",
+    "source-bound sequential part edits and reset transaction",
+    "two-touch graphical hand split",
+    "independent key/note labels, own-part filtering, mapping/solfege/scale and key spelling",
+    "effective practice key kept separate from source tonic",
+    "music device object list and full-page settings leaves",
+    "old layout sidebar options/duplicate variant panel retired",
+    "part/navigation controllers and 4 unused components/74 CSS selectors removed"
+  ],
+  "checks": {
+    "backend": [
+      {
+        "log": "work/original-product-reset/b03-instrument-preview-test.log",
+        "scope": "loop/lease/cancel, no input/recording/history/assessment mutation"
+      },
+      {
+        "log": "work/original-product-reset/b03-part-colors-test.log",
+        "scope": "per-hand color/hide, piece package roundtrip, reset preserves existing fingers"
+      },
+      {
+        "log": "work/original-product-reset/b03-tonal-label-test.log",
+        "scope": "transformed tonic/fifths remain separate from source tonic"
+      }
+    ],
+    "labelFormatting": "work/original-product-reset/b03-label-format-evidence.json",
+    "webBuild": "work/original-product-reset/b03-details-web-build.log",
+    "debugBuild": "work/original-product-reset/b03-details-debug-build-final.log"
+  },
+  "desktop": {
+    "path": "target/debug/panthesia-desktop.exe",
+    "sha256": "E3139B9A032F3B032EF8426D16C0C1C408FBC978EF3CD2C9A1E5A707ECA4DA71",
+    "configuration": "Debug/custom-protocol",
+    "includesBaselineUncommitted": true,
+    "interactionRevision": "b8660d2",
+    "interactionEvidence": "work/original-product-reset/b03-details-window/native-evidence.json",
+    "touchEvidence": "work/original-product-reset/b03-details-window/touch-evidence.json",
+    "finalRevision": "026001aa720a5e9b394780a8b162e96530ce00bd",
+    "finalEvidence": "work/original-product-reset/b03-details-window/final-native-evidence.json",
+    "closedNormally": true,
+    "preservation": {
+      "sourceAndOwnedBytesEqual": true,
+      "rawSha256": "08d24685b3d21427837825ae5f0d71030af12b420992117c76f43b19112c6f86",
+      "fingers": [
+        {
+          "track_id": 0,
+          "note_index": 0,
+          "finger": 3
+        },
+        {
+          "track_id": 0,
+          "note_index": 2,
+          "finger": 5
+        }
+      ],
+      "unmappedRows": 1,
+      "annotationVersion": 2,
+      "contentId": "42b61c918d848828c53687979fbe090d9e0d3a11e2cd5fa89505d23c48a3a670"
+    }
+  },
+  "boundaries": [
+    "3 targeted backend checks, no broad assessment suite",
+    "touch verified through desktop emulation; no physical touchscreen acceptance",
+    "output level observed on built-in preview; no Windows MIDI/Pianoteq listening or long-duration performance acceptance",
+    "MIDI note spelling is derived from current effective key; intra-song key-signature changes not yet projected",
+    "custom per-note assignments are not inferred/copied across unrelated source tracks",
+    "formal Release remains a67ea54"
+  ],
+  "remaining": [
+    "P11 App toolbar/edit/background coordination and old drawer adapters",
+    "UI01 long-list position and UI09 object context flows with related changes",
+    "B04 playback/sound/performance",
+    "B05/B06 notation/background/full recording",
+    "B07 source retirement/audit and Release"
+  ],
+  "screenshots": [
+    {
+      "path": "work/original-product-reset/b03-details-window/device-list-final.png",
+      "sha256": "46c9491e6d69f5ebffe3db0cb492404457ce107df97e5ad7e4505c5d8f1f1a41",
+      "revision": "026001aa720a5e9b394780a8b162e96530ce00bd"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/shortcut-settings-final.png",
+      "sha256": "6c3b6903b6216703622ef36e2f50bf69a25ba1efb43bf10e468634244e0fe3e9",
+      "revision": "026001aa720a5e9b394780a8b162e96530ce00bd"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/parts.png",
+      "sha256": "e357642dbddd320509dca8aa51ad1e26502343c5bffeb1ac2a37b5901aedb99f",
+      "revision": "b8660d2"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/instrument-preview.png",
+      "sha256": "25aef797e084d9a5b2b467274cf909c01d329096a51de3f928386323683bed1e",
+      "revision": "b8660d2"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/labels-final.png",
+      "sha256": "75febb7d3d2d544b9eda1e63a3b75227ff25754e2642b84776818b128796b0c9",
+      "revision": "026001aa720a5e9b394780a8b162e96530ce00bd"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/playing-transposed-final.png",
+      "sha256": "8f0eb55141c6ad5c722ae739c8afd9ede3cc32acfed475b1dc03f2a0e0adf4e0",
+      "revision": "026001aa720a5e9b394780a8b162e96530ce00bd"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/playing-narrow.png",
+      "sha256": "18c01cffd7bf4f5922464fbc9a74f9720ae965c408c08036f39ad1875d821216",
+      "revision": "b8660d2"
+    },
+    {
+      "path": "work/original-product-reset/b03-details-window/touch-split.png",
+      "sha256": "3224c3ef811825b2f748d21c3cdb9454618dba8c92ac8b02d60a70aa40da1577",
+      "revision": "b8660d2"
+    }
+  ]
+}
