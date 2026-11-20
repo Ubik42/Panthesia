@@ -152,7 +152,7 @@ impl Engine {
             content_id,
         } = command
         {
-            return self.map_score(score_mapping::Input { page_count: None,
+            return self.map_score(score_mapping::Input { measure_range:None,display_fingerprint:None,page_count: None,
                 content_id,
                 score_revision,
                 source_fingerprint: None,

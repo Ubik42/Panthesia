@@ -78,6 +78,7 @@ pub(crate) fn runtime_reads(command: &Command) -> bool {
             | Command::PaperTransferSources { .. }
             | Command::Score
             | Command::SourceScore
+            | Command::ScoreView { .. }
             | Command::ScoreVersions
             | Command::ExportAnnotatedScore { .. }
     )
@@ -809,6 +810,7 @@ impl Engine {
                                     | Command::PreviewScoreVersionRoute { .. }
                                     | Command::Score
                                     | Command::SourceScore
+            | Command::ScoreView { .. }
                                     | Command::ScoreVersions
                                     | Command::ExportAnnotatedScore { .. }
                             );

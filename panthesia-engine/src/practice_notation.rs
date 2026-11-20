@@ -1,6 +1,90 @@
 //! Display preparation is called by asset_read_task's detached reader.
 use crate::*;
 impl Player {
+    pub(super) fn practice_key(&self) -> (i8, bool) {
+        let variant = self.variant();
+        let info = self.variant_document();
+        let minor = info["minor"].as_bool().unwrap_or(false);
+        let tonic =
+            (info["tonic"].as_i64().unwrap_or(0) + i64::from(variant.transpose)).rem_euclid(12);
+        let fifths = (-7i8..=7)
+            .filter(|f| (i64::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
+            .min_by_key(|f| f.abs())
+            .unwrap_or(0);
+        (fifths, minor)
+    }
+    pub(super) fn score_view_payload(
+        &self,
+        first: Option<usize>,
+        position: Option<f64>,
+        source: bool,
+    ) -> Result<serde_json::Value, String> {
+        let variant = self.variant();
+        if source || (variant.quantize == 0 && self.notation.is_some()) {
+            return self.score_payload(!source);
+        }
+        let file = self.file.as_ref().ok_or("请先选择曲目")?;
+        let total = file.musical_time.measures.len();
+        if total == 0 {
+            return Err("当前演奏缺少小节范围".into());
+        }
+        let requested = if let Some(first) = first {
+            if first >= total {
+                return Err("小节范围已改变".into());
+            }
+            first
+        } else {
+            let time = position.filter(|p| p.is_finite() && *p >= 0.).unwrap_or(0.);
+            let tick = file.tempo_track.seconds_to_pulses(time).round().max(0.) as u64;
+            file.musical_time
+                .measures
+                .partition_point(|m| m.end_tick <= tick)
+                .min(total - 1)
+                / 32
+                * 32
+        };
+        let range = panthesia_core::practice_engraving::MeasureRange {
+            first: requested,
+            count: (total - requested).min(32),
+        };
+        let (fifths, minor) = self.practice_key();
+        let staff = |track, index, pitch| match crate::hands::part(
+            &self.config,
+            &self.note_hands,
+            track,
+            index,
+        ) {
+            PracticePart::LeftHand => 2,
+            PracticePart::RightHand => 1,
+            _ => {
+                if pitch >= 60 {
+                    1
+                } else {
+                    2
+                }
+            }
+        };
+        let engraving = panthesia_core::practice_engraving::engrave_range(
+            file,
+            &self.title,
+            fifths,
+            minor,
+            variant.quantize == 0,
+            range,
+            &staff,
+            &|| Ok(()),
+        )?;
+        let start = &file.musical_time.measures[range.first];
+        let last = &file.musical_time.measures[range.first + range.count - 1];
+        Ok(serde_json::json!({
+            "contentId":file.content_id,"scoreRevision":self.score_revision,"sourceFingerprint":self.score_display_origin(),
+            "displayFingerprint":blake3::hash(&engraving.bytes).to_hex().to_string(),"bytes":engraving.bytes,
+            "name":self.title,"compressed":false,"practiceNotation":true,"practiceNotationKind":if variant.quantize==0 {"simplified"}else{"quantized"},
+            "alignmentSource":"practiceIdentity","coverage":100,"confidence":100,"readiness":"Ready","diagnostics":[],"warnings":[],
+            "window":{"first":range.first,"count":range.count,"total":total,"start":file.tempo_track.pulses_to_duration(start.start_tick).as_secs_f64(),"end":file.tempo_track.pulses_to_duration(last.end_tick).as_secs_f64(),"firstNumber":start.display_number,"lastNumber":last.display_number}
+        }))
+    }
+
     pub(super) fn score_display_origin(&self) -> String {
         self.notation
             .as_ref()
@@ -32,9 +116,21 @@ impl Player {
                 .unwrap_or(0);
             let simplified = variant.quantize == 0;
             let engraving = if simplified {
-                panthesia_core::practice_engraving::engrave_simplified(file, &self.title, fifths, minor, &|| Ok(()))
+                panthesia_core::practice_engraving::engrave_simplified(
+                    file,
+                    &self.title,
+                    fifths,
+                    minor,
+                    &|| Ok(()),
+                )
             } else {
-                panthesia_core::practice_engraving::engrave(file, &self.title, fifths, minor, &|| Ok(()))
+                panthesia_core::practice_engraving::engrave(
+                    file,
+                    &self.title,
+                    fifths,
+                    minor,
+                    &|| Ok(()),
+                )
             }?;
             let edition = panthesia_core::song_project::PracticeEdition::new(
                 &file.content_id,
@@ -44,14 +140,22 @@ impl Player {
                 "{}:{}:{}",
                 edition.id,
                 panthesia_core::practice_engraving::GENERATOR,
-                if simplified { "simplified-16" } else { "performance" }
+                if simplified {
+                    "simplified-16"
+                } else {
+                    "performance"
+                }
             ));
             payload["displayFingerprint"] =
                 serde_json::json!(blake3::hash(&engraving.bytes).to_hex().to_string());
             payload["bytes"] = serde_json::json!(engraving.bytes);
             payload["compressed"] = serde_json::json!(false);
             payload["practiceNotation"] = serde_json::json!(true);
-            payload["practiceNotationKind"] = serde_json::json!(if simplified { "simplified" } else { "quantized" });
+            payload["practiceNotationKind"] = serde_json::json!(if simplified {
+                "simplified"
+            } else {
+                "quantized"
+            });
             payload["alignmentSource"] = serde_json::json!("practiceIdentity");
             payload["coverage"] = serde_json::json!(100);
             payload["confidence"] = serde_json::json!(100);

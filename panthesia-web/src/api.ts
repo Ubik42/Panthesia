@@ -33,6 +33,7 @@ const controlCommands = new Set<EngineCommand["type"]>([
   "panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",
 ]);
 const backgroundCommands = new Set<EngineCommand["type"]>([
+  "scoreView", "sourceScore",
   "discoverSynthesiaMetadata", "previewDiscoveredSynthesiaMetadata", "importDiscoveredSynthesiaMetadata",
   "previewSynthesiaMetadata", "importSynthesiaMetadata",
   "libraryRepairs", "midiReplacements", "previewMidiReplacement", "decideMidiReplacement", "readLibraryPath",

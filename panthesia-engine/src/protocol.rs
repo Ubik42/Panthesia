@@ -121,6 +121,7 @@ pub enum Command {
     VstEditor,
     Score,
     SourceScore,
+    ScoreView { content_id:String, score_revision:u64, #[serde(default)] first_measure:Option<usize>, #[serde(default)] position:Option<f64>, #[serde(default)] source:bool },
     ScoreSources { #[serde(default)] content_id: Option<String> },
     PreviewScoreSource {id:String,fingerprint:String},
     LinkScoreSource {midi_path:PathBuf,content_id:String,version_id:String,path:PathBuf,default_bpm:u16},

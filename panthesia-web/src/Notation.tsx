@@ -29,6 +29,8 @@ import { LocatedScorePaperDialog } from "./LocatedScorePaperDialog";
 import { actionsForNote, actionUsable, fingerSequence } from "./fingerActions";
 interface Asset {
   contentId: string;
+  window?:{first:number;count:number;total:number;start:number;end:number;firstNumber:number;lastNumber:number};
+  displayFingerprint?:string;
   sourceFingerprint: string;
   bytes: number[];
   name: string;
@@ -262,6 +264,14 @@ export function Notation({
   );
   const [reload, setReload] = useState(0);
   const [sourceRhythm, setSourceRhythm] = useState(false);
+  const [rangeAnchor,setRangeAnchor]=useState<{first?:number;position?:number;last?:boolean}>({});
+  const desiredFollow=useRef(true),pendingRange=useRef(false),currentPosition=useRef(state.position);
+  currentPosition.current=state.position;
+  const rangeSong=useRef(`${song.engineId}:${song.contentId}`);
+  useEffect(()=>{
+    const identity=`${song.engineId}:${song.contentId}`;
+    if(rangeSong.current!==identity){rangeSong.current=identity;setRangeAnchor({});desiredFollow.current=true;pendingRange.current=false;}
+  },[song.engineId,song.contentId]);
   useEffect(()=>setSourceRhythm(false),[song.contentId]);
   const renderedMapping = useRef<ScoreMappingRequest | null>(null);
   const mappingSequence = useRef(0), mappingWorking = useRef(false);
@@ -278,7 +288,7 @@ export function Notation({
       setMapping(result.mapping);
       setMappingToken(result.mappingToken ?? "");
       setAmbiguities(result.ambiguities);
-      setFollow(result.following && result.mapping.length > 0);
+      setFollow(desiredFollow.current && result.following && (result.mapping.length > 0 || !!request.measureRange));
       // The rendered pages remain in state; release MIDI and evidence after success.
       renderedMapping.current = null;
     } catch (cause) {
@@ -318,7 +328,7 @@ export function Notation({
     setError("");
     setPage(0);
     api
-      .command<Asset | null>({ type: sourceRhythm && song.hasScore ? "sourceScore" : "score" })
+      .command<Asset | null>({ type:"scoreView",content_id:song.contentId,score_revision:song.scoreRevision,source:sourceRhythm&&song.hasScore,first_measure:rangeAnchor.first??null,position:rangeAnchor.position??currentPosition.current })
       .then((data) => {
         if (disposed) return;
         if (!data) {
@@ -332,15 +342,20 @@ export function Notation({
         }).then(async result => {
           if (disposed) return;
           setPages(result.pages);
+          if(rangeAnchor.last)setPage(Math.max(0,result.pages.length-1));
           const evidence=await result.evidence();
           if(disposed || controller.signal.aborted)return;
           await correlateRendered({
             scoreRevision: song.scoreRevision, sourceFingerprint: data.sourceFingerprint,
             practiceNotation: data.practiceNotation === true,
+            measureRange:data.window?{first:data.window.first,count:data.window.count}:undefined,
+            displayFingerprint:data.displayFingerprint,
             ...evidence, pageCount:result.pages.length, contentId: data.contentId,
           });
+          if(!disposed)pendingRange.current=false;
         }).catch(cause => {
           if (!disposed) {
+            pendingRange.current=false;
             setError(cause instanceof Error ? cause.message : String(cause));
             setLoading(false);
           }
@@ -348,6 +363,7 @@ export function Notation({
       })
       .catch((e) => {
         if (!disposed) {
+          pendingRange.current=false;
           setError(e instanceof Error ? e.message : String(e));
           setLoading(false);
         }
@@ -359,7 +375,15 @@ export function Notation({
       mappingWorking.current = false;
       controller.abort();
     };
-  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm]);
+  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm, rangeAnchor]);
+  useEffect(()=>{
+    const window=asset?.window;
+    if(!window||!follow||loading||pendingRange.current)return;
+    if(state.position<window.start || (state.position>=window.end&&window.first+window.count<window.total)) {
+      pendingRange.current=true;desiredFollow.current=true;
+      setRangeAnchor({position:state.position});
+    }
+  },[asset,follow,loading,state.position]);
   useEffect(() => {
     if (historyFocus && ["playing", "countIn"].includes(state.status))
       setFollow(true);
@@ -667,20 +691,22 @@ export function Notation({
     <div className="notation-pane">
       <div className="notation-toolbar">
         <button
-          disabled={page === 0}
+          disabled={loading || (page === 0 && !asset?.window?.first)}
           onClick={() => {
-            setFollow(false);
-            setPage(page - 1);
+            desiredFollow.current=false;setFollow(false);
+            if(page>0)setPage(page-1);
+            else if(asset?.window)setRangeAnchor({first:Math.max(0,asset.window.first-32),last:true});
           }}
         >
           上一页
         </button>
-        <span>{pages.length ? `${page + 1} / ${pages.length}` : "乐谱"}</span>
+        <span>{asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}{pages.length ? `${page + 1} / ${pages.length}` : "乐谱"}</span>
         <button
-          disabled={page >= pages.length - 1}
+          disabled={loading || (page >= pages.length - 1 && (!asset?.window || asset.window.first+asset.window.count>=asset.window.total))}
           onClick={() => {
-            setFollow(false);
-            setPage(page + 1);
+            desiredFollow.current=false;setFollow(false);
+            if(page<pages.length-1)setPage(page+1);
+            else if(asset?.window)setRangeAnchor({first:asset.window.first+asset.window.count});
           }}
         >
           下一页
@@ -689,8 +715,8 @@ export function Notation({
           <input
             type="checkbox"
             checked={follow}
-            onChange={(e) => setFollow(e.target.checked)}
-            disabled={!mapping.length}
+            onChange={(e) => {desiredFollow.current=e.target.checked;setFollow(e.target.checked);}}
+            disabled={loading || (!mapping.length && !asset?.window) || !!error}
           />
           跟随演奏
         </label>
@@ -751,12 +777,26 @@ export function Notation({
           生成可定位纸谱
         </button>}
         {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>setSourceRhythm(event.target.value==="source")}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
-        </ToolbarMore>
         <span className="notation-alignment-status" title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
             ? `${asset.practiceNotation ? (asset.practiceNotationKind === "simplified" ? "MIDI 简化谱" : "量化练习谱") : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
             : ""}
         </span>
+      {asset?.route && (
+        <ScoreRoute
+          key={`${song.contentId}:${song.scoreRevision}:${sourceRhythm}`}
+          route={asset.route}
+          practice={asset.practiceNotation}
+          position={state.position}
+          seek={seek}
+          disabled={editorBusy}
+          selectRange={(first, last) => setRangeSelection({ first, last })}
+          loop={async (start, end) => {
+            if(!(await loop(start,end)))throw Error("循环尚未设置，请稍后重试。");
+          }}
+        />
+      )}
+        </ToolbarMore>
       </div>
       {historyReview?.contentId === song.contentId && (
         <ScoreHistoryReview
@@ -814,20 +854,6 @@ export function Notation({
           </span>
           <button onClick={clearHistoryFocus}>清除历史标记</button>
         </div>
-      )}
-      {asset?.route && (
-        <ScoreRoute
-          key={`${song.contentId}:${song.scoreRevision}:${sourceRhythm}`}
-          route={asset.route}
-          practice={asset.practiceNotation}
-          position={state.position}
-          seek={seek}
-          disabled={editorBusy}
-          selectRange={(first, last) => setRangeSelection({ first, last })}
-          loop={async (start, end) => {
-            if(!(await loop(start,end)))throw Error("循环尚未设置，请稍后重试。");
-          }}
-        />
       )}
       {rangeSelection && (
         <ScoreRangeDialog

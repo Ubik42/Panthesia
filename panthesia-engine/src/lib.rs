@@ -1411,6 +1411,7 @@ impl Player {
                 | Command::Calibration
                 | Command::Score
                 | Command::SourceScore
+                | Command::ScoreView { .. }
                 | Command::ScoreMap { .. } | Command::ExportAnnotatedScore { .. }
                 | Command::SuggestHands { .. }
                 | Command::SuggestFingers { .. } | Command::FingerPlanContext { .. }
@@ -1941,6 +1942,10 @@ impl Player {
             }
             Command::Score => return self.score_payload(true),
             Command::SourceScore => return self.score_payload(false),
+            Command::ScoreView {content_id,score_revision,first_measure,position,source} => {
+                if self.file.as_ref().is_none_or(|f|f.content_id!=content_id) || self.score_revision!=score_revision {return Err("曲目或谱面已切换，请重新读取".into());}
+                return self.score_view_payload(first_measure,position,source);
+            },
             Command::PairScore { bytes, name, content_id, expected } => {
                 self.score_content_guard(&content_id)?;
                 let file = self.file.as_ref().ok_or("请先打开 MIDI")?;
@@ -1977,7 +1982,7 @@ impl Player {
                 return self.annotated_score_artifact(&content_id,score_revision,&options,None,&|| Ok(()))?.into_value(download,fingerprint.as_deref());
             }
             Command::ScoreMap {score_revision,midi,notes,content_id} => {
-                return self.map_score_owned(score_mapping::Input { page_count: None,content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
+                return self.map_score_owned(score_mapping::Input { measure_range:None,display_fingerprint:None,page_count: None,content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
             }
             Command::UpdateLibraryPaper{..}=>return Err("谱页整理应由独立调用线程执行".into()),
             Command::ExportPracticeBackup{..}|Command::ImportStagedPracticeBackup{..}=>return Err("备份文件应由独立调用线程处理".into()),

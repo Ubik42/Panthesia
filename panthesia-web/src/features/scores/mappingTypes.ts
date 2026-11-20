@@ -23,6 +23,8 @@ export interface ScoreMappingResult {
   mappingToken?: string;
 }
 export interface ScoreMappingRequest {
+  measureRange?: {first:number;count:number};
+  displayFingerprint?:string;
   pageCount?: number;
   practiceNotation?: boolean;
   contentId: string;

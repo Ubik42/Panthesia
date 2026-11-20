@@ -2547,6 +2547,7 @@ export type EngineCommand =
   | { type: "vstEditor" }
   | { type: "score" }
   | { type: "sourceScore" }
+  | { type: "scoreView"; "content_id": string; "score_revision": number; "first_measure"?: number | null; "position"?: number | null; "source"?: boolean }
   | { type: "scoreSources"; "content_id"?: string | null }
   | { type: "previewScoreSource"; "id": string; "fingerprint": string }
   | { type: "linkScoreSource"; "midi_path": string; "content_id": string; "version_id": string; "path": string; "default_bpm": number }
