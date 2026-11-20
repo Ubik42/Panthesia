@@ -100,7 +100,12 @@ export function resolveKeyboardRange(
 }
 
 /** Fractional white-key coordinates keep notes and pointer hit-testing on one camera. */
-export type KeyboardViewport = { start: number; span: number };
+export type KeyboardViewport = {
+  start: number;
+  span: number;
+  /** Automatic presets end at their actual outer keys, not adjacent accidentals. */
+  pitchRange?: KeyboardRange;
+};
 export const keyboardWhitePitches = Array.from(
   { length: 128 },
   (_, n) => n,
@@ -148,13 +153,18 @@ export function viewportFromRange(range: KeyboardRange): KeyboardViewport {
   const full = normalizeKeyboardRange(range.low, range.high);
   const first = keyboardWhitePitches.indexOf(full.low),
     last = keyboardWhitePitches.indexOf(full.high);
-  return clampKeyboardViewport(first, last - first + 1);
+  return { ...clampKeyboardViewport(first, last - first + 1), pitchRange: full };
 }
 export function keyboardLayout(viewport: KeyboardViewport) {
   const { start, span } = clampKeyboardViewport(viewport.start, viewport.span);
   return keyboardUnits
     .filter(
-      (key) => key.x + key.w > start + 1e-7 && key.x < start + span - 1e-7,
+      (key) =>
+        key.x + key.w > start + 1e-7 &&
+        key.x < start + span - 1e-7 &&
+        (!viewport.pitchRange ||
+          (key.pitch >= viewport.pitchRange.low &&
+            key.pitch <= viewport.pitchRange.high)),
     )
     .map((key) => ({ ...key, x: (key.x - start) / span, w: key.w / span }));
 }

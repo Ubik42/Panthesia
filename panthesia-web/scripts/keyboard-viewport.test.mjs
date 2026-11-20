@@ -14,6 +14,8 @@ test('saved camera accepts old backups and preserves explicit shortcut assignmen
 });
 test('fractional camera preserves its anchor, clipped black keys, and MIDI bounds',()=>{
  const view=v.viewportFromRange({low:21,high:108}),anchor=.31;
+ assert.deepEqual(v.viewportRange(view),{low:21,high:108});
+ assert.equal(v.keyboardLayout(view).length,88);
  const zoom=v.zoomKeyboardViewport(view,.993,anchor);
  assert.ok(Math.abs(zoom.start+zoom.span*anchor-view.start-view.span*anchor)<1e-10);
  assert.ok(!Number.isInteger(zoom.start));assert.ok(!Number.isInteger(zoom.span));
