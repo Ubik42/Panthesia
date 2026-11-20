@@ -453,6 +453,7 @@ export function HandSplitScreen({
             }}
             onPointerUp={(e) => {
               if(e.pointerType==="touch") {
+                if(touches.current.has(e.pointerId))touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
                 if(touches.current.size>=2){
                   const end=[...touches.current.values()][1];
                   finishGesture(end.x,end.y);touches.current.clear();return;

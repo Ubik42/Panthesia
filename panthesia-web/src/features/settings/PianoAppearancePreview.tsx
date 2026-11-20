@@ -83,4 +83,3 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
     <p>设置立即生效并自动保存。演示只展示画面。</p>
   </figure>;
 }
-

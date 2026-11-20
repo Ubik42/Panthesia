@@ -1,3 +1,4 @@
+import { isComposingKey, ownsInputLayer } from "./app/inputOwnership";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 export function Dialog({
@@ -10,12 +11,13 @@ export function Dialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLElement>(null);
+  const dismiss=useRef(close);dismiss.current=close;
   useEffect(() => {
     ref.current?.focus();
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !event.defaultPrevented && !isComposingKey(event) && ownsInputLayer(ref.current)) {
         event.preventDefault();
-        close();
+        dismiss.current();
       }
     };
     window.addEventListener("keydown", key);

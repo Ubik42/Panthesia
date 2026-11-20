@@ -84,6 +84,7 @@ export function TrackSetupScreen({
   const accept = (event: React.DragEvent, ids: number[]) => {
     if (!drag) return;
     event.preventDefault();
+    event.stopPropagation();
     void copyTo(ids);
   };
   const labels = (t: LoadedSong["tracks"][number]) =>

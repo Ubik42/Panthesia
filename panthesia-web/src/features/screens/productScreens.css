@@ -157,7 +157,7 @@
   min-height: 0;
 }
 .product-settings-body > nav {
-  background: #b5cfdb;
+  background: #eee;
   display: flex;
   flex-direction: column;
   padding: 22px 0;
@@ -177,6 +177,7 @@
   color: white;
 }
 .product-settings-body > section {
+  background: #b5cfdb;
   padding: 35px 6%;
   overflow: auto;
 }
@@ -1187,4 +1188,39 @@
   .synthesia-layout .product-settings-body .product-device-row > small {
     font-size: 15px;
   }
+}
+.synthesia-layout .product-settings-leaf .browse-detail-masthead {
+  background: #eee;
+}
+.synthesia-layout .product-settings-leaf .browse-detail-section {
+  background: #b5cfdb;
+}
+.synthesia-layout
+  .product-settings-leaf
+  .browse-detail-masthead
+  .browse-detail-tabs
+  > button {
+  border-bottom: 1px solid #a7afb4;
+  background: #eee;
+  color: #30383d;
+}
+.synthesia-layout
+  .product-settings-leaf
+  .browse-detail-masthead
+  .browse-detail-tabs
+  > button[aria-selected="true"] {
+  background: #039ed6;
+  color: white;
+  box-shadow: none;
+}
+.synthesia-layout
+  .product-settings-leaf
+  .synthesia-library-header
+  .synthesia-back {
+  color: #fff;
+  background: linear-gradient(#1c8bb5, #197ba4);
+  border: 1px solid #54a7c6;
+}
+.synthesia-layout .product-settings-leaf .interface-save-status {
+  color: #405967;
 }

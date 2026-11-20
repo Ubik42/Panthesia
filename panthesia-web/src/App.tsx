@@ -1760,6 +1760,7 @@ export default function App() {
         if (e.dataTransfer.types.includes("Files")) e.preventDefault();
       }}
       onDrop={(e) => {
+        if (!e.dataTransfer.types.includes("Files") && !e.dataTransfer.files.length) return;
         e.preventDefault();
         if (!startupReady) {setNotice("练习室正在恢复，请稍后再导入文件");return;}
         if (navigation.locked) {

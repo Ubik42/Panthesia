@@ -317,98 +317,10 @@
 .practice-result-save[data-saved] {
   color: #bddc9d;
 }
-
-.practice-inspector.practice-inspector-workbench {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #222a33;
-}
-.practice-inspector-workbench > .panel-heading {
-  flex: none;
-  min-height: 48px;
-}
-.practice-inspector-pages {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.practice-inspector-tabs {
-  flex: none;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2px;
-  padding: 4px 6px 8px;
-  border-bottom: 1px solid #3b4654;
-  background: #222a33;
-}
-.practice-inspector-tabs > button {
-  min-width: 0;
-  min-height: 34px;
-  padding: 6px 2px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
-  color: #b4c1d1;
-  font-size: 11px;
-}
-.practice-inspector-tabs > button[aria-selected="true"] {
-  border-color: #637b4e;
-  background: #3c4d32;
-  color: #e0efcd;
-}
-.practice-inspector-page {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-}
-.practice-inspector-page[hidden] {
-  display: none !important;
-}
-.practice-inspector-page:focus-visible {
-  outline-offset: -2px;
-}
-.practice-inspector-page .inspector-section {
-  padding: 16px 13px;
-  border-bottom-color: #384451;
-}
-.practice-inspector-page .inspector-section h2 {
-  color: #c3cfdf;
-  font-size: 12px;
-  letter-spacing: 0;
-}
-.practice-inspector-page .parameter-help,
 .practice-result-note {
   color: #b0bdce;
   font-size: 12px;
   line-height: 1.65;
-}
-.practice-inspector-page .parameter-help {
-  margin: 10px 0 0;
-}
-.practice-mode-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.practice-mode-options > button {
-  min-width: 0;
-  min-height: 33px;
-  padding: 6px;
-  font-size: 12px;
-  border-color: #495567;
-  background: #1e2630;
-}
-.practice-mode-options > button[aria-pressed="true"] {
-  color: #e0efc7;
-  background: #3b4d31;
-  border-color: #7b985e;
-}
-.practice-mode-options > button:last-child {
-  grid-column: 1 / -1;
 }
 .practice-lock-note {
   font-size: 11px;
@@ -424,10 +336,6 @@
   color: #b9d2e9;
   background: transparent;
   border-color: #42566a;
-}
-.practice-inspector-page .timing-controls > label {
-  font-size: 12px;
-  gap: 8px;
 }
 
 .practice-loop-section fieldset {
@@ -516,23 +424,6 @@
   font-size: 11px;
   color: #c3d8ac;
 }
-.practice-inspector-page .accuracy {
-  display: grid;
-  gap: 3px;
-  margin-bottom: 14px;
-}
-.practice-inspector-page .accuracy strong {
-  color: #e0edcf;
-  font-size: 34px;
-}
-.practice-inspector-page .accuracy span {
-  font-size: 12px;
-  color: #adbdcf;
-}
-.practice-inspector-page .results dl > div {
-  font-size: 12px;
-  margin: 10px 0;
-}
 .practice-result-actions {
   display: grid;
   gap: 7px;
@@ -542,10 +433,6 @@
   min-height: 34px;
   padding: 7px 4px;
   font-size: 12px;
-}
-.practice-inspector-page .saved-message {
-  font-size: 12px;
-  line-height: 1.5;
 }
 .practice-result-error {
   color: #edbd9b;
@@ -743,25 +630,7 @@
 }
 
 /* Practice options are temporary drawers; the instrument keeps its full width. */
-.workbench > .workspace > .practice-inspector { position:absolute; top:0; bottom:0; right:0; z-index:30; width:min(420px,90%); box-shadow:-12px 0 40px #0005; }
-.workspace > .practice-inspector .panel-resize-handle { display:none; }
-.practice-inspector .song-edition-bar,.practice-inspector .practice-variant-panel { flex-wrap:wrap; }
-.practice-inspector .inspector-section:empty { display:none; }
-.practice-inspector .practice-queue-strip,.practice-inspector .saved-passage-bar { flex-wrap:wrap; }
 .practice-panel > .song-toolbar { min-height:52px; }
 .practice-panel .current-song h1 { font-size:17px; }
 .practice-panel > .practice-view-toolbar { min-height:40px; }
 .practice-view-toolbar > .practice-focus-toggle { margin-left:auto; }
-
-.workbench > .workspace > .practice-inspector { background:#f6f8fb; color:#34445c; }
-.practice-inspector-workbench > .panel-heading { background:#fff; color:#2b3c55; border-color:#dce3eb; }
-.practice-inspector .inspector-section { border-color:#dce3eb; }
-.practice-inspector .inspector-section h2,.practice-inspector .track-control strong { color:#4c5e76; }
-.practice-inspector .parameter-help,.practice-inspector small { color:#7a889b; }
-.practice-inspector button,.practice-inspector select,.practice-inspector input:not([type=checkbox]):not([type=range]) { background:#fff; color:#425b7b; border:1px solid #d7e0eb; }
-.practice-inspector button[aria-pressed=true] { background:#e0eaf7; color:#244f82; border-color:#a9bfdc; }
-.practice-inspector .track-control { background:#eef2f7; border-color:#dce3eb; }
-.practice-inspector .practice-mode-options { display:flex; gap:6px; }
-.practice-inspector .practice-mode-options button { flex:1; }
-.practice-inspector .inspector-section > label { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
-.practice-inspector .inspector-section > label:has(input[type=checkbox]) { justify-content:flex-start; }
