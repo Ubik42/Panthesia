@@ -1,19 +1,20 @@
 {
   "schemaVersion": 1,
   "status": "active",
-  "objectiveVersion": "2026-11-20/4",
-  "currentBatch": "B03",
+  "objectiveVersion": "2026-11-20/5",
+  "currentBatch": "B04",
   "completedBatches": [
     "B00",
     "B01",
-    "B02"
+    "B02",
+    "B03"
   ],
-  "nextBatch": "B04",
-  "currentTask": "B03/P11：收束 App 演奏工具栏、编辑窗口/后台协调和旧抽屉适配；随改动核对长列表定位与对象右键，再进入 B04。",
+  "nextBatch": "B05",
+  "currentTask": "B04/P12–P14：解耦实时播放会话与音源端口，统一止音/关闭；定位代表负载并优化瀑布帧时间。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T14:21:12Z",
-  "nextDirectionReviewAt": "2026-11-20T16:21:12Z",
-  "goalPromptSha256": "55358c3beb5a6b4032d66f6d5956e51e84d610a07c254a0155055811e0b4e4ee",
+  "lastDirectionReviewAt": "2026-11-20T15:46:59Z",
+  "nextDirectionReviewAt": "2026-11-20T17:46:59Z",
+  "goalPromptSha256": "f56595f034c4cf78faf8efe0249eb30024817cad24b21fb739d95acfb1d6a866",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -25,35 +26,35 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "乐器持续预听/源音色名称，拖动复制至其他/全部声部",
-    "按手别记住配色/显示、自动配色和恢复默认",
-    "双指分手、源身份与连续多声部保存",
-    "琴键/音符独立完整标签、仅自己声部、当前转调拼写",
-    "音乐输入/输出对象列表和整页设置叶页",
-    "导航/声部控制器；4 个旧组件、74 条旧样式和重复/无效布局控件退出"
+    "B03/P11 工具栏、演奏操作、键盘与编辑控制器拆分",
+    "源绑定编辑栈和共享配谱入口，后台任务恢复使用产品页面",
+    "旧练习侧栏/抽屉/工作区导航及无消费者样式退出",
+    "180 首三页列表返回保持搜索、选择和滚动",
+    "原文件移动后资源管理器定位持有副本",
+    "按键释放、单编辑窗口、窄屏与原始数据完整性核对"
   ],
   "remainingCritical": [
-    "B03/P11 主页面与编辑/后台协调器、旧抽屉分支收束",
-    "UI01 长列表定位与 UI09 对象右键的实际覆盖",
     "B04 实时会话/声音路由与瀑布性能",
-    "B05–B06 长谱、后台生成、完整录音与整合",
+    "B05 长谱/后台生成及曲中调号投影",
+    "B06 完整录音与整体整合",
     "B07 退役源码、来源审核与正式包"
   ],
   "nextEntry": [
-    "panthesia-web/src/App.tsx",
-    "panthesia-web/src/features/screens/useProductNavigation.ts",
-    "panthesia-web/src/features/screens/usePartSettings.ts",
-    "panthesia-web/src/features/practice/usePracticePanels.ts",
-    "docs/development/interaction-model.md"
+    "panthesia-engine/src/playback_driver.rs",
+    "panthesia-engine/src/session_state.rs",
+    "panthesia-engine/src/note_playback.rs",
+    "panthesia-engine/src/audio.rs",
+    "panthesia-web/src/features/practice/playbackStore.ts",
+    "panthesia-web/src/features/practice/PracticeStage.tsx"
   ],
   "validation": [
-    "Web build and final Debug/custom-protocol desktop build passed",
-    "3 targeted backend checks: instrument lease/state isolation, per-hand styles/reset/package, effective key",
-    "11 label-format cases cover legacy preferences, fixed/movable, ownership and enharmonic octaves",
-    "Owned desktop device/shortcut leaves, drag/all-parts, preset preview/stop, reset and independent labels passed",
-    "Desktop touch emulation saved 3 note hand changes",
-    "Final source desktop verified transformed tonic/fifths, scoped sequential Track edits and settings cleanup",
-    "Raw MIDI and 2 fingers/1 unmapped annotation preserved; owned window closed normally"
+    "Web build and Debug custom-protocol desktop build passed",
+    "4 targeted work-navigation cases passed",
+    "Owned desktop: 180-song third-page selection/query/scroll restoration and right-click object view passed",
+    "Held virtual key released on full-page song navigation; one-editor stack return passed",
+    "Oversized score rejected through unified status details; 760x620 layout fits",
+    "Moved original resolves to held MIDI and Explorer selected that asset",
+    "Original MIDI/annotation unchanged; owned desktop closed normally"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -67,8 +68,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T15:26:17Z",
-  "implementationRevision": "026001aa720a5e9b394780a8b162e96530ce00bd",
+  "lastImplementationCheckpointAt": "2026-11-20T15:46:52.504019+00:00",
+  "implementationRevision": "6082c0f94c058288de2f1fcbe898f850cf96f134",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -82,10 +83,11 @@
     "b8660d2",
     "472cdda",
     "8941d9b",
-    "026001a"
+    "026001a",
+    "6082c0f"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "E3139B9A032F3B032EF8426D16C0C1C408FBC978EF3CD2C9A1E5A707ECA4DA71",
+  "developmentExecutableSha256": "8D40992EE01FC1A8F309FF46BEC38F3AA4475984CB22F9565694300077BDD2B1",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,

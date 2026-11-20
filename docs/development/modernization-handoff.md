@@ -2,21 +2,17 @@
 
 更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
-## 当前批次 B03
+## 当前批次 B04
 
-B00–B02 已完成；本轮源码 026001a，B03 继续。P09/P10 的声部持续预听、源音色、拖动复制/全部声部、模式配色、自动配色/恢复默认、双指分手、完整独立标签与当前练习调性拼写均已接入。音乐设备使用输入/输出对象列表；设备、外观/键盘/快捷键从主页设置进入整页叶页。旧侧栏布局选项、重复标签字段和重复转调面板已移除。
+B00–B03 已收束。当前源码 6082c0f，本批提交完成 P11：usePlaybackActions、PerformanceTools、usePerformanceKeyboard、useSongEditors/SongEditorHost、useScorePairing 和 workNavigation 接管相应职责；App 为 1662 行。旧练习侧栏、抽屉 Hook 与工作区导航等五个组件、三份样式和另外 96 条无消费者样式已删除。选曲、演奏和任务恢复共享现有产品页面；编辑栈核对源身份，同时只挂载顶部编辑器。原始数据未用于本轮核查。
 
-下一轮直接推进 P11：演奏工具栏组合、编辑窗口协调、键盘快捷键与后台接续仍集中在 App.tsx；移到现有页面控制器并退出旧抽屉/旧工作区适配。useProductNavigation/usePartSettings 已拥有相应导航和声部操作，四个旧检查栏/音轨表单组件及 74 条失去消费者的 CSS 选择器已删除。随后对 UI01 长列表定位与 UI09 对象右键做随改动核对，再进入 B04。不要重做本轮已通过的全部交互或 B01/B02 迁移。
+下一轮直接做 B04/P12–P14：沿 playback_driver/session_state/note_playback/audio 与 playbackStore/PracticeStage 收束实时会话、音源端口和关闭顺序，定位代表负载后优化瀑布帧时间。不要继续拆无关页面，不重跑 B01–B03 全流程；两小时方向审核以 goal-state.json 到期时间为准。
 
-连续声部编辑从 getBoundSong 取得最新修订，并核对原 contentId/engineId；分手与恢复默认另有 proof。Track/TrackAppearance/TrackSound/ResetPartSettings 进入受保护的 practice_edit 保存。按手别的配色/显示随既有 TrackAppearance 与曲目包保存。自定义逐音分手不向另一条源轨猜测复制。
+独立桌面核对通过：180 首三页列表返回保持搜索/选择/滚动；右键对象查看；源文件移走后资源管理器选中持有副本；按住虚拟键返回选曲会释放并暂停；歌曲选项→谱面管理→返回同时只有一个编辑窗口；配谱超限进入统一状态详情；760×620 无横向溢出。原始 MIDI 与内容标注完全保持，2 条指法及 1 条未匹配行未丢失；PID 7324 正常关闭。一次观察脚本误等主页面错误全文，后通过已有详情入口确认，未改产品逻辑。
 
-预听复用独立试听调度器，乐句在内存中限量循环，由前端续租；停止、失焦、租期结束或实际输入会退出，用户按键/录音/历史/判定不接收预听事件。原始调性与 effectiveTonic/effectiveFifths 分开，原始 MIDI 和源 NoteId 不因标签/转调显示而变化。当前标签按首个源调号/手动或估计调性及转调呈现；曲中多次调号变化尚未投影到标签。
+Debug：target/debug/panthesia-desktop.exe，SHA256 8D40992EE01FC1A8F309FF46BEC38F3AA4475984CB22F9565694300077BDD2B1，源码 6082c0f 加原有九项目录调整，嵌入当前前端。Web 和 Debug 构建、四项后台导航定向核对通过。摘要 evidence/product-controllers-2026-11-20.json；原记录 work/original-product-reset/p11-window。正式 Release 仍为 a67ea54。
 
-Debug：target/debug/panthesia-desktop.exe，SHA256 E3139B9A032F3B032EF8426D16C0C1C408FBC978EF3CD2C9A1E5A707ECA4DA71，源码 026001a 加原有九项目录调整，custom-protocol 嵌入当前前端。三项定向后端检查与 11 个标签格式情况通过。独立桌面核对声部/设置/标签，双指通过触控模拟；最终源码另核对转调主音/调号、连续 Track 保存与设置清理。原始 MIDI、2 条指法和 1 条 unmapped 标注完整，窗口正常关闭。摘要 evidence/product-interactions-2026-11-20.json，原记录 work/original-product-reset/b03-details-window。
-
-已修复实际发现的内部拖动触发文件导入：目标停止事件传递，全局入口仅接受文件拖动。预听观察脚本曾尝试替换只读的 Tauri invoke，后改为实际输出电平/界面状态，原失败观察记录保留；不应将它解释为预听无声。最终检查不需要重新替换 host API。
-
-正式 Release 仍为 a67ea54；本批未完成 Windows MIDI/Pianoteq 的听感、长时间性能、全录音与整体原创交付。真实用户资料未用于检查，15 个旧未匹配身份继续保留。B02 音乐域与 v2/v20 协议详见 music-domain.md。
+B03 关闭页面/控制器范围，整体目标继续 B04–B07。外部音源听感、长时间性能、长谱、完整录音及旧应用来源替换尚未闭环。标签目前按首个源调号/手动或估计调性及练习转调呈现；曲中多次调号投影与 B05/P15 同批处理。15 个旧未匹配身份保持原回执，不按标题绑定。前批细节见 evidence/product-interactions-2026-11-20.json。
 
 ## B01 已闭环的状态
 

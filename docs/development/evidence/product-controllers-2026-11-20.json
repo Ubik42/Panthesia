@@ -1,0 +1,100 @@
+{
+  "at": "2026-11-20T15:46:59.626851+00:00",
+  "batch": "B03",
+  "status": "complete-with-scheduled-followups",
+  "implementationRevision": "6082c0f94c058288de2f1fcbe898f850cf96f134",
+  "scope": "P08–P11 page/controller scope; UI08 recording remains P18, full scores P15",
+  "implemented": [
+    "B03/P11 工具栏、演奏操作、键盘与编辑控制器拆分",
+    "源绑定编辑栈和共享配谱入口，后台任务恢复使用产品页面",
+    "旧练习侧栏/抽屉/工作区导航及无消费者样式退出",
+    "180 首三页列表返回保持搜索、选择和滚动",
+    "原文件移动后资源管理器定位持有副本",
+    "按键释放、单编辑窗口、窄屏与原始数据完整性核对"
+  ],
+  "checks": {
+    "webBuild": "work\\original-product-reset\\p11-web-build.log",
+    "desktopBuild": "work\\original-product-reset\\p11-debug-build.log",
+    "workNavigation": {
+      "passed": true,
+      "observations": [
+        "foreign source never opens editor",
+        "cancellation after source preparation keeps task pending",
+        "pending open always returns to product song browser",
+        "assessment task never enters ordinary practice"
+      ]
+    },
+    "native": {
+      "startedAt": "2026-11-20T15:43:20.210Z",
+      "phases": [
+        "180 songs, third page, right-click object view, selection/query/scroll restored",
+        "held virtual key released by full-page song shortcut; no practice drawer",
+        "source editor stack mounts one dialog and returns from score management",
+        "oversized score rejected; single shared file input and unified status detail"
+      ],
+      "list": {
+        "count": 180,
+        "page": "180 首\n‹\n3 / 3\n›",
+        "before": 2092.666748046875,
+        "after": 2092.666748046875
+      },
+      "finishedAt": "2026-11-20T15:45:20.256Z",
+      "observationCorrection": "Oversized-score explanation is under unified status Details, not permanent error text.",
+      "narrow": {
+        "width": 760,
+        "scrollWidth": 760,
+        "toolbar": 760,
+        "visible": 760
+      },
+      "reveal": {
+        "missingOriginal": "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p11-window\\collections\\List Piece 157.mid",
+        "movedSource": "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p11-window\\collections\\Owned moved 157.mid",
+        "commandSucceeded": true
+      },
+      "passed": true
+    },
+    "explorer": {
+      "location": "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p11-window\\profile\\library\\assets\\midi",
+      "selected": [
+        "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p11-window\\profile\\library\\assets\\midi\\db44cb916e30a06257835ee17a1408c5ba34bf13a8e8e7b44dd0848276461ad5.mid"
+      ]
+    },
+    "preservation": {
+      "rawSha256": "08d24685b3d21427837825ae5f0d71030af12b420992117c76f43b19112c6f86",
+      "sourceAndOwnedBytesEqual": true,
+      "originalAnnotationUnchanged": true,
+      "annotationVersion": 2,
+      "fingers": [
+        {
+          "track_id": 0,
+          "note_index": 0,
+          "finger": 3
+        },
+        {
+          "track_id": 0,
+          "note_index": 2,
+          "finger": 5
+        }
+      ],
+      "contentId": "42b61c918d848828c53687979fbe090d9e0d3a11e2cd5fa89505d23c48a3a670"
+    },
+    "close": {
+      "pid": 7324,
+      "requested": true,
+      "exited": true,
+      "at": "2026-11-20T15:45:44.5590894Z"
+    }
+  },
+  "developmentExecutable": {
+    "path": "target/debug/panthesia-desktop.exe",
+    "sha256": "8D40992EE01FC1A8F309FF46BEC38F3AA4475984CB22F9565694300077BDD2B1",
+    "includesOriginalNineChanges": true
+  },
+  "releaseUnchanged": "a67ea54",
+  "remaining": [
+    "B04 实时会话/声音路由与瀑布性能",
+    "B05 长谱/后台生成及曲中调号投影",
+    "B06 完整录音与整体整合",
+    "B07 退役源码、来源审核与正式包"
+  ]
+}

@@ -1,6 +1,6 @@
 # Synthesia 界面与交互复刻规范
 
-版本：2026-11-20 / 1。用户要求前端完全按 Synthesia 的布局与操作方式实现。页面、控件位置、返回关系、设置层级与空间比例均以官方截图和指南为依据；算法扩展不改变默认前台形态。
+版本：2026-11-20 / 2。用户要求前端完全按 Synthesia 的布局与操作方式实现。页面、控件位置、返回关系、设置层级与空间比例均以官方截图和指南为依据；算法扩展不改变默认前台形态。
 
 ## 参考基线
 
@@ -9,15 +9,15 @@
 | 编号 | 页面/面板 | 参考与布局 | 当前差距 |
 | --- | --- | --- | --- |
 | UI00 | 主页 | [recording](https://www.synthesiagame.com/support/guide/recording)：Panthesia 名称，选曲/自由演奏/设置主按钮，右侧最近曲目 | 已实现主页、三个主入口和按歌曲去重的最近列表；独立窗口已核对 |
-| UI01 | 选曲 | [choosingSongs](https://www.synthesiagame.com/support/guide/choosingSongs)：返回、选中歌曲、继续；路径+搜索；通栏目录/歌曲；底部排序 | 目录/歌曲主布局和统一归并已接入，搜索与选中状态返回保持；滚动恢复有实现，长列表仍待定向核对 |
+| UI01 | 选曲 | [choosingSongs](https://www.synthesiagame.com/support/guide/choosingSongs)：返回、选中歌曲、继续；路径+搜索；通栏目录/歌曲；底部排序 | 180 首三页列表已核对：目录、查询、选中和滚动返回保持；统一归并接入 |
 | UI02 | 歌曲设置 | [songSetup](https://www.synthesiagame.com/support/guide/songSetup)：左侧观看和声部入口，右侧左/右/双手练习 | 已实现选择观看/左/右/双手后从底部开始；声部进入卡片，扩展收至“更多” |
 | UI03 | 手别、颜色、乐器 | songSetup：按音轨排列卡片；音色分类→具体音色；手别→左/右/背景/自定义；颜色/显示；发声/静音 | 卡片、分类音色、持续预听/源音色、拖拽到其他/全部、自动/按模式配色和恢复默认已接入；自定义逐音分手不跨轨猜测套用 |
 | UI04 | 自定义分手 | [assignHands](https://www.synthesiagame.com/support/guide/assignHands)：瀑布编辑、工具侧栏、左右工具、范围分割、逐音修改、继续/返回 | 独立瀑布、左右工具、整首分界、拖线、平移/范围与源身份提交已接入；双指触控已用桌面模拟核对，未作实体触屏验收 |
 | UI05 | 演奏 | [firstSong](https://www.synthesiagame.com/support/guide/firstSong)：顶部控制条，紧接时间线；谱面在上、瀑布居中、琴键贴底 | 主布局与独立菜单已接入；760×620 无横向溢出；时间线增加可读时间刻度。瀑布/琴键负载与演奏稳定性留在 B04 |
 | UI06 | 演奏弹出菜单 | [displaySheetMusic](https://www.synthesiagame.com/support/guide/displaySheetMusic)、[labels](https://www.synthesiagame.com/support/guide/labels)：齿轮显示开关、节拍器、缩放、La 标签、书签、手别、循环 | La、书签、循环独立弹出；完整标签类型、各自仅自己声部和窄屏节拍器已接入。当前调性/转调拼写有效；曲中多次调号变化仍需音乐投影支持 |
-| UI07 | 全局设置 | [addSongs](https://www.synthesiagame.com/support/guide/addSongs)、[changeSoundFont](https://www.synthesiagame.com/support/guide/changeSoundFont)：输入、输出、歌曲目录、快捷键等按对象设置 | 音乐输入/输出对象列表及整页设备、外观/键盘/快捷键叶页已接入；诊断折叠在高级设置。旧抽屉与兼容协调代码继续 P11 收束 |
+| UI07 | 全局设置 | [addSongs](https://www.synthesiagame.com/support/guide/addSongs)、[changeSoundFont](https://www.synthesiagame.com/support/guide/changeSoundFont)：输入、输出、歌曲目录、快捷键等按对象设置 | 音乐输入/输出对象列表及整页设备、外观/键盘/快捷键叶页已接入；诊断折叠在高级设置。旧抽屉与工作区导航控件已由 P11 退出，底层兼容资料继续 P20 |
 | UI08 | 自由演奏/录音 | recording：简洁琴键/瀑布，顶部录音控制；录后出现独立轨道；保存时选量化 | 独立自由演奏页、琴键输入与录音入口已接入；多轨、量化保存和完整录音流程仍由 B06 完成 |
-| UI09 | 文件对象操作 | 与目录/歌曲对象绑定；用户要求右键查看、版本和资源管理器定位 | 右键入口已有；需与自动位置关联、真实谱面阅读统一 |
+| UI09 | 文件对象操作 | 与目录/歌曲对象绑定；用户要求右键查看、版本和资源管理器定位 | 右键对象查看和文件位置已核对；原文件移动后定位持有副本。完整谱面阅读继续 B05 |
 
 ## 固定的主流程
 
@@ -63,4 +63,4 @@
 
 原生窗口使用合成 MIDI 完成观看/左/右/双手入口、分手与标注保存、音色/配色/隐藏/静音、标签、书签、循环、自由演奏及返回。宽屏与 760×620 画面已检查；这不替代外部音源、长期性能或完整录音验收。摘要见 [当前界面证据](evidence/product-pages-2026-11-20.json)。
 
-本轮详细证据见 [交互补齐记录](evidence/product-interactions-2026-11-20.json)。后续 B03 主要工作是 P11 的协调器/旧分支退出，以及长列表和右键对象流程的实际覆盖；声音设备听感、长时间性能与完整录音分别属于 B04/B06。
+本轮详细证据见 [交互补齐记录](evidence/product-interactions-2026-11-20.json)。6082c0f 已完成 P11：全页选曲替代旧抽屉，源绑定编辑栈逐层返回，后台回执恢复现有页面。长列表/右键与 760×620 已在当前 Debug 核对。B03 页面和控制器任务收束；声音/性能、长谱、完整录音分别继续 B04/B05/B06。

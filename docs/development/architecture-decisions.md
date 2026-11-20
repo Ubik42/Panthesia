@@ -94,3 +94,9 @@ SetPartHands 绑定 contentId、轨号和手别 proof，在 practice_edit 的 Ha
 usePartSettings 拥有声部选择、异步保存、拖动复制与预听租期；useProductNavigation 将引擎切换与页面切换组织为单个受保护操作。连续声部编辑从当前已绑定会话取得修订，contentId/engineId 必须仍与编辑来源一致；分手/恢复默认额外核对 proof。TrackAppearance 通过 practice_edit 的 Preferences 路径保存；颜色/显示选择按 left/right/other 存在现有外观设置中，并随曲目包往返。ResetPartSettings 在同一后台文件事务中恢复当前轨默认手别/外观/声音与逐音播放规则，指法和其他轨不受影响。
 
 乐器预听使用已有独立试听调度器的短内存乐句，循环由引擎驱动；前端只续租、停止和换音色。关闭/失焦/丢失租期及实际输入会停止预听，演奏位置、录音、用户 MIDI 计数与判定均不接收预听音符。琴键/音符标签分别持久化，所有权来自实际手别和播放方式；调性使用 effectiveTonic/effectiveFifths，与原始 tonic 分开，避免转调后仍显示原调唱名。
+
+## A15 页面协调与源绑定编辑会话
+
+6082c0f：产品导航拥有切换准备、页面和止音；usePlaybackActions 拥有普通/实时合并命令，usePerformanceKeyboard 拥有快捷键代次和虚拟按键释放。useSongEditors 按 engineId/contentId 绑定编辑栈，来源变化即退出可见编辑；草稿仍由各数据存储持有。SongEditorHost 只呈现顶部编辑器。谱面配对在选择和读取后核对同一来源。
+
+workNavigation 将后台回执映射到既有产品页面/编辑器，准备后再核对内容与取消信号；旧评分任务不能进入普通练习。LibraryOpening 在已绑定来源后选择歌曲设置或演奏页。旧抽屉和工作区导航控件退役，底层兼容资料仍按 P20 来源台账处理。资源管理器定位对失效原路径先解析持有资产，磁盘工作留在后台线程。
