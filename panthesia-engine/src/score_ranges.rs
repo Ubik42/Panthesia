@@ -300,7 +300,7 @@ impl ScoreRange {
             .iter()
             .any(|v| v.len() != 64 || !v.bytes().all(|b| b.is_ascii_hexdigit()))
             || self.first_visit > self.last_visit
-            || self.last_visit >= 20_000
+            || self.last_visit >= panthesia_core::score_playback::PlaybackLimits::default().max_visits
             || self.start_trim>0x0fff_ffff || self.end_trim>0x0fff_ffff
             || self.end_tick <= self.start_tick
             || self.end_tick > 0x0fff_ffff
@@ -328,7 +328,7 @@ impl Player {
         let plan = build_playback_plan(
             part,
             PlaybackLimits {
-                max_visits: 20_000,
+                max_visits: panthesia_core::score_playback::PlaybackLimits::default().max_visits,
                 max_repeat_passes: 16,
             },
         );

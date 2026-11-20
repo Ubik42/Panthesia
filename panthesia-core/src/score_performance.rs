@@ -302,10 +302,7 @@ pub fn generate_checked(
         .unwrap();
     let plan = build_playback_plan(
         master,
-        PlaybackLimits {
-            max_visits: 20_000,
-            max_repeat_passes: 16,
-        },
+        PlaybackLimits::default(),
     );
     if !plan.complete {
         return Err(format!(
@@ -325,10 +322,7 @@ pub fn generate_checked(
         {
             let own = build_playback_plan(
                 part,
-                PlaybackLimits {
-                    max_visits: 20_000,
-                    max_repeat_passes: 16,
-                },
+                PlaybackLimits::default(),
             );
             if !own.complete
                 || own

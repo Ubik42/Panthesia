@@ -224,7 +224,7 @@ impl ScoreAsset {
             .count();
         let route = file.and_then(|file| self.score.parts.first().map(|part| {
             use panthesia_core::score_playback::{build_playback_plan, PlaybackLimits};
-            let plan = build_playback_plan(part, PlaybackLimits { max_visits: 20_000, max_repeat_passes: 16 });
+            let plan = build_playback_plan(part, PlaybackLimits::default());
             let seconds = |t: panthesia_core::musicxml::ScoreTime| file.tempo_track.pulses_to_duration(
                 (t.numerator.max(0) as u128 * u128::from(file.musical_time.ppq) / u128::from(t.denominator)) as u64).as_secs_f64();
             let mut beat_types = vec![];
