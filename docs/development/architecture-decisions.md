@@ -169,7 +169,7 @@ loop_practice 从主 tick 收拢普通轮次收尾和错误阈值判断。阈值
 
 下一轮预览属于 display.loopPreview，默认开启，随界面偏好和显示备份保存。Piano 将当前循环窗口和一轮源窗口映射到相邻 tick 空间，复用 NoteTimeline 区间查询和源小节网格；超出当前循环的后续歌曲音符不代替下一轮。淡色音符不加入键盘高亮、击键效果、选择命中或引擎事件。开关不改播放位置、状态或 noteEpoch，真实跳转继续由引擎执行。
 
-现有正常轮次的末尾判定等待与保存后再继续仍在；本批没有用显示时钟隐藏该延迟。下一批应集中检查并改造该实时 / 保存边界及长曲显示性能。原生检查同时隔离引擎资料根与 WebView2 用户目录，使用 Microsoft 文档支持的 [WEBVIEW2_USER_DATA_FOLDER](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl?view=webview2-1.0.3967.48) 覆盖，避免检查操作写入日常界面配置。
+该批次的正常轮次仍使用末尾固定等待与保存后继续；后续 A16 已改造此边界，按待判定攻击结算并将写盘排队。原生检查同时隔离引擎资料根与 WebView2 用户目录，使用 Microsoft 文档支持的 [WEBVIEW2_USER_DATA_FOLDER](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl?view=webview2-1.0.3967.48) 覆盖，避免检查操作写入日常界面配置。
 
 
 ## A16 循环判定、结果发布与磁盘提交分阶段
