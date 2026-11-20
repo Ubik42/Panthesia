@@ -251,6 +251,8 @@ pub struct Engine {
 mod bootstrap;
 mod application;
 mod playback_driver;
+mod playback_session;
+mod playback_adapter;
 
 /// Only bounded control commands may use the reserved service and runtime lane.
 pub fn is_control_command(command: &Command) -> bool {
@@ -307,7 +309,7 @@ struct LocatedScoreMap {
     notes:HashMap<(usize,usize),(String,usize)>,
 }
 struct Player {
-    guidance: note_guidance::Guidance,
+    playback: playback_session::PlaybackSession,
     startup: Option<startup::Control>,
     recording_saved: bool,
     recording_path: Option<PathBuf>,
@@ -331,16 +333,13 @@ struct Player {
     original_grid: Option<OriginalGrid>,
     meter_map:Option<panthesia_core::library::MeterMap>,
     meter_correction: Option<panthesia_core::library::MeterCorrection>,
-    note_cursor: usize,
     events: PlaybackEvents,
-    event_cursor: usize,
     matcher: PracticeMatcher,
     pending_time:PracticeTimeSlices,
     pending_untracked:u64,
     time_fraction:Duration,
     time_connected:bool,
     time_last_end:Option<u64>,
-    session_clock: Duration,
     history: PracticeHistoryStore,
     title: String,
     input_connection: Option<midir::MidiInputConnection<()>>,
@@ -414,7 +413,7 @@ impl Player {
         let startup::Data { preferences,history,soundfont_presets,error:settings_error,blocked:import_recovery_pending,.. }=loaded;
         Self {
             startup: None,
-            guidance: Default::default(),
+            playback: Default::default(),
             recording_saved: false,
             recording_path: None,
             closing: Arc::new(AtomicBool::new(false)),
@@ -442,12 +441,9 @@ impl Player {
             original_grid: None,
             meter_map:None,
             meter_correction: None,
-            note_cursor: 0,
             events: PlaybackEvents::default(),
-            event_cursor: 0,
             matcher: PracticeMatcher::new(KeyboardRange::new(0..=127)),
             pending_time:Default::default(),pending_untracked:0,time_fraction:Duration::ZERO,time_connected:false,time_last_end:None,
-            session_clock: Duration::ZERO,
             history,
             title: String::new(),
             input_connection: None,
@@ -525,7 +521,7 @@ impl Player {
         self.ladder = None;
         self.active_expression_goal = None;
         self.expression_attempt_started = false;
-        if self.state.count_in > 0 && self.session_clock == Duration::ZERO {
+        if self.state.count_in > 0 && self.playback.clock == Duration::ZERO {
             let snap = self.snapshot();
             let f = self.file.as_ref().unwrap();
             let m = f.musical_time.measure_at(snap.tick).unwrap();
@@ -987,21 +983,7 @@ impl Player {
         }
     }
     fn note_player(&self, track: usize, index: usize) -> PlayerConfig {
-        let base = self.config.player_for(track, index);
-        if base != PlayerConfig::Human {
-            return base;
-        }
-        let wanted = match self.state.hands.as_str() {
-            "left" => Some(PracticePart::LeftHand),
-            "right" => Some(PracticePart::RightHand),
-            "other" => Some(PracticePart::Other),
-            _ => None,
-        };
-        if wanted.is_some_and(|h| hands::part(&self.config, &self.note_hands, track, index) != h) {
-            PlayerConfig::Auto
-        } else {
-            base
-        }
+        playback_adapter::note_player(&self.config, &self.note_hands, &self.state.hands, track, index)
     }
     fn set_hand_scope(&mut self, value: &str) -> Result<(), String> {
         let wanted = match value {
@@ -1101,7 +1083,7 @@ impl Player {
         self.retire(audition);
         self.song_audition_pending = None;
         self.audio_stop_epoch = self.audio_stop_epoch.wrapping_add(1);
-        self.performance_capture.close(self.session_clock.as_secs_f64(),self.state.position);
+        self.performance_capture.close(self.playback.clock.as_secs_f64(),self.state.position);
         self.finger_demo = None;
         if let Some(host)=&self.sound_host {host.stop();}
         if let Some(vst) = &self.vst {
@@ -1146,7 +1128,7 @@ impl Player {
     fn reset(&mut self,position:f64) {self.reset_with_sound(position,None);}
     fn reset_with_sound(&mut self,position:f64,prepared:Option<track_sound::Prepared>) {
         self.state.loop_abort_limit=0;
-        self.guidance.clear();
+        self.playback.guidance.clear();
         self.active_expression_goal = None;
         let mut projections = std::mem::take(&mut self.projections);
         if projections.scope.borrow().as_ref().is_some_and(|scope| scope.matches(self)) {
@@ -1159,7 +1141,7 @@ impl Player {
         self.matcher.reset();
         let capture = std::mem::take(&mut self.performance_capture);
         self.retire((report, capture));
-        self.session_clock = Duration::ZERO;
+        self.playback.clock = Duration::ZERO;
         self.pending_time.clear();self.pending_untracked=0;self.time_fraction=Duration::ZERO;self.time_connected=false;self.time_last_end=None;
         self.state.position = position;
         if self.state.metronome {
@@ -1172,12 +1154,8 @@ impl Player {
         }
         self.state.saved = true;
         self.state.current_history_id = None;
-        self.note_cursor = self
-            .notes
-            .partition_point(|n| n.start.as_secs_f64() < position);
-        self.event_cursor = self
-            .events
-            .partition_point(|e| e.timestamp.as_secs_f64() < position);
+        self.playback.seek(position, &self.notes, &self.events,
+            |n| n.start.as_secs_f64(), |e| e.timestamp.as_secs_f64());
         if let Some(prepared)=prepared {self.restore_prepared_track_sound(prepared);} else {self.restore_track_sound();}
         self.state.status = "ready".into();
         self.state.count_remaining = 0.;
@@ -2140,13 +2118,12 @@ impl Player {
             }
             Command::Mode { value } => {
                 if self.state.mode == value { return Ok(serde_json::json!({"ok":true})); }
-                self.guidance.clear();
                 self.panic();
                 self.state.mode = value;
                 self.state.wait = self.state.mode == "wait";
                 self.state.adaptive = false;
                 self.active_expression_goal = None;
-                self.note_cursor = self.notes.partition_point(|note| note.start.as_secs_f64() < self.state.position);
+                self.playback.reselect(self.state.position, &self.notes, |n| n.start.as_secs_f64());
                 self.restore_track_sound();
             }
             Command::Track {
@@ -2558,18 +2535,13 @@ impl Player {
                 self.state.speed = value;
             }
             Command::Wait { enabled } => {
-                if self.state.wait != enabled {
-                    self.state.wait = enabled;
-                    self.state.mode = if enabled { "wait" } else { "listen" }.into();
-                    self.reset(self.state.position);
-                }
+                return self.command(Command::Mode { value: if enabled { "wait" } else { "listen" }.into() });
             }
             Command::Hands { value } => {
-                self.previous_summary = None;
-                self.previous_mode = None;
-                self.coach = AdaptiveTempoCoach::default();
                 self.set_hand_scope(&value)?;
-                self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
+                self.panic();
+                self.playback.reselect(self.state.position, &self.notes, |n| n.start.as_secs_f64());
+                self.restore_track_sound();
             }
             Command::Save => {
                 if self.pending_saves.is_some() { return Err("请通过后台保存入口保存本轮结果".into()); }
@@ -2774,7 +2746,7 @@ impl Player {
                 self.state.pressed.push(note);
             }
             if active && self.state.status == "playing" && self.state.wait {
-                self.guidance.press(note, self.session_clock);
+                self.playback.guidance.press(note, self.playback.clock);
             }
         }
         if kind == 176 && note == 64 { self.state.pedal = velocity; }
@@ -2842,95 +2814,7 @@ impl Player {
         if self.state.status != "playing" {
             return;
         }
-        self.session_clock += delta;
-
-        if self.state.wait && !self.guidance.ready() {
-            return;
-        }
-        let end = self
-            .state
-            .passage
-            .as_ref()
-            .map_or(self.state.duration, |p| p.end);
-        let mut position = (self.state.position + delta.as_secs_f64() * self.state.speed).min(end);
-        if self.state.wait {
-            while self.note_cursor < self.notes.len()
-                && self.note_player(
-                    self.notes[self.note_cursor].track_id,
-                    self.notes[self.note_cursor].index,
-                ) != PlayerConfig::Human
-            {
-                self.note_cursor += 1;
-            }
-            if let Some(note) = self.notes.get(self.note_cursor) {
-                position = position.min(note.start.as_secs_f64().max(self.state.position));
-            }
-        }
-        self.state.position = position;
-        while self.event_cursor < self.events.len()
-            && self.events[self.event_cursor].timestamp.as_secs_f64() <= position + 0.000001
-            && (self.state.passage.is_none()
-                || self.events[self.event_cursor].timestamp.as_secs_f64() < end)
-        {
-            let event = self.events[self.event_cursor].clone();
-            self.event_cursor += 1;
-            if self
-                .config
-                .tracks
-                .iter()
-                .any(|t| t.track_id == event.track_id && t.player == PlayerConfig::Mute)
-            {
-                continue;
-            }
-            use midi_file::midly::MidiMessage as M;
-            let bytes = match event.message {
-                M::NoteOn { key, vel } => {
-                    if event.source_note.and_then(|id| self.event_notes.get(&id))
-                            .is_some_and(|&i| {
-                                !note_playback::reference_sounds(self.note_player(event.track_id, i), &self.state.mode)
-                            })
-                    {
-                        continue;
-                    }
-                    vec![144 | event.channel, key.as_int(), vel.as_int()]
-                }
-                M::NoteOff { key, vel } => {
-                    if event.source_note.and_then(|id| self.event_notes.get(&id))
-                            .is_some_and(|&i| {
-                                !note_playback::reference_sounds(self.note_player(event.track_id, i), &self.state.mode)
-                            })
-                    {
-                        continue;
-                    }
-                    vec![128 | event.channel, key.as_int(), vel.as_int()]
-                }
-                M::Controller { controller, value } => {
-                    vec![176 | event.channel, controller.as_int(), value.as_int()]
-                }
-                M::ProgramChange { program } => vec![192 | event.channel, program.as_int()],
-                M::PitchBend { bend } => {
-                    let n = bend.0.as_int();
-                    vec![224 | event.channel, (n & 127) as u8, (n >> 7) as u8]
-                }
-                _ => continue,
-            };
-            self.send_track(event.track_id,&bytes);
-        }
-        if self.state.wait {
-            while self.note_cursor < self.notes.len()
-                && self.notes[self.note_cursor].start.as_secs_f64() <= position + 0.000001
-                && (self.state.passage.is_none() || self.notes[self.note_cursor].start.as_secs_f64() < end)
-            {
-                let note = &self.notes[self.note_cursor];
-                if self.note_player(note.track_id, note.index) == PlayerConfig::Human {
-                    self.guidance.require(note.note, self.session_clock);
-                }
-                self.note_cursor += 1;
-            }
-        }
-        if position >= end && (!self.state.wait || self.guidance.ready()) {
-            self.finish_practice_round();
-        }
+        self.tick_transport(delta);
     }
     fn continue_finished_round(&mut self) { self.advance_finished_round(true); }
     fn advance_finished_round(&mut self, resume: bool) {
@@ -2967,7 +2851,7 @@ impl Player {
         state.storage.operation=pending_save::StorageOperation::current(self.storage_id.as_deref(), self.closing.load(Ordering::Acquire));
         state.content_id = self.file.as_ref().map(|file| file.content_id.clone());
         state.score_revision=self.score_revision;
-        state.practice_ms=self.session_clock.as_millis().min(u128::from(u64::MAX)) as u64;
+        state.practice_ms=self.playback.clock.as_millis().min(u128::from(u64::MAX)) as u64;
         state.ladder = None;
         state.routine = None;
         state.song_expression_goal = None;
@@ -2976,7 +2860,7 @@ impl Player {
         state.output_id = self.output_identity().map(str::to_owned);
         state.input_connected = self.input_connected();
         state.note_epoch = self.audio_stop_epoch;
-        state.required = self.guidance.pitches();
+        state.required = self.playback.guidance.pitches();
         state.score = Default::default();
         state.summary = None;
         state.summary_version.clear();
@@ -3064,7 +2948,7 @@ mod tests {
     #[test]
     fn pause_after_completion_preserves_saved_result_and_goal_editing() {
         let mut p = player();
-        p.session_clock = Duration::from_secs(1);
+        p.playback.clock = Duration::from_secs(1);
         p.state.status = "finished".into();
         p.state.saved = true;
         p.expression_attempt_started = true;
@@ -4506,7 +4390,7 @@ mod tests {
     fn saved_practice_time_excludes_pause_count_in_and_survives_reload() {
         let mut p=player();let cid=p.file.as_ref().unwrap().content_id.clone();
         p.state.count_in=1;p.command(Command::Play).unwrap();p.tick(Duration::from_secs(5));
-        assert_eq!(p.session_clock,Duration::ZERO);
+        assert_eq!(p.playback.clock,Duration::ZERO);
         p.tick(Duration::from_secs(2));assert_eq!(p.state.position,0.);
         p.command(Command::Pause).unwrap();p.tick(Duration::from_secs(10));
         p.command(Command::Play).unwrap();p.midi(&[144,60,90]);p.midi(&[128,60,0]);p.tick(Duration::from_millis(100));

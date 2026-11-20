@@ -4,7 +4,7 @@ impl Player {
     pub(super) fn finish_practice_round(&mut self) {
         self.state.status = "finished".into();
         self.panic();
-        self.guidance.clear();
+        self.playback.guidance.clear();
         self.state.saved = true;
         self.state.current_history_id = None;
         self.continue_finished_round();

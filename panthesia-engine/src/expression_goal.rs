@@ -208,7 +208,7 @@ impl crate::Player {
         if self.routine.is_some() || self.ladder.as_ref().is_some_and(|l| l.active) {
             return Err("请先结束练习计划或速度阶梯，再修改曲目专项要求".into());
         }
-        let empty_attempt = self.session_clock == std::time::Duration::ZERO
+        let empty_attempt = self.playback.clock == std::time::Duration::ZERO
             && self.matcher.snapshot().matched_notes + self.matcher.snapshot().wrong_notes + self.matcher.snapshot().missed_notes == 0;
         let editable = matches!(self.state.status.as_str(), "ready" | "idle")
             || self.state.status == "finished" && self.state.saved

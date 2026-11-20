@@ -54,14 +54,6 @@ pub(super) fn capture(
     drop(reset);
     (writes, replies)
 }
-pub(super) fn tick(player: &mut crate::Player, delta: std::time::Duration) {
-    if let Some(pipeline) = player.pending_saves.clone() {
-        let (writes, replies) = capture(&pipeline, || player.tick(delta));
-        pipeline.enqueue(writes, replies, false);
-    } else {
-        player.tick(delta);
-    }
-}
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageStatus {

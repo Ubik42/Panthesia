@@ -1,5 +1,5 @@
 //! Bounded playback scheduling. File parsing and persistence remain in workers.
-use crate::{Player, Snapshot, device_catalog, pending_save, runtime_request, state_projection};
+use crate::{Player, Snapshot, device_catalog, runtime_request, state_projection};
 use std::{
     sync::{
         Arc, Mutex,
@@ -67,7 +67,7 @@ impl Driver {
                 }
             }
             let work = Instant::now();
-            pending_save::tick(&mut player, gap);
+            player.tick(gap);
             if running {
                 player.state.playback_performance.max_tick_ms = player
                     .state

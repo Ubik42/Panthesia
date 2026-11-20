@@ -7,7 +7,7 @@ type Sprite = {
   bytes: number;
 };
 
-/** Small nine-slice note textures retain the rounded ends and glow at any duration. */
+/** Common note lengths use one cached blit; very tall notes retain bounded nine-slice textures. */
 export class WaterfallSprites {
   private notes = new Map<string, Sprite>();
   private bytes = 0;
@@ -49,7 +49,11 @@ export class WaterfallSprites {
     ratio: number,
     alpha: number,
   ) {
-    const bodyHeight = height < 16 ? Math.round(height * ratio) / ratio : 40;
+    // Most visible piano notes fit this bound. Cache their complete shape so
+    // each frame sends one image operation instead of three. Very long notes
+    // keep the fixed-size texture, preventing offscreen-sized allocations.
+    const complete = height <= 512;
+    const bodyHeight = complete ? Math.round(height * ratio) / ratio : 40;
     const bodyWidth = Math.max(1, Math.round(width * ratio) / ratio);
     const pad = glow > 0 ? Math.ceil(glow * 2) + 2 : 1;
     const key = `${fill}:${bodyWidth}:${bodyHeight}:${glow}:${ratio}`;
@@ -100,7 +104,7 @@ export class WaterfallSprites {
     ctx.globalAlpha = alpha;
     const sourceWidth = sprite.image.width;
     const destinationWidth = width + pad * 2;
-    if (height < 16)
+    if (complete)
       ctx.drawImage(
         sprite.image,
         x - pad,

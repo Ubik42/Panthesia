@@ -255,6 +255,10 @@ export function Piano({
       effectPalettes[display.effectsPalette].right,
     );
     let frame = 0;
+    let keyLabelSource: typeof latest.current | undefined;
+    let keyLabelDisplay: DisplayPreferences | undefined;
+    let keyLabelLayout: typeof keyLayout | undefined;
+    let staticKeyLabels = new Map<number, string>();
     const draw = () => {
       frame = 0;
       const { display, previewBars, keyLayout, white, black, geometry } =
@@ -680,12 +684,20 @@ export function Piano({
           dpr,
         );
       } else effects.clear();
-      const keyLabels = new Map<number,string>();
-      for (const pitch of [...white, ...black]) {
-        const candidates = labelSources.get(pitch) ?? [];
-        const own = !song || state.mode !== "listen" && candidates.some(n=>ownsPracticeNote(n.part,n.playbackMode,state.hands));
-        keyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic,fifths:song?.practiceVariant?.effectiveFifths,minor:song?.practiceVariant?.minor}));
+      const source = latest.current;
+      if (keyLabelDisplay !== display || keyLabelLayout !== keyLayout ||
+          keyLabelSource?.song !== song || keyLabelSource?.state.mode !== state.mode ||
+          keyLabelSource?.state.hands !== state.hands) {
+        staticKeyLabels = new Map();
+        for (const pitch of [...white, ...black]) {
+          const candidates = labelSources.get(pitch) ?? [];
+          const own = !song || state.mode !== "listen" && candidates.some(n=>ownsPracticeNote(n.part,n.playbackMode,state.hands));
+          staticKeyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic,fifths:song?.practiceVariant?.effectiveFifths,minor:song?.practiceVariant?.minor}));
+        }
+        keyLabelSource = source; keyLabelDisplay = display; keyLabelLayout = keyLayout;
       }
+      // Finger labels depend on the current passage; never mutate the static map.
+      const keyLabels = display.keyLabelMode === "finger" ? new Map(staticKeyLabels) : staticKeyLabels;
       if (display.keyLabelMode === "finger") {
         timeline.visit(tick, tick + Math.max(1, song?.ppq ?? 480), note => {
           const own = state.mode !== "listen" && ownsPracticeNote(note.part,note.playbackMode,state.hands);

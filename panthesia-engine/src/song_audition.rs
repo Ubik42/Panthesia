@@ -468,7 +468,7 @@ mod tests {
                 let score = player.matcher.snapshot();
                 let position = player.state.position;
                 let status = player.state.status.clone();
-                let clock = player.session_clock;
+                let clock = player.playback.clock;
                 let inputs = player.state.midi_events;
                 let prepared = Prepared::read(&path, &token).unwrap();
                 assert_eq!(prepared.duration, 8.);
@@ -494,7 +494,7 @@ mod tests {
                 assert!(player.song_audition.is_none());
                 assert_eq!(player.state.position, position);
                 assert_eq!(player.state.status, status);
-                assert_eq!(player.session_clock, clock);
+                assert_eq!(player.playback.clock, clock);
                 assert_eq!(player.state.midi_events, inputs);
                 assert_eq!(player.matcher.snapshot(), score);
                 assert!(player.state.pressed.is_empty());

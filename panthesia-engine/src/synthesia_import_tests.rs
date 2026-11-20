@@ -127,7 +127,8 @@ fn background_and_discard_import_as_independent_playback_rules() {
     let checked = preview(&data, xml.clone(), vec![path.clone()], options.clone(), &||Ok(())).unwrap();
     assert_eq!(checked["rows"][0]["blocked"], false);
     commit(&data, xml, vec![path.clone()], options, checked["proof"].as_str().unwrap().into()).unwrap();
-    let saved = library::load_song_sidecar(&path, &file.content_id).unwrap();
+    let owned = crate::owned_annotations::existing(&data, &path, &file.content_id);
+    let saved = library::load_song_sidecar(&owned, &file.content_id).unwrap();
     let mut config = SongConfig::new(&file.tracks);
     config.set_note_playback_rules(&saved.note_playback, &file).unwrap();
     let track = file.tracks.iter().find(|t| !t.notes.is_empty()).unwrap();

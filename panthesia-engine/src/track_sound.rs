@@ -285,7 +285,7 @@ impl Player {
         }
     }
     pub(crate) fn prepare_track_sound(&self)->Prepared {
-        self.sound_timeline.at(self.event_cursor,!self.track_sound_settings().is_empty())
+        self.sound_timeline.at(self.playback.event_cursor,!self.track_sound_settings().is_empty())
     }
     pub(crate) fn restore_track_sound(&mut self) {
         let prepared=self.prepare_track_sound();
