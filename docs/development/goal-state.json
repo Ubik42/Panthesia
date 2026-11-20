@@ -1,20 +1,21 @@
 {
   "schemaVersion": 1,
   "status": "active",
-  "objectiveVersion": "2026-11-20/5",
-  "currentBatch": "B04",
+  "objectiveVersion": "2026-11-20/6",
+  "currentBatch": "B05",
   "completedBatches": [
     "B00",
     "B01",
     "B02",
-    "B03"
+    "B03",
+    "B04"
   ],
-  "nextBatch": "B05",
-  "currentTask": "B04/P12–P14：解耦实时播放会话与音源端口，统一止音/关闭；定位代表负载并优化瀑布帧时间。",
+  "nextBatch": "B06",
+  "currentTask": "B05/P15–P17：长谱按页/范围准备与映射，接通 DuET 结果归属/采用，收束练习变换与后台任务。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T15:46:59Z",
-  "nextDirectionReviewAt": "2026-11-20T17:46:59Z",
-  "goalPromptSha256": "f56595f034c4cf78faf8efe0249eb30024817cad24b21fb739d95acfb1d6a866",
+  "lastDirectionReviewAt": "2026-11-20T16:13:51Z",
+  "nextDirectionReviewAt": "2026-11-20T18:13:51Z",
+  "goalPromptSha256": "d51c8b94cabeac8bebfb065c5c8394e74a5f2b5f88fa75b48affbaf10e207d4a",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -26,35 +27,34 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "B03/P11 工具栏、演奏操作、键盘与编辑控制器拆分",
-    "源绑定编辑栈和共享配谱入口，后台任务恢复使用产品页面",
-    "旧练习侧栏/抽屉/工作区导航及无消费者样式退出",
-    "180 首三页列表返回保持搜索、选择和滚动",
-    "原文件移动后资源管理器定位持有副本",
-    "按键释放、单编辑窗口、窄屏与原始数据完整性核对"
+    "in-memory PlaybackSession, immutable timeline adapter and shared musical cursor",
+    "mode/wait/hand switches preserve transport; panic is shared stop generation",
+    "driver tick leaves persistence capture; regular MIDI packets use fixed arrays",
+    "ordinary metronome now pulses; count-in no longer clones full snapshots",
+    "bounded full-note sprites with tall-note fallback; static key labels cached",
+    "Windows GS and Pianoteq WASAPI loopback, complete five-minute playback, input/wait chord and held-key normal close"
   ],
   "remainingCritical": [
-    "B04 实时会话/声音路由与瀑布性能",
     "B05 长谱/后台生成及曲中调号投影",
     "B06 完整录音与整体整合",
-    "B07 退役源码、来源审核与正式包"
+    "B07 旧应用实现退役、来源审核、正式包和实际使用交付"
   ],
   "nextEntry": [
-    "panthesia-engine/src/playback_driver.rs",
-    "panthesia-engine/src/session_state.rs",
-    "panthesia-engine/src/note_playback.rs",
-    "panthesia-engine/src/audio.rs",
-    "panthesia-web/src/features/practice/playbackStore.ts",
-    "panthesia-web/src/features/practice/PracticeStage.tsx"
+    "panthesia-engine/src/notation.rs",
+    "panthesia-engine/src/practice_notation.rs",
+    "panthesia-web/src/Notation.tsx",
+    "panthesia-web/src/features/scores/scoreRenderCache.ts",
+    "panthesia-web/src-tauri/src/duet_score.rs",
+    "panthesia-web/src-tauri/src/score_jobs.rs"
   ],
   "validation": [
-    "Web build and Debug custom-protocol desktop build passed",
-    "4 targeted work-navigation cases passed",
-    "Owned desktop: 180-song third-page selection/query/scroll restoration and right-click object view passed",
-    "Held virtual key released on full-page song navigation; one-editor stack return passed",
-    "Oversized score rejected through unified status details; 760x620 layout fits",
-    "Moved original resolves to held MIDI and Explorer selected that asset",
-    "Original MIDI/annotation unchanged; owned desktop closed normally"
+    "Web and embedded Debug builds passed; 4 targeted session/control cases passed",
+    "Windows GS: actual WASAPI signal and near-zero after panic",
+    "Pianoteq: actual WASAPI signal with metronome and near-zero after panic",
+    "19200-note full five-minute playback completed; frame statistics in evidence",
+    "USB input connected; partial chord waits, full chord advances, continuous resumes",
+    "Playing desktop with held note closed normally with exit code 0",
+    "Owned original MIDI/annotations unchanged; original 9 workspace changes preserved"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -68,8 +68,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T15:46:52.504019+00:00",
-  "implementationRevision": "6082c0f94c058288de2f1fcbe898f850cf96f134",
+  "lastImplementationCheckpointAt": "2026-11-20T16:13:51.267886+00:00",
+  "implementationRevision": "f5a4e4c09cc3307c4032238af0a2bd3cef8b542c",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -84,10 +84,12 @@
     "472cdda",
     "8941d9b",
     "026001a",
-    "6082c0f"
+    "6082c0f",
+    "db70b6a",
+    "f5a4e4c"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "8D40992EE01FC1A8F309FF46BEC38F3AA4475984CB22F9565694300077BDD2B1",
+  "developmentExecutableSha256": "55824DBB774AC6E31F16F535C93438CF71614651278DF1CF6B707C1696A6A375",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,

@@ -62,3 +62,9 @@ fb37bd7：features/screens 页面、图形分手与状态控制器由本次 Code
 ## B03/P11 控制器与退役记录
 
 6082c0f：本次 Codex 按现有产品规格拆分演奏、键盘、源绑定编辑会话和后台回执导航。此项主要整理既有实现并删除旧路径，来源分类为重构，不能作为这些模块全部从零原创的证明。删除 PracticeLibraryPanel、usePracticePanels、CurrentPracticeBar、PracticeReturnBar、WorkspaceNavigation 及孤立样式；原始标注和兼容资料保持。底层播放/音源和旧 core 的独立替换继续 B04/P20，许可及历史版权记录仍有效。
+
+## B04 会话和渲染实现记录
+
+db70b6a、f5a4e4c：PlaybackSession 的通用游标/等待/节拍接口由本次 Codex 按当前两种练习模式及时间边界编写；角色/MIDI 输出适配和音乐位置投影由现有实现重构接入，未据此宣称整个 Player 已从零原创。删除旧 Driver 的 pending_save::tick 包装与 Player 内重复的推进、游标、时钟和节拍状态；保留资料事务确认。原有音源 owner/CPAL/oxisynth/midir/VST3 和设备适配继续使用，来源及许可按 P20/P21 收束。
+
+WaterfallSprites 的有界完整音符纹理、长音符分段回退和静态琴键标签缓存为本次性能改造；沿用现有自绘素材，不增加官方参考图片。当前产品依赖中的其他旧 core/Player 配置和历史功能仍需 P20 物理退役，不能以会话拆分替代整体来源结论。

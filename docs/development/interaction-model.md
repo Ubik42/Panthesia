@@ -13,7 +13,7 @@
 | UI02 | 歌曲设置 | [songSetup](https://www.synthesiagame.com/support/guide/songSetup)：左侧观看和声部入口，右侧左/右/双手练习 | 已实现选择观看/左/右/双手后从底部开始；声部进入卡片，扩展收至“更多” |
 | UI03 | 手别、颜色、乐器 | songSetup：按音轨排列卡片；音色分类→具体音色；手别→左/右/背景/自定义；颜色/显示；发声/静音 | 卡片、分类音色、持续预听/源音色、拖拽到其他/全部、自动/按模式配色和恢复默认已接入；自定义逐音分手不跨轨猜测套用 |
 | UI04 | 自定义分手 | [assignHands](https://www.synthesiagame.com/support/guide/assignHands)：瀑布编辑、工具侧栏、左右工具、范围分割、逐音修改、继续/返回 | 独立瀑布、左右工具、整首分界、拖线、平移/范围与源身份提交已接入；双指触控已用桌面模拟核对，未作实体触屏验收 |
-| UI05 | 演奏 | [firstSong](https://www.synthesiagame.com/support/guide/firstSong)：顶部控制条，紧接时间线；谱面在上、瀑布居中、琴键贴底 | 主布局与独立菜单已接入；760×620 无横向溢出；时间线增加可读时间刻度。瀑布/琴键负载与演奏稳定性留在 B04 |
+| UI05 | 演奏 | [firstSong](https://www.synthesiagame.com/support/guide/firstSong)：顶部控制条，紧接时间线；谱面在上、瀑布居中、琴键贴底 | 主布局与独立菜单已接入；760×620 无横向溢出；时间线增加可读时间刻度。B04 已用 19,200 音符完整五分钟负载核对；稳定帧时间与音源证据见 playback-session-2026-11-20.json |
 | UI06 | 演奏弹出菜单 | [displaySheetMusic](https://www.synthesiagame.com/support/guide/displaySheetMusic)、[labels](https://www.synthesiagame.com/support/guide/labels)：齿轮显示开关、节拍器、缩放、La 标签、书签、手别、循环 | La、书签、循环独立弹出；完整标签类型、各自仅自己声部和窄屏节拍器已接入。当前调性/转调拼写有效；曲中多次调号变化仍需音乐投影支持 |
 | UI07 | 全局设置 | [addSongs](https://www.synthesiagame.com/support/guide/addSongs)、[changeSoundFont](https://www.synthesiagame.com/support/guide/changeSoundFont)：输入、输出、歌曲目录、快捷键等按对象设置 | 音乐输入/输出对象列表及整页设备、外观/键盘/快捷键叶页已接入；诊断折叠在高级设置。旧抽屉与工作区导航控件已由 P11 退出，底层兼容资料继续 P20 |
 | UI08 | 自由演奏/录音 | recording：简洁琴键/瀑布，顶部录音控制；录后出现独立轨道；保存时选量化 | 独立自由演奏页、琴键输入与录音入口已接入；多轨、量化保存和完整录音流程仍由 B06 完成 |
@@ -64,3 +64,5 @@
 原生窗口使用合成 MIDI 完成观看/左/右/双手入口、分手与标注保存、音色/配色/隐藏/静音、标签、书签、循环、自由演奏及返回。宽屏与 760×620 画面已检查；这不替代外部音源、长期性能或完整录音验收。摘要见 [当前界面证据](evidence/product-pages-2026-11-20.json)。
 
 本轮详细证据见 [交互补齐记录](evidence/product-interactions-2026-11-20.json)。6082c0f 已完成 P11：全页选曲替代旧抽屉，源绑定编辑栈逐层返回，后台回执恢复现有页面。长列表/右键与 760×620 已在当前 Debug 核对。B03 页面和控制器任务收束；声音/性能、长谱、完整录音分别继续 B04/B05/B06。
+
+B04 当前桌面证据：等待/连续与手别切换保持位置；三路音源和演奏中退出已核对。完整五分钟负载的帧统计与检查限制见 [播放会话证据](evidence/playback-session-2026-11-20.json)。当前开发转入 B05 长谱/后台生成，完整录音继续 B06。

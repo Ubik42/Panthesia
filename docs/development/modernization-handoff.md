@@ -2,17 +2,17 @@
 
 更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
-## 当前批次 B04
+## 当前批次 B05
 
-B00–B03 已收束。当前源码 6082c0f，本批提交完成 P11：usePlaybackActions、PerformanceTools、usePerformanceKeyboard、useSongEditors/SongEditorHost、useScorePairing 和 workNavigation 接管相应职责；App 为 1662 行。旧练习侧栏、抽屉 Hook 与工作区导航等五个组件、三份样式和另外 96 条无消费者样式已删除。选曲、演奏和任务恢复共享现有产品页面；编辑栈核对源身份，同时只挂载顶部编辑器。原始数据未用于本轮核查。
+B00–B04 已收束，当前源码 f5a4e4c（本批 db70b6a、f5a4e4c）。PlaybackSession、playback_adapter 与统一 musical_position 已接入；普通节拍器、模式/手别保留位置、栈 MIDI 包和有界音符/标签缓存已完成。Driver 不再逐 tick 捕获保存，资料变更仍由后台事务确认。来源分类与兼容边界见 A16 及 source-independence.md。
 
-下一轮直接做 B04/P12–P14：沿 playback_driver/session_state/note_playback/audio 与 playbackStore/PracticeStage 收束实时会话、音源端口和关闭顺序，定位代表负载后优化瀑布帧时间。不要继续拆无关页面，不重跑 B01–B03 全流程；两小时方向审核以 goal-state.json 到期时间为准。
+最终桌面完整播放 19,200 音符的五分钟素材，16894 帧，P95 18.50 ms，P99 18.70 ms，无显示倒退，结束无音源错误。Windows GS 与 Pianoteq 系统回录有实际信号，panic 后近零；内置音源、音量零及模式切换亦已核对。USB 输入已连接，所需和弦用软件键事件验证。播放并按住音符时正常退出，退出码 0；原始 MIDI 与标注完整。此证据限当前主机与该负载，不是实体琴键手感或全部硬件的证明。
 
-独立桌面核对通过：180 首三页列表返回保持搜索/选择/滚动；右键对象查看；源文件移走后资源管理器选中持有副本；按住虚拟键返回选曲会释放并暂停；歌曲选项→谱面管理→返回同时只有一个编辑窗口；配谱超限进入统一状态详情；760×620 无横向溢出。原始 MIDI 与内容标注完全保持，2 条指法及 1 条未匹配行未丢失；PID 7324 正常关闭。一次观察脚本误等主页面错误全文，后通过已有详情入口确认，未改产品逻辑。
+下一轮直接做 B05/P15–P17：notation.rs 的整曲容量拒绝和 Notation/scoreRenderCache 的全页持有需要改为范围/分页准备、映射和缓存；随后沿 duet_score/score_jobs/duet_worker 收束源/版本、取消超时、持久结果及采用。曲中多调号投影同属 P15。扩展仍走歌曲设置和谱面入口，完整录音继续 B06，旧 core/Player 应用实现与正式包继续 B07。不要重跑 B01–B04 已通过的流程。
 
-Debug：target/debug/panthesia-desktop.exe，SHA256 8D40992EE01FC1A8F309FF46BEC38F3AA4475984CB22F9565694300077BDD2B1，源码 6082c0f 加原有九项目录调整，嵌入当前前端。Web 和 Debug 构建、四项后台导航定向核对通过。摘要 evidence/product-controllers-2026-11-20.json；原记录 work/original-product-reset/p11-window。正式 Release 仍为 a67ea54。
+Debug：target/debug/panthesia-desktop.exe，SHA256 55824DBB774AC6E31F16F535C93438CF71614651278DF1CF6B707C1696A6A375，源码 f5a4e4c 加原有九项目录调整。Web、最终 Debug 构建和四项会话/控制检查通过。旧 Synthesia 导入检查曾读取退役附件，已改读内容标注并单项通过。观察脚本已改用显式 await 主机状态；原异步浏览器谓词会把 Promise 当作成功。绘制计数探针约两秒间隔没有在普通 UI 起播和完整播放重现，原记录保留。摘要 evidence/playback-session-2026-11-20.json；原记录 work/original-product-reset/p12-window。
 
-B03 关闭页面/控制器范围，整体目标继续 B04–B07。外部音源听感、长时间性能、长谱、完整录音及旧应用来源替换尚未闭环。标签目前按首个源调号/手动或估计调性及练习转调呈现；曲中多次调号投影与 B05/P15 同批处理。15 个旧未匹配身份保持原回执，不按标题绑定。前批细节见 evidence/product-interactions-2026-11-20.json。
+正式 Release 仍为 a67ea54；B05–B07 整体目标继续。15 个旧未匹配身份保持回执，不按标题绑定。已有原始资料与九项未提交目录修改保持。
 
 ## B01 已闭环的状态
 
