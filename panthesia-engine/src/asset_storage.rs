@@ -55,7 +55,7 @@ impl Target {
                         ext.eq_ignore_ascii_case("mid") || ext.eq_ignore_ascii_case("midi")
                     }) =>
             {
-                panthesia_core::library::metadata_sidecar_path(midi)
+                panthesia_core::library::legacy_metadata_sidecar_path(midi)
             }
             _ => return Err("资料恢复记录包含无效目标".into()),
         };
@@ -95,6 +95,14 @@ fn allowed_relative(relative: &str) -> bool {
         return false;
     }
     // A validated piece archive owns only its content-addressed package directory.
+    if parts.len()==3 && parts[0]=="library" && parts[1]=="annotations" {
+        return parts[2].strip_suffix(".json").is_some_and(valid_hash);
+    }
+    if parts.len()==4 && parts[..3]==["library","assets","midi"] {
+        let Some(stem)=parts[3].strip_suffix(".mid") else{return false;};
+        let (id,index)=stem.split_once("-restored-").map_or((stem,None),|(id,index)|(id,Some(index)));
+        return valid_hash(id)&&index.is_none_or(|i|!i.is_empty()&&i.len()<=3&&i.bytes().all(|b|b.is_ascii_digit()));
+    }
     if parts.len() >= 3 && parts[0] == "packages" && valid_hash(parts[1]) {
         return crate::piece_package::valid_asset_path(relative);
     }

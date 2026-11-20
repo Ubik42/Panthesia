@@ -18,6 +18,7 @@ pub mod fingering;
 #[cfg(feature = "native-render")]
 pub mod font_system;
 pub mod library;
+pub mod song_annotations;
 pub mod metadata_layers;
 pub mod synthesia_metadata;
 pub mod musicxml;

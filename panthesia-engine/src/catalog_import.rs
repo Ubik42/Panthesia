@@ -72,7 +72,7 @@ pub(super) fn committed(
         || !song.catalog_only
         || !crate::music_import_receipts::valid_song(song)
         || !crate::asset_storage::captures(data, source)
-        || source.parent() != Some(data.join("imports").as_path())
+        || !(source.parent() == Some(data.join("imports").as_path()) || source.parent() == Some(data.join("library/assets/midi").as_path()))
         || !valid_hash(&song.content_id)
         || saved.published.score.as_ref().is_some_and(|score| {
             score.path.parent() != Some(data.join("scores").as_path())
@@ -205,7 +205,8 @@ impl Engine {
     pub(super) fn finish_catalog_registration(&self, published: &Published) -> Result<(), String> {
         let source=std::path::Path::new(&published.song.source_path);
         let mut repository=crate::song_repository::SongRepository::open(&self.data)?;
-        repository.retain(source,&published.song.content_id,&published.song.title,"",&||Ok(()))?;
+        let preferences=crate::preferences::Preferences::load(&self.data.join("web-preferences.json"))?;
+        repository.retain_with_parts(source,&published.song.content_id,&published.song.title,"",preferences.songs.get(&published.song.content_id).map(|s|&s.parts),&||Ok(()))?;
         let row=crate::library::SongRow{arranger:None,id:format!("owned/{}",published.song.content_id),title:published.song.title.clone(),composer:String::new(),source:"我的曲目".into(),category:String::new(),license:"本地文件".into(),source_url:String::new(),path:source.into(),content_id:Some(published.song.content_id.clone()),tags:vec![],difficulty:None,rating:0};
         repository.register_row(&row,&published.song.content_id)?;
         if let Some(version) = &published.score {

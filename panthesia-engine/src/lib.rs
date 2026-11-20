@@ -499,6 +499,7 @@ impl Player {
     }
     fn annotation_path(&self, file: &MidiFile) -> Result<PathBuf, String> {
         if let Some(path) = &file.source_path {
+            if panthesia_core::song_annotations::document_path(path).is_some(){return Ok(path.clone());}
             let owned = song_repository::SongRepository::managed_path(&self.data,&file.content_id)?;
             return Ok(if owned.is_file(){owned}else{path.clone()});
         }
@@ -710,7 +711,7 @@ impl Player {
                 self.state.hands = settings.hands.clone();
             }
             for t in &mut self.config.tracks {
-                if let Some(part) = settings.parts.get(&t.track_id) {
+                if let Some(part) = settings.parts.get(&t.track_id).filter(|_|!file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some())) {
                     t.practice_part = *part
                 }
             }
@@ -853,12 +854,12 @@ impl Player {
             }
             let settings = preferences::SessionSettings {
                     tracks: self.config.practice_track_setup(),
-                    parts: self
+                    parts: if file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some()){Default::default()}else{self
                         .config
                         .tracks
                         .iter()
                         .map(|t| (t.track_id, t.practice_part))
-                        .collect(),
+                        .collect()},
                     mode: Some(self.state.mode.clone()),
                     count_in: self.state.count_in,
                     metronome: self.state.metronome,
@@ -2169,6 +2170,15 @@ impl Player {
                 track.player = player;
                 track.practice_part = part;
                 track.visible = visible;
+                let file=self.file.as_ref().ok_or("请先选择曲目")?;
+                let path=self.annotation_path(file)?;
+                let mut annotations=match panthesia_core::library::load_song_sidecar(&path,&file.content_id){
+                    Ok(value)=>value,
+                    Err(panthesia_core::library::MetadataError::Read(e)) if e.kind()==std::io::ErrorKind::NotFound=>Default::default(),
+                    Err(e)=>return Err(e.to_string()),
+                };
+                annotations.track_parts.insert(id,part);
+                panthesia_core::library::save_song_sidecar(&path,&file.content_id,annotations).map_err(|e|e.to_string())?;
                 self.state.hands = "custom".into();
                 self.previous_summary = None;
                 self.previous_mode = None;

@@ -113,7 +113,8 @@ pub struct ScoreAnalysisSnapshot {
     pub navigation_diagnostics: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct SongSidecar {
     pub metadata: SongMetadata,
     pub metadata_layers: Option<crate::metadata_layers::MetadataLayers>,
@@ -157,6 +158,8 @@ struct MetadataSidecar {
 
 #[derive(Debug, Error)]
 pub enum MetadataError {
+    #[error("曲目标注文档无效：{0}")]
+    Document(#[source] serde_json::Error),
     #[error("could not read metadata sidecar: {0}")]
     Read(#[source] io::Error),
     #[error("could not parse metadata sidecar: {0}")]
@@ -385,6 +388,9 @@ fn normalized_text(value: Option<String>) -> Option<String> {
 }
 
 pub fn metadata_sidecar_path(midi_path: &Path) -> PathBuf {
+    crate::song_annotations::document_path(midi_path).unwrap_or_else(||legacy_metadata_sidecar_path(midi_path))
+}
+pub fn legacy_metadata_sidecar_path(midi_path: &Path) -> PathBuf {
     let mut name = midi_path
         .file_name()
         .map(OsString::from)
@@ -405,7 +411,11 @@ pub fn load_song_sidecar(
     midi_path: &Path,
     expected_content_id: &str,
 ) -> Result<SongSidecar, MetadataError> {
-    let path = metadata_sidecar_path(midi_path);
+    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::read(&path,expected_content_id);}
+    load_legacy_song_sidecar(midi_path,expected_content_id)
+}
+pub fn load_legacy_song_sidecar(midi_path:&Path,expected_content_id:&str)->Result<SongSidecar,MetadataError>{
+    let path = legacy_metadata_sidecar_path(midi_path);
     let bytes=crate::utils::atomic_file::read_limited(&path,32_000_000).map_err(MetadataError::Read)?;
     let contents=String::from_utf8(bytes).map_err(|e|MetadataError::Read(std::io::Error::new(std::io::ErrorKind::InvalidData,e)))?;
     let sidecar: MetadataSidecar = ron::from_str(&contents).map_err(MetadataError::Parse)?;
@@ -568,6 +578,7 @@ pub fn save_song_sidecar(
     content_id: &str,
     sidecar: SongSidecar,
 ) -> Result<PathBuf, MetadataError> {
+    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::write(&path,content_id,sidecar);}
     validate_metadata_layers(sidecar.metadata_layers.as_ref(), &sidecar.metadata)?;
     let path = metadata_sidecar_path(midi_path);
     let sidecar = MetadataSidecar {
@@ -592,6 +603,16 @@ pub fn save_song_sidecar(
     .map_err(MetadataError::Serialize)?;
     atomic_write(&path, contents.as_bytes()).map_err(MetadataError::Write)?;
     Ok(path)
+}
+
+pub(crate) fn normalize_song_sidecar(mut value:SongSidecar)->Result<SongSidecar,MetadataError>{
+    validate_metadata_layers(value.metadata_layers.as_ref(),&value.metadata)?;
+    value.metadata=value.metadata.normalized();
+    value.fingerings=normalize_fingerings(value.fingerings)?;
+    value.finger_actions=normalize_finger_actions(value.finger_actions)?;
+    value.hands=normalize_hands(value.hands);
+    value.note_playback=normalize_note_playback(value.note_playback)?;
+    Ok(value)
 }
 
 impl SongSidecar {

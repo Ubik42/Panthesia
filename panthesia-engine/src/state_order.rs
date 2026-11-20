@@ -98,6 +98,12 @@ impl crate::Engine {
     ) -> Result<serde_json::Value, String> {
         self.check_engine(&request.engine_id)?;
         request.check_age()?;
+        if matches!(&request.command,crate::Command::Track{..}) {
+            let scope=crate::practice_edit::Scope{
+                content_id:request.content_id.ok_or("请先选择曲目")?,engine_id:Some(request.engine_id),score_revision:request.score_revision,annotation_revision:None,
+            };
+            return self.practice_edit_task(request.command,crate::practice_edit::Kind::Hands,Some(scope));
+        }
         if !matches!(
             request.command,
             crate::Command::Speed { .. }

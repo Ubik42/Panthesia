@@ -506,35 +506,6 @@ pub fn enriched(rows: &[SongRow], data: &Path) -> Vec<SongRow> {
     let mut rows = rows.to_vec();
     if let Ok(recordings)=recording_rows(data) {let mut known=rows.iter().map(|row|crate::library_workspace::key(&row.path)).collect::<std::collections::HashSet<_>>();rows.extend(recordings.into_iter().filter(|row|known.insert(crate::library_workspace::key(&row.path))));}
     if let Ok(workspace) = crate::library_workspace::Workspace::load(data) {
-        let mut known: std::collections::HashSet<_> = rows
-            .iter()
-            .map(|r| crate::library_workspace::key(&r.path))
-            .collect();
-        for entry in workspace.entries.values() {
-            if known.insert(crate::library_workspace::key(&entry.path)) {
-                rows.push(SongRow { arranger: None,
-                    id: format!("indexed/{}", entry.path.display()),
-                    title: entry.metadata.title.clone().unwrap_or_else(|| {
-                        entry
-                            .path
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .into()
-                    }),
-                    composer: entry.metadata.composer.clone().unwrap_or_default(),
-                    source: "本地索引".into(),
-                    category: entry.metadata.collection.clone().unwrap_or_default(),
-                    license: "本地文件，请确认使用权限".into(),
-                    source_url: String::new(),
-                    path: entry.path.clone(),
-                    content_id: entry.content_id.clone(),
-                    tags: vec![],
-                    difficulty: None,
-                    rating: 0,
-                });
-            }
-        }
         rows.retain(|row|workspace.entries.get(&crate::library_workspace::key(&row.path)).and_then(|e|e.content_id.as_ref()).is_none_or(|id|crate::library_repairs::link_target(&workspace,id,&row.path).is_none() && !workspace.ignored_paths.contains(&crate::library_repairs::record_key(id,&row.path))));
         for row in &mut rows {
             if let Some(entry) = workspace

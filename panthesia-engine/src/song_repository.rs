@@ -134,7 +134,7 @@ impl SongRepository {
         let imported: bool = self
             .db
             .query_row(
-                "SELECT EXISTS(SELECT 1 FROM settings WHERE key='legacy_workspace_imported')",
+                "SELECT EXISTS(SELECT 1 FROM settings WHERE key='legacy_catalog_rows_imported')",
                 [],
                 |r| r.get(0),
             )
@@ -180,11 +180,42 @@ impl SongRepository {
                     entry.metadata.composer.as_deref().unwrap_or(""),
                     Some(entry.path.to_string_lossy().into()),
                 );
+                if valid_id(cid)
+                    && !workspace
+                        .ignored_paths
+                        .contains(&crate::library_repairs::record_key(cid, &entry.path))
+                    && crate::library_repairs::link_target(&workspace, cid, &entry.path).is_none()
+                {
+                    let row = SongRow {
+                        id: format!("owned/{cid}"),
+                        title: entry.metadata.title.clone().unwrap_or_else(|| {
+                            entry
+                                .path
+                                .file_stem()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .into()
+                        }),
+                        composer: entry.metadata.composer.clone().unwrap_or_default(),
+                        arranger: entry.metadata.arranger.clone(),
+                        source: "我的曲目".into(),
+                        category: entry.metadata.collection.clone().unwrap_or_default(),
+                        license: "本地文件".into(),
+                        source_url: String::new(),
+                        path: entry.path.clone(),
+                        content_id: Some(cid.clone()),
+                        tags: entry.metadata.tags.clone(),
+                        difficulty: entry.metadata.difficulty.clone(),
+                        rating: entry.rating,
+                    };
+                    tx.execute("INSERT INTO catalog_rows(content_id,row_json) VALUES(?1,?2) ON CONFLICT(content_id) DO NOTHING",params![cid,serde_json::to_string(&row).map_err(error)?]).map_err(error)?;
+                }
             }
         }
         registry.validate()?;
         write_registry(&tx, &registry)?;
         tx.execute("INSERT INTO settings(key,value) VALUES('legacy_workspace_imported',?1) ON CONFLICT(key) DO NOTHING",[hash]).map_err(error)?;
+        tx.execute("INSERT INTO settings(key,value) VALUES('legacy_catalog_rows_imported','complete') ON CONFLICT(key) DO NOTHING",[]).map_err(error)?;
         tx.commit().map_err(error)
     }
     pub fn registry(&self) -> Result<RepertoireRegistry, String> {
@@ -273,16 +304,26 @@ impl SongRepository {
         composer: &str,
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<PathBuf, String> {
+        self.retain_with_parts(source, cid, title, composer, None, check)
+    }
+    pub fn retain_with_parts(
+        &mut self,
+        source: &Path,
+        cid: &str,
+        title: &str,
+        composer: &str,
+        parts: Option<&std::collections::BTreeMap<usize, panthesia_core::practice::PracticePart>>,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<PathBuf, String> {
         check()?;
         let bytes = panthesia_core::utils::atomic_file::read_dependency(source, 32_000_000)
             .map_err(error)?;
         if blake3::hash(&bytes).to_hex().as_str() != cid {
             return Err("保存演奏副本时内容已改变".into());
         }
-        let managed = Self::managed_path(&self.data, cid)?;
-        publish_asset(&managed, &bytes, cid)?;
+        let managed = publish_asset(&Self::managed_path(&self.data, cid)?, &bytes, cid)?;
         check()?;
-        self.import_annotations(source, &managed, cid)?;
+        self.import_annotations(source, &managed, cid, parts, None)?;
         let project = project_identity(source)?;
         let tx = self
             .db
@@ -333,15 +374,15 @@ impl SongRepository {
             .take(160)
             .collect::<String>();
         tx.execute(
-            "INSERT INTO songs(id,title,composer) VALUES(?1,?2,?3) ON CONFLICT(id) DO NOTHING",
+            "INSERT INTO songs(id,title,composer) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET title=CASE WHEN songs.title='未命名作品' THEN excluded.title ELSE songs.title END",
             params![work_id, work_title, composer],
         )
         .map_err(error)?;
         // Explicit project manifests can relate variants; a filename alone never joins songs.
         if project.is_some() {
-            tx.execute("INSERT INTO performances(id,song_id,label) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET song_id=excluded.song_id",params![cid,work_id,title]).map_err(error)?;
+            tx.execute("INSERT INTO performances(id,song_id,label) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET song_id=excluded.song_id,label=CASE WHEN performances.label IN ('','未命名作品') THEN excluded.label ELSE performances.label END",params![cid,work_id,title]).map_err(error)?;
         } else {
-            tx.execute("INSERT INTO performances(id,song_id,label) VALUES(?1,?2,?3) ON CONFLICT(id) DO NOTHING",params![cid,work_id,title]).map_err(error)?;
+            tx.execute("INSERT INTO performances(id,song_id,label) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET label=CASE WHEN performances.label IN ('','未命名作品') THEN excluded.label ELSE performances.label END",params![cid,work_id,title]).map_err(error)?;
         }
         tx.execute("INSERT INTO assets(content_id,path,bytes,created_at) VALUES(?1,?2,?3,?4) ON CONFLICT(content_id) DO UPDATE SET path=excluded.path",params![cid,managed.to_string_lossy(),bytes.len() as i64,now()]).map_err(error)?;
         for path in [source, &managed] {
@@ -367,28 +408,92 @@ impl SongRepository {
         tx.commit().map_err(error)?;
         Ok(managed)
     }
-    fn import_annotations(&self, source: &Path, managed: &Path, cid: &str) -> Result<(), String> {
-        if key(source) == key(managed) {
+    pub(crate) fn prepare_import_annotations(
+        &self,
+        cid: &str,
+        managed: &Path,
+        initial: Option<panthesia_core::library::SongSidecar>,
+    ) -> Result<(), String> {
+        let preferences =
+            crate::preferences::Preferences::load(&self.data.join("web-preferences.json"))?;
+        self.import_annotations(
+            &self.data.join("imports").join(format!("{cid}.mid")),
+            managed,
+            cid,
+            preferences.songs.get(cid).map(|s| &s.parts),
+            initial,
+        )
+    }
+    fn import_annotations(
+        &self,
+        source: &Path,
+        managed: &Path,
+        cid: &str,
+        parts: Option<&std::collections::BTreeMap<usize, panthesia_core::practice::PracticePart>>,
+        initial: Option<panthesia_core::library::SongSidecar>,
+    ) -> Result<(), String> {
+        use panthesia_core::{library, utils::atomic_file};
+        let target = library::metadata_sidecar_path(managed);
+        if atomic_file::is_file(&target) {
+            library::load_song_sidecar(managed, cid).map_err(error)?;
             return Ok(());
         }
-        let sidecar_path = panthesia_core::library::metadata_sidecar_path(managed);
-        if panthesia_core::utils::atomic_file::is_file(&sidecar_path) {
-            panthesia_core::library::load_song_sidecar(managed, cid).map_err(error)?;
-            return Ok(());
-        }
-        let mut sidecar = match panthesia_core::library::load_song_sidecar(source, cid) {
-            Ok(value) => value,
-            Err(panthesia_core::library::MetadataError::Read(e))
-                if e.kind() == std::io::ErrorKind::NotFound =>
-            {
-                return Ok(());
+        // A previous managed RON contains edits made after the external source was imported.
+        let mut imported = None;
+        for (origin, legacy) in [(managed, true), (source, false)] {
+            let document = if legacy {
+                library::load_legacy_song_sidecar(origin, cid)
+            } else {
+                library::load_song_sidecar(origin, cid)
+            };
+            match document {
+                Ok(mut annotations) => {
+                    let original = if legacy {
+                        library::legacy_metadata_sidecar_path(origin)
+                    } else {
+                        library::metadata_sidecar_path(origin)
+                    };
+                    let bytes =
+                        atomic_file::read_dependency(&original, 32_000_000).map_err(error)?;
+                    let archive = self.data.join("library/legacy-inputs");
+                    std::fs::create_dir_all(&archive).map_err(error)?;
+                    let snapshot = archive.join(format!(
+                        "annotations-{}.source",
+                        blake3::hash(&bytes).to_hex()
+                    ));
+                    if !snapshot.exists() {
+                        atomic_file::write_new(&snapshot, &bytes).map_err(error)?;
+                    }
+                    if let Some(score) = &mut annotations.score {
+                        score.path = library::resolve_score_path(origin, score);
+                    }
+                    imported = Some(annotations);
+                    break;
+                }
+                Err(library::MetadataError::Read(e))
+                    if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(error(e)),
             }
-            Err(e) => return Err(error(e)),
-        };
-        if let Some(score) = &mut sidecar.score {
-            score.path = panthesia_core::library::resolve_score_path(source, score);
         }
-        panthesia_core::library::save_song_sidecar(managed, cid, sidecar).map_err(error)?;
+        let mut annotations = imported.or(initial).unwrap_or_default();
+        if let Some(parts) = parts.filter(|p| !p.is_empty()) {
+            let preferences = self.data.join("web-preferences.json");
+            let archive = self.data.join("library/legacy-inputs");
+            std::fs::create_dir_all(&archive).map_err(error)?;
+            let snapshot = archive.join("preferences-before-annotations.json");
+            if !snapshot.exists() {
+                match atomic_file::read_limited(&preferences, 64_000_000) {
+                    Ok(bytes) => atomic_file::write_new(&snapshot, &bytes).map_err(error)?,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(e) => return Err(error(e)),
+                }
+            }
+            // Legacy preferences were applied last; preserve that effective hand assignment.
+            annotations
+                .track_parts
+                .extend(parts.iter().map(|(id, part)| (*id, *part)));
+        }
+        library::save_song_sidecar(managed, cid, annotations).map_err(error)?;
         Ok(())
     }
     pub fn resolve(&self, path: &Path, expected: Option<&str>) -> Result<PathBuf, String> {
@@ -596,6 +701,13 @@ mod tests {
         assert_eq!(prepared.file.content_id, cid);
         assert_eq!(prepared.assets.sidecar.unwrap(), changed);
         assert_eq!(repo.rows().unwrap().len(), 1);
+        assert_eq!(
+            crate::library::enriched(&[], &data)
+                .iter()
+                .filter(|r| r.content_id.as_deref() == Some(&cid))
+                .count(),
+            1
+        );
     }
     #[test]
     fn explicit_project_grouping_preserves_manual_separation_and_rejects_stale_save() {
@@ -740,6 +852,233 @@ mod tests {
         assert!(!data.join("practice-import-journal.json").exists());
     }
     #[test]
+    fn owned_documents_migrate_effective_parts_once_and_preserve_legacy_inputs() {
+        let fixture = Fixture::new();
+        let data = fixture.data();
+        let (source, cid) = fixture.midi(
+            "external/sample.mid",
+            include_bytes!("../assets/five-finger.mid"),
+        );
+        let file = midi_file::MidiFile::new(&source).unwrap();
+        let track = file
+            .tracks
+            .iter()
+            .find(|t| !t.notes.is_empty())
+            .unwrap()
+            .track_id;
+        let mut old = SongSidecar::default();
+        old.track_parts.insert(track, PracticePart::RightHand);
+        old.fingerings.push(FingerHint {
+            track_id: track,
+            note_index: 0,
+            finger: 3,
+        });
+        library::save_song_sidecar(&source, &cid, old).unwrap();
+        let legacy_bytes = std::fs::read(library::metadata_sidecar_path(&source)).unwrap();
+        let managed = SongRepository::managed_path(&data, &cid).unwrap();
+        std::fs::create_dir_all(managed.parent().unwrap()).unwrap();
+        std::fs::copy(&source, &managed).unwrap();
+        std::fs::write(
+            library::legacy_metadata_sidecar_path(&managed),
+            &legacy_bytes,
+        )
+        .unwrap();
+        let parts = std::collections::BTreeMap::from([(track, PracticePart::LeftHand)]);
+        let mut preferences = crate::preferences::Preferences::default();
+        preferences.songs.insert(
+            cid.clone(),
+            crate::preferences::SessionSettings {
+                parts: parts.clone(),
+                ..Default::default()
+            },
+        );
+        preferences
+            .save(&data.join("web-preferences.json"))
+            .unwrap();
+        let preferences_bytes = std::fs::read(data.join("web-preferences.json")).unwrap();
+        let mut repository = SongRepository::open(&data).unwrap();
+        repository
+            .retain_with_parts(&managed, &cid, "Sample", "", Some(&parts), &|| Ok(()))
+            .unwrap();
+        let document = library::metadata_sidecar_path(&managed);
+        assert_eq!(
+            document,
+            data.join("library/annotations").join(format!("{cid}.json"))
+        );
+        assert_eq!(
+            library::load_song_sidecar(&managed, &cid)
+                .unwrap()
+                .track_parts[&track],
+            PracticePart::LeftHand
+        );
+        let mut player = crate::Player::new(data.clone(), PathBuf::new(), true);
+        player
+            .command(crate::Command::Load {
+                path: managed.clone(),
+                title: "Sample".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            player
+                .config
+                .tracks
+                .iter()
+                .find(|t| t.track_id == track)
+                .unwrap()
+                .practice_part,
+            PracticePart::LeftHand
+        );
+        assert!(player.preferences.songs[&cid].parts.is_empty());
+        player
+            .command(crate::Command::Track {
+                id: track,
+                mode: "auto".into(),
+                part: "right".into(),
+                visible: true,
+            })
+            .unwrap();
+        assert_eq!(
+            library::load_song_sidecar(&managed, &cid)
+                .unwrap()
+                .track_parts[&track],
+            PracticePart::RightHand
+        );
+        assert_eq!(
+            library::load_song_sidecar(&managed, &cid)
+                .unwrap()
+                .fingerings[0]
+                .finger,
+            3
+        );
+        // A legacy preference writer cannot overwrite the adopted content document.
+        preferences
+            .save(&data.join("web-preferences.json"))
+            .unwrap();
+        repository
+            .retain_with_parts(&managed, &cid, "Sample", "", Some(&parts), &|| Ok(()))
+            .unwrap();
+        let mut reopened = crate::Player::new(data.clone(), PathBuf::new(), true);
+        reopened
+            .command(crate::Command::Load {
+                path: managed.clone(),
+                title: "Sample".into(),
+            })
+            .unwrap();
+        assert_eq!(
+            reopened
+                .config
+                .tracks
+                .iter()
+                .find(|t| t.track_id == track)
+                .unwrap()
+                .practice_part,
+            PracticePart::RightHand
+        );
+        assert_eq!(
+            std::fs::read(library::legacy_metadata_sidecar_path(&managed)).unwrap(),
+            legacy_bytes
+        );
+        assert_eq!(
+            std::fs::read(data.join("library/legacy-inputs/preferences-before-annotations.json"))
+                .unwrap(),
+            preferences_bytes
+        );
+        let current = std::fs::read(&document).unwrap();
+        assert!(
+            library::save_song_sidecar(&managed, &"f".repeat(64), SongSidecar::default()).is_err()
+        );
+        assert_eq!(std::fs::read(&document).unwrap(), current);
+        let mut future: serde_json::Value = serde_json::from_slice(&current).unwrap();
+        future["version"] = serde_json::json!(99);
+        let future = serde_json::to_vec(&future).unwrap();
+        std::fs::write(&document, &future).unwrap();
+        assert!(
+            repository
+                .retain_with_parts(&managed, &cid, "Sample", "", Some(&parts), &|| Ok(()))
+                .is_err()
+        );
+        assert_eq!(std::fs::read(&document).unwrap(), future);
+    }
+    #[test]
+    fn catalog_import_and_live_import_share_owned_storage_and_recoverable_annotations() {
+        let fixture = Fixture::new();
+        let data = fixture.data();
+        std::fs::create_dir_all(&data).unwrap();
+        let bytes = include_bytes!("../assets/five-finger.mid").to_vec();
+        let cid = blake3::hash(&bytes).to_hex().to_string();
+        let mut prepared = crate::import_pipeline::prepare(crate::import_pipeline::Input::Midi {
+            bytes: bytes.clone(),
+            name: "Sample.mid".into(),
+        })
+        .unwrap();
+        let selected = data.clone();
+        let (published, writes, observed) = panthesia_core::utils::atomic_file::capture_matching(
+            std::sync::Arc::new(move |p| crate::asset_storage::captures(&selected, p)),
+            || prepared.store_catalog(&data, &|| Ok(())),
+        );
+        let published = published.unwrap();
+        let path = PathBuf::from(published.song.source_path);
+        assert_eq!(
+            path.parent(),
+            Some(data.join("library/assets/midi").as_path())
+        );
+        assert!(!path.exists());
+        assert!(
+            writes
+                .iter()
+                .any(|w| w.path == library::metadata_sidecar_path(&path))
+        );
+        crate::asset_storage::commit(&data, writes, observed).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert!(library::metadata_sidecar_path(&path).is_file());
+        assert!(!library::legacy_metadata_sidecar_path(&path).exists());
+        let mut player = crate::Player::new(data.clone(), PathBuf::new(), true);
+        let prepared = crate::import_pipeline::prepare(crate::import_pipeline::Input::Midi {
+            bytes: bytes.clone(),
+            name: "Sample.mid".into(),
+        })
+        .unwrap();
+        player.install_import(prepared).unwrap();
+        assert_eq!(
+            player.file.as_ref().unwrap().source_path.as_ref(),
+            Some(&path)
+        );
+        assert!(!data.join("imports").exists());
+        // Preserve changed owned bytes and publish a verified recovery location.
+        std::fs::write(&path, b"user-owned foreign bytes").unwrap();
+        let mut repository = SongRepository::open(&data).unwrap();
+        let (external, _) = fixture.midi("external/original.mid", &bytes);
+        let recovered = repository
+            .retain(&external, &cid, "Sample", "", &|| Ok(()))
+            .unwrap();
+        assert_ne!(recovered, path);
+        assert_eq!(std::fs::read(&path).unwrap(), b"user-owned foreign bytes");
+        assert_eq!(std::fs::read(&recovered).unwrap(), bytes);
+        assert_eq!(
+            library::metadata_sidecar_path(&recovered),
+            library::metadata_sidecar_path(&path)
+        );
+        // A pre-upgrade save journal still restores RON to its original location.
+        let central = library::metadata_sidecar_path(&path);
+        let central_bytes = std::fs::read(&central).unwrap();
+        let pending = data.join("asset-save-pending");
+        std::fs::create_dir_all(&pending).unwrap();
+        let legacy = b"retained legacy journal payload";
+        std::fs::write(pending.join("0.next"), legacy).unwrap();
+        let intent = serde_json::json!({"version":1,"committed":false,"entries":[{"target":{"Sidecar":path},"before":null,"after":blake3::hash(legacy).to_hex().to_string()}]});
+        std::fs::write(
+            pending.join("intent.json"),
+            serde_json::to_vec(&intent).unwrap(),
+        )
+        .unwrap();
+        crate::asset_storage::recover(&data).unwrap();
+        assert_eq!(
+            std::fs::read(library::legacy_metadata_sidecar_path(&path)).unwrap(),
+            legacy
+        );
+        assert_eq!(std::fs::read(&central).unwrap(), central_bytes);
+    }
+    #[test]
     fn cancelled_registration_and_future_schema_leave_no_directory_changes() {
         let fixture = Fixture::new();
         let data = fixture.data();
@@ -851,14 +1190,7 @@ fn write_registry(db: &Connection, registry: &RepertoireRegistry) -> Result<(), 
     }
     Ok(())
 }
-fn publish_asset(path: &Path, bytes: &[u8], cid: &str) -> Result<(), String> {
-    if path.is_file() {
-        return if crate::import_storage::matches_content(path, cid)? {
-            Ok(())
-        } else {
-            Err("受管理的演奏副本内容异常，原文件保持原状".into())
-        };
-    }
+fn publish_asset(path: &Path, bytes: &[u8], cid: &str) -> Result<PathBuf, String> {
     let parent = path.parent().ok_or("演奏资产目录无效")?;
     std::fs::create_dir_all(parent).map_err(error)?;
     static SERIAL: AtomicU64 = AtomicU64::new(0);
@@ -877,13 +1209,23 @@ fn publish_asset(path: &Path, bytes: &[u8], cid: &str) -> Result<(), String> {
         file.write_all(bytes).map_err(error)?;
         file.sync_all().map_err(error)?;
         drop(file);
-        match std::fs::hard_link(&temporary, path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_file() && crate::import_storage::matches_content(path, cid)? => {
-                Ok(())
+        for index in 0..1000 {
+            let target = if index == 0 {
+                path.into()
+            } else {
+                parent.join(format!("{cid}-restored-{index}.mid"))
+            };
+            match std::fs::hard_link(&temporary, &target) {
+                Ok(()) => return Ok(target),
+                Err(_) if target.is_file() => {
+                    if crate::import_storage::matches_content(&target, cid)? {
+                        return Ok(target);
+                    }
+                }
+                Err(e) => return Err(error(e)),
             }
-            Err(e) => Err(error(e)),
         }
+        Err("演奏恢复副本超过容量限制，请检查资产目录".into())
     })();
     let _ = std::fs::remove_file(&temporary);
     result

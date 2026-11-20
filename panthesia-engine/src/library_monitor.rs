@@ -328,6 +328,7 @@ impl Worker {
         crate::storage_control::workspace_writable(&self.data)?;
         let mut w = Workspace::load(&self.data)?;
         let mut repository=crate::song_repository::SongRepository::open(&self.data)?;
+        let preferences=crate::preferences::Preferences::load(&self.data.join("web-preferences.json"))?;
         for path in paths {
             if self.stop.load(Ordering::Acquire){break;}
             let k = key(&path);
@@ -366,7 +367,7 @@ impl Worker {
                     let title=entry.metadata.title.clone().unwrap_or_else(||path.file_stem().unwrap_or_default().to_string_lossy().into());
                     let composer=entry.metadata.composer.clone().unwrap_or_default();
                     let stop=self.stop.clone();
-                    match repository.retain(&path,cid,&title,&composer,&||if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}) {
+                    match repository.retain_with_parts(&path,cid,&title,&composer,preferences.songs.get(cid).map(|s|&s.parts),&||if stop.load(Ordering::Acquire){Err("曲库更新已停止".into())}else{Ok(())}) {
                         Ok(_) => {
                             let row=self.local.iter().chain(self.catalog.iter()).chain(self.recordings.iter()).find(|r|key(&r.path)==k).cloned().unwrap_or_else(||SongRow{arranger:None,id:format!("owned/{cid}"),title:title.clone(),composer:composer.clone(),source:"我的曲目".into(),category:String::new(),license:"本地文件".into(),source_url:String::new(),path:path.clone(),content_id:Some(cid.into()),tags:vec![],difficulty:None,rating:0});
                             repository.register_row(&row,cid)?;

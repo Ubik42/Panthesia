@@ -44,19 +44,11 @@ impl Prepared {
         use panthesia_core::{library, utils::atomic_file};
         check()?;
         let cid = self.file.content_id.clone();
-        // A distinct written score can produce identical MIDI. Keep each source's association
-        // independent, and retain all versions in the shared score registry after publication.
-        let stem = self
-            .score
-            .as_ref()
-            .map(|score| {
-                blake3::hash(format!("{cid}:{}", score.source_fingerprint).as_bytes())
-                    .to_hex()
-                    .to_string()
-            })
-            .unwrap_or_else(|| cid.clone());
-        let stored = import_storage::store(&data.join("imports"), &stem, &cid, &self.bytes)?;
+        // One performance owns one annotation document. Distinct written sources remain
+        // independent score editions in the score registry, without duplicating MIDI.
+        let stored = import_storage::store(&data.join("library/assets/midi"), &cid, &cid, &self.bytes)?;
         let path = stored.path.clone();
+        crate::song_repository::SongRepository::open(data)?.prepare_import_annotations(&cid,&path,self.sidecar.clone())?;
         let mut sidecar = match library::load_song_sidecar(&path, &cid) {
             Ok(value) => value,
             Err(library::MetadataError::Read(error))
@@ -432,20 +424,9 @@ impl Player {
         let _guard = lock.lock().map_err(|_| "曲库文件正忙")?;
         let cid = prepared.file.content_id.clone();
         let stored =
-            import_storage::store(&self.data.join("imports"), &cid, &cid, &prepared.bytes)?;
+            import_storage::store(&self.data.join("library/assets/midi"), &cid, &cid, &prepared.bytes)?;
         let path = stored.path.clone();
-        if let Some(sidecar) = prepared.sidecar.take() {
-            match panthesia_core::library::load_song_sidecar(&path, &cid) {
-                Ok(_) => {}
-                Err(panthesia_core::library::MetadataError::Read(e))
-                    if e.kind() == std::io::ErrorKind::NotFound =>
-                {
-                    panthesia_core::library::save_song_sidecar(&path, &cid, sidecar)
-                        .map_err(|e| e.to_string())?;
-                }
-                Err(error) => return Err(error.to_string()),
-            }
-        }
+        crate::song_repository::SongRepository::open(&self.data)?.prepare_import_annotations(&cid,&path,prepared.sidecar.take())?;
         prepared.file.source_path = Some(path.clone());
         let indexed = prepared.file.clone();
         self.install(prepared.file, prepared.title.clone(), None)?;

@@ -60,9 +60,10 @@ impl Input {
         prepared.check()?;
         if let Some(source)=prepared.file.source_path.as_ref() {
             let mut repository=crate::song_repository::SongRepository::open(&reader.data)?;
-            let managed=repository.retain(source,&prepared.file.content_id,&prepared.title,"",&||token.check())?;
+            let managed=repository.retain_with_parts(source,&prepared.file.content_id,&prepared.title,"",reader.preferences.songs.get(&prepared.file.content_id).map(|s|&s.parts),&||token.check())?;
             prepared.assets=crate::load_pipeline::Assets::read_checked(&prepared.file,&managed,
                 reader.preferences.score_versions.get(&prepared.file.content_id).map(Vec::as_slice).unwrap_or_default(),&||token.check())?;
+            prepared.file.source_path=Some(managed);
         }
         token.source(
             prepared.file.content_id.clone(),
