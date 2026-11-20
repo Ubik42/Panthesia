@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "at": "2026-11-20T13:15:26.415916+00:00",
+  "implementationRevision": "16081cf710c1e17dda0954694ced2f60e0c6121c",
+  "scope": "B01 whole-song archive and shared owned loading",
+  "fixtures": "Bundled MIDI/MusicXML in separate owned profiles. No real user data migrated or modified in this batch.",
+  "checks": {
+    "archiveTests": {
+      "passed": 4,
+      "failed": 0,
+      "log": "work/original-product-reset/song-archive-tests.log",
+      "covers": [
+        "All performances, scores, hand/finger annotations, transforms and grouping",
+        "Corrupt member rejected before mutation",
+        "Cancelled multi-performance preparation publishes no partial settings",
+        "Published receipt completes directory recovery after interruption"
+      ]
+    },
+    "legacyAuthority": {
+      "passed": 1,
+      "failed": 0,
+      "log": "work/original-product-reset/legacy-registry-authority-tests.log"
+    },
+    "webBuild": {
+      "passed": true,
+      "log": "work/original-product-reset/song-archive-web-build.log"
+    },
+    "desktopBuild": {
+      "passed": true,
+      "sha256": "2487E5AD222A2B9DC288A845902BD80B8945F503BE7B79FD68EB43ACDF84A447",
+      "log": "work/original-product-reset/song-archive-desktop-build.log",
+      "includesPreExistingDirectoryChanges": true
+    },
+    "nativeExport": {
+      "phase": "native song archive export",
+      "fixture": "bundled MIDI and MusicXML only",
+      "binarySha256": "7C0F5C6EF2E370D3DB238227BE745FBACECC8B7EA26CD967F8154048114517FD",
+      "startedAt": "2026-11-20T13:06:02.732Z",
+      "songs": [
+        {
+          "cid": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+          "path": "\\\\?\\D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\song-archive-window\\source-profile\\library\\assets\\midi\\3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4.mid"
+        },
+        {
+          "cid": "a0ab8b89e08955f25487bcce223687e7b675faeafd678d85eb4284fe4f8d12d8",
+          "path": "\\\\?\\D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\song-archive-window\\source-profile\\library\\assets\\midi\\a0ab8b89e08955f25487bcce223687e7b675faeafd678d85eb4284fe4f8d12d8.mid"
+        }
+      ],
+      "workId": "work-3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+      "notationId": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4:score-1795179962855741500",
+      "preview": {
+        "performances": [
+          {
+            "contentId": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+            "label": "五指热身 · 从中央 C 开始",
+            "title": "五指热身 · 从中央 C 开始",
+            "scores": 2,
+            "papers": 0
+          },
+          {
+            "contentId": "a0ab8b89e08955f25487bcce223687e7b675faeafd678d85eb4284fe4f8d12d8",
+            "label": "C 大调音阶 · 一个八度",
+            "title": "C 大调音阶 · 一个八度",
+            "scores": 2,
+            "papers": 0
+          }
+        ],
+        "token": "79c7ac79afd1e42c3f5d0414bb9c1cef249c42deac77677ff8276c9ce97b9280",
+        "engineId": "27644-1795179962459330400-0",
+        "fileName": null,
+        "papers": [],
+        "ladders": [],
+        "title": "完整歌曲归档练习",
+        "contentId": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+        "metadata": {
+          "composer": "Panthesia 原创练习",
+          "notes": null,
+          "tags": []
+        },
+        "scores": [
+          "761819b5beeb6a6aad32d70349c525f245a6f7923cb138cd0feb2f2e5115e50f.musicxml",
+          "归档谱面1"
+        ],
+        "fingerings": 0,
+        "fingerActions": 0,
+        "trackSounds": 0,
+        "trackAppearances": [],
+        "hands": 0,
+        "notePlayback": 0,
+        "passages": [],
+        "bookmarks": [],
+        "groups": [],
+        "rating": 0,
+        "existing": true,
+        "provenance": {
+          "source": "个人曲目",
+          "license": null,
+          "sourceUrl": null
+        }
+      },
+      "archiveBytes": 9304,
+      "passed": true,
+      "finishedAt": "2026-11-20T13:06:18.386Z",
+      "visualPreviewPassed": true,
+      "previewText": "Panthesia\n文件\n曲库\n练习\n视图\n设置\n帮助\n曲目包\n\nMIDI、谱页、教学标注与练习规则一起保存\n\n五指热身 · 从中央 C 开始\n\n包含全部谱面版本、元数据、指法、分手、拍号修正、分组评级、手型设置、命名练习段落、演奏书签、速度阶梯及音轨名称、颜色与声音设置。PDF 与图片包含页序及阅读设置。个人成绩、阶梯进度及设备设置保留在本机。导出成品采用开始制作时的资料快照。\n\n导出当前曲目包\n拖入一个 .neopiece 曲目包，先查看内容\n选择曲目包\n完整歌曲归档练习\n\nsong.neopiece · 本地已有同一内容\n\n重新读取预览\n关闭窗口后保留预览、导入策略与原请求。\n归档内演奏版本\n五指热身 · 从中央 C 开始、C 大调音阶 · 一个八度（共 2 个）\n作曲家\nPanthesia 原创练习\n谱面版本\n761819b5beeb6a6aad32d70349c525f245a6f7923cb138cd0feb2f2e5115e50f.musicxml、归档谱面1\nPDF 与图片谱页\n无\n演奏书签\n无\n速度阶梯\n无\n指法与分手\n0 个指法 · 0 个逐音分手\n音轨设置\n无自选声音\n练习段落\n无\n分组与评级\n未分组 · 0 星\n来源与许可\n个人曲目\n遇到已有曲目\n合并，保留本地冲突项\n保留本地标注与练习设置\n使用包内标注与练习设置\n\n补充本地缺少的标注、谱页、练习段落和速度阶梯；已有指法、分手和备注优先保留。\n\n确认导入曲目包\n\n曲目包已读取，请核对内容与导入策略。\n\nPanthesia\n完整歌曲归档练习\n菜单\n继续\n歌曲\n低音五指练习 · 左手音区\nPanthesia 原创练习\n三和弦练习 · C / F / G\nPanthesia 原创练习\n双音同步 · 两个八度五指\nPanthesia 原创练习\n完整歌曲归档练习\nPanthesia 原创练习 · 有关联谱面\n2 份演奏\n11/20 打开\n当前歌曲\n添加 / 管理文件夹\n曲名 ↑\n最近打开\n收藏\n4 首"
+    },
+    "nativeRestore": {
+      "phase": "restore into separate profile",
+      "binarySha256": "025CD32EAD4535A086D54958EB5FDD0AA4638967E99DAFDED4BDD751FB6CEBA6",
+      "profile": "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\song-archive-window\\restored-profile",
+      "startedAt": "2026-11-20T13:10:03.667Z",
+      "importedVersions": 2,
+      "contentId": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+      "workId": "work-3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+      "notation": {
+        "id": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4:score-1795179962855741500",
+        "contentId": "761819b5beeb6a6aad32d70349c525f245a6f7923cb138cd0feb2f2e5115e50f",
+        "name": "归档谱面1",
+        "path": "\\\\?\\D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\song-archive-window\\restored-profile\\library\\assets\\notation\\761819b5beeb6a6aad32d70349c525f245a6f7923cb138cd0feb2f2e5115e50f.musicxml",
+        "performanceId": "3deac81e94c39efef780625c4f5b046744a7dd21b6813af631c05607e3b7d1d4",
+        "quality": "proofread",
+        "registered": true,
+        "source": "独立测试资料",
+        "versionId": "package-761819b5beeb6a6aad32d70349c525f245a6f7923cb138cd0feb2f2e5115e50f-1"
+      },
+      "performanceCount": 2,
+      "reexportBytes": 9400,
+      "passed": true,
+      "finishedAt": "2026-11-20T13:10:03.950Z"
+    },
+    "finalBinaryRestartAndPreview": {
+      "phase": "final binary restart and archive preview",
+      "binarySha256": "2487E5AD222A2B9DC288A845902BD80B8945F503BE7B79FD68EB43ACDF84A447",
+      "at": "2026-11-20T13:14:08.747Z",
+      "wide": {
+        "width": 1440,
+        "height": 960,
+        "scrollWidth": 1440
+      },
+      "narrow": {
+        "width": 820,
+        "height": 720,
+        "scrollWidth": 820
+      },
+      "startup": {
+        "stage": "ready",
+        "active": false,
+        "ready": true,
+        "canSkip": false,
+        "error": null,
+        "warnings": []
+      },
+      "menuClosedOnAction": true,
+      "passed": true
+    },
+    "finalClose": {
+      "closeRequested": true,
+      "pid": 33964,
+      "exited": true
+    }
+  },
+  "formalReleaseChanged": false,
+  "remaining": [
+    "Legacy metadata/location compatibility writers",
+    "Real saved-library migration and unmatched identity report",
+    "B02-B07 original implementation, full interface, realtime performance and formal release"
+  ]
+}

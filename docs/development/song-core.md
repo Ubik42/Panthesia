@@ -16,7 +16,11 @@ MusicXML/MXL 字节保存在 library/assets/notation/<BLAKE3>.musicxml|mxl；命
 
 生成练习保存 library/assets/exercises/<practiceId>.mid，以稳定的练习身份关联 library/annotations/<practiceId>.json。practiceId 沿用既有规范，缓存字节由标准速度、双手和一次重复生成；该逻辑身份与 MIDI 原字节哈希分别校验。旧 song-assets 仅作为兼容读取来源，首次迁入时保存旧资料快照。
 
-单演奏曲目包使用 panthesia-piece 第 19 版，包含原始 MIDI、MusicXML 版本、纸谱及标注、手别/指法和练习变换参数。导入恢复至持有目录；旧 neothesia-piece 第 1–18 版继续可读。此格式覆盖一份演奏，同一歌曲多份演奏的完整归档仍待实现。
+单演奏曲目包使用 panthesia-piece 第 19 版，包含原始 MIDI、MusicXML 版本、纸谱及标注、手别/指法和练习变换参数。导入恢复至持有目录；旧 neothesia-piece 第 1–18 版继续可读。此格式覆盖一份演奏。正常文件歌曲的“导出完整歌曲”使用外层 panthesia-song 第 1 版，将同一歌曲的全部演奏包、名称、分组锁和谱面版本关系一起保存；生成练习等独立内容继续使用单演奏包。外层最多 128 份演奏，容器 256 MB，全部内层资产展开合计 512 MB；超限或缺失资产会拒绝制作，避免得到不完整备份。
+
+歌曲恢复在同一文件事务中准备全部演奏，活动演奏最后恢复。文件提交后，通过 library/pending-song-imports/<receiptHash>.json 回执将关系一次写入 SQLite；应用中断后可幂等重放，完成后清除回执。合并/保留优先沿用本地已有关系，使用包内容时恢复归档关系。谱面身份与校对状态随歌曲恢复，路径和版本位置重绑定到持有资产。演奏记录与设备设置继续由本机资料备份管理。
+
+普通打开、启动恢复、历史打开与旧练习加载复用 load_pipeline::Prepared::retain_assets；生成练习复用 exercise_loading。旧 repertoire.json 变化时只补入新记录与未登记位置，中心库已有分组、标题和谱面决定保持有效。
 
 Look at the Sky 已迁移至真实资料目录：当前五个文件对应四份内容，主演奏与原调自动对齐字节相同。四份演奏属于同一歌曲，四条旧身份可重联；另一份旧内容未命中并保留历史。量化版旧设置 0=Other、1=RightHand、2=LeftHand 已进入内容标注。原源文件与旧资料哈希未变，迁移前冷快照和逐文件回执保存在 work/original-product-reset。摘要见 evidence/annotation-migration-2026-11-20.json。
 

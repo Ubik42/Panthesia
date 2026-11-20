@@ -7,7 +7,7 @@
     "B00"
   ],
   "nextBatch": "B02",
-  "currentTask": "B01：谱面/内置/生成练习/单演奏包已统一；继续完整歌曲归档、兼容入口退出与其余曲库迁移。",
+  "currentTask": "B01：整歌归档、持有谱面与共享加载已接入；继续旧兼容写入口退出和存量保存资料迁移。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T12:27:43Z",
   "nextDirectionReviewAt": "2026-11-20T14:27:43Z",
@@ -23,32 +23,35 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "MusicXML/MXL 不可变内容资产，外部路径丢失与已变化占用副本恢复",
-    "内置练习和生成练习迁入持有 MIDI 与统一 JSON，旧资料快照保留",
-    "Panthesia 第 19 版单演奏包保存原始 MIDI、谱面和练习变换",
-    "启动恢复在后台迁移并重建资产观察记录",
-    "导入提交后直接登记中心目录，读取优先持有副本",
-    "三项定向检查通过；桌面原生导入/制谱保存/变换/包往返/重启通过"
+    "整首歌曲归档：全部演奏包、分组锁与谱面身份",
+    "恢复经单次文件事务和幂等 SQLite 关系回执完成",
+    "导出/预览/暂存导入及媒体导出接入整歌格式",
+    "启动/历史/旧练习共用持有资产加载链",
+    "旧 repertoire 变化补入新记录，当前分组与编辑保持有效",
+    "导入预览显示演奏版本，菜单操作后收起，说明文字收束",
+    "四项归档检查、一项旧目录保护、前端构建和独立桌面跨资料恢复/重开通过"
   ],
   "remainingCritical": [
-    "完整歌曲多演奏归档、旧兼容写入口收束及其余真实曲库迁移",
-    "旧 MIDI/布局实现替换",
-    "完整下级交互复刻",
-    "实时声音/渲染与长谱边界",
-    "退役实现和来源审计"
+    "旧元数据/位置兼容写入口迁出；其余已保存曲库迁移与未匹配身份报告",
+    "B02 原创 MIDI/布局与音乐时间模型",
+    "B03 完整 Synthesia 下级交互复刻",
+    "B04-B06 实时声音/渲染、长谱与整体整合",
+    "B07 退役实现、来源审计及正式包"
   ],
   "nextEntry": [
-    "panthesia-engine/src/package_commands.rs",
-    "panthesia-engine/src/song_repository.rs",
+    "panthesia-engine/src/library_edits.rs",
     "panthesia-engine/src/library_workspace.rs",
     "panthesia-engine/src/library_metadata.rs",
-    "panthesia-engine/src/routine_loading.rs"
+    "panthesia-engine/src/library_repairs.rs",
+    "panthesia-engine/examples/migrate-song-project.rs"
   ],
   "validation": [
-    "Three unified asset checks passed",
-    "Owned native desktop: import MIDI, save MusicXML, transpose/quantize, export/import package and immediate directory registration passed",
-    "Owned desktop restart: same managed content restored, startup ready with no warnings",
-    "Debug built successfully; formal release remains a67ea54"
+    "Four portable song checks passed",
+    "One changed legacy registry authority check passed",
+    "Frontend production build and Debug desktop build passed",
+    "Owned native desktop: two performance archive export, staged preview, fresh profile restore and re-export passed",
+    "Final binary restart: same grouped performances, original notation identity and proofread status retained; no startup warnings",
+    "Archive dialog checked at 1440x960 and 820x720; menu closes and document has no horizontal overflow"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -62,15 +65,16 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T12:51:38.486053+00:00",
-  "implementationRevision": "c72d1fb1a00ace9dcd1b09d1365ef16a7e41da8f",
+  "lastImplementationCheckpointAt": "2026-11-20T13:15:26.415916+00:00",
+  "implementationRevision": "16081cf710c1e17dda0954694ced2f60e0c6121c",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
     "4613db3",
-    "c72d1fb"
+    "c72d1fb",
+    "16081cf"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "8F0AA6C7DE4AD38CF3FA48C656A442E8EBD8B456A8F7F6508321709AFFC71F56",
+  "developmentExecutableSha256": "2487E5AD222A2B9DC288A845902BD80B8945F503BE7B79FD68EB43ACDF84A447",
   "developmentIncludesBaselineUncommitted": true
 }
