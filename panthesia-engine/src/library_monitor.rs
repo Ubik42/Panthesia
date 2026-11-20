@@ -355,7 +355,7 @@ impl Worker {
                         .find(|e| e.content_id.as_ref() == Some(id) && key(&e.path) != k)
                         .map(|e| e.path.clone());
                     if let Some(original) = original {
-                        match library::recover_annotations(&original, &path, id) {
+                        match library::recover_annotations(&self.data,&original, &path, id) {
                             Ok(()) => entry = w.inspect(path.clone(), true)?,
                             Err(e) => self.status.errors.push(format!("{}：{e}", path.display())),
                         }

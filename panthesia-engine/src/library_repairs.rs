@@ -552,7 +552,7 @@ pub(crate) fn decide_replacement_checked(
             return Err("所选位置不再包含旧曲目内容，请重新预览".into());
         }
         relink_one(
-            &mut w,
+            data,&mut w,
             &RelinkItem {
                 content_id: old_id.into(),
                 from: path.into(),
@@ -945,6 +945,7 @@ fn fill_metadata(
     }
 }
 fn relink_one(
+    data:&Path,
     w: &mut Workspace,
     item: &RelinkItem,
     check: &impl Fn() -> Result<(), String>,
@@ -968,7 +969,7 @@ fn relink_one(
     check()?;
     let mut warnings = Vec::new();
     let mut annotation_ok = true;
-    if let Err(e) = library::recover_annotations(&item.from, &item.to, &item.content_id) {
+    if let Err(e) = library::recover_annotations(data,&item.from, &item.to, &item.content_id) {
         warnings.push(format!("附加信息未合并：{e}"));
         annotation_ok = false;
     }
@@ -986,8 +987,9 @@ fn relink_one(
     target.rating = target.rating.max(source.rating);
     fill_metadata(&mut target.metadata, &source.metadata);
     if annotation_ok {
+        let owned=crate::owned_annotations::retain(data,&item.to,&item.content_id,check)?;
         if let Err(e) = panthesia_core::library::save_song_metadata(
-            &item.to,
+            &owned,
             &item.content_id,
             target.metadata.clone(),
         ) {
@@ -1051,7 +1053,7 @@ pub(crate) fn relink_checked(
         }
         check()?;
         let result =
-            panthesia_core::utils::atomic_file::with_savepoint(|| relink_one(&mut w, &item, check));
+            panthesia_core::utils::atomic_file::with_savepoint(|| relink_one(data,&mut w, &item, check));
         check()?;
         let (ok, error, warnings) = match result {
             Ok(warnings) => (true, None, warnings),

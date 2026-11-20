@@ -369,7 +369,7 @@ impl Player {
                 };
                 if let Some(original) = original.filter(|original| original != destination) {
                     if let Some(detail) = crate::library::recover_annotations_report(
-                        &original, destination, content_id,
+                        &self.data,&original, destination, content_id,
                     )? {
                         import_warnings.push(detail);
                     }

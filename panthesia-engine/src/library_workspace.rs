@@ -9,6 +9,8 @@ use std::{
 #[derive(Clone, Default, Deserialize, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Workspace {
+    #[serde(skip)]
+    data_root:Option<PathBuf>,
     pub groups: Vec<Group>,
     pub entries: BTreeMap<String, Entry>,
     pub revision: u64,
@@ -136,9 +138,9 @@ impl Workspace {
             256_000_000,
         ) {
             Ok(bytes) => {
-                serde_json::from_slice(&bytes).map_err(|e| format!("曲库管理信息无法读取：{e}"))
+                serde_json::from_slice::<Self>(&bytes).map(|mut value|{value.data_root=Some(data.into());value}).map_err(|e| format!("曲库管理信息无法读取：{e}"))
             }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self{data_root:Some(data.into()),..Self::default()}),
             Err(e) => Err(e.to_string()),
         }
     }
@@ -149,13 +151,14 @@ impl Workspace {
             256_000_000,
         ) {
             Ok(bytes) => {
-                serde_json::from_slice(&bytes).map_err(|e| format!("曲库管理信息无法读取：{e}"))
+                serde_json::from_slice::<Self>(&bytes).map(|mut value|{value.data_root=Some(data.into());value}).map_err(|e| format!("曲库管理信息无法读取：{e}"))
             }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self{data_root:Some(data.into()),..Self::default()}),
             Err(error) => Err(error.to_string()),
         }
     }
     pub fn save(&mut self, data: &Path) -> Result<(), String> {
+        self.data_root=Some(data.into());
         crate::storage_control::workspace_writable(data)?;
         self.revision += 1;
         std::fs::create_dir_all(data).map_err(|e| e.to_string())?;
@@ -199,8 +202,9 @@ impl Workspace {
             .map_or(0, |d| d.as_nanos().min(u64::MAX as u128) as u64);
             (size,modified)
         };
+        let anchor=self.data_root.as_ref().zip(entry.content_id.as_deref()).map(|(data,cid)|crate::owned_annotations::existing(data,&path,cid)).unwrap_or_else(||path.clone());
         let annotation_modified =
-            std::fs::metadata(panthesia_core::library::metadata_sidecar_path(&path))
+            std::fs::metadata(panthesia_core::library::metadata_sidecar_path(&anchor))
                 .ok()
                 .and_then(|s| s.modified().ok())
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
@@ -300,7 +304,7 @@ impl Workspace {
                         acc
                     });
                 entry.meter = meters.join(" → ");
-                match load_song_sidecar(&path, &file.content_id) {
+                match load_song_sidecar(&self.data_root.as_ref().map(|data|crate::owned_annotations::existing(data,&path,&file.content_id)).unwrap_or_else(||path.clone()), &file.content_id) {
                     Ok(s) => {
                         if s.meter.is_some() || s.meter_map.is_some() {
                             match crate::Player::sidecar_grid(&file, &s) {
@@ -524,12 +528,13 @@ impl Workspace {
         }
         Ok(())
     }
-    pub fn update_metadata(&mut self, path: PathBuf, value: SongMetadata) -> Result<(), String> {
+    pub fn update_metadata(&mut self, data:&Path,path: PathBuf, value: SongMetadata) -> Result<(), String> {
         let entry = self.inspect(path.clone(), true)?;
         let id = entry
             .content_id
             .ok_or("无法识别 MIDI 内容，不能保存元数据")?;
-        save_song_metadata(&path, &id, value.clone()).map_err(|e| e.to_string())?;
+        let anchor=crate::owned_annotations::retain(data,&path,&id,&||Ok(()))?;
+        save_song_metadata(&anchor, &id, value.clone()).map_err(|e| e.to_string())?;
         for entry in self
             .entries
             .values_mut()
@@ -753,12 +758,12 @@ fn execute_inner(
             path,
             content_id,
             rules,
-        } => crate::library_metadata::preview(&mut workspace, path, content_id, rules)?,
+        } => crate::library_metadata::preview(&mut workspace, data,path, content_id, rules)?,
         Command::ReadLibraryMetadata { path, content_id } => {
-            crate::library_metadata::read(&mut workspace, path, content_id)?
+            crate::library_metadata::read(&mut workspace, data,path, content_id)?
         }
         Command::ResetLibraryMetadataDefaults { path, content_id, fields, expected, proof } => {
-            crate::library_metadata::read(&mut workspace, path.clone(), Some(content_id.clone()))?;
+            crate::library_metadata::read(&mut workspace, data,path.clone(), Some(content_id.clone()))?;
             let result = crate::metadata_defaults::reset(data, &path, &content_id, fields, expected, &proof)?;
             if result["status"] == "saved" { workspace.inspect(path, true)?; }
             result
@@ -772,7 +777,7 @@ fn execute_inner(
             crate::library_metadata::save(&mut workspace, data, path, content_id, value, expected)?
         }
         Command::UpdateSongMetadata { path, value } => {
-            workspace.update_metadata(path, value)?;
+            workspace.update_metadata(data,path, value)?;
             serde_json::json!({"ok":true})
         }
         _ => unreachable!(),

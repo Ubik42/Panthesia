@@ -1,4 +1,6 @@
 mod portable_song;
+mod owned_annotations;
+pub mod library_migration;
 #[cfg(test)]
 mod unified_asset_tests;
 pub mod song_repository;

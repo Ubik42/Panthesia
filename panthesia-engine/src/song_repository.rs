@@ -40,6 +40,20 @@ fn key(path: &Path) -> String {
         .trim_start_matches("//?/")
         .to_string()
 }
+// Positive byte identities are reused only while the file stamp is unchanged.
+// Captured preparations always read their observed bytes, including deferred imports.
+fn verified_source(path:&Path,cid:&str)->bool{
+    if !panthesia_core::utils::atomic_file::is_file(path){return false;}
+    if panthesia_core::utils::atomic_file::is_capturing(path){return crate::import_storage::matches_content(path,cid).unwrap_or(false);}
+    type Stamp=(u64,Option<SystemTime>,Option<SystemTime>);
+    static VERIFIED:std::sync::OnceLock<std::sync::Mutex<std::collections::BTreeMap<(String,String),Stamp>>>=std::sync::OnceLock::new();
+    let Ok(metadata)=std::fs::metadata(path)else{return false;};if !metadata.is_file(){return false;}
+    let stamp=(metadata.len(),metadata.modified().ok(),metadata.created().ok());let cache=VERIFIED.get_or_init(Default::default);let cache_key=(key(path),cid.to_owned());
+    if cache.lock().is_ok_and(|cache|cache.get(&cache_key)==Some(&stamp)){return true;}
+    if !crate::import_storage::matches_content(path,cid).unwrap_or(false){return false;}
+    if let Ok(mut cache)=cache.lock(){if cache.len()>=4096{cache.clear();}cache.insert(cache_key,stamp);}
+    true
+}
 impl SongRepository {
     pub fn open(data: &Path) -> Result<Self, String> {
         let directory = data.join("library");
@@ -328,6 +342,18 @@ impl SongRepository {
         parts: Option<&std::collections::BTreeMap<usize, panthesia_core::practice::PracticePart>>,
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<PathBuf, String> {
+        self.retain_with_origin(source,cid,title,composer,parts,source,check)
+    }
+    pub(crate) fn retain_with_origin(
+        &mut self,
+        source: &Path,
+        cid: &str,
+        title: &str,
+        composer: &str,
+        parts: Option<&std::collections::BTreeMap<usize, panthesia_core::practice::PracticePart>>,
+        annotation_origin:&Path,
+        check: &impl Fn() -> Result<(), String>,
+    ) -> Result<PathBuf, String> {
         check()?;
         let bytes = panthesia_core::utils::atomic_file::read_dependency(source, 32_000_000)
             .map_err(error)?;
@@ -336,7 +362,7 @@ impl SongRepository {
         }
         let managed = publish_asset(&Self::managed_path(&self.data, cid)?, &bytes, cid)?;
         check()?;
-        self.import_annotations(source, &managed, cid, parts, None)?;
+        self.import_annotations(annotation_origin, &managed, cid, parts, None)?;
         let project = project_identity(source)?;
         let tx = self
             .db
@@ -513,52 +539,16 @@ impl SongRepository {
         library::save_song_sidecar(managed, cid, annotations).map_err(error)?;
         Ok(())
     }
-    pub fn resolve(&self, path: &Path, expected: Option<&str>) -> Result<PathBuf, String> {
-        if path.is_file() {
-            return Ok(path.into());
+    pub fn resolve(&self,path:&Path,expected:Option<&str>)->Result<PathBuf,String>{
+        if expected.is_none() && panthesia_core::utils::atomic_file::is_file(path){return Ok(path.into());}
+        let cid=match expected{Some(id)=>Some(id.to_owned()),None=>self.db.query_row("SELECT performance_id FROM locations WHERE path_key=?1",[key(path)],|r|r.get::<_,String>(0)).optional().map_err(error)?};
+        if let Some(cid)=cid{
+            let owned=self.db.query_row("SELECT path FROM assets WHERE content_id=?1",[&cid],|r|r.get::<_,String>(0)).optional().map_err(error)?.map(PathBuf::from);
+            for candidate in owned.into_iter().chain(std::iter::once(Self::managed_path(&self.data,&cid)?)).chain(std::iter::once(path.into())){if verified_source(&candidate,&cid){return Ok(candidate);}}
+            let mut query=self.db.prepare("SELECT path FROM locations WHERE performance_id=?1 ORDER BY last_seen DESC").map_err(error)?;
+            for path in query.query_map([&cid],|r|r.get::<_,String>(0)).map_err(error)?{let path=PathBuf::from(path.map_err(error)?);if verified_source(&path,&cid){return Ok(path);}}
         }
-        let cid = match expected {
-            Some(id) => Some(id.to_string()),
-            None => self
-                .db
-                .query_row(
-                    "SELECT performance_id FROM locations WHERE path_key=?1",
-                    [key(path)],
-                    |r| r.get::<_, String>(0),
-                )
-                .optional()
-                .map_err(error)?,
-        };
-        if let Some(cid) = cid {
-            if let Some(owned) = self
-                .db
-                .query_row("SELECT path FROM assets WHERE content_id=?1", [&cid], |r| {
-                    r.get::<_, String>(0)
-                })
-                .optional()
-                .map_err(error)?
-                .map(PathBuf::from)
-                .filter(|p| p.is_file())
-            {
-                return Ok(owned);
-            }
-            let mut query = self
-                .db
-                .prepare(
-                    "SELECT path FROM locations WHERE performance_id=?1 ORDER BY last_seen DESC",
-                )
-                .map_err(error)?;
-            for p in query
-                .query_map([cid], |r| r.get::<_, String>(0))
-                .map_err(error)?
-            {
-                let p = PathBuf::from(p.map_err(error)?);
-                if p.is_file() {
-                    return Ok(p);
-                }
-            }
-        }
-        Err("曲目暂时没有可用的演奏文件，后台将继续查找来源".into())
+        Err("曲目暂时没有相同内容的演奏文件，后台将继续查找来源".into())
     }
     pub fn register_row(&mut self, row: &SongRow, cid: &str) -> Result<(), String> {
         let mut row = row.clone();
@@ -581,6 +571,7 @@ impl SongRepository {
             if let Ok(path) = self.resolve(&row.path, Some(&cid)) {
                 row.path = path;
                 row.content_id = Some(cid);
+                crate::library::overlay_metadata(&mut row);
                 rows.push(row);
             }
         }

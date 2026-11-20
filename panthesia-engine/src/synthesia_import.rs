@@ -62,6 +62,7 @@ fn part(hand: Hand) -> panthesia_core::practice::PracticePart {
     }
 }
 fn prepare(
+    data:&Path,
     workspace: &mut Workspace,
     bytes: &[u8],
     paths: &[PathBuf],
@@ -71,6 +72,7 @@ fn prepare(
     if paths.is_empty() || paths.len() > 64 {
         return Err("请先选择 1～64 首曲目".into());
     }
+    let preferences=crate::preferences::Preferences::load(&data.join("web-preferences.json"))?;
     let document = format::parse(bytes)?;
     let songs: BTreeMap<_, _> = document
         .songs
@@ -98,23 +100,26 @@ fn prepare(
         }
         let file = midi_file::MidiFile::from_path_bytes(path, &midi_bytes)?;
         let cid = file.content_id.clone();
-        let sidecar_path = library::metadata_sidecar_path(path);
+        let anchor=crate::owned_annotations::existing(data,path,&cid);
+        let sidecar_path = library::metadata_sidecar_path(&anchor);
         let raw =
             match panthesia_core::utils::atomic_file::read_dependency(&sidecar_path, 32_000_000) {
                 Ok(bytes) => Some(bytes),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
                 Err(e) => return Err(e.to_string()),
             };
-        let sidecar = if raw.is_some() {
-            library::load_song_sidecar(path, &cid)
+        let mut sidecar = if raw.is_some() {
+            library::load_song_sidecar(&anchor, &cid)
                 .map_err(|e| format!("原附加资料无法读取，导入已停止：{e}"))?
         } else {
             SongSidecar::default()
         };
+        if anchor==*path{if let Some(settings)=preferences.songs.get(&cid){sidecar.track_parts.extend(settings.parts.clone());}}
         proof.update(
             &serde_json::to_vec(&(
                 key(path),
                 &cid,
+                &sidecar.track_parts,
                 raw.as_ref()
                     .map(|bytes| blake3::hash(bytes).to_hex().to_string()),
             ))
@@ -317,7 +322,7 @@ pub fn preview(
     let lock = crate::library_workspace::lock_for(data)?;
     let _guard = crate::library_workspace::wait_for(&lock, check)?;
     let mut workspace = Workspace::load(data)?;
-    let prepared = prepare(&mut workspace, &bytes, &paths, &options, check)?;
+    let prepared = prepare(data,&mut workspace, &bytes, &paths, &options, check)?;
     serde_json::to_value(prepared.preview).map_err(|e| e.to_string())
 }
 pub fn apply(
@@ -334,7 +339,7 @@ pub fn apply(
     let request = request_hash(&bytes, &paths, &options, &expected)?;
     if let Some(receipt) = completed_source_import(data, &blake3::hash(&bytes).to_hex(), &paths, &options, &expected)? { return Ok(receipt); }
     let mut workspace = Workspace::load(data)?;
-    let prepared = prepare(&mut workspace, &bytes, &paths, &options, check)?;
+    let prepared = prepare(data,&mut workspace, &bytes, &paths, &options, check)?;
     if prepared.preview.proof != expected {
         return Err("预览后的曲目、资料或分组发生变化，请重新预览".into());
     }
@@ -358,7 +363,8 @@ pub fn apply(
             )?;
             crate::metadata_history::finish(data, &candidate.path, &id, true)?;
         }
-        library::save_song_sidecar(&candidate.path, &candidate.cid, candidate.next)
+        let owned=crate::owned_annotations::retain(data,&candidate.path,&candidate.cid,check)?;
+        library::save_song_sidecar(&owned, &candidate.cid, candidate.next)
             .map_err(|e| e.to_string())?;
         workspace.inspect(candidate.path.clone(), true)?;
         if let Some(rating) = candidate.rating {

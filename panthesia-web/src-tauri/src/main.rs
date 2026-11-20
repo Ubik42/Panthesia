@@ -937,14 +937,17 @@ async fn relocate_midi(
                     .and_then(|e| e["path"].as_str())
             });
         if let Some(original) = original {
-            library::recover_annotations(std::path::Path::new(original), &path, &content_id)?;
+            let result=engine.command(Command::RelinkLibrary{items:vec![panthesia_engine::library_repairs::RelinkItem{content_id:content_id.clone(),from:original.into(),to:path.clone()}]})?;
+            if let Some(item)=result["results"].as_array().and_then(|items|items.first()){
+                if item["ok"]==false{return Err(item["error"].as_str().unwrap_or("路径关联未完成，请查看日志").to_owned());}
+            }
         }
         let title = path
             .file_stem()
             .unwrap_or_default()
             .to_string_lossy()
             .into();
-        engine.command(Command::Load { path, title }).map(Some)
+        engine.command(Command::LoadIndexed { path, title, content_id }).map(Some)
     })
     .await
     .map_err(|e| e.to_string())?

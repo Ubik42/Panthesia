@@ -3,69 +3,21 @@ use panthesia_core::library::{
     MetadataError, SongMetadata, load_song_metadata, save_song_metadata,
 };
 use std::path::{Path, PathBuf};
-fn actual(
-    workspace: &mut Workspace,
-    path: &PathBuf,
-    expected: Option<&str>,
-) -> Result<(String, SongMetadata), String> {
-    // A known MIDI needs a fresh byte identity, not another note/grid analysis for each field read.
-    let known = workspace
-        .entries
-        .get(&crate::library_workspace::key(path))
-        .filter(|entry| entry.analysis_version == 2)
-        .and_then(|entry| entry.content_id.clone());
-    let verified = if let Some(known) = known {
-        let bytes = panthesia_core::utils::atomic_file::read_dependency(path, 32_000_000)
-            .map_err(|error| format!("曲目文件无法读取，草稿尚未保存：{error}"))?;
-        let actual = blake3::hash(&bytes).to_hex().to_string();
-        if expected.is_some_and(|id| id != actual) {
-            return Err("文件内容已改变，草稿未写入另一首曲目；请取消后重新检查文件".into());
-        }
-        (actual == known).then_some(actual)
-    } else {
-        None
-    };
-    let cid = match verified {
-        Some(cid) => cid,
-        None => {
-            let entry = workspace.inspect(path.clone(), true)?;
-            if !entry.available {
-                return Err(entry
-                    .error
-                    .unwrap_or_else(|| "文件不可用，草稿尚未保存".into()));
-            }
-            entry.content_id.ok_or("无法识别曲目，草稿尚未保存")?
-        }
-    };
-    if expected.is_some_and(|id| id != cid) {
-        return Err("文件内容已改变，草稿未写入另一首曲目；请取消后重新检查文件".into());
-    }
-    let metadata = match load_song_metadata(path, &cid) {
-        Ok(value) => value,
-        Err(MetadataError::Read(e)) if e.kind() == std::io::ErrorKind::NotFound => {
-            SongMetadata::default()
-        }
-        Err(e) => return Err(format!("附加资料无法读取，未修改文件：{e}")),
-    };
-    if let Some(entry) = workspace
-        .entries
-        .get_mut(&crate::library_workspace::key(path))
-    {
-        entry.metadata = metadata.clone();
-        if !entry.available {
-            entry.error = None;
-        }
-        entry.available = true;
-    }
-    Ok((cid, metadata))
+fn actual(workspace:&mut Workspace,data:&Path,path:&PathBuf,expected:Option<&str>)->Result<(String,SongMetadata),String>{
+    let (anchor,cid)=crate::owned_annotations::read(data,path,expected)?;
+    let metadata=match load_song_metadata(&anchor,&cid){Ok(value)=>value,Err(MetadataError::Read(e))if e.kind()==std::io::ErrorKind::NotFound=>Default::default(),Err(e)=>return Err(e.to_string())};
+    if let Some(entry)=workspace.entries.get_mut(&crate::library_workspace::key(path)){if entry.content_id.as_deref()==Some(&cid){entry.metadata=metadata.clone();}}
+    Ok((cid,metadata))
 }
 pub fn read(
     workspace: &mut Workspace,
+    data:&Path,
     path: PathBuf,
     expected: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let (cid, _) = actual(workspace, &path, expected.as_deref())?;
-    let layers = crate::metadata_defaults::view(&path, &cid)?;
+    let (cid, _) = actual(workspace, data, &path, expected.as_deref())?;
+    let (anchor,_)=crate::owned_annotations::read(data,&path,Some(&cid))?;
+    let layers = crate::metadata_defaults::view(&anchor, &cid)?;
     if let Some(entry) = workspace.entries.get_mut(&crate::library_workspace::key(&path)) {
         entry.metadata = layers.value.clone();
     }
@@ -116,7 +68,7 @@ fn save_operation(
         return Err("曲目内容身份无效".into());
     }
     validate(&value)?;
-    let (_, current) = actual(workspace, &path, Some(&cid))?;
+    let (_, current) = actual(workspace, data, &path, Some(&cid))?;
     let value = value.normalized();
     if value == current {
         return Ok(
@@ -128,7 +80,8 @@ fn save_operation(
     }
     let id =
         crate::metadata_history::prepare(data, &path, &cid, current, value.clone(), restored_from)?;
-    if let Err(e) = save_song_metadata(&path, &cid, value.clone()) {
+    let anchor=crate::owned_annotations::retain(data,&path,&cid,&||Ok(()))?;
+    if let Err(e) = save_song_metadata(&anchor, &cid, value.clone()) {
         let _ = crate::metadata_history::finish(data, &path, &id, false);
         return Err(e.to_string());
     }
@@ -172,7 +125,7 @@ mod tests {
         let path = root.join("piece.mid");
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut w = Workspace::default();
-        let initial = read(&mut w, path.clone(), None).unwrap();
+        let initial = read(&mut w, &root,path.clone(), None).unwrap();
         let cid = initial["contentId"].as_str().unwrap().to_string();
         let original: SongMetadata = serde_json::from_value(initial["value"].clone()).unwrap();
         panthesia_core::library::save_song_fingerings(
@@ -236,7 +189,7 @@ mod tests {
         assert_eq!(std::fs::read(&sidecar).unwrap(), bytes);
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         std::fs::write(&sidecar, b"broken").unwrap();
-        assert!(read(&mut w, path.clone(), Some(cid.clone())).is_err());
+        assert!(read(&mut w, &root,path.clone(), Some(cid.clone())).is_err());
         assert!(save(&mut w, &root, path, cid, mine.clone(), mine).is_err());
         assert_eq!(std::fs::read(&sidecar).unwrap(), b"broken");
     }
@@ -253,7 +206,7 @@ mod tests {
         let path = root.join("piece.mid");
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut w = Workspace::default();
-        let initial = read(&mut w, path.clone(), None).unwrap();
+        let initial = read(&mut w, &root,path.clone(), None).unwrap();
         let cid = initial["contentId"].as_str().unwrap().to_string();
         let original: SongMetadata = serde_json::from_value(initial["value"].clone()).unwrap();
         panthesia_core::library::save_song_fingerings(
@@ -399,11 +352,12 @@ mod tests {
 
 pub fn preview(
     workspace: &mut Workspace,
+    data:&Path,
     path: PathBuf,
     expected: Option<String>,
     rules: crate::metadata_templates::Rules,
 ) -> Result<serde_json::Value, String> {
-    let (cid, base) = actual(workspace, &path, expected.as_deref())?;
+    let (cid, base) = actual(workspace, data, &path, expected.as_deref())?;
     let value = crate::metadata_templates::apply(base.clone(), &rules)?;
     Ok(serde_json::json!({"contentId":cid,"base":base,"value":value}))
 }
@@ -414,7 +368,7 @@ pub fn history(
     path: PathBuf,
     cid: String,
 ) -> Result<serde_json::Value, String> {
-    let actual = actual(workspace, &path, Some(&cid));
+    let actual = actual(workspace, data, &path, Some(&cid));
     let mut value =
         crate::metadata_history::inspect(data, &path, &cid, actual.as_ref().ok().map(|(_, m)| m))?;
     value["available"] = serde_json::json!(actual.is_ok());
@@ -429,7 +383,7 @@ pub fn restore_preview(
     cid: String,
     id: String,
 ) -> Result<serde_json::Value, String> {
-    let (_, base) = actual(workspace, &path, Some(&cid))?;
+    let (_, base) = actual(workspace, data, &path, Some(&cid))?;
     let record = crate::metadata_history::record(data, &path, &cid, &id)?;
     let fields = crate::metadata_history::changed(&record.before, &record.after);
     let value = crate::metadata_history::proposed(&record, &base, &fields)?;
@@ -456,7 +410,7 @@ pub fn restore(
     fields: Vec<String>,
     expected: SongMetadata,
 ) -> Result<serde_json::Value, String> {
-    let (_, current) = actual(workspace, &path, Some(&cid))?;
+    let (_, current) = actual(workspace, data, &path, Some(&cid))?;
     if current != expected {
         return Ok(serde_json::json!({"status":"conflict","current":current,"contentId":cid}));
     }

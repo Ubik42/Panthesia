@@ -403,6 +403,14 @@ fn scan_folder_contents(root:&Path,check:impl Fn()->Result<(),String>,include_so
     metadata.sort();
     Ok((rows, metadata))
 }
+pub(crate) fn overlay_metadata(row:&mut SongRow){
+    let Some(cid)=row.content_id.as_deref()else{return;};
+    let Ok(metadata)=panthesia_core::library::load_song_metadata(&row.path,cid)else{return;};
+    if let Some(title)=metadata.title.filter(|s|!s.is_empty()){row.title=title;}
+    if let Some(composer)=metadata.composer{row.composer=composer;}
+    if let Some(collection)=metadata.collection{row.category=collection;}
+    row.arranger=metadata.arranger;row.tags=metadata.tags;row.difficulty=metadata.difficulty;
+}
 pub fn enriched(rows: &[SongRow], data: &Path) -> Vec<SongRow> {
     let mut rows = rows.to_vec();
     if let Ok(recordings)=recording_rows(data) {let mut known=rows.iter().map(|row|crate::library_workspace::key(&row.path)).collect::<std::collections::HashSet<_>>();rows.extend(recordings.into_iter().filter(|row|known.insert(crate::library_workspace::key(&row.path))));}
@@ -438,70 +446,18 @@ pub fn enriched(rows: &[SongRow], data: &Path) -> Vec<SongRow> {
         },
         Err(error)=>{eprintln!("{error}");rows.retain(|row|row.path.is_file());},
     }
+    for row in &mut rows{overlay_metadata(row);}
     let mut seen=std::collections::HashSet::new();rows.retain(|row|seen.insert(folder_key(&row.path)));
     rows
 }
 /// Recover the portable annotations of an identical MIDI at a new location.
 /// Existing valid annotations at the destination always win.
-pub fn recover_annotations(
-    original: &Path,
-    destination: &Path,
-    content_id: &str,
-) -> Result<(), String> {
-    recover_annotations_report(original, destination, content_id).map(|_| ())
+pub fn recover_annotations(data:&Path,original:&Path,destination:&Path,content_id:&str)->Result<(),String>{recover_annotations_report(data,original,destination,content_id).map(drop)}
+pub(crate) fn recover_annotations_report(data:&Path,original:&Path,destination:&Path,content_id:&str)->Result<Option<String>,String>{
+    let before=crate::owned_annotations::existing(data,destination,content_id);
+    crate::owned_annotations::relink(data,original,destination,content_id,&||Ok(()))?;
+    Ok((before==destination).then(||"曲目资料已归入内容标注，旧来源保持原状".into()))
 }
-pub(crate) fn recover_annotations_report(
-    original: &Path,
-    destination: &Path,
-    content_id: &str,
-) -> Result<Option<String>, String> {
-    match panthesia_core::library::load_song_sidecar(destination, content_id) {
-        Ok(_) => {
-            return Ok(Some(
-                "新位置已有附加资料，已沿用原有标注；旧位置保持原状。".into(),
-            ));
-        }
-        Err(panthesia_core::library::MetadataError::Read(e))
-            if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(e) => return Err(format!("新位置已有无法合并的附加信息：{e}")),
-    }
-    let mut old = match panthesia_core::library::load_song_sidecar(original, content_id) {
-        Ok(s) => s,
-        Err(panthesia_core::library::MetadataError::Read(e))
-            if e.kind() == std::io::ErrorKind::NotFound =>
-        {
-            return Ok(None);
-        }
-        Err(e) => return Err(e.to_string()),
-    };
-    let mut unverified_score = false;
-    if let Some(score) = old.score.as_ref() {
-        if panthesia_core::library::verify_score_association(original, score)
-            .is_ok_and(|valid| valid)
-        {
-            let path = panthesia_core::library::resolve_score_path(original, score);
-            old.score = Some(panthesia_core::library::ScoreAssociation {
-                path,
-                content_id: score.content_id.clone(),
-            });
-        } else {
-            unverified_score = true;
-            old.score = None;
-            old.score_analysis = None;
-        }
-    }
-    panthesia_core::library::save_song_sidecar(destination, content_id, old)
-        .map_err(|e| e.to_string())?;
-    Ok(Some(if unverified_score {
-        format!(
-            "已恢复可用的附加资料；旧谱面关联未通过核对，暂未启用。原资料保留在 {}",
-            original.display()
-        )
-    } else {
-        format!("已恢复原位置的附加资料；原件保留在 {}", original.display())
-    }))
-}
-
 pub fn validate_repository_paths(
     data:&Path, paths:Vec<PathBuf>, rows:&[SongRow], known:&serde_json::Value, indexed:&serde_json::Value,
 )->Result<(),String>{
