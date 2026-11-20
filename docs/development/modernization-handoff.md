@@ -208,6 +208,19 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 证据：work/combined-stage-desktop.log；work/combined-stage-runtime/combined-evidence.json、final-reopen-evidence.json；combined-start.png、final-columns.png、final-rows-narrow.png、final-reopened.png。只做上述受影响检查，未执行全套回归。原生全屏、纸谱与高 DPI 的组合覆盖仍按功能矩阵待核对，整体 Goal active。
 
+## P3：时间线旁保存与重开练习段批次
+
+- 新增 SavedPassageBar，直接保存当前 A/B 为命名练习段，选择已保存段落、查看范围 / 起始 BPM / 模式，并打开该段循环；管理按钮返回原 PassageDialog。未引入第二套持久化目录。
+- 新增 tickAtSeconds，与 secondsAtTick 共用当前有效演奏速度图。原始 / 量化条件下均按当前网格写入 TickRange，已有后端验证内容身份、网格、边界和停止演奏条件。
+- 复用 readPractice / editPractice / usePracticeEdits 的来源与目录版本约束，提交成功而刷新失败时只重试刷新。快捷栏按内容保持选中项，演奏 / 标注版本变化后重新读取并暂锁旧目录，避免打开后跳回第一条或使用旧版本。
+- 已保存段落恢复原速度、声部和练习模式；BPM 与模式在打开前显示。保存只在暂停且无按键时可用，正式录音 / 完整演奏 / 活动计划沿用原限制。转调、量化或网格改变时旧段落提示核对，隐藏失效范围摘要。
+
+受影响 Desktop Debug / 前端构建通过。一次 tick / 秒往返检查覆盖变速点及精确边界，见 work/saved-passage-time-check.log。实际桌面在全新隔离资料 work/saved-passage-runtime 中，设置 0.55–2.05 秒 A/B，保存“第二句循环”；另保存 2.50–3.75 秒“第三句”。分别改变当前速度后打开，恢复各自保存速度 1.0，循环端点准确；选中第二条在打开及管理窗口返回后仍保持，未捕获页面错误。
+
+转调 +2 后快捷栏提示条件变化并禁用打开；恢复原条件后 2 条段落仍可读取与使用。最后源码重启后再次打开“第三句”，范围为 2.50–3.75 秒，显示 100 BPM / 弹对后继续。720×800 截图检查完成。证据 work/saved-passage-desktop.log、work/saved-passage-runtime/flow-evidence.json、reopen-conditions-evidence.json、final-reopen-evidence.json，以及 final-opened.png / final-narrow.png / final-reopened.png。
+
+早期脚本等待隐藏的原生 option 和短暂提示文本，后续改为检查真实目录、循环状态与选中 ID；保存未因此重复执行，最终目录保留 2 条。未跑全套回归。下一步优先把段落的练习变换条件明确纳入核心快照与迁移，减少转调后重复核对；独立书签与 MIDI marker 仍待实现。整体 Goal active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-combined-practice，程序源码提交 0df57c4，包含组合视图、页内跟随、保持演奏位置的缩放及共用区间索引。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 39356B911D24AF8B2CD572F52C2D2C225E0838AA82D7EAB5597981CEC339AA07。29 个文件哈希一致，独立 --window-check 返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/combined-practice-release.log 及 work/combined-practice-package-check/release-evidence.json / startup.log。

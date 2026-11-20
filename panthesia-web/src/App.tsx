@@ -1,3 +1,4 @@
+import { SavedPassageBar } from "./features/practice/SavedPassageBar";
 import type { DisplayPreferences } from "./displayPreferences";
 import { PracticeStage } from "./features/practice/PracticeStage";
 import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
@@ -2344,6 +2345,11 @@ export default function App() {
             disabled={!connected || state.recording || recital || ladderActive || routineActive}
             seek={(position) => adjustRealtime({ type: "seek", position })}
           />
+          {song && !song.generated && <SavedPassageBar key={JSON.stringify([song.engineId,song.contentId])}
+            song={song} store={playback} range={practiceRange} visible={workspace === "practice" && !passageDialog}
+            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
+            changed={async()=>{const session=await api.session();installSession(session);}}
+            manage={()=>launchPracticeTool(()=>setPassageDialog(true))} />}
           <PracticeResultStrip
             store={playback}
             busy={busy}

@@ -175,3 +175,16 @@ export function secondsAtTick(song: LoadedSong, tick: number) {
     ? tempo.seconds + ((tick - tempo.tick) * 60) / (tempo.bpm * song.ppq)
     : (tick * 60) / (120 * song.ppq);
 }
+
+export function tickAtSeconds(song: LoadedSong, seconds: number) {
+  let low = 0, high = song.tempo.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (song.tempo[middle].seconds <= seconds) low = middle + 1;
+    else high = middle;
+  }
+  const tempo = song.tempo[low - 1];
+  return Math.max(0, Math.round(tempo
+    ? tempo.tick + (seconds - tempo.seconds) * tempo.bpm * song.ppq / 60
+    : seconds * 120 * song.ppq / 60));
+}

@@ -1,0 +1,51 @@
+.saved-passage-bar {
+  flex: none;
+  padding: 5px 16px;
+  border-top: 1px solid var(--instrument-line, #dce2ed);
+  background: var(--instrument-panel, #fff);
+  color: var(--instrument-text, #273147);
+  font-size: 11px;
+}
+.saved-passage-actions,
+.saved-passage-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.saved-passage-bar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.saved-passage-bar :is(select, input, button) {
+  min-height: 27px;
+  padding: 3px 8px;
+  border: 1px solid var(--instrument-line, #dce2ed);
+  border-radius: 4px;
+  background: var(--instrument-surface, #f5f6fa);
+  color: inherit;
+  font-size: 11px;
+}
+.saved-passage-bar select {
+  max-width: min(35vw, 260px);
+}
+.saved-passage-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.saved-passage-summary,
+.saved-passage-name > span {
+  color: var(--instrument-muted, #71809a);
+}
+.saved-passage-name {
+  padding-top: 8px;
+}
+.saved-passage-name input {
+  width: min(38vw, 260px);
+}
+.saved-passage-bar p {
+  margin: 5px 0 0;
+  line-height: 1.5;
+}
