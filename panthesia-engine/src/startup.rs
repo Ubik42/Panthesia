@@ -342,6 +342,7 @@ impl Prepared {
                 song_error: None,
             };
         }
+        let original_preferences=data.preferences.clone();
         control.stage("restoringSong", true);
         let check = || {
             if control.skip.load(Ordering::Acquire) {
@@ -435,10 +436,16 @@ impl Prepared {
             }
         });
         match prepared {
-            Ok(song) => Self {
-                data,
-                song,
-                song_error: None,
+            Ok(song) => {
+                // Restoring owned notation can rebase edition paths. Publish that registry
+                // before installing its memory snapshot, using the existing recovery journal.
+                if let Err(error)=publish_restored_registry(root,&original_preferences,&data.preferences) {
+                    data.preferences=original_preferences;
+                    data.blocked=true;
+                    data.error=Some(format!("启动资料关联尚未保存，现有文件已保留：{error}"));
+                    return Self{data,song:None,song_error:None};
+                }
+                Self {data,song,song_error:None}
             },
             Err(_) if control.skip.load(Ordering::Acquire) => Self {
                 data,
@@ -452,6 +459,21 @@ impl Prepared {
             },
         }
     }
+}
+/// Startup preparation runs detached. The journal checks and backs up the original
+/// registry, so a moved profile cannot leave memory ahead of disk or replace edits.
+fn publish_restored_registry(root:&std::path::Path,before:&Preferences,after:&Preferences)->Result<(),String> {
+    let before=serde_json::to_value(before).map_err(|e|e.to_string())?;
+    if before==serde_json::to_value(after).map_err(|e|e.to_string())? {return Ok(());}
+    let path=root.join("web-preferences.json");let selected=root.to_path_buf();
+    let (result,writes,observed)=panthesia_core::utils::atomic_file::capture_matching(
+        Arc::new(move|path|asset_storage::captures(&selected,path)),||{
+            let current=Preferences::load(&path)?;
+            if serde_json::to_value(current).map_err(|e|e.to_string())?!=before {return Err("恢复期间设置已改变，请重新读取资料".into());}
+            after.save(&path)
+        });
+    result?;
+    asset_storage::commit(root,writes,observed)
 }
 struct Completion {
     tx: mpsc::Sender<runtime_request::Request>,
@@ -777,5 +799,20 @@ impl Player {
                 control.complete(false, self.state.error.clone());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod restored_registry_tests {
+    use super::*;
+    #[test]
+    fn restored_editions_publish_atomically_and_reject_external_settings() {
+        let root=std::env::temp_dir().join(format!("panthesia-startup-registry-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&root).unwrap();let path=root.join("web-preferences.json");
+        let before=Preferences::default();before.save(&path).unwrap();let mut after=before.clone();after.title="Restored owned song".into();
+        publish_restored_registry(&root,&before,&after).unwrap();
+        assert_eq!(Preferences::load(&path).unwrap().title,"Restored owned song");
+        let mut external=after.clone();external.volume=Some(0.25);external.save(&path).unwrap();let bytes=std::fs::read(&path).unwrap();
+        assert!(publish_restored_registry(&root,&before,&after).is_err());assert_eq!(std::fs::read(&path).unwrap(),bytes);
     }
 }
