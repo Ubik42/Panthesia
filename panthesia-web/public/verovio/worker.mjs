@@ -28,6 +28,30 @@ self.onmessage = async ({ data }) => {
         ? toolkit.loadZipDataBuffer(bytes.buffer)
         : toolkit.loadData(new TextDecoder().decode(bytes));
       if (!ok) throw new Error("无法读取这份乐谱");
+      if (data.alterations?.length) {
+        const alterations = new Map(data.alterations);
+        const mei = toolkit
+          .getMEI()
+          .replace(
+            /<note\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/note>)/g,
+            (whole, head, body = "") => {
+              const id = head.match(/\bxml:id="([^"]+)"/)?.[1],
+                alter = alterations.get(id);
+              if (!alter) return whole;
+              const accids = [...body.matchAll(/<accid\b/g)];
+              if (accids.length > 1) return whole;
+              if (accids.length)
+                body = body.replace(
+                  /<accid\b([^>]*?)(\/?>)/,
+                  (tag, attrs, end) =>
+                    `<accid${attrs.replace(/\s+accid\.ges="[^"]*"/g, "")} accid.ges="${alter}"${end}`,
+                );
+              else body = `<accid accid.ges="${alter}"/>` + body;
+              return `<note${head}>${body}</note>`;
+            },
+          );
+        if (!toolkit.loadData(mei)) throw new Error("谱面音高投影无法读取");
+      }
       count = toolkit.getPageCount();
       if (!Number.isSafeInteger(count) || count < 1)
         throw new Error("这份文件未生成可显示的谱页");

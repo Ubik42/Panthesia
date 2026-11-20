@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             documents.dispatch(request);
         } else if request.method() == &Method::Get && request.url() == "/api/routines/templates" {
             reads.dispatch(request);
-        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/history-read", "/api/history-read-scoped", "/api/routines/read", "/api/routines/sources", "/api/routines/options"].contains(&request.url()) {
+        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/notation-document", "/api/history-read", "/api/history-read-scoped", "/api/routines/read", "/api/routines/sources", "/api/routines/options"].contains(&request.url()) {
             reads.dispatch(request);
         } else { business.dispatch(request); }
     }
@@ -271,6 +271,11 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     if body.len() > 16_000_000 { return Err("请求过大".into()); }
                     let command: panthesia_engine::HistoryReadRequest = serde_json::from_str(&body).map_err(|error| error.to_string())?;
                     engine.read_history(command)
+                }
+                (&Method::Post, "/api/notation-document") => {
+                    #[derive(serde::Deserialize)] struct Input { bytes:Vec<u8> }
+                    let input:Input=client_json(&mut request,32_000_000,"谱面解压请求")?;
+                    serde_json::to_value(panthesia_engine::notation_document(input.bytes)?).map_err(|e|e.to_string())
                 }
                 (&Method::Post, "/api/score-map") => {
                     if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") { return Err("缺少本地客户端标识".into()); }

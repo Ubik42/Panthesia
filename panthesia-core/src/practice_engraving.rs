@@ -3,7 +3,7 @@ use midi_file::MidiFile;
 use std::{collections::HashMap, fmt::Write};
 
 const DIVISIONS: u64 = 32;
-pub const GENERATOR: &str = "panthesia-practice-engraving-v2";
+pub const GENERATOR: &str = "panthesia-practice-engraving-v3";
 pub struct Engraving {
     pub bytes: Vec<u8>,
     pub notes: HashMap<String, PracticeNote>,
@@ -35,7 +35,7 @@ fn units(tick: f64, ppq: u16) -> u64 {
 fn escape(value: &str) -> String {
     quick_xml::escape::escape(value).into_owned()
 }
-fn pitch(value: u8, flats: bool) -> String {
+fn pitch_parts(value: u8, flats: bool) -> (&'static str, i8, i16) {
     let names = if flats {
         [
             ("C", 0),
@@ -68,10 +68,20 @@ fn pitch(value: u8, flats: bool) -> String {
         ]
     };
     let (step, alter) = names[usize::from(value % 12)];
-    format!(
-        "<pitch><step>{step}</step><alter>{alter}</alter><octave>{}</octave></pitch>",
-        i16::from(value) / 12 - 1
-    )
+    (step,alter,i16::from(value)/12-1)
+}
+fn pitch(value:u8,flats:bool)->String {
+    let (step,alter,octave)=pitch_parts(value,flats);
+    format!("<pitch><step>{step}</step><alter>{alter}</alter><octave>{octave}</octave></pitch>")
+}
+fn accidental(value:u8,fifths:i8,seen:&mut HashMap<(&'static str,i16),i8>,continuation:bool)->&'static str {
+    if continuation {return "";}
+    let (step,alter,octave)=pitch_parts(value,fifths<0);
+    let order=if fifths<0 {["B","E","A","D","G","C","F"]}else{["F","C","G","D","A","E","B"]};
+    let key=if order[..usize::from(fifths.unsigned_abs()).min(7)].contains(&step) {fifths.signum()}else{0};
+    let previous=seen.insert((step,octave),alter).unwrap_or(key);
+    if previous==alter {return "";}
+    match alter {-1=>"<accidental>flat</accidental>",1=>"<accidental>sharp</accidental>",_=>"<accidental>natural</accidental>"}
 }
 // Split at beats and barlines. Each piece has an exact conventional note value.
 fn pieces(
@@ -301,6 +311,7 @@ fn engrave_with_rhythm(
             let voice = lane_index + 1;
             let staff = lane.staff;
             let mut cursor = start;
+            let mut written_accidentals=HashMap::new();
             while offsets[lane_index] < lane.notes.len()
                 && lane.notes[offsets[lane_index]].end <= start
             {
@@ -359,8 +370,9 @@ fn engrave_with_rhythm(
                         }
                         write!(
                             xml,
-                            "<voice>{voice}</voice><type>{kind}</type>{}<staff>{staff}</staff>",
-                            if dot { "<dot/>" } else { "" }
+                            "<voice>{voice}</voice><type>{kind}</type>{}{}<staff>{staff}</staff>",
+                            if dot { "<dot/>" } else { "" },
+                            accidental(note.pitch,fifths,&mut written_accidentals,stop)
                         )
                         .unwrap();
                         if stop || begin {
@@ -535,5 +547,15 @@ mod tests {
             result.notes.values().map(|n| (n.track, n.index)).collect();
         assert_eq!(identities.len(), 5);
         assert!(result.notes.len() > identities.len());
+    }
+}
+
+#[cfg(test)]
+mod accidental_tests {
+    use super::*;
+    #[test]
+    fn signs_follow_key_and_note_state_without_changing_source_pitch() {
+        let mut state=HashMap::new();assert_eq!(accidental(61,0,&mut state,false),"<accidental>sharp</accidental>");assert_eq!(accidental(61,0,&mut state,false),"");assert_eq!(accidental(60,0,&mut state,false),"<accidental>natural</accidental>");assert_eq!(accidental(60,0,&mut state,false),"");
+        state.clear();assert_eq!(accidental(66,1,&mut state,false),"");assert_eq!(accidental(65,1,&mut state,false),"<accidental>natural</accidental>");assert_eq!(accidental(66,1,&mut state,true),"");
     }
 }

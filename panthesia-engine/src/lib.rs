@@ -4419,3 +4419,8 @@ mod tests {
     }
 
 }
+
+/// Decode the original MusicXML root for the display adapter. No file is changed.
+pub fn notation_document(bytes:Vec<u8>)->Result<Vec<u8>,String> {
+    panthesia_core::musicxml::musicxml_source(&bytes).map_err(|error|error.to_string())
+}

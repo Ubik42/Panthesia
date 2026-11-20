@@ -248,6 +248,7 @@ export const api = {
     ? invoke("routine_templates") : http("/api/routines/templates"),
   saveHistoryAnnotation: (request: HistoryAnnotationRequest): Promise<HistoryAnnotationSaved> => postLocal("save_history_annotation", "/api/history-annotation", request),
   readHistory: <T>(command: HistoryReadCommand, scope?: HistoryReadScope, engineId?: string): Promise<T> => scope ? postLocal("read_history", "/api/history-read", {command,scope,...(engineId ? {engineId} : {})}) : engineId ? api.commandForEngine<T>(engineId, command) : postLocal("read_history", "/api/history-read", command),
+  notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
   mapScore: (request: ScoreMappingRequest): Promise<ScoreMappingResult> => postLocal("map_score", "/api/score-map", request),
   openDataFolder: () => invoke<void>("open_practice_data_folder"),
   session: async (): Promise<EngineSession> => {

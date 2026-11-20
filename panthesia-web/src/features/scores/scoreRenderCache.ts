@@ -1,3 +1,4 @@
+import { rendererInput } from "./rendererInput";
 import type { RendererNoteEvidence } from "./mappingTypes";
 export interface ScorePages {
   readonly length: number;
@@ -71,7 +72,11 @@ class Layout {
   private indexed?: ReturnType<RenderedScore["evidence"]>;
   constructor(
     readonly key: string,
-    asset: { bytes: number[]; compressed: boolean },
+    asset: {
+      bytes: number[];
+      compressed: boolean;
+      alterations?: [string, string][];
+    },
     progress: Pending["progress"],
   ) {
     this.worker.onmessage = ({ data }) => {
@@ -90,7 +95,12 @@ class Layout {
       this.close(new Error(e.message || "乐谱渲染器启动失败"));
     const bytes = new Uint8Array(asset.bytes);
     this.ready = this.request(
-      { type: "open", bytes: bytes.buffer, compressed: asset.compressed },
+      {
+        type: "open",
+        bytes: bytes.buffer,
+        compressed: asset.compressed,
+        alterations: asset.alterations,
+      },
       progress,
       [bytes.buffer],
     ).then((r) => r.count!);
@@ -158,6 +168,7 @@ class Layout {
   }
 }
 const layouts = new Map<string, Layout>();
+const preparing = new Map<string, Promise<Layout>>();
 export async function renderScore(
   asset: { bytes: number[]; compressed: boolean },
   signal: AbortSignal,
@@ -169,11 +180,21 @@ export async function renderScore(
     new Uint8Array(asset.bytes),
   );
   signal.throwIfAborted();
-  const key = `a4-pages-v2:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
+  const key = `a4-pages-v3:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
   let layout = layouts.get(key);
   if (!layout) {
-    layout = new Layout(key, asset, progress);
-    layouts.set(key, layout);
+    let work = preparing.get(key);
+    if (!work) {
+      work = rendererInput(asset)
+        .then((input) => {
+          const created = new Layout(key, input, progress);
+          layouts.set(key, created);
+          return created;
+        })
+        .finally(() => preparing.delete(key));
+      preparing.set(key, work);
+    }
+    layout = await work;
   }
   const owned = layout;
   owned.leases++;
@@ -186,6 +207,7 @@ export async function renderScore(
     signal.removeEventListener("abort", release);
   };
   signal.addEventListener("abort", release, { once: true });
+  if (signal.aborted) release();
   try {
     const count = await owned.ready;
     signal.throwIfAborted();
