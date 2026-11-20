@@ -9,6 +9,7 @@
 | [工程调查](engineering-audit.md) | 真实源码、依赖、来源及文档问题 |
 | [架构决策](architecture-decisions.md) | 模块职责、实时边界与迁移方式 |
 | [界面与交互规范](interaction-model.md) | 官方截图、完整页面清单、已授权差异 |
+| [音乐领域协议](music-domain.md) | tick 时间、稳定 NoteId、旧索引映射与归档协议 |
 | [歌曲数据规范](song-core.md) | 身份、文件位置、左右手、版本、谱面和迁移 |
 | [原创替换清单](source-independence.md) | Neothesia 应用实现退出、通用依赖与资源来源 |
 | [当前交接](modernization-handoff.md) | 最近可运行包、实际证据、下批入口 |

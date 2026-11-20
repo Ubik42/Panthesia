@@ -2,11 +2,15 @@
 
 更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
-## 当前批次 B02
+## 当前批次 B03
 
-B00、B01 已完成，最新实现 8b1d4ff。下一轮直接开始 B02/P05–P07：原创 SMF 包装、音乐时间、轨道/音符身份及兼容映射，随后替换旧琴键布局/计时依赖。使用通用 midly；按音乐格式和行为规格实现，避免仅复制或改名旧模块。原字节 BLAKE3 身份保持稳定，旧 track/index 标注须有确定映射；无法唯一投影的记录保留原值并记录未映射项。
+B00–B02 已完成，最新实现 c706a2d。下一轮直接开始 B03/P08–P11：UI00 主页、UI01 选曲、UI02 歌曲设置及完整返回路径；随后 UI03 音轨卡片、UI04 自定义分手、UI06 演奏弹出菜单和 UI07 全局设置。按 interaction-model.md 的官方图片逐屏实现，先阅读现有 App.tsx 与 Synthesia 参考索引；按屏幕控制器拆分导航和选择状态，再替换大表单入口。扩展继续留在二级设置，不添加常驻工作台。
 
-入口 midi-file/src、panthesia-core/src/practice_transform.rs、panthesia-engine/src/load_pipeline.rs、song_switch.rs、Cargo.toml 和 source-independence.md。先建立新领域模块并接入实际读取/生成/播放消费者，再退出旧依赖。按 P05/P06 的风险做少量必要核对；不要重跑 B01 已通过检查、再做整库调查或继续扩展元数据/备份功能。
+B02 已接入 panthesia-music/panthesia-keyboard，桌面普通依赖退出旧 MIDI/布局/原生渲染库。标注 v2、包 v20、稳定源 NoteId 和未应用原行已连通；生成练习使用标准双手缓存进行身份绑定。8 项定向检查通过，独立桌面完成导入/标注/变换/播放/即时等待切换/定位/导出，在新资料目录恢复指法、手别和未映射行；两个窗口正常退出。详细规格 music-domain.md；摘要 evidence/music-domain-2026-11-20.json；原证据 work/original-product-reset/b02-window。
+
+Debug 可执行文件 target/debug/panthesia-desktop.exe，SHA256 254CC13A0CD3066A5D3E334A5F0FD6D433168872B2EA6F42641010C9BC78F14C，源码 c706a2d 加原有目录调整，使用 custom-protocol 嵌入前端。短片段观察到音频输出信号；外部音源、长期性能与渲染优化留在 B04。真实用户资料继续按后台惰性 v2 采用，本批未使用真实歌曲作检查。正式 Release 保持 a67ea54。
+
+不要重跑 B01 迁移或 B02 已通过的兼容检查。旧源码物理删除、NOTICE 与剩余 core 原创替换在 P20/P21 处理；目标整体尚未完成。
 
 ## B01 已闭环的状态
 

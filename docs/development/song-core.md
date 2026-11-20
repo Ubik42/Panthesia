@@ -6,7 +6,7 @@
 
 已有 MusicalWork、PerformanceEdition、PracticeEdition、NotationEdition 和 NotationGeneration。SongRepository 接管歌曲/演奏/来源位置/谱面目录，数据库在 data/library/songs.sqlite3；MIDI 在 data/library/assets/midi/<contentId>.mid，原字节 BLAKE3 身份保持不变。文件副本变化时另存 <contentId>-restored-N.mid，原字节保持原状；两个位置使用同一份内容标注。
 
-普通文件演奏的标注文档为 data/library/annotations/<contentId>.json，版本 1，包含 contentId 和 annotations。轨道手别、逐音覆盖、指法、小节和采用谱面关联在同一文档中提交；文件名身份、文档身份和演奏身份必须一致。未来版本、错误身份和损坏文档拒绝覆盖，不回退旧附件重新覆盖新状态。
+普通文件演奏的标注文档为 data/library/annotations/<contentId>.json，版本 2，包含 contentId、annotations、noteIdentity 和 unmapped。轨道手别、逐音覆盖、指法、小节和采用谱面关联在同一文档中提交；文件名身份、文档身份和演奏身份必须一致。未来版本、错误身份和损坏文档拒绝覆盖，不回退旧附件重新覆盖新状态。
 
 迁移先读取旧管理副本的 RON，再读取外部来源；原字节按哈希保存到 library/legacy-inputs。旧 preferences.songs[contentId].parts 原先最后生效，首次迁入时沿用该优先级，并保存 preferences-before-annotations.json。采用新文件演奏后不再写回 parts；自动/自己弹/静音及可见性仍是每次练习的会话配置。逐音、指法及旧保存日志经过原有文件事务发布，旧 Sidecar 日志仍指向旧 RON。
 
@@ -16,7 +16,7 @@ MusicXML/MXL 字节保存在 library/assets/notation/<BLAKE3>.musicxml|mxl；命
 
 生成练习保存 library/assets/exercises/<practiceId>.mid，以稳定的练习身份关联 library/annotations/<practiceId>.json。practiceId 沿用既有规范，缓存字节由标准速度、双手和一次重复生成；该逻辑身份与 MIDI 原字节哈希分别校验。旧 song-assets 仅作为兼容读取来源，首次迁入时保存旧资料快照。
 
-单演奏曲目包使用 panthesia-piece 第 19 版，包含原始 MIDI、MusicXML 版本、纸谱及标注、手别/指法和练习变换参数。导入恢复至持有目录；旧 neothesia-piece 第 1–18 版继续可读。此格式覆盖一份演奏。正常文件歌曲的“导出完整歌曲”使用外层 panthesia-song 第 1 版，将同一歌曲的全部演奏包、名称、分组锁和谱面版本关系一起保存；生成练习等独立内容继续使用单演奏包。外层最多 128 份演奏，容器 256 MB，全部内层资产展开合计 512 MB；超限或缺失资产会拒绝制作，避免得到不完整备份。
+单演奏曲目包使用 panthesia-piece 第 20 版，包含原始 MIDI、MusicXML 版本、纸谱及标注、手别/指法和练习变换参数。导入恢复至持有目录；旧 neothesia-piece 第 1–18 版和 panthesia-piece 第 19 版继续可读。此格式覆盖一份演奏。正常文件歌曲的“导出完整歌曲”使用外层 panthesia-song 第 1 版，将同一歌曲的全部演奏包、名称、分组锁和谱面版本关系一起保存；生成练习等独立内容继续使用单演奏包。外层最多 128 份演奏，容器 256 MB，全部内层资产展开合计 512 MB；超限或缺失资产会拒绝制作，避免得到不完整备份。
 
 歌曲恢复在同一文件事务中准备全部演奏，活动演奏最后恢复。文件提交后，通过 library/pending-song-imports/<receiptHash>.json 回执将关系一次写入 SQLite；应用中断后可幂等重放，完成后清除回执。合并/保留优先沿用本地已有关系，使用包内容时恢复归档关系。谱面身份与校对状态随歌曲恢复，路径和版本位置重绑定到持有资产。演奏记录与设备设置继续由本机资料备份管理。
 
@@ -51,7 +51,7 @@ Look at the Sky 已迁移至真实资料目录：当前五个文件对应四份�
 
 原始轨道结构保存；用户手别覆盖属于演奏，外部文件移动不会改变归属。MIDI 格式没有普遍强制的“左手/右手”标准字段，已有轨名只作提示。音轨音高统计也只作初值。
 
-B02 更换解析包装前明确旧 NoteId、TrackId 与新模型之间的映射。旧逐音编号无法唯一投影时记录未映射项，保留原记录，不静默按相邻音符套用。中央 C 不能替代实际左右手分配。
+B02 已建立源物理轨 + 正力度 NoteOn 序号的 NoteId，文档以 contentId 提供作用域；当前索引经 noteIdentity 映射至稳定身份。旧逐音编号无法唯一投影时记录未映射项，保留原记录，不静默按相邻音符套用。中央 C 不能替代实际左右手分配。
 
 ## 派生版本与谱面
 
@@ -73,4 +73,6 @@ DuET 后台任务绑定源演奏、实现/模型身份和参数，输出保存�
 
 8b1d4ff：旧资料编辑、默认值恢复、外部来源导入与路径重联统一进入 owned_annotations；旧位置仅承接历史谱系，活动标注写入 library/annotations。Workspace 的 data_root 为不落盘的读取上下文，扫描别名时读取当前内容标注；目录结果在去重前再次应用该值。原生重定位使用后台 RelinkLibrary 事务及带内容身份的打开命令。
 
-migrate-saved-library 工具先只读发现，再在独占锁与冷快照下逐内容提交；移动或改名文件须通过字节哈希，旧附件来源单独登记，生成练习依稳定规格身份恢复。真实迁移结果为 23 已迁入、15 未匹配、0 失败；未匹配记录及其设置保持原状。库中尚未采用的整个外部数据集无需预先复制。证据见 evidence/b01-closure-2026-11-20.json。旧解析器与音符身份的原创替换属于当前 B02。
+migrate-saved-library 工具先只读发现，再在独占锁与冷快照下逐内容提交；移动或改名文件须通过字节哈希，旧附件来源单独登记，生成练习依稳定规格身份恢复。真实迁移结果为 23 已迁入、15 未匹配、0 失败；未匹配记录及其设置保持原状。库中尚未采用的整个外部数据集无需预先复制。证据见 evidence/b01-closure-2026-11-20.json。B02 已由 c706a2d 接入原创解析、时间与身份；详细协议见 [music-domain.md](music-domain.md)。
+
+第 2 版标注通过后台采用或首次编辑迁入，旧 JSON 先存哈希快照。无法对应的旧逐音行进入 unmapped；曲目包第 20 版携带 noteArchive，跨资料恢复保持源身份与未应用记录。B02 独立检查使用内置/合成资料，未改写真实用户资料作检查。

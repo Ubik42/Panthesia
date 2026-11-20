@@ -1,18 +1,19 @@
 {
   "schemaVersion": 1,
   "status": "active",
-  "objectiveVersion": "2026-11-20/3",
-  "currentBatch": "B02",
+  "objectiveVersion": "2026-11-20/4",
+  "currentBatch": "B03",
   "completedBatches": [
     "B00",
-    "B01"
+    "B01",
+    "B02"
   ],
-  "nextBatch": "B03",
-  "currentTask": "B02/P05–P07：原创音乐导入/时间模型与音符身份映射，接入实际消费者后退出旧 MIDI/布局依赖。",
+  "nextBatch": "B04",
+  "currentTask": "B03/P08–P11：逐屏完成 Synthesia 主页、选曲、歌曲设置、音轨卡片与演奏弹出菜单，拆分屏幕控制器。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T13:45:28Z",
-  "nextDirectionReviewAt": "2026-11-20T15:45:28Z",
-  "goalPromptSha256": "86f887814fab29464a8ff202fbd42f4a798f3bbed79897002e279860d106e161",
+  "lastDirectionReviewAt": "2026-11-20T14:21:12Z",
+  "nextDirectionReviewAt": "2026-11-20T16:21:12Z",
+  "goalPromptSha256": "55358c3beb5a6b4032d66f6d5956e51e84d610a07c254a0155055811e0b4e4ee",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -24,33 +25,30 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "旧资料编辑/默认值/来源导入/重定位统一写入内容标注",
-    "目录读取优先当前标注；持有副本优先且核对字节身份",
-    "新增只读发现、冷快照、逐内容提交的存量迁移工具",
-    "实际 38 个登记身份：23 已迁入、15 未匹配保留、0 失败",
-    "原源文件和旧资料未改写，新迁入左右手设置核对一致",
-    "三项定向检查和独立桌面旧路径保存/即时列表刷新通过"
+    "原创 panthesia-music 与 panthesia-keyboard 接管产品普通依赖",
+    "tick 时间、踏板/跨轨配对、稳定源 NoteId 与旧索引映射接入",
+    "标注 v2 保留未知行和原 JSON 快照；曲目包 v20 携带稳定身份",
+    "独立桌面完整打开/编辑/变换/播放/导出与新资料恢复通过"
   ],
   "remainingCritical": [
-    "B02 原创 MIDI/布局与音乐时间模型",
-    "B03 完整 Synthesia 下级交互复刻",
-    "B04-B06 实时声音/渲染、长谱与整体整合",
-    "B07 退役实现、来源审计及正式包"
+    "B03 完整 Synthesia 页面与下级交互",
+    "B04 实时会话/声音路由与瀑布性能",
+    "B05–B06 长谱、后台生成、自由演奏与整合",
+    "B07 退役源码、来源审核与正式包"
   ],
   "nextEntry": [
-    "midi-file/src",
-    "panthesia-core/src/practice_transform.rs",
-    "panthesia-engine/src/load_pipeline.rs",
-    "panthesia-engine/src/song_switch.rs",
-    "Cargo.toml",
-    "docs/development/source-independence.md"
+    "docs/development/interaction-model.md",
+    "docs/development/evidence/synthesia-reference-index.json",
+    "panthesia-web/src/App.tsx",
+    "panthesia-web/src",
+    "docs/development/current-plan.md"
   ],
   "validation": [
-    "Two owned compatibility checks passed",
-    "One saved-library migration check passed, including moved source, generated identity, score and unmatched receipt",
-    "Real migration completed: 23 migrated, 15 preserved unmatched identities, no failures",
-    "Original source/legacy input hashes unchanged; annotation identities and effective hand parts verified",
-    "Debug desktop built; owned native old-path metadata read/save and immediate library refresh passed; closed normally"
+    "5 music + 1 keyboard + 2 annotation identity checks passed",
+    "Desktop Debug/custom-protocol build passed",
+    "Owned native v1 adoption, note editing, transform, playback, immediate wait switch, pause/seek and export passed",
+    "Clean-profile package restore preserved hand/fingers, source identity and unapplied rows",
+    "Two owned native windows closed normally; no real user music used as test fixtures"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -64,18 +62,19 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T13:45:28.452528+00:00",
-  "implementationRevision": "8b1d4ff5fee2494f7ebf47ac5cf451902334ee95",
+  "lastImplementationCheckpointAt": "2026-11-20T14:21:12Z",
+  "implementationRevision": "c706a2d76d1ce0baee2ae8076999e1274594bc2d",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
     "4613db3",
     "c72d1fb",
     "16081cf",
-    "8b1d4ff"
+    "8b1d4ff",
+    "c706a2d"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "CDBD365AD8191FEEFAAF3516C1AB6F93809463E23CE5FB77E7617E68BFC8473F",
+  "developmentExecutableSha256": "254CC13A0CD3066A5D3E334A5F0FD6D433168872B2EA6F42641010C9BC78F14C",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,

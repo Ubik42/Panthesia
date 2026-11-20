@@ -12,8 +12,8 @@
 
 | 旧实现/资源 | 当前作用 | 处置与关闭条件 | 任务 |
 | --- | --- | --- | --- |
-| midi-file 应用包装 | 桌面实际依赖，包含 track/tempo/playback 等旧实现 | 新音乐导入与时间模型接管所有消费者，旧 note/track 身份可迁移；midly 仍作为通用库 | P05–P06 |
-| piano-layout | 桌面经 core 引用；lib.rs 与上游相同 | 根据琴键几何规格独立实现，接入消费者后移除该旧包 | P07 |
+| midi-file 应用包装 | 已退出桌面普通依赖；仅一项兼容检查作为旧行为参照 | c706a2d 的 panthesia-music 接管产品消费者；旧包物理删除并入 P20 | P05–P06 完成 / P20 |
+| piano-layout | 已退出桌面普通依赖 | c706a2d 的 panthesia-keyboard 接管范围/几何；旧包物理删除并入 P20 | P07 完成 / P20 |
 | core utils/config/recorder 等沿用 | 部分实际使用，部分仅旧入口使用 | 逐文件确认消费者；活动实现替换，旧入口专用的随退役移除 | P07/P12/P20 |
 | wgpu-jumpstart、旧 render、panthesia-image、nuon | 旧原生/编码路径，默认桌面关闭 native-render | 退出当前交付依赖；旧原生消费者退役后移除源码及 workspace 项 | P20 |
 | panthesia 原生 UI | 旧默认运行目标，与新 Tauri 产品并存 | B00 退出默认目标；P20 消除活动引用后移除旧 UI | B00/P20 |
@@ -42,3 +42,9 @@ SongRepository 由本次 Codex 工作按当前数据规范与 SQLite 事务协�
 2026-11-20，16081cf：新增 portable_song 与 song_repository/archive，负责歌曲归档、跨演奏关系和中断恢复；普通导出、预览、暂存导入和恢复接入。共享文件加载退出历史/旧练习的旁路；旧 repertoire 导入改为补入。谱面身份刷新与归档恢复兼容。继续复用现有单演奏格式、Player、MidiFile 与 SongSidecar；P05–P07、完整前端复刻及来源替换继续执行。当前正式包保持 a67ea54；本批 Debug 与独立运行证据见 evidence/song-archive-2026-11-20.json。
 
 2026-11-20，8b1d4ff：新增 owned_annotations 与 library_migration，以及只读计划/冷快照迁移命令。替换外部旧附件的活动写入和直接复制路径；原生重定位转入后台事务。旧目录缓存不再覆盖内容标注，真实资料迁移有回执与未匹配记录。B01 已收束，旧 MidiFile、piano-layout 与音乐时间消费者仍待当前 B02 独立替换；本批不关闭 P05–P07。原有目录调整继续留在工作区，发布包保持 a67ea54。
+
+## B02 新实现记录
+
+c706a2d：panthesia-music 与 panthesia-keyboard 由本次 Codex 按标准格式、音乐时间与琴键几何规格生成，未复制旧模块实现；为迁移已查看旧 API 与索引规则，并对三份内置 MIDI 做确定映射核对。消费者切换使用 Cargo package alias；别名保持不代表旧包仍被使用。桌面 --edges normal 依赖图已排除旧 MIDI/布局及 native-render 库。旧配置/FPS/资源模块退出默认编译；VST3 的旧状态位置使用独立窄适配。
+
+新增标注 v2 和曲目包 v20，源 NoteId 与未映射原行进入持久化及归档。旧结构 SongSidecar、Player、标注校验与其他 core 模块仍存在，原创替换整体继续 P12/P20；本批不宣称整个工程已经完成来源清理。规格、作者/生成来源、消费者和检查边界见 [music-domain.md](music-domain.md)，证据见 evidence/music-domain-2026-11-20.json。
