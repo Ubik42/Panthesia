@@ -275,7 +275,7 @@ pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, Strin
 }
 
 /// A labelled, editable heuristic, used only when no MIDI key signature is available.
-fn key_estimate(file: &MidiFile) -> (u8, bool) {
+pub(super) fn key_estimate(file: &MidiFile) -> (u8, bool) {
     let mut histogram = [0f64; 12];
     for note in file
         .tracks

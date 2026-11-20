@@ -2,16 +2,10 @@
 use crate::*;
 impl Player {
     pub(super) fn practice_key(&self) -> (i8, bool) {
-        let variant = self.variant();
-        let info = self.variant_document();
-        let minor = info["minor"].as_bool().unwrap_or(false);
-        let tonic =
-            (info["tonic"].as_i64().unwrap_or(0) + i64::from(variant.transpose)).rem_euclid(12);
-        let fifths = (-7i8..=7)
-            .filter(|f| (i64::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
-            .min_by_key(|f| f.abs())
-            .unwrap_or(0);
-        (fifths, minor)
+        let Some(file) = self.source_file.as_ref().or(self.file.as_ref()) else {
+            return (0, false);
+        };
+        key_for(file, &self.variant())
     }
     pub(super) fn score_view_payload(
         &self,
@@ -197,4 +191,30 @@ impl Player {
         }
         Ok(payload)
     }
+}
+
+/// Key estimation belongs to detached score preparation, never the driver capture.
+pub(super) fn key_for(file: &MidiFile, variant: &crate::practice_variant::Variant) -> (i8, bool) {
+    let signature = file.key_signature;
+    let estimated = if signature.is_none() && variant.tonic.is_none() {
+        crate::practice_variant::key_estimate(file)
+    } else {
+        (0, false)
+    };
+    let minor = variant
+        .minor
+        .or(signature.map(|(_, minor)| minor))
+        .unwrap_or(estimated.1);
+    let tonic = variant
+        .tonic
+        .or(signature.map(|(fifths, minor)| {
+            ((i16::from(fifths) * 7 + if minor { 9 } else { 0 }).rem_euclid(12)) as u8
+        }))
+        .unwrap_or(estimated.0);
+    let tonic = (i16::from(tonic) + i16::from(variant.transpose)).rem_euclid(12);
+    let fifths = (-7i8..=7)
+        .filter(|f| (i16::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
+        .min_by_key(|f| f.abs())
+        .unwrap_or(0);
+    (fifths, minor)
 }

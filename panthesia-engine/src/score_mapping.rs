@@ -54,8 +54,8 @@ pub(crate) struct Context {
     transpose: i8,
     quantize: u8,
     title: String,
-    fifths: i8,
-    minor: bool,
+    key_source: SongFile,
+    variant: crate::practice_variant::Variant,
     config: SongConfig,
     hands: HandAssignments,
 }
@@ -92,11 +92,13 @@ impl Context {
                     }
                 }
             };
+            let (fifths, minor) =
+                crate::practice_notation::key_for(&self.key_source, &self.variant);
             panthesia_core::practice_engraving::engrave_range(
                 &self.file,
                 &self.title,
-                self.fifths,
-                self.minor,
+                fifths,
+                minor,
                 self.quantize == 0,
                 range,
                 &staff,
@@ -289,8 +291,8 @@ impl Player {
             transpose: self.variant().transpose,
             quantize: self.variant().quantize,
             title: self.title.clone(),
-            fifths: self.practice_key().0,
-            minor: self.practice_key().1,
+            key_source: self.source_file.as_ref().unwrap_or(file).clone(),
+            variant: self.variant(),
             config: self.config.clone(),
             hands: self.note_hands.clone(),
         })
