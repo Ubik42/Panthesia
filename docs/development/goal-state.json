@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "active",
-  "objectiveVersion": "2026-11-20/7",
+  "objectiveVersion": "2026-11-20/8",
   "currentBatch": "B05",
   "completedBatches": [
     "B00",
@@ -11,11 +11,11 @@
     "B04"
   ],
   "nextBatch": "B06",
-  "currentTask": "P14 实时 MIDIVisualizer 光效已完成本批；下一入口 B05/P15 未完成只读查看流程、纸谱边界，然后 P16/P17。",
+  "currentTask": "普通选曲及内部提示条已收束；继续 B05/P15 只读谱面实际流程/纸谱边界，再 P16/P17。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T22:53:08Z",
-  "nextDirectionReviewAt": "2026-11-21T00:53:08Z",
-  "goalPromptSha256": "df1fe655837adf75adb96293a2da85b9698cc9a7fcf915756f659d796955922e",
+  "lastDirectionReviewAt": "2026-11-20T23:13:28Z",
+  "nextDirectionReviewAt": "2026-11-21T01:13:28Z",
+  "goalPromptSha256": "b26383f8b07e5cf7ace9ef875329a2fbe77348c264c04bdb0be3515579a9ea41",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -27,10 +27,11 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "MIDIVisualizer MIT halo/fade adapted into bounded WebGL2 instanced overlay",
-    "Rust pressedKeys carries velocity and re-strike serial without changing audio scheduling",
-    "Piano/appearance preview share GPU renderer and current frame clock; Canvas2D fallback restores after context loss",
-    "Actual native keyboard/autoplay, reduced motion, disable, pause/seek clear, narrow layout and exit passed"
+    "Ordinary open is an ephemeral awaitable navigation, no frontend persistent preparation task, resume UI or close participant",
+    "Native filesystem presence is checked for selected files; file opens its current bytes without applying another content identity annotations",
+    "Missing file is marked on its song row; actual read errors are recorded in diagnostics",
+    "No library-open entries in work progress; no automatic work recovery strips or open-log button in session status",
+    "Backend asynchronous prepare/cancel/release and committed library data remain intact"
   ],
   "remainingCritical": [
     "B05 prior read-only score range flow still needs actual native completion; whole paper/80-page limit; DuET real generation/adoption; transform/ABC",
@@ -44,15 +45,15 @@
     "panthesia-web/src-tauri/src/duet_score.rs"
   ],
   "validation": [
-    "Web/protocol and embedded Debug build passed",
-    "Native software MIDI velocity/re-strike and autoplay effects, GL loss fallback/restore, reduced motion, disable and pause/seek cleanup passed",
-    "760x620 appearance layout has no horizontal overflow; owned window exit code 0",
-    "180-frame sparse-song observation: median 6.9 ms, P95 7.0 ms; not a dense-load or 144fps guarantee"
+    "Web/protocol and embedded Debug builds passed",
+    "Native file-current-bytes open, A/B successive selection, missing file row status and selecting after missing passed",
+    "No library-open progress or saved/UI-refresh/log strip in the flow; previous local record remains",
+    "Owned window exit code 0"
   ],
-  "lastDirectionReviewResult": "aligned",
+  "lastDirectionReviewResult": "adjusted",
   "baselineUncommitted": [],
   "lastImplementationCheckpointAt": "2026-11-20T17:48:00.602498+00:00",
-  "implementationRevision": "6b2a207ac9cf042fcbadde88735137c1ac7403d6",
+  "implementationRevision": "a6b9960e4053d13c2278de4d3d583e4592fd9856",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -83,10 +84,11 @@
     "6d58014",
     "614e10e",
     "5453e81",
-    "6b2a207"
+    "6b2a207",
+    "a6b9960"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "257C3173B1FD74A2D65E3EA55E3648CB3DAB6E9F46EF2E46DE025E24D198B72D",
+  "developmentExecutableSha256": "3DC6BAAC2C6A301BDC7E779570623CCF6949774099243D1333E8221E218EB25A",
   "developmentIncludesBaselineUncommitted": false,
   "knownMigrationResult": {
     "migrated": 23,
@@ -105,5 +107,5 @@
   },
   "executionMode": "user-requested batch; persistent tool goal cleared",
   "baselineChangesCommittedAt": "c7ecdee",
-  "lastBatchCompletedAt": "2026-11-20T22:52:55Z"
+  "lastBatchCompletedAt": "2026-11-20T23:13:27Z"
 }

@@ -2,6 +2,12 @@
 
 更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
+## 最新批次：普通打开及内部提示条收束
+
+2026-11-20，a6b9960。useLibraryOpening 改为瞬态、可取消并等待真实安装/显示的导航操作。普通文件先检查实际存在状态，按当前字节打开；缺失仅在曲目行显示。移除 LibraryOpenRecovery 组件/样式、工作进度收集和退出保存参与者；不再创建前端持久打开任务，旧记录不删。全局 SessionStatus 不展示工作恢复条或打开日志按钮；内部诊断仍写日志，设置保留日志入口。
+
+Web/协议与嵌入 Debug 构建通过。独立资料实际核对文件内容变化读取新音符、两曲连续打开、文件缺失行标记、缺失后继续打开其他曲目；全过程无进度/已保存界面待更新/日志条，旧本地记录保留，退出码 0。证据 evidence/direct-song-opening-2026-11-20.json，原记录 work/song-opening/runtime。Debug SHA256 3DC6BAAC2C6A301BDC7E779570623CCF6949774099243D1333E8221E218EB25A。正式 Release 未更新；下一入口仍 B05。执行文件 v8，工具长期 Goal 不重建。
+
 ## 最新批次：MIDIVisualizer 实时特效已接入
 
 2026-11-20 用户授权恢复并追加实时特效。实现提交 6b2a207。PianoEffects 以 WebGL2 实例图层绘制瞬态光晕/光束/涟漪/星屑，外观预览共用；播放、输入和声音仍由 Rust 负责。Snapshot 新增 pressedKeys 力度/击键序号，前端实时通道接入。上游 MIT 公式来源、固定提交、原许可及随包拷贝已登记，详情 visual-renderer.md。
