@@ -2,60 +2,28 @@
 
 # Panthesia
 
-Panthesia 是 Ubik42 独立维护的本地钢琴练习、乐谱与音乐工作台。项目把选曲、分段练习、看谱跟随、指法、演奏录音和音源连接成日常练琴工作流，并与音频分轨、演奏 MIDI 和自动制谱工具衔接。
+Panthesia 是 Ubik42 独立维护的 Windows 钢琴练习软件。当前按“原创应用实现、Synthesia 界面与交互复刻、扩展能力后台化”推进。Neothesia 来源实现仍在逐模块替换；现阶段来源和许可见 [NOTICE](NOTICE.md) 与 [LICENSE](LICENSE)。
 
-当前处于持续开发阶段。实现、实际验证和外部设备依赖分别记录在[功能对照](docs/development/synthesia-feature-matrix.md)、[架构路线](docs/development/modernization-roadmap.md)与[开发交接](docs/development/modernization-handoff.md)。清单中仍有未完成事项。
+## 当前版本
 
-## 工作流
+本地可运行版本：`outputs/releases/Panthesia-20261120-synthesia-layout/Panthesia.exe`，源码 a67ea54。已有选曲、歌曲设置、演奏三张主屏的布局改造；完整下级交互、歌曲移动后的自动关联、统一标注存储和原创替换仍在开发。
 
-```text
-本地曲库 / MIDI / MusicXML
-  → 声部、音源、手别与逐音播放设置
-  → 连续播放或按键引导，分段循环、BPM、转调与量化
-  → 瀑布、琴键和谱面跟随
-  → 保存练习条件，按自己的安排继续练习
-```
+现有能力包括 MIDI 播放/按键等待、BPM、循环、声部、Windows MIDI/内置音源/Pianoteq 适配、MusicXML/纸谱、DuET 后台制谱、转调量化、皮肤与特效。实现存在与实际交付状态分别记录，不将该列表视为全部功能验收通过。
 
-- 曲库提供文件夹树、多目录监视、搜索、收藏、队列、资料编辑和文件修复。
-- 瀑布、琴键、MIDI 练习谱与关联原谱支持外观和网格调整。
-- MusicXML/MXL、PDF 和图片谱面各自保留来源，原谱编辑衔接 MuseScore。
-- 每个音符可以需要弹奏、自动伴奏或忽略，播放职责与手别独立。
-- Windows MIDI、内置钢琴和 Pianoteq VST3 有独立设置与路由，具体兼容证据随交付版本记录。
-- 演奏录音、练习条件、备份与曲目包保存在本地。旧历史和回放文件继续保留。
+## 开发入口
 
-判定、评分、达标日课、表现目标和自动晋级保存在独立分支 `feature/assessment-lab`（`ca4aeb5`）。main 不提供评分开关，普通播放与循环不等待成绩保存。范围与资料兼容说明见[分支边界](docs/development/assessment-separation.md)。
+- [工程文档](docs/development/README.md)：当前计划、来源调查、架构、交互和数据规范。
+- [当前计划](docs/development/current-plan.md)：B00–B07 的唯一任务队列。
+- [Goal 提示词](docs/development/current-goal.md)：长期执行和两小时方向检查。
+- [最新交接](docs/development/modernization-handoff.md)：可运行包、证据和剩余缺口。
 
-外部音频转谱链使用 BS-RoFormer-SW、Transkun 和 DuET，交付演奏 MIDI、MusicXML 与谱面 MIDI。模型推理在离线工具中完成，日常练习与实时音频可以独立运行。
-
-## 启动
-
-`Open-Desktop.cmd` 准备并启动当前源码对应的中文桌面版。`Open-Web.cmd` 启动本地服务和浏览器界面。`scripts/package-practice.ps1` 按构建来源制作独立运行包。
-
-从源码运行需要 Rust、Node.js/npm 和 Windows WebView2：
+`Open-Desktop.cmd` 启动当前桌面源码；`Open-Web.cmd` 提供开发调试入口。默认 Cargo 目标已切换到当前 Tauri 桌面；建议使用统一脚本准备前端与构建身份：
 
 ```powershell
-git clone https://github.com/Ubik42/Panthesia.git
-cd Panthesia/panthesia-web
-npm ci
-npm run desktop:build:dev
-cd ..
+.\scripts\build-practice.ps1 -Target Desktop -Configuration Debug
 .\Open-Desktop.cmd
 ```
 
-## 结构
+需要 Rust、Node.js/npm 和 Windows WebView2。正式包使用 `scripts/package-practice.ps1`，移动时保留完整目录。当前不宣称已交付 Linux/macOS 原生版本。
 
-| 模块 | 职责 |
-| --- | --- |
-| `panthesia-core` | MIDI / 乐谱语义、练习领域、历史与资料模型 |
-| `panthesia-engine` | 播放与练习调度、曲库、设备和后台应用服务 |
-| `panthesia-web` | 中文工作区、瀑布、琴键与谱面界面 |
-| `panthesia-web/src-tauri` | 桌面壳、文件入口、外部程序与发布 |
-| `panthesia-vst3` | VST3 音源宿主 |
-
-现有实现仍有需要继续解耦的部分，职责边界按路线图逐批整理。
-
-## 资料与许可
-
-Panthesia 使用自己的应用标识和发布名称。已有本地资料、曲目包、备份和草稿保留读取兼容。旧桌面资料目录存在时使用原目录锁继续访问；显式配置的资料位置继续生效。
-
-项目保留 GPLv3 许可，见 [LICENSE](LICENSE)。来源代码、第三方资源与模型的归属见 [NOTICE](NOTICE.md)。曲目和音源分别使用其自身许可。
+评分、达标、表现目标和自动晋级位于独立分支 `feature/assessment-lab`；主线普通练习不启用评分。既有用户文件与历史数据通过迁移/导入保护。旧原生入口与打包流程按退役清单退出，详见[原创替换清单](docs/development/source-independence.md)。

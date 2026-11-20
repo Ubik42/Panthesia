@@ -1,48 +1,21 @@
 import { defineConfig } from "vitepress";
-
 export default defineConfig({
   title: "Panthesia",
-  description: "Flashy Synthesia Like Software For Linux, Windows and MacOs",
+  description: "原创钢琴练习软件：Synthesia 交互复刻与后台音乐能力",
   base: "/Panthesia/",
   themeConfig: {
-    nav: [
-      { text: "Home", link: "/" },
-      { text: "How-to", link: "/pages/installation" },
-      { text: "工程计划", link: "/development/current-plan" },
-    ],
-
-    sidebar: [
-      {
-        text: "How-to",
-        items: [
-          { text: "Installation", link: "/pages/installation" },
-          { text: "Shortcuts", link: "/pages/shortcuts" },
-          { text: "Customization", link: "/pages/customization" },
-          { text: "Video Encoding", link: "/pages/video-encoding" },
-        ],
-      },
-      {
-        text: "Development",
-        items: [
-          { text: "当前目标与交付", link: "/development/current-plan" },
-          { text: "架构现状与决策", link: "/development/architecture-decisions" },
-          { text: "技术研讨复核", link: "/development/discussion-review" },
-          { text: "历史开放项处置", link: "/development/open-items" },
-          { text: "工程交接", link: "/development/handoff" },
-          {
-            text: "Piano Plug-in Hosting",
-            link: "/pages/plugin-hosting-roadmap",
-          },
-          {
-            text: "MusicXML Architecture",
-            link: "/pages/musicxml-architecture",
-          },
-        ],
-      },
-    ],
-
-    socialLinks: [
-      { icon: "github", link: "https://github.com/PolyMeilex/Neothesia" },
-    ],
-  },
+    nav: [{text:"首页",link:"/"},{text:"启动",link:"/pages/installation"},{text:"工程计划",link:"/development/current-plan"}],
+    sidebar:[{text:"工程",items:[
+      {text:"文档入口",link:"/development/README"},
+      {text:"当前计划",link:"/development/current-plan"},
+      {text:"Goal 提示词",link:"/development/current-goal"},
+      {text:"工程调查",link:"/development/engineering-audit"},
+      {text:"交互规范",link:"/development/interaction-model"},
+      {text:"架构决策",link:"/development/architecture-decisions"},
+      {text:"歌曲数据",link:"/development/song-core"},
+      {text:"原创替换",link:"/development/source-independence"},
+      {text:"当前交接",link:"/development/modernization-handoff"}
+    ]}],
+    socialLinks:[{icon:"github",link:"https://github.com/Ubik42/Panthesia"}]
+  }
 });

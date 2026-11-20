@@ -1,0 +1,30 @@
+{
+  "reason": "Retired duplicate bundle for inactive old native release; identical SoundFont remains at repository root. Original tracked versions remain in Git history.",
+  "files": [
+    {
+      "path": ".github/app/Neothesia.app/Contents/Info.plist",
+      "bytes": 673,
+      "sha256": "42722b109412e344de354af8e4a95433b48b85e125ef90a4d3b1653a861888db"
+    },
+    {
+      "path": ".github/app/Neothesia.app/Contents/MacOS/.gitkeep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".github/app/Neothesia.app/Contents/Resources/default.sf2",
+      "bytes": 17092044,
+      "sha256": "9dddcc5947dd90eb4f2e5ffc98a6a6c063d90f706a60fdd3ce45b65217f1a603"
+    },
+    {
+      "path": ".github/app/Neothesia.app/Contents/Resources/icon.icns",
+      "bytes": 57105,
+      "sha256": "379bcf5d2c4f8e7809813487847a912fca9a9e478e333826230a2fb45912ba48"
+    },
+    {
+      "path": ".github/app/Neothesia.app/Contents/Resources/settings.ron",
+      "bytes": 55,
+      "sha256": "50ded14e9e112897f681a2b421644f8fd72531912104aafee1411ffa10401606"
+    }
+  ]
+}

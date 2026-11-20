@@ -16,7 +16,7 @@ members = [
   "panthesia-web/src-tauri",
 ]
 
-default-members = ["panthesia"]
+default-members = ["panthesia-web/src-tauri"]
 resolver = "2"
 
 [workspace.package]

@@ -1,3 +1,5 @@
+> 历史记录，按原日期解读；当前范围和任务队列以 [current-plan.md](current-plan.md) 为准。本文中的评分、旧成品和后续要求不自动加入主线。
+
 # Development progress
 
 2026-11-18 R2 已统一交付：源码 `1735cfc`，运行包 `outputs/releases/Panthesia-20261118-r2-1735cfc`，构建编号 `925d59c51e9a4a5486a9862e01bd6dfe`。最终包通过 25 项文件核对与真实桌面保存/重启/计划进度和个人指法恢复；作品关系、谱面往返、来源标签、曲库对应与中断恢复有独立实际记录。详见 [四批完成清单](r2-delivery.md)。

@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "status": "active",
+  "objectiveVersion": "2026-11-20/1",
+  "currentBatch": "B01",
+  "completedBatches": [
+    "B00"
+  ],
+  "nextBatch": "B02",
+  "currentTask": "P01–P04：统一歌曲与资产，先解决旧路径失效、同曲版本归并和左右手标注归属。",
+  "directionReviewIntervalSeconds": 7200,
+  "lastDirectionReviewAt": "2026-11-20T11:27:25Z",
+  "nextDirectionReviewAt": "2026-11-20T13:27:25Z",
+  "goalPromptSha256": "2f046cd7cdb14d2aa592025713b902ac00e45ef8e597253a37e921013ab9b5cc",
+  "scopeFiles": [
+    "docs/development/current-plan.md",
+    "docs/development/current-goal.md",
+    "docs/development/interaction-model.md",
+    "docs/development/architecture-decisions.md",
+    "docs/development/song-core.md",
+    "docs/development/source-independence.md"
+  ],
+  "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
+  "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
+  "lastCompletedWork": [
+    "已完成九篇官方指南与十八张参考图采集",
+    "已完成来源基线和桌面依赖图",
+    "已归档旧控制文档并重写活动文档",
+    "已调整默认桌面目标、CI 和公开入口"
+  ],
+  "remainingCritical": [
+    "旧路径自动关联及同曲版本归并",
+    "标注中心存储和数据迁移",
+    "旧 MIDI/布局实现替换",
+    "完整下级交互复刻",
+    "实时声音/渲染与长谱边界",
+    "退役实现和来源审计"
+  ],
+  "nextEntry": [
+    "panthesia-engine/src/library.rs",
+    "panthesia-engine/src/library_monitor.rs",
+    "panthesia-engine/src/library_workspace.rs",
+    "panthesia-core/src/repertoire.rs",
+    "panthesia-core/src/song_project.rs"
+  ],
+  "validation": [
+    "20 canonical documents / 48 local links passed",
+    "Cargo metadata: default desktop target",
+    "Active workflow YAML parsed",
+    "New Python scripts parsed; direction checkpoint recorded"
+  ],
+  "lastDirectionReviewResult": "aligned",
+  "baselineUncommitted": [
+    "docs/pages/practice-library.md",
+    "panthesia-engine/src/library.rs",
+    "panthesia-engine/src/main.rs",
+    "panthesia-engine/src/package_commands.rs",
+    "panthesia-web/README.md",
+    "panthesia-web/src-tauri/src/main.rs",
+    "scripts/import-giantmidi-library.ps1",
+    "scripts/prepare-giantmidi-release.py",
+    "scripts/sync-practice-library.ps1"
+  ]
+}
