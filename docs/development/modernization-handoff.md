@@ -1,24 +1,26 @@
 # 当前交接
 
-更新：2026-11-20。原创 Panthesia 应用实现、Synthesia 全套主流程交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
+更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
-## 当前进度与下一入口
+## 当前批次 B02
 
-B00 完成，B01 继续收束。最新实现 16081cf；此前目录/标注/资产提交为 1dfa556、43bd4ee、4613db3、c72d1fb。
+B00、B01 已完成，最新实现 8b1d4ff。下一轮直接开始 B02/P05–P07：原创 SMF 包装、音乐时间、轨道/音符身份及兼容映射，随后替换旧琴键布局/计时依赖。使用通用 midly；按音乐格式和行为规格实现，避免仅复制或改名旧模块。原字节 BLAKE3 身份保持稳定，旧 track/index 标注须有确定映射；无法唯一投影的记录保留原值并记录未映射项。
 
-- SQLite 管理歌曲、演奏与来源；持有 MIDI、MusicXML 与内容标注 JSON。内置/生成练习、文件导入、启动、历史和旧练习入口共用持有链。轨道编辑走后台事务，旧 Sidecar 日志兼容旧地址。
-- 文件歌曲的常规导出已覆盖整首歌曲全部演奏。panthesia-song 第 1 版组合 panthesia-piece 第 19 版，带歌曲关系、分组锁、谱面身份、手别/指法及练习变换。恢复经文件事务与 SQLite 回执完成，支持中断继续；旧单演奏包仍可读。演奏记录和设备设置留在本机。
-- 旧 repertoire 变化只补入新记录/位置，已有分组、标题和谱面决定继续有效。历史和旧练习加载统一进入持有链。应用菜单在选择操作后收起，归档预览列出全部演奏，导出说明已缩短。
+入口 midi-file/src、panthesia-core/src/practice_transform.rs、panthesia-engine/src/load_pipeline.rs、song_switch.rs、Cargo.toml 和 source-independence.md。先建立新领域模块并接入实际读取/生成/播放消费者，再退出旧依赖。按 P05/P06 的风险做少量必要核对；不要重跑 B01 已通过检查、再做整库调查或继续扩展元数据/备份功能。
 
-下一批 B01 只剩：元数据/位置等旧兼容写入口迁出；其余已保存/登记曲库资料的可恢复迁移与未匹配身份报告。入口 library_edits.rs、library_workspace.rs、library_metadata.rs、library_repairs.rs 和 examples/migrate-song-project.rs。处理真实资料前取得独占锁和冷快照，按实际登记/保存对象迁移；不提前复制尚未采用的整个外部数据集。完成后进入 B02 原创 MIDI/时间模型。主线评分隔离、前端复刻和后台边界继续执行。
+## B01 已闭环的状态
 
-## 当前验证与实际资料
+- SQLite 管理歌曲/演奏/来源；文件、内置/生成练习、历史和旧练习共用持有资产与 JSON 标注。轨道编辑和资料操作走后台事务，旧格式通过导入兼容。
+- 整歌归档覆盖全部演奏包、歌曲归属、分组锁和谱面身份，文件事务与 SQLite 回执支持中断继续。普通导出、媒体制作、预览、暂存导入均已接入。
+- 资料编辑、默认值恢复、Synthesia 导入、扫描重联和原生重定位统一写入内容标注。Workspace 是读取投影；列表在去重前应用当前标注，源位置变化与旧缓存不覆盖已保存值。
 
-本批四项归档检查、一项旧目录保护检查通过；前端构建通过。独立桌面完成两版本导出、另一个资料目录恢复、再导出和最终开发版重开，歌曲关系、转调量化及谱面校对状态保持正确；常规/较窄窗口检查通过，菜单不遮挡归档标题。最终独立窗口已关闭。摘要 evidence/song-archive-2026-11-20.json，完整记录 work/original-product-reset/song-archive-window。开发构建包含原有九项目录调整。
+## 真实迁移与运行证据
 
-前批标注/持有证据为 evidence/annotation-migration-2026-11-20.json、evidence/owned-assets-2026-11-20.json。不要重复本批与前批已通过的检查，新增变化只检查关联风险。
+本批实际资料的 38 个登记身份中，23 份演奏已迁入，失败 0；15 个身份未在登记位置、资料缓存和相关 MIDI 目录命中原字节。旧记录和设置保留，后续来源恢复可按内容重联。源 MIDI、旧附件、旧工作区、旧 repertoire 和历史未改写；新迁入的有效左右手分配已核对。回执 work/original-product-reset/saved-library-migration-final-20261120.json，冷快照同名 .snapshot，核对 saved-library-verification.json；摘要 evidence/b01-closure-2026-11-20.json。真实资料操作用于迁移，检查夹具全部使用内置素材和独立资料。
 
-真实 Look at the Sky 前批已迁移：五来源、四份内容、同一歌曲、四条可播放记录；量化版轨 1=右手、2=左手，未匹配身份保留。本批仅只读核对了实际资料目录，四份持有资产存在、四份演奏仍同组；没有迁移或修改其他真实资料。原回执 work/original-product-reset/look-at-the-sky-migration-final-20261120.json，冷快照同名 .snapshot；首次迁移前快照也保留。
+两项兼容保存/重联检查、一项文件+生成练习+谱面迁移检查通过；最终 Debug 桌面构建通过。独立桌面按已移动的旧路径读取/保存资料后，JSON、列表名称与指法均正确，旧附件和 MIDI 字节未变；最终窗口已关闭。记录 work/original-product-reset/compatibility-window。开发构建包含原有九项目录调整；正式包仍为下文 a67ea54。
+
+前批证据 annotation-migration-2026-11-20.json、owned-assets-2026-11-20.json、song-archive-2026-11-20.json 均在 evidence 目录。Look at the Sky 的五来源/四演奏归同一歌曲关系保持，原工程回执及快照仍在 work/original-product-reset。
 
 ## 最近可运行包
 

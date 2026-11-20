@@ -40,3 +40,5 @@ SongRepository 由本次 Codex 工作按当前数据规范与 SQLite 事务协�
 2026-11-20，c72d1fb：新增 notation_assets 不可变谱面持有模块；内置/生成练习、曲目包、启动恢复和目录登记接入统一资产。删除旧内置缓存覆盖写法和多处谱面拷贝写法。Package 第 19 版使用 Panthesia 标识，旧格式解析保持窄兼容。此批继续使用旧 MidiFile、Player、SongSidecar 和运行时实现；P05–P07 与原创应用来源替换仍未完成。证据见 evidence/owned-assets-2026-11-20.json。
 
 2026-11-20，16081cf：新增 portable_song 与 song_repository/archive，负责歌曲归档、跨演奏关系和中断恢复；普通导出、预览、暂存导入和恢复接入。共享文件加载退出历史/旧练习的旁路；旧 repertoire 导入改为补入。谱面身份刷新与归档恢复兼容。继续复用现有单演奏格式、Player、MidiFile 与 SongSidecar；P05–P07、完整前端复刻及来源替换继续执行。当前正式包保持 a67ea54；本批 Debug 与独立运行证据见 evidence/song-archive-2026-11-20.json。
+
+2026-11-20，8b1d4ff：新增 owned_annotations 与 library_migration，以及只读计划/冷快照迁移命令。替换外部旧附件的活动写入和直接复制路径；原生重定位转入后台事务。旧目录缓存不再覆盖内容标注，真实资料迁移有回执与未匹配记录。B01 已收束，旧 MidiFile、piano-layout 与音乐时间消费者仍待当前 B02 独立替换；本批不关闭 P05–P07。原有目录调整继续留在工作区，发布包保持 a67ea54。
