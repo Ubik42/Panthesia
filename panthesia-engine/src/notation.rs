@@ -269,6 +269,12 @@ impl ScoreAsset {
         notes: Vec<RenderNote>,
         check: impl Fn() -> Result<(), String>,
     ) -> Result<MappingResult, String> {
+        self.map_notes_for_pages(file,midi,notes,300,check)
+    }
+    pub(crate) fn map_notes_for_pages(
+        &self,file:&MidiFile,midi:&[u8],notes:Vec<RenderNote>,page_count:usize,
+        check:impl Fn()->Result<(),String>,
+    )->Result<MappingResult,String> {
         check()?;
         if midi.len() > 4_000_000 || notes.len() > 100_000 {
             return Err("乐谱映射数据过大".into());
@@ -287,7 +293,7 @@ impl ScoreAsset {
                 let Some(pitch)=written.pitch.as_ref() else {continue;};
                 let natural=match pitch.step {panthesia_core::musicxml::Step::C=>0,panthesia_core::musicxml::Step::D=>2,panthesia_core::musicxml::Step::E=>4,panthesia_core::musicxml::Step::F=>5,panthesia_core::musicxml::Step::G=>7,panthesia_core::musicxml::Step::A=>9,panthesia_core::musicxml::Step::B=>11};
                 let expected=(i16::from(pitch.octave)+1)*12+natural+i16::from(pitch.alter);
-                if i16::from(rendered.pitch)!=expected||rendered.page_index>=300 {continue;}
+                if i16::from(rendered.pitch)!=expected||rendered.page_index>=page_count {continue;}
                 if let Some(matches)=by_source.get(id) {for matched in matches {
                     if let Some(note)=performed.get(&(matched.midi_id.track_id,matched.midi_id.note_index)) {
                         mapping.push(MappingRow{id:rendered.renderer_id.clone(),page:rendered.page_index,start:note.start.as_secs_f64(),end:note.end.as_secs_f64(),pitch:note.note,

@@ -6,6 +6,8 @@ use crate::*;
 pub struct Input {
     pub content_id: String,
     #[serde(default)]
+    pub page_count: Option<usize>,
+    #[serde(default)]
     pub score_revision: Option<u64>,
     #[serde(default)]
     pub source_fingerprint: Option<String>,
@@ -13,6 +15,14 @@ pub struct Input {
     pub notes: Vec<notation::RenderNote>,
     #[serde(default)]
     pub practice_notation: bool,
+}
+impl Input {
+    fn validate(&self)->Result<(),String> {
+        let count=self.page_count.unwrap_or(300);
+        if count==0 || self.notes.iter().any(|note|note.page_index>=count) {return Err("谱页范围与当前排版不同".into());}
+        if self.midi.len()>4_000_000 || self.notes.len()>100_000 {return Err("乐谱映射数据过大".into());}
+        Ok(())
+    }
 }
 pub(crate) struct Origin {
     content_id: String,
@@ -35,6 +45,7 @@ impl Context {
     fn practice_mapping(
         &self,
         notes: Vec<notation::RenderNote>,
+        page_count:usize,
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<notation::MappingResult, String> {
         if notes.len() > 100_000 {
@@ -69,7 +80,7 @@ impl Context {
             else {
                 continue;
             };
-            if note.note != rendered.pitch || rendered.page_index >= 300 {
+            if note.note != rendered.pitch || rendered.page_index >= page_count {
                 seen.remove(&rendered.renderer_id);
                 continue;
             }
@@ -107,6 +118,7 @@ impl Context {
         mut input: Input,
         check: impl Fn() -> Result<(), String>,
     ) -> Result<(Installation, serde_json::Value), String> {
+        input.validate()?;
         check()?;
         // The displayed score is transposed. Correlate against source semantics,
         // then use stable track/note identities to follow the effective MIDI timing.
@@ -117,12 +129,12 @@ impl Context {
             if self.quantize == 0 && self.asset.is_some() {
                 return Err("谱面条件已改变，请重新读取当前谱面".into());
             }
-            self.practice_mapping(input.notes, &check)?
+            self.practice_mapping(input.notes, input.page_count.unwrap_or(300), &check)?
         } else {
             self.asset
                 .as_ref()
                 .ok_or("当前没有所选原谱，请使用量化练习谱")?
-                .map_notes_checked(&self.file, &input.midi, input.notes, &check)?
+                .map_notes_for_pages(&self.file, &input.midi, input.notes, input.page_count.unwrap_or(300), &check)?
         };
         check()?;
         let mut trusted = HashMap::new();
@@ -245,9 +257,7 @@ impl Player {
 }
 impl Engine {
     pub fn map_score(&self, input: Input) -> Result<serde_json::Value, String> {
-        if input.midi.len() > 4_000_000 || input.notes.len() > 100_000 {
-            return Err("乐谱映射数据过大".into());
-        }
+        input.validate()?;
         if self.closing.load(Ordering::Acquire) {
             return Err("正在关闭练习室，请等待完成".into());
         }
@@ -288,5 +298,18 @@ impl Engine {
                 Ok(result)
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod paged_tests {
+    use super::*;
+    #[test]
+    fn source_identity_maps_late_pages_and_rejects_wrong_layout_bounds() {
+        let root=std::env::temp_dir().join(format!("panthesia-page-map-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&root).unwrap();let path=root.join("own.mid");std::fs::write(&path,include_bytes!("../assets/five-finger.mid")).unwrap();let mut p=Player::new(root.join("profile"),PathBuf::new(),true);p.command(Command::Load{path,title:"Page mapping".into()}).unwrap();
+        let file=p.file.as_ref().unwrap();let engraving=panthesia_core::practice_engraving::engrave_simplified(file,"",0,false,&||Ok(())).unwrap();let (id,note)=engraving.notes.iter().next().unwrap();let pitch=file.tracks.iter().find(|t|t.track_id==note.track).unwrap().notes[note.index].note;
+        let request=|count|Input {content_id:file.content_id.clone(),score_revision:Some(p.score_revision),source_fingerprint:Some(p.score_display_origin()),midi:vec![],practice_notation:true,page_count:count,notes:vec![notation::RenderNote{renderer_id:id.clone(),page_index:350,onset_millis:0.,pitch,duration_millis:1.}]};
+        let input=request(Some(400));let old=request(None);let result=p.map_score_owned(input).unwrap();assert_eq!(result["mapping"][0]["page"],350);assert!(p.map_score_owned(old).is_err());
     }
 }

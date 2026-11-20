@@ -1,3 +1,5 @@
+import {useScorePage} from "./features/scores/useScorePage";
+import type {ScorePages} from "./features/scores/scoreRenderCache";
 import { useLocatedPaperSession } from "./features/scores/locatedPaperSession";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, pitchName, type LoadedSong } from "./api";
@@ -9,7 +11,7 @@ export function LocatedScorePaperDialog({
   song, pages, mapping, sourceFingerprint, mappingToken, close,
 }: {
   song: LoadedSong;
-  pages: string[];
+  pages: ScorePages;
   mapping: ScoreMapping[];
   sourceFingerprint: string;
   mappingToken: string;
@@ -25,6 +27,7 @@ export function LocatedScorePaperDialog({
   const [notePage, setNotePage] = useState(0);
   const latestSong = useRef(song); latestSong.current = song;
   const [previewPage, setPreviewPage] = useState(0);
+  const pageView=useScorePage(pages,previewPage);
   const [selectedMeasure, setSelectedMeasure] = useState(0);
   const [previewZoom, setPreviewZoom] = useState(0);
   const [focused, setFocused] = useState("");
@@ -95,13 +98,13 @@ export function LocatedScorePaperDialog({
       const current = await api.command<{ sourceFingerprint: string; readiness: string } | null>({ type: "score" });
       check();
       if (current?.sourceFingerprint !== sourceFingerprint || current.readiness !== "Ready") throw new Error("关联乐谱已改变，请重新打开后核对定位");
-      session.beginPages(pages);
+      session.beginPages(pages.key);
       const rendered: Blob[] = [];
       for (let index = 0; index < pages.length; index++) {
         check(); setProgress(`正在生成第 ${index + 1} / ${pages.length} 页…`);
         let image = session.image(index);
         if (!image) {
-          image = await svgPagePng(pages[index], controller.signal);
+          image = await svgPagePng(await pages.get(index,controller.signal), controller.signal);
           check(); session.retainImage(index, image);
         }
         rendered.push(image);
@@ -164,7 +167,7 @@ export function LocatedScorePaperDialog({
           </div>
           <div className="located-paper-preview" aria-label={`生成谱页预览 · 第 ${previewPage + 1} 页`} ref={previewRef}>
             <div className="located-paper-sheet" style={{ width: previewZoom ? `${previewZoom}px` : "100%" }}>
-              <div className="located-paper-svg" dangerouslySetInnerHTML={{ __html: pages[previewPage] }} />
+              <div className="located-paper-svg" dangerouslySetInnerHTML={{ __html: pageView.markup }} />
               {selected && <span className={`located-paper-highlight ${excluded.has(identity(selected)) ? "excluded" : ""}`}
                 style={{ left: `${selected.region.x * 100}%`, top: `${selected.region.y * 100}%`, width: `${selected.region.width * 100}%`, height: `${selected.region.height * 100}%` }} />}
             </div>

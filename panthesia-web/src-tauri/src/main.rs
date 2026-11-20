@@ -1143,10 +1143,10 @@ fn main() {
                           const worker=new Worker('/verovio/worker.mjs',{type:'module'});
                           let finished=false;const finish=async(notationReady)=>{if(finished)return;finished=true;worker.terminate();let pdfReady=false;try{pdfReady=Boolean(await Promise.race([window.__panthesiaPdfCheck?.(),new Promise(resolve=>setTimeout(()=>resolve(false),15000))]));}catch{}window.__TAURI_INTERNALS__.invoke('native_startup_check',{ready:Boolean(ready),notationReady,pdfReady});};
                           const timeout=setTimeout(()=>finish(false),15000);
-                          worker.onmessage=({data})=>{clearTimeout(timeout);finish(!data.error && data.pages?.length>0 && Boolean(data.midi));};
+                          worker.onmessage=({data})=>{if(data.progress)return;if(data.error){clearTimeout(timeout);finish(false);return;}if(data.id===1&&data.count>0){worker.postMessage({id:2,type:'page',page:0});}else if(data.id===2&&data.svg){worker.postMessage({id:3,type:'evidence'});}else if(data.id===3){clearTimeout(timeout);finish(Boolean(data.midi)&&data.notes?.length>0);}};
                           worker.onerror=()=>{clearTimeout(timeout);finish(false);};
                           const xml='<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>';
-                          worker.postMessage({bytes:Array.from(new TextEncoder().encode(xml)),compressed:false});
+                          worker.postMessage({id:1,type:'open',bytes:new TextEncoder().encode(xml).buffer,compressed:false});
                         }
                         else setTimeout(() => check(attempt + 1), 100);
                     })(0);

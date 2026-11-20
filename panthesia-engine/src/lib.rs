@@ -1977,7 +1977,7 @@ impl Player {
                 return self.annotated_score_artifact(&content_id,score_revision,&options,None,&|| Ok(()))?.into_value(download,fingerprint.as_deref());
             }
             Command::ScoreMap {score_revision,midi,notes,content_id} => {
-                return self.map_score_owned(score_mapping::Input {content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
+                return self.map_score_owned(score_mapping::Input { page_count: None,content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
             }
             Command::UpdateLibraryPaper{..}=>return Err("谱页整理应由独立调用线程执行".into()),
             Command::ExportPracticeBackup{..}|Command::ImportStagedPracticeBackup{..}=>return Err("备份文件应由独立调用线程处理".into()),

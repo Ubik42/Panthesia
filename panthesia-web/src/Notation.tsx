@@ -1,6 +1,7 @@
 import { ToolbarMore } from "./app/ToolbarMore";
 import { NotationTimeIndex, revealNotationNote } from "./features/scores/notationTimeIndex";
-import { renderScore } from "./features/scores/scoreRenderCache";
+import { useScorePage } from "./features/scores/useScorePage";
+import { emptyScorePages, type ScorePages, renderScore } from "./features/scores/scoreRenderCache";
 import "./features/scores/notationWorkspace.css";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import type { ScoreMappingRequest } from "./features/scores/mappingTypes";
@@ -101,7 +102,7 @@ export function Notation({
     first: number;
     last: number;
   } | null>(null);
-  const [pages, setPages] = useState<string[]>([]),
+  const [pages, setPages] = useState<ScorePages>(emptyScorePages),
     [page, setPage] = useState(0),
     [asset, setAsset] = useState<Asset | null>(null),
     [mapping, setMapping] = useState<Mapping[]>([]),
@@ -249,11 +250,12 @@ export function Notation({
     }
     return keep;
   }, [song.notes, song.fingerActions]);
-  const html = useMemo(() => ({ __html: pages[page] ?? "" }), [pages, page]);
+  const pageView = useScorePage(pages,page);
+  const html = useMemo(() => ({ __html: pageView.markup }), [pageView.markup]);
   useEffect(()=>{
     const selected=new Set(practiceRange?mapping.filter(m=>m.start<practiceRange.end&&m.end>practiceRange.start).map(m=>m.id):[]);
     root.current?.querySelectorAll("g.note").forEach(note=>note.classList.toggle("practice-range-note",selected.has(note.id)));
-  },[practiceRange?.start,practiceRange?.end,mapping,pages,page]);
+  },[practiceRange?.start,practiceRange?.end,mapping,pages,page,pageView.markup]);
   const notesById = useMemo(
     () => new Map(song.notes.map((n) => [`${n.track}:${n.index}`, n])),
     [song.notes],
@@ -303,7 +305,7 @@ export function Notation({
     mappingSequence.current++;
     mappingWorking.current = false;
     const controller = new AbortController();
-    setPages([]);
+    setPages(emptyScorePages);
     setAsset(null);
     setAmbiguities(0);
     setFollow(false);
@@ -326,14 +328,16 @@ export function Notation({
         }
         setAsset(data);
         void renderScore(data, controller.signal, (stage, page, total) => {
-          if (!disposed) setRenderStage(stage === "pages" ? `正在绘制谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
+          if (!disposed) setRenderStage(stage === "index" ? `正在对应谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
         }).then(async result => {
           if (disposed) return;
           setPages(result.pages);
+          const evidence=await result.evidence();
+          if(disposed || controller.signal.aborted)return;
           await correlateRendered({
             scoreRevision: song.scoreRevision, sourceFingerprint: data.sourceFingerprint,
             practiceNotation: data.practiceNotation === true,
-            midi: result.midi, notes: result.notes, contentId: data.contentId,
+            ...evidence, pageCount:result.pages.length, contentId: data.contentId,
           });
         }).catch(cause => {
           if (!disposed) {
@@ -468,7 +472,7 @@ export function Notation({
       const note = root.current?.querySelector(`[id="${CSS.escape(next.id)}"]`);
       if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note);
     }
-  }, [state.position, timeIndex, follow, page, pages, zoom, paperWidth]);
+  }, [state.position, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth]);
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -590,6 +594,7 @@ export function Notation({
   }, [
     mapping,
     pages,
+    pageView.markup,
     page,
     song.notes,
     song.fingerActions,
@@ -762,7 +767,7 @@ export function Notation({
           mapping={mapping}
           root={root}
           page={page}
-          markup={pages[page] ?? ""}
+          markup={pageView.markup}
           ready={
             !loading &&
             asset?.readiness === "Ready" &&
@@ -848,6 +853,8 @@ export function Notation({
       )}
       {asset?.practiceNotationKind === "simplified" && <p className="score-rhythm-note">书面节奏按十六分音符整理，演奏保持原时序。复杂节奏可从“添加 / 管理谱面”使用 DuET 制谱。</p>}
       <TaskActivity contentId={song.contentId} label="对应乐谱音符" cancelLabel="取消对应" />
+      {pageView.error && <p className="score-message" role="alert">{pageView.error}</p>}
+      {pageView.loading && pages.length>0 && <p className="score-message" role="status">正在读取谱页…</p>}
       {loading && <p className="score-message" role="status">{renderStage}</p>}
       {error && (
         <div className="score-message" role="alert">

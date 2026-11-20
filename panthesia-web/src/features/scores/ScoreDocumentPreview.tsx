@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { renderScore } from "./scoreRenderCache";
+import {useScorePage} from "./useScorePage";
+import {emptyScorePages,type ScorePages, renderScore } from "./scoreRenderCache";
 import "./scoreDocumentPreview.css";
 
 export type ScorePreviewDocument = {
@@ -9,8 +10,9 @@ export type ScorePreviewDocument = {
 
 /** Read-only engraving; adopting a score and installing playback mappings are separate actions. */
 export function ScoreDocumentPreview({ bytes, name }: ScorePreviewDocument) {
-  const [pages, setPages] = useState<string[]>([]);
+  const [pages, setPages] = useState<ScorePages>(emptyScorePages);
   const [page, setPage] = useState(0);
+  const pageView=useScorePage(pages,page);
   const [zoom, setZoom] = useState(100);
   const [status, setStatus] = useState("正在排版谱面…");
   const [error, setError] = useState("");
@@ -18,7 +20,7 @@ export function ScoreDocumentPreview({ bytes, name }: ScorePreviewDocument) {
   const viewport = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const controller = new AbortController();
-    setPages([]);
+    setPages(emptyScorePages);
     setPage(0);
     setError("");
     setStatus("正在排版谱面…");
@@ -96,9 +98,9 @@ export function ScoreDocumentPreview({ bytes, name }: ScorePreviewDocument) {
           </select>
         </div>
       </div>
-      {error ? (
+      {error || pageView.error ? (
         <div className="score-document-message" role="alert">
-          <p>{error}</p>
+          <p>{error || pageView.error}</p>
           <button onClick={() => setAttempt((value) => value + 1)}>
             重新显示谱页
           </button>
@@ -117,7 +119,7 @@ export function ScoreDocumentPreview({ bytes, name }: ScorePreviewDocument) {
           <div
             className="score-document-paper"
             style={{ width: `${zoom}%` }}
-            dangerouslySetInnerHTML={{ __html: pages[page] }}
+            dangerouslySetInnerHTML={{ __html: pageView.markup }}
           />
         </div>
       )}

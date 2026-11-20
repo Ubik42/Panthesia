@@ -1,24 +1,10 @@
+import {renderScore,emptyScorePages,type ScorePages} from "./features/scores/scoreRenderCache";
+import {useScorePage} from "./features/scores/useScorePage";
 import { useEffect, useRef, useState } from "react";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { importKind } from "./scorePairing";
 
-function cleanSvg(source: string) {
-  const doc = new DOMParser().parseFromString(source, "image/svg+xml");
-  doc
-    .querySelectorAll("script,foreignObject,image,iframe")
-    .forEach((e) => e.remove());
-  doc.querySelectorAll("*").forEach((e) =>
-    Array.from(e.attributes).forEach((a) => {
-      if (
-        a.name.toLowerCase().startsWith("on") ||
-        (["href", "xlink:href"].includes(a.name) && !a.value.startsWith("#"))
-      )
-        e.removeAttribute(a.name);
-    }),
-  );
-  return new XMLSerializer().serializeToString(doc.documentElement);
-}
 export function ScoreFilePreview({
   file,
   close,
@@ -30,23 +16,24 @@ export function ScoreFilePreview({
   closeLabel?: string;
   label?: string;
 }) {
-  const [pages, setPages] = useState<string[]>([]),
+  const [pages, setPages] = useState<ScorePages>(emptyScorePages),
     [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(0),
     [url, setUrl] = useState(""),
     [error, setError] = useState("");
+  const pageView=useScorePage(pages,page);
   const [ready, setReady] = useState(false),
     canvas = useRef<HTMLCanvasElement>(null);
   const kind = importKind(file.name);
   useEffect(() => {
-    setPages([]);
+    setPages(emptyScorePages);
     setPdf(null);
     setPage(0);
     setUrl("");
     setError("");
     setReady(false);
     let disposed = false,
-      worker: Worker | undefined,
+      controller=new AbortController(),
       objectUrl = "";
     let task: import("pdfjs-dist").PDFDocumentLoadingTask | undefined;
     const load = async () => {
@@ -81,24 +68,14 @@ export function ScoreFilePreview({
       } else {
         const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
         if (disposed) return;
-        worker = new Worker("/verovio/worker.mjs", { type: "module" });
-        worker.onmessage = ({ data }) => {
-          if (disposed) return;
-          if (data.error) setError(data.error);
-          else {
-            setPages(data.pages.map(cleanSvg));
-            setReady(true);
-          }
-        };
-        worker.onerror = () =>
-          !disposed && setError("乐谱排版失败，请检查文件");
-        worker.postMessage({ bytes, compressed: /\.mxl$/i.test(file.name) });
+        const result=await renderScore({bytes,compressed:/\.mxl$/i.test(file.name)},controller.signal,()=>{});
+        if(!disposed){setPages(result.pages);setReady(true);}
       }
     };
     void load().catch((e) => !disposed && setError(String(e)));
     return () => {
       disposed = true;
-      worker?.terminate();
+      controller.abort();
       void task?.destroy();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -152,19 +129,19 @@ export function ScoreFilePreview({
           下一页
         </button>
       </div>
-      {error ? (
-        <p role="alert">{error}</p>
+      {error || pageView.error ? (
+        <p role="alert">{error || pageView.error}</p>
       ) : (
         <>
-          {!ready && <p role="status">正在读取实际谱面…</p>}
+          {(!ready || kind==="notation"&&pageView.loading) && <p role="status">正在读取实际谱面…</p>}
           <div className="batch-preview-sheet">
             {kind === "pdf" ? (
               <canvas ref={canvas} aria-label="PDF 谱页" />
             ) : kind === "image" ? (
               url && <img src={url} alt={file.name} />
             ) : (
-              pages[page] && (
-                <div dangerouslySetInnerHTML={{ __html: pages[page] }} />
+              pageView.markup && (
+                <div dangerouslySetInnerHTML={{ __html: pageView.markup }} />
               )
             )}
           </div>

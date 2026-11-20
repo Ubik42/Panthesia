@@ -39,7 +39,7 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
     protectedRaw = true;
     state = { ...state, storageError: "原可定位谱草稿暂时无法完整读取，原文已保留。" };
   }
-  let sources: string[] = [], images: Blob[] = [], bytes = 0;
+  let sources = "", images: Blob[] = [], bytes = 0;
   let controller: AbortController | null = null;
   let boundSource = "", operationSource = "", savedSource = "";
   const listeners = new Set<() => void>();
@@ -78,10 +78,10 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
     },
     canForget: () => !listeners.size && !state.busy && !images.length && !sources.length && (!state.dirty || !state.storageError),
     dispose: unregisterClose,
-    memory: () => bytes + sources.reduce((sum, source) => sum + source.length * 2, 0),
+    memory: () => bytes + sources.length * 2,
     releaseImages: () => {
       if (state.busy) return;
-      sources = []; images = []; bytes = 0;
+      sources = ""; images = []; bytes = 0;
       publish({ preparedPages: 0, progress: "前次临时图片已释放，名称和音符选择保留。可以重新制作。" });
     },
     setName: (name: string) => { if (state.busy || state.saved) return; publish({ name, dirty: true }); persist(); },
@@ -106,8 +106,8 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
       trimImages(JSON.stringify([contentId, fingerprint]));
     },
     cancel: () => { if (!state.committing && controller) { controller.abort("cancelled"); publish({ progress: "正在停止制作，当前输入和已生成图片保留…" }); } },
-    beginPages: (input: string[]) => {
-      if (sources.length !== input.length || sources.some((source, index) => source !== input[index])) { sources = input.slice(); images = []; bytes = 0; publish({ preparedPages: 0 }); }
+    beginPages: (input: string) => {
+      if (sources !== input) { sources = input; images = []; bytes = 0; publish({ preparedPages: 0 }); }
     },
     image: (index: number) => images[index],
     retainImage: (index: number, image: Blob) => {
@@ -120,7 +120,7 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
       const current = boundSource === operationSource;
       savedSource = operationSource;
       try { if (current && !protectedRaw && localStorage.getItem(key) === raw) { localStorage.removeItem(key); raw = null; } } catch {}
-      sources = []; images = []; bytes = 0;
+      sources = ""; images = []; bytes = 0;
       publish({ saved: current ? result : null, dirty: current ? false : state.dirty, preparedPages: 0, storageError: current ? "" : state.storageError, error: "", progress: !current ? "原条件的可定位谱已保存。当前曲目条件已改变，可继续制作新版本。" : result.alreadySaved ? "已核对原保存结果，谱页和逐音位置继续保留。" : "已保存，可从纸谱管理查看和定位音符。" });
     },
     startAnother: () => { if (!state.busy) publish({ saved: null, progress: "可以修改名称或音符选择后制作新版本。", error: "" }); },
