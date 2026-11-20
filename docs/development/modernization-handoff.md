@@ -354,6 +354,7 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 - 下一批集中解决长曲瀑布和循环收尾等待 / 保存后的延迟，进一步解除实时线程与分析 / 持久化耦合，再按原功能矩阵继续。整体 Goal active。
 
 ## 交付状态
+当前主线运行包：outputs/releases/Panthesia-20261119-mainline-practice/Panthesia.exe。程序源码 449a3e3；实验分支 feature/assessment-lab / ca4aeb5。运行包包含本次主线收束全部代码，评分版旧包只作为历史存档。源码指纹 7A9670E0647CB16F0498900CA1D9D53F7B2503C148F7600AEB88A6CC3CD4FA76；dirty=true 对应原有九项未提交修改。29 个包内文件哈希一致，独立 --window-check 返回 PASS，visible / frontend / IPC / audio / notationWasm / pdfPages ready，内置 5 首 / 9 音符，MIDI connected。证据 work/mainline-scope/{release,independent-check}.log 和 package-check/{release-evidence.json,startup.log}。本次定向任务完成，不恢复已清除的长期 Goal。
 
 此前评分版运行包为 outputs/releases/Panthesia-20261119-round-preparation，程序源码提交 50dfb76。包含独立自动轮次分析队列、回放物化 / 校验 / 编码后移、待写容量约束、范围身份跨轮复用及逐音伴奏规则的评估失效处理。manifest 标记 dirty=true（原有九项曲库修改），源码指纹 82C8270D3410E84BC935A5C49A6D63CA0CE823B95D2AC05F35204D6494E2407F。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。运行包检查使用独立引擎、曲库与 WebView 目录。日志 work/round-preparation-release.log、round-preparation-independent-check.log 及 round-preparation-package-check/{release-evidence.json,startup.log}。
 
