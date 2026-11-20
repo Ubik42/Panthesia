@@ -101,6 +101,7 @@ pub struct Preferences {
     pub audio_device: Option<String>,
     pub passage: Option<Passage>,
     pub volume: Option<f64>,
+    pub loop_restart_errors:u16,
     pub songs: Shared<BTreeMap<String, SessionSettings>>,
     pub variants: Shared<BTreeMap<String, crate::practice_variant::Variant>>,
     pub song_expression_goals: Shared<BTreeMap<String, crate::expression_goal::ExpressionGoal>>,

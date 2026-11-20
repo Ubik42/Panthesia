@@ -2498,6 +2498,7 @@ export type EngineCommand =
   | { type: "seekBeat"; "measure": number; "beat": number }
   | { type: "stepBeat"; "direction": number }
   | { type: "countIn"; "bars": number }
+  | { type: "loopRestartErrors"; "count": number }
   | { type: "rounds"; "count": number }
   | { type: "calibration" }
   | { type: "metronome"; "enabled": boolean }

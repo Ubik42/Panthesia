@@ -463,6 +463,7 @@ mod tests {
         value.mode = Some("flow".into());
         value.effective_tempo_bpm = Some(spec.tempo_bpm);
         value.context = Some(PracticeSessionContext {
+                loop_restart:None,
                 note_playback: vec![],
             expression: None,
             routine: None,

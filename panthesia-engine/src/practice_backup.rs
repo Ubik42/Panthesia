@@ -232,6 +232,7 @@ fn finite_numbers(v: &Value) -> Result<(), String> {
 
 impl Backup {
     pub fn version(&self) -> u8 {
+        if self.history.values().flat_map(|song|&song.sessions).any(|session|session.context.as_ref().is_some_and(|context|context.loop_restart.is_some())){return 23;}
         if self.bookmarks.values().any(|rows|!rows.is_empty()){return 22;}
         if self.ladders.values().flatten().any(|row|row.practice.is_some())
             || self.ladder_runs.values().any(|run|run.preset.practice.is_some())
@@ -377,6 +378,7 @@ impl Backup {
         }
         for (cid, h) in &self.history {
             for s in &h.sessions {
+                if s.context.as_ref().and_then(|context|context.loop_restart).is_some_and(|count|!(1..=100).contains(&count)){return Err("记录中的循环重开阈值无效".into());}
                 let duration = self
                     .performances
                     .get(cid)
@@ -716,7 +718,7 @@ impl Backup {
         if header["format"] != "neothesia-practice"
             || !matches!(
                 header["version"].as_u64(),
-                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22)
+                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23)
             )
             || header["size"].as_u64() != Some(data.len() as u64)
             || header["hash"].as_str() != Some(blake3::hash(data).to_hex().as_str())

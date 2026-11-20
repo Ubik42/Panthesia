@@ -9,6 +9,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
   | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"
+  | "loopRestartErrors"
   | "saveBookmark" | "removeBookmark"
   | "savePassage" | "removePassage" | "updatePassageDetails" | "saveScorePassage" | "saveTickPassage"
   | "saveLadder" | "updateLadderName" | "removeLadder" | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
@@ -260,6 +261,9 @@ export interface Snapshot {
   metronome: boolean;
   latency: number;
   adaptive: boolean;
+  loopRestartErrors:number;
+  loopRestarts:number;
+  loopAbortLimit:number;
   summary: Feedback | null;
 }
 export const emptyState: Snapshot = {
@@ -312,6 +316,9 @@ export const emptyState: Snapshot = {
   metronome: false,
   latency: 0,
   adaptive: false,
+  loopRestartErrors:0,
+  loopRestarts:0,
+  loopAbortLimit:0,
   summary: null,
 };
 export interface EngineSession {

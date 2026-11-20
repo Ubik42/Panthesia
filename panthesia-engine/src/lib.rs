@@ -1,3 +1,4 @@
+mod loop_practice;
 mod bookmarks;
 pub mod state_order;
 pub mod music_import;
@@ -641,6 +642,7 @@ impl Player {
         self.state.passage = None;
         self.ladder = None;
         self.state.repetitions = 0;
+        self.state.loop_restarts=0;
         self.previous_summary = None;
         self.previous_mode = None;
         if let Some(l) = self
@@ -1029,6 +1031,7 @@ impl Player {
         if self.state.mode == "listen" { self.state.mode = "flow".into(); self.state.wait = false; }
         self.state.passage = Some(Passage { start, end });
         self.state.repetitions = 0;
+        self.state.loop_restarts=0;
         self.previous_summary = None;
         self.previous_mode = None;
         self.coach = AdaptiveTempoCoach::default();
@@ -1171,6 +1174,7 @@ impl Player {
     }
     fn reset(&mut self,position:f64) {self.reset_with_sound(position,None);}
     fn reset_with_sound(&mut self,position:f64,prepared:Option<track_sound::Prepared>) {
+        self.state.loop_abort_limit=0;
         self.round_continuation_pending = false;
         self.active_expression_goal = None;
         let projections = std::mem::take(&mut self.projections);
@@ -1243,6 +1247,7 @@ impl Player {
         }
         if self.routine.is_some() && matches!(command,Command::Load{..}|Command::Generate{..}|Command::ImportScore{..}|Command::ImportMidi{..}|Command::ImportPackage{..}|Command::OpenRecent{..}|Command::HistoryOpen{..}|Command::OpenPassage{..}|Command::StartLadder{..}) {self.stop_routine()?;}
         match &command {
+            Command::LoopRestartErrors{count}=>return self.set_loop_restart_errors(*count),
             Command::Bookmarks=>return self.bookmark_catalog(String::new()),
             Command::SaveBookmark{content_id,id,name,tick}=>return self.save_bookmark(content_id,id.clone(),name.clone(),*tick),
             Command::RemoveBookmark{content_id,id}=>return self.remove_bookmark(content_id,id),
@@ -2537,6 +2542,7 @@ impl Player {
                 let paused=self.state.status=="paused";
                 self.state.passage = enabled.then_some(Passage { start, end });
                 self.state.repetitions = 0;
+        self.state.loop_restarts=0;
                 self.reset(if enabled { start } else { position });
                 if playing {self.ensure_audio()?;self.state.status="playing".into();}
                 else if paused {self.state.status="paused".into();}
@@ -2553,6 +2559,7 @@ impl Player {
             Command::Restart => {
                 if let Some(run)=&mut self.ladder {if run.active {run.progress.success_streak=0;run.progress.failure_streak=0;run.progress.last_result="重新练习当前速度".into();}}
                 self.state.repetitions = 0;
+        self.state.loop_restarts=0;
                 self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
             }
             Command::Seek { position } => {
@@ -2664,7 +2671,7 @@ impl Player {
             Command::PrepareMeasurePart { content_id, measure, part, track_id } => {
                 self.prepare_measure_part(&content_id, measure, part, track_id)?;
             }
-            Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
+            Command::LoopRestartErrors{..}|Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
             Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
             Command::PreviewLegacyExerciseTracks { .. } | Command::ApplyLegacyExerciseTracks { .. }
                 | Command::PreviewLegacyExerciseHistory { .. } | Command::ReviewLegacyExerciseHistory { .. } => unreachable!(),
@@ -2883,6 +2890,7 @@ impl Player {
         let capture_position=self.state.position;
         self.session_clock += delta;
         self.matcher.tick(self.session_clock);
+        if self.abort_loop_at_error_limit(){return;}
         if self.state.wait && !self.matcher.are_required_notes_pressed() {
             if self.state.mode!="listen" && !self.state.recording {if let Some(file)=&self.file{self.performance_capture.advance(capture_clock,self.session_clock.as_secs_f64(),capture_position,capture_position,self.state.speed,&file.measures,self.state.duration);}}
             return;
@@ -3020,6 +3028,7 @@ impl Player {
         if is_timed_mode(&self.state.mode) {
             self.matcher.finalize_missed(self.session_clock);
         }
+        if self.abort_loop_at_error_limit(){return;}
         if position >= end && is_timed_mode(&self.state.mode) {
             self.end_hold += delta.as_secs_f64();
             if self.end_hold < 0.5 {
@@ -3027,23 +3036,12 @@ impl Player {
             }
         }
         if position >= end && (!self.state.wait || self.matcher.are_required_notes_pressed()) {
-            self.state.status = "finished".into();
-            self.panic();
-            self.matcher.finish();
-            if self.state.mode != "listen" {
-                if self.pending_saves.is_some() {
-                    if let Err(error)=self.queue_automatic_round_save() { self.state.error=Some(error); }
-                    return;
-                }
-                if let Err(e) = self.save() {
-                    self.state.error = Some(e);
-                }
-            }
-            self.continue_finished_round();
+            self.finish_practice_round();
         }
     }
     fn continue_finished_round(&mut self) { self.advance_finished_round(true); }
     fn advance_finished_round(&mut self, resume:bool) {
+    if self.advance_aborted_loop(resume){return;}
     if self.state.error.is_none() && self.state.passage.is_some(){self.state.repetitions+=1;}
     let ladder_round=self.ladder.as_ref().is_some_and(|r|r.active);
     if self.state.error.is_none() && ladder_round {
@@ -3087,6 +3085,7 @@ impl Player {
     fn snapshot(&self) -> Snapshot {
         self.prune_round_assessment();
         let mut state = self.state.clone();
+        state.loop_restart_errors=if self.preferences.loop_restart_errors<=100{self.preferences.loop_restart_errors}else{0};
         if let Some(clock) = &self.state_clock {
             state.state_order = Some(clock.next());
         }

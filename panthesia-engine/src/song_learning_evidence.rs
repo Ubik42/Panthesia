@@ -288,7 +288,7 @@ fn collect_checked(
                 .as_ref()
                 .is_some_and(|scope| !scope.is_empty())
             && session.context.as_ref().is_some_and(|ctx| {
-                ctx.target_notes > 0
+                ctx.loop_restart.is_none() && ctx.target_notes > 0
                     && ctx.judged_notes >= ctx.target_notes
                     && ctx.exercise_spec.is_none()
             })
@@ -475,7 +475,7 @@ mod tests {
         let summary=AttemptSummary{overall:PracticeSnapshot{matched_notes:judged,required_notes:10,..Default::default()},..Default::default()};
         let mut s=PracticeSession::new(kind,PracticeHands::Both,1.,summary);
         s.id=Some(id.into());s.recorded_at_unix_ms=at;s.mode=Some("flow".into());s.scope=Some(scope.into());s.effective_tempo_bpm=bpm;
-        s.context=Some(PracticeSessionContext{note_playback:vec![],expression:None,routine:None,ladder:None,target_notes:10,judged_notes:judged,tracks:vec![],parts:BTreeMap::new(),hands:"both".into(),count_in:0,metronome:false,latency:0,pedal_latency_ms:None,rounds:1,adaptive:false,grid:"grid".into(),passage_bounds:None,source_path:None,exercise_spec:None});
+        s.context=Some(PracticeSessionContext{loop_restart:None,note_playback:vec![],expression:None,routine:None,ladder:None,target_notes:10,judged_notes:judged,tracks:vec![],parts:BTreeMap::new(),hands:"both".into(),count_in:0,metronome:false,latency:0,pedal_latency_ms:None,rounds:1,adaptive:false,grid:"grid".into(),passage_bounds:None,source_path:None,exercise_spec:None});
         s
     }
     #[test]

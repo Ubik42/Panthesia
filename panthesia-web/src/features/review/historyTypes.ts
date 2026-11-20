@@ -59,6 +59,7 @@ export interface HistoryDetail extends HistoryEntry {
     notePedal?: NotePedalEvidence;
   };
   context: {
+    loop_restart?:number|null;
     expression?: SavedExpressionCondition | null;
     routine?: {
       expression?: SavedExpressionCondition | null;

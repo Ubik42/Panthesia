@@ -47,6 +47,7 @@ pub struct FingerProfileCatalog {
 }
 fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result<Value, String> {
     match kind {
+        Kind::LoopRules => return Err("循环规则没有独立目录".into()),
         Kind::Bookmarks => return reader.bookmark_catalog(catalog_revision),
         Kind::Passages => {
             let content = &reader.file.as_ref().ok_or("请先选择曲目")?.content_id;
@@ -119,6 +120,7 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
 #[derive(Clone, Copy)]
 pub(crate) enum Kind {
     Bookmarks,
+    LoopRules,
     Passages,
     Ladders,
     Exercises,
@@ -127,6 +129,7 @@ pub(crate) enum Kind {
 }
 pub(crate) fn edits(command: &Command) -> Option<Kind> {
     Some(match command {
+        Command::LoopRestartErrors{..} => Kind::LoopRules,
         Command::SaveBookmark{..}|Command::RemoveBookmark{..} => Kind::Bookmarks,
         Command::SavePassage { .. }
         | Command::RemovePassage { .. }
@@ -163,6 +166,7 @@ fn revision(
     kind: Kind,
 ) -> Result<String, String> {
     let bytes = match kind {
+        Kind::LoopRules => serde_json::to_vec(&preferences.loop_restart_errors),
         Kind::Bookmarks => serde_json::to_vec(&(content, content.and_then(|id|preferences.bookmarks.get(id)))),
         Kind::Passages => {
             serde_json::to_vec(&(content, content.and_then(|id| preferences.passages.get(id))))
@@ -512,6 +516,7 @@ impl Player {
         }
         patch.guard.check(self)?;
         let unchanged = match patch.kind {
+            Kind::LoopRules => self.preferences.loop_restart_errors==patch.before.loop_restart_errors,
             Kind::Bookmarks => self.preferences.bookmarks.same_snapshot(&patch.before.bookmarks),
             Kind::Passages => self
                 .preferences
@@ -563,6 +568,7 @@ impl Player {
         let old_ladder = self.ladder.clone();
         let old_expression = self.active_expression_goal.clone();
         match patch.kind {
+            Kind::LoopRules => self.preferences.loop_restart_errors=patch.after.loop_restart_errors,
             Kind::Bookmarks => self.preferences.bookmarks=patch.after.bookmarks.clone(),
             Kind::Passages => self.preferences.passages = patch.after.passages.clone(),
             Kind::Ladders => {
@@ -627,6 +633,7 @@ impl Engine {
         }
         storage_control::check_command(&self.storage_busy, &command)?;
         let label = match (&command, kind) {
+            (_, Some(Kind::LoopRules)) => "保存循环练习规则",
             (_, Some(Kind::Bookmarks)) => "保存演奏书签",
             (_, Some(Kind::Passages)) => "保存练习段资料",
             (_, Some(Kind::Ladders)) => "保存速度阶梯方案",

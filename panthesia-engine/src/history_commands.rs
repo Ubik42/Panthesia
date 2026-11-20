@@ -55,7 +55,7 @@ fn condition_summary(session: &PracticeSession) -> Value {
         "range":range,"passageBounds":context.passage_bounds,
         "mode":session.mode,"hands":session.hands,"speed":session.speed,
         "effectiveTempoBpm":session.effective_tempo_bpm,"scope":session.scope,"grid":context.grid,
-        "targetNotes":context.target_notes,"judgedNotes":context.judged_notes,
+        "loopRestart":context.loop_restart,"targetNotes":context.target_notes,"judgedNotes":context.judged_notes,
         "tracks":context.tracks,"notePlayback":context.note_playback,"parts":context.parts,"assignedHands":context.hands,
         "exerciseSpec":context.exercise_spec,"countIn":context.count_in,
         "metronome":context.metronome,"inputLatencyMs":context.latency,
@@ -107,6 +107,7 @@ impl Player {
         let target_notes=self.practice_target_count();
         let expression_failure=self.ladder.as_ref().filter(|run|run.active).and_then(|_|self.expression_failure_for(summary.expression,results,target_notes));
         PracticeSessionContext {
+            loop_restart:(self.state.loop_abort_limit>0).then_some(self.state.loop_abort_limit),
             expression:self.active_expression_goal.as_ref().map(|e|panthesia_core::practice_history::PracticeExpressionCondition{velocity_difference:e.velocity_difference,note_velocity_difference:e.note_velocity_difference,note_pedal_mismatch_count:e.note_pedal_mismatch_count,contour_percent:e.contour_percent,pedal_offset_ms:e.pedal_offset_ms}),
             routine: self.routine.as_ref().map(|a| {
                 panthesia_core::practice_history::PracticeRoutineCondition {
@@ -452,6 +453,7 @@ mod tests {
         let session = PracticeSession {
             replay_clips: vec![], playing_ms: None, annotation: None, id: None,
             context: Some(PracticeSessionContext {
+                loop_restart:None,
                 note_playback: vec![],
                 expression: None,
                 routine: None, ladder: None, target_notes: 18, judged_notes: 17,

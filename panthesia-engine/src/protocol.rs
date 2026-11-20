@@ -71,6 +71,7 @@ pub enum Command {
     CountIn {
         bars: u8,
     },
+    LoopRestartErrors{count:u16},
     Rounds {
         count: usize,
     },

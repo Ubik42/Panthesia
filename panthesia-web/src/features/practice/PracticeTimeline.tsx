@@ -14,6 +14,8 @@ const fields = [
   "passage",
   "contentId",
   "scoreRevision",
+  "loopRestarts",
+  "loopRestartErrors",
 ] as const;
 const TimelineMarks = memo(function TimelineMarks({
   song,
@@ -58,6 +60,8 @@ export function PracticeTimeline({
   range,
   loop,
   togglePicking,
+  loopPreview,
+  changeLoopPreview,
 }: {
   store: PlaybackStore;
   song: LoadedSong | null;
@@ -67,6 +71,8 @@ export function PracticeTimeline({
   range: PracticeRangeController;
   loop: (start: number, end: number, enabled: boolean) => Promise<boolean>;
   togglePicking: () => void;
+  loopPreview: boolean;
+  changeLoopPreview: (enabled: boolean) => void;
 }) {
   const state = usePlaybackFields(store, fields);
   const start = state.passage?.start ?? 0,
@@ -85,7 +91,7 @@ export function PracticeTimeline({
       seek(state.passage ? Math.min(position, end - 0.000001) : position),
   });
   const full = song?.duration ?? 1;
-  const formatTime=end-start<10?rangeTime:clock;
+  const formatTime = end - start < 10 ? rangeTime : clock;
   return (
     <div className="practice-timeline time-ruler">
       <div className="time-ruler-labels">
@@ -94,7 +100,8 @@ export function PracticeTimeline({
           <small>第 {Math.floor(state.beat ?? 1)} 拍</small>
         </span>
         <strong>
-          {formatTime(slider.value)} <small>/ {formatTime(song?.duration ?? 0)}</small>
+          {formatTime(slider.value)}{" "}
+          <small>/ {formatTime(song?.duration ?? 0)}</small>
         </strong>
         <span>{state.passage ? "循环段时间线" : "全曲时间线"}</span>
       </div>
@@ -154,6 +161,26 @@ export function PracticeTimeline({
         <span className="time-ruler-practice">
           已练 {practiceDuration(state.practiceMs ?? 0)}
         </span>
+        {state.passage && (
+          <>
+            <label className="loop-preview-switch">
+              <input
+                type="checkbox"
+                aria-label="瀑布预览下一轮"
+                checked={loopPreview}
+                onChange={(event) => changeLoopPreview(event.target.checked)}
+                disabled={unavailable || busy}
+              />
+              瀑布预览下一轮
+            </label>
+            {!disabled && state.loopRestartErrors > 0 && (
+              <span>错音或漏音达到 {state.loopRestartErrors} 个后重开</span>
+            )}
+            {state.loopRestarts > 0 && (
+              <span role="status">因错误重开 {state.loopRestarts} 次</span>
+            )}
+          </>
+        )}
         <PracticeRangeControls
           range={range}
           disabled={unavailable || busy}

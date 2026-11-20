@@ -1,4 +1,10 @@
-import { isBlackKey, panKeyboardRange, zoomKeyboardRange, type KeyboardRange } from "./features/practice/keyboardViewport";
+import { tickAtSeconds } from "./features/practice/practicePresentation";
+import {
+  isBlackKey,
+  panKeyboardRange,
+  zoomKeyboardRange,
+  type KeyboardRange,
+} from "./features/practice/keyboardViewport";
 import { useEffect, useMemo, useRef } from "react";
 import { PianoKeyboard } from "./features/practice/pianoKeyboard";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
@@ -50,9 +56,16 @@ export function Piano({
   display?: DisplayPreferences;
   onSelect?: (note: LoadedSong["notes"][number]) => void;
   canInteract?: () => boolean;
-  practiceRange?: PracticeRange|null;
+  practiceRange?: PracticeRange | null;
 }) {
-  const pitches = useMemo(() => Array.from({ length: keyboardRange.high - keyboardRange.low + 1 }, (_, i) => keyboardRange.low + i), [keyboardRange.low, keyboardRange.high]);
+  const pitches = useMemo(
+    () =>
+      Array.from(
+        { length: keyboardRange.high - keyboardRange.low + 1 },
+        (_, i) => keyboardRange.low + i,
+      ),
+    [keyboardRange.low, keyboardRange.high],
+  );
   const white = useMemo(() => pitches.filter((p) => !sharp(p)), [pitches]);
   const black = useMemo(() => pitches.filter(sharp), [pitches]);
   const keyLayout = useMemo(
@@ -340,7 +353,35 @@ export function Piano({
           (bar ? bar.endTick - bar.startTick : 1920) * previewBars;
       const span = Math.max(1, end - (bar?.startTick ?? tick)),
         pixels = baseline / span;
-      // Batch each grid style into one path instead of one draw call per line.
+      const loopStart =
+        song && state.passage ? tickAtSeconds(song, state.passage.start) : 0;
+      const loopEnd =
+        song && state.passage
+          ? tickAtSeconds(song, state.passage.end)
+          : Infinity;
+      const showNext =
+        !!song &&
+        !!state.passage &&
+        display.loopPreview &&
+        loopEnd > loopStart &&
+        loopEnd < tick + span &&
+        (!state.rounds || state.repetitions + 1 < state.rounds);
+      const windows = [
+        {
+          start: tick,
+          end: Math.min(tick + span, loopEnd),
+          offset: 0,
+          next: false,
+        },
+      ];
+      if (showNext)
+        windows.push({
+          start: loopStart,
+          end: Math.min(loopEnd, tick + span - (loopEnd - loopStart)),
+          offset: loopEnd - loopStart,
+          next: true,
+        });
+      // The next cycle reuses the source grid and an offset, never the following song measures.
       for (let kind = 2; kind >= 0; kind--) {
         const opacity =
           (kind === 0
@@ -348,81 +389,111 @@ export function Piano({
             : kind === 1
               ? display.beatOpacity
               : display.subdivisionOpacity) / 100;
-        if (opacity === 0) continue;
+        if (!opacity) continue;
         ctx.strokeStyle = `rgba(204,215,234,${opacity})`;
         ctx.lineWidth = kind === 0 ? 1.5 : kind === 1 ? 0.9 : 0.65;
         ctx.setLineDash(kind === 2 ? [3, 5] : []);
         ctx.beginPath();
-        for (let mi = index; mi < measures.length; mi++) {
-          const m = measures[mi];
-          if (m.startTick > tick + span) break;
-          if (m.endTick < tick) continue;
-          const beatTicks = (song!.ppq * 4) / m.denominator,
-            step = Math.min(
-              beatTicks,
-              (song!.ppq * 4) / display.gridSubdivision,
-            );
-          for (
-            let line = Math.max(0, Math.ceil((tick - m.startTick) / step));
-            m.startTick + line * step < m.endTick - 0.01;
-            line++
-          ) {
-            const t = m.startTick + line * step;
-            const type =
-              line === 0
-                ? 0
-                : Math.abs(
-                      (t - m.startTick) / beatTicks -
-                        Math.round((t - m.startTick) / beatTicks),
-                    ) < 0.001
-                  ? 1
-                  : 2;
-            if (type !== kind) continue;
-            const y = baseline - (t - tick) * pixels;
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
+        for (const window of windows) {
+          const first = Math.max(
+            0,
+            after(measures, window.start, (m) => m.startTick) - 1,
+          );
+          for (let mi = first; mi < measures.length; mi++) {
+            const m = measures[mi];
+            if (m.startTick > window.end) break;
+            if (m.endTick < window.start) continue;
+            const beatTicks = (song!.ppq * 4) / m.denominator,
+              step = Math.min(
+                beatTicks,
+                (song!.ppq * 4) / display.gridSubdivision,
+              );
+            for (
+              let line = Math.max(
+                0,
+                Math.ceil((window.start - m.startTick) / step),
+              );
+              m.startTick + line * step <
+              Math.min(m.endTick, window.end) - 0.01;
+              line++
+            ) {
+              const t = m.startTick + line * step,
+                type =
+                  line === 0
+                    ? 0
+                    : Math.abs(
+                          (t - m.startTick) / beatTicks -
+                            Math.round((t - m.startTick) / beatTicks),
+                        ) < 0.001
+                      ? 1
+                      : 2;
+              if (type !== kind) continue;
+              const y = baseline - (t + window.offset - tick) * pixels;
+              ctx.moveTo(0, y);
+              ctx.lineTo(width, y);
+            }
           }
         }
         ctx.stroke();
       }
       ctx.fillStyle = "#aab8cc";
       ctx.font = "11px sans-serif";
-      for (let mi = index; mi < measures.length; mi++) {
-        const m = measures[mi];
-        if (m.startTick > tick + span) break;
-        if (m.startTick < tick) continue;
-        ctx.fillText(
-          `第 ${m.number} 小节${m.displayNumber != null && m.displayNumber !== m.number ? ` · 谱面 ${m.displayNumber}` : ""}${m.partial ? " · 不完整" : ""}  ${m.numerator}/${m.denominator}${m.explicit ? "" : "*"}`,
-          8,
-          baseline - (m.startTick - tick) * pixels - 6,
+      for (const window of windows) {
+        const first = Math.max(
+          0,
+          after(measures, window.start, (m) => m.startTick) - 1,
         );
+        for (let mi = first; mi < measures.length; mi++) {
+          const m = measures[mi];
+          if (m.startTick >= window.end) break;
+          if (
+            m.startTick < window.start ||
+            (window.next && Math.abs(m.startTick - loopStart) < 0.01)
+          )
+            continue;
+          ctx.fillText(
+            `${window.next ? "下一轮 · " : ""}第 ${m.number} 小节${m.displayNumber != null && m.displayNumber !== m.number ? ` · 谱面 ${m.displayNumber}` : ""}${m.partial ? " · 不完整" : ""}  ${m.numerator}/${m.denominator}${m.explicit ? "" : "*"}`,
+            8,
+            baseline - (m.startTick + window.offset - tick) * pixels - 6,
+          );
+        }
       }
       ctx.setLineDash([]);
       ctx.lineWidth = 1;
+      const colorFor = (note: LoadedSong["notes"][number]) =>
+        display.palette === "accessible"
+          ? handColor(note.part, display)
+          : customTracks.has(note.track)
+            ? (trackColors.get(note.track) ?? palette.right)
+            : note.part === "left"
+              ? palette.left
+              : palette.right;
       if (song) {
-        timeline.visit(tick, tick + span, (note) => {
+        timeline.visit(tick, Math.min(tick + span, loopEnd), (note) => {
           if (!keyLayout.has(note.pitch)) return;
+          if (
+            state.passage &&
+            (note.tick >= loopEnd || note.endTick <= loopStart)
+          )
+            return;
           if (note.start + note.duration < position) return;
           if (position >= note.start && position < note.start + note.duration) {
             const action = actions.keyLabel(note, position, state.speed);
             if (action) keyActions.push({ note, action });
           }
           const { x, w } = geometry(note.pitch, width),
-            y = baseline - (note.tick - tick) * pixels,
-            h = Math.max(8, (note.endTick - note.tick) * pixels);
+            y = baseline - (Math.max(note.tick, loopStart) - tick) * pixels,
+            h = Math.max(
+              8,
+              (Math.min(note.endTick, loopEnd) -
+                Math.max(note.tick, loopStart)) *
+                pixels,
+            );
           const required =
             state.required.includes(note.pitch) &&
             Math.abs(note.start - state.position) < 0.02;
           if (selectable) hitNotes.current.push({ x, y: y - h, w, h, note });
-          const customColor = customTracks.has(note.track);
-          const noteColor =
-            display.palette === "accessible"
-              ? handColor(note.part, display)
-              : customColor
-                ? (trackColors.get(note.track) ?? palette.right)
-                : note.part === "left"
-                  ? palette.left
-                  : palette.right;
+          const noteColor = colorFor(note);
           if (
             (position >= note.start && position < note.start + note.duration) ||
             required
@@ -439,7 +510,10 @@ export function Piano({
           )
             playedNotes.add(note.pitch);
           const fill = required ? "#efd484" : noteColor;
-          const inRange=!practiceRange||note.start<practiceRange.end&&note.start+note.duration>practiceRange.start;
+          const inRange =
+            !practiceRange ||
+            (note.start < practiceRange.end &&
+              note.start + note.duration > practiceRange.start);
           sprites.note(
             ctx,
             x + 2,
@@ -472,6 +546,65 @@ export function Piano({
             );
           }
         });
+      }
+      // Preview one following cycle in display coordinates only. It never adds hits, key state or audio.
+      if (song && showNext) {
+        const offset = loopEnd - loopStart;
+        const previewEnd = Math.min(loopEnd, tick + span - offset);
+        timeline.visit(loopStart, previewEnd, (note) => {
+          if (
+            !keyLayout.has(note.pitch) ||
+            note.tick >= loopEnd ||
+            note.endTick <= loopStart
+          )
+            return;
+          const start = Math.max(loopStart, note.tick) + offset,
+            end = Math.min(loopEnd, note.endTick) + offset;
+          const { x, w } = geometry(note.pitch, width),
+            y = baseline - (start - tick) * pixels,
+            h = Math.max(8, (end - start) * pixels);
+          const fill = colorFor(note);
+          sprites.note(
+            ctx,
+            x + 2,
+            y,
+            Math.max(2, w - 4),
+            h,
+            fill,
+            0,
+            dpr,
+            0.34,
+          );
+          const label = noteLabel(note.pitch, note.finger, display);
+          if (label && w > 10 && h > 16)
+            sprites.paintLabel(
+              ctx,
+              label,
+              x + w / 2,
+              y - 8,
+              w,
+              display.fontSize,
+              fill,
+              dpr,
+            );
+        });
+        const seam = baseline - (loopEnd - tick) * pixels;
+        if (seam >= 0 && seam <= baseline) {
+          ctx.save();
+          ctx.globalAlpha = 0.7;
+          ctx.strokeStyle = palette.right;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(0, seam);
+          ctx.lineTo(width, seam);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = palette.right;
+          ctx.font = "11px sans-serif";
+          ctx.textAlign = "right";
+          ctx.fillText("下一轮 · 循环起点", width - 8, seam - 5);
+          ctx.restore();
+        }
       }
       ctx.textAlign = "left";
       ctx.fillStyle = palette.right;
@@ -619,27 +752,53 @@ export function Piano({
       clear();
     };
   }, [onNote, keyboardRange.low, keyboardRange.high]);
-  const viewportActions = useRef({ keyboardRange, onViewportChange, canInteract });
+  const viewportActions = useRef({
+    keyboardRange,
+    onViewportChange,
+    canInteract,
+  });
   viewportActions.current = { keyboardRange, onViewportChange, canInteract };
   useEffect(() => {
     const element = canvas.current!;
     let accumulated = 0;
     let gesture = "";
     const wheel = (event: WheelEvent) => {
-      const { keyboardRange: range, onViewportChange: change, canInteract: allowed } = viewportActions.current;
-      if ((!event.ctrlKey && !event.shiftKey) || !change || allowed?.() === false) return;
-      event.preventDefault(); event.stopPropagation();
+      const {
+        keyboardRange: range,
+        onViewportChange: change,
+        canInteract: allowed,
+      } = viewportActions.current;
+      if (
+        (!event.ctrlKey && !event.shiftKey) ||
+        !change ||
+        allowed?.() === false
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
       const kind = event.ctrlKey ? "zoom" : "pan";
       if (kind !== gesture) accumulated = 0;
       gesture = kind;
-      const delta = (event.deltaY || event.deltaX) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1);
+      const delta =
+        (event.deltaY || event.deltaX) *
+        (event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? element.clientHeight
+            : 1);
       accumulated += delta;
       if (Math.abs(accumulated) < 35) return;
       const steps = Math.max(-4, Math.min(4, Math.trunc(accumulated / 35)));
       accumulated = 0;
       const bounds = element.getBoundingClientRect();
       let next = range;
-      if (kind === "zoom") for (let i = 0; i < Math.abs(steps); i++) next = zoomKeyboardRange(next, -Math.sign(steps), (event.clientX - bounds.left) / Math.max(1, bounds.width));
+      if (kind === "zoom")
+        for (let i = 0; i < Math.abs(steps); i++)
+          next = zoomKeyboardRange(
+            next,
+            -Math.sign(steps),
+            (event.clientX - bounds.left) / Math.max(1, bounds.width),
+          );
       else next = panKeyboardRange(range, steps);
       change(next);
     };

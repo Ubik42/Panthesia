@@ -2343,6 +2343,8 @@ export default function App() {
           )}
           </details>
           <PracticeTimeline
+            loopPreview={display.loopPreview}
+            changeLoopPreview={enabled=>setDisplay(previous=>({...previous,loopPreview:enabled}))}
             range={practiceRange}
             loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})}
             togglePicking={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}

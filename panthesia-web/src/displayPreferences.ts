@@ -37,6 +37,7 @@ export type DisplayPreferences = {
   keyboardHigh: number;
   keyboardDeviceRanges: Record<string, KeyboardRange>;
   previewBars: number;
+  loopPreview:boolean;
   libraryOpen: boolean;
   inspector: boolean;
   keyboardEnabled: boolean;
@@ -104,6 +105,7 @@ export const displayDefaults: DisplayPreferences = {
   range: "song",
   keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
+  loopPreview:true,
   libraryOpen: false,
   inspector: false,
   keyboardEnabled: true,
@@ -152,6 +154,7 @@ export function normalizeDisplayPreferences(
     effectsPreset: raw.effectsPreset === "performance" ? "performance" : "practice",
     effectsPalette: raw.effectsPalette === "ember" || raw.effectsPalette === "violet" ? raw.effectsPalette : "aurora",
     effectsIntensity: size(raw.effectsIntensity, 0, 100, 70),
+    loopPreview: typeof raw.loopPreview === "boolean" ? raw.loopPreview : true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
     practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",

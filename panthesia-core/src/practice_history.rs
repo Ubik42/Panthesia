@@ -115,6 +115,9 @@ pub struct PracticeRoutineCondition {
 /// Immutable conditions of a saved attempt. Absent in older histories.
 #[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 pub struct PracticeSessionContext {
+    /// The attempt ended early after this many errors. Such attempts cannot establish mastery.
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub loop_restart:Option<u16>,
     #[serde(default, skip_serializing_if="Option::is_none")]
     pub expression: Option<PracticeExpressionCondition>,
     #[serde(default)]
@@ -763,6 +766,7 @@ fn is_reliable_weakness(measure: &WeakMeasure) -> bool {
 }
 
 fn session_is_mastered(session: &PracticeSession) -> bool {
+    if session.context.as_ref().is_some_and(|context|context.loop_restart.is_some()){return false;}
     if session.context.as_ref().and_then(|c|c.ladder.as_ref()).and_then(|l|l.round_passed)==Some(false) {
         return false;
     }
@@ -1373,6 +1377,7 @@ mod tests {
         item.scope = Some("practice-v1-same-notes".into());
         item.mode = Some("flow".into());
         item.context = Some(PracticeSessionContext {
+                loop_restart:None,
                 note_playback: vec![],
             expression: None, routine: None, ladder: None,
             target_notes: 10, judged_notes: 10,
@@ -2095,6 +2100,15 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(history.review_status(day * 3).unwrap().mastery_streak, 2);
+    }
+
+    #[test]
+    fn error_restarted_attempt_is_failure_under_the_same_review_conditions(){
+        let complete=review_session(1);let mut aborted=review_session(2);
+        aborted.context.as_mut().unwrap().loop_restart=Some(1);
+        assert!(same_review_conditions(&complete,&aborted));assert!(!session_is_mastered(&aborted));
+        let history=SongPracticeHistory{sessions:vec![complete,aborted],..Default::default()};
+        assert_eq!(history.review_status(2).unwrap().mastery_streak,0);
     }
 
     #[test]

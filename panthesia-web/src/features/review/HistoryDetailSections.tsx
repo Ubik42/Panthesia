@@ -27,6 +27,7 @@ export function HistorySavedConditions({ detail }: { detail: Detail }) {
     <>
       {detail.context ? (
         <p className="parameter-help">
+          {detail.context.loop_restart ? `本轮达到 ${detail.context.loop_restart} 个错误后自动重开，记录不计入完整练习达标。` : ""}
           预备 {detail.context.count_in} 小节 · 节拍器
           {detail.context.metronome ? "开" : "关"} · 自适应速度
           {detail.context.adaptive ? "开" : "关"} ·{" "}

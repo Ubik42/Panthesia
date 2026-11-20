@@ -20,7 +20,8 @@ pub(super) fn same_attempt_conditions(a: &PracticeSession, b: &PracticeSession) 
     let (Some(a), Some(b)) = (&a.context, &b.context) else {
         return false;
     };
-    !a.grid.is_empty()
+    a.loop_restart.is_none() && b.loop_restart.is_none()
+        && !a.grid.is_empty()
         && !b.grid.is_empty()
         && !a.hands.is_empty()
         && !b.hands.is_empty()
@@ -56,6 +57,7 @@ pub(super) fn same_reviewed_left_layout(old: &PracticeSession, current: &Practic
     let (Some(old_context), Some(current_context)) = (&old.context, &current.context) else {
         return false;
     };
+    if old_context.loop_restart.is_some() || current_context.loop_restart.is_some(){return false;}
     let old_tracks: Vec<_> = old_context
         .tracks
         .iter()
@@ -297,6 +299,7 @@ mod tests {
             annotation: None,
             id: None,
             context: Some(PracticeSessionContext {
+                loop_restart:None,
                 note_playback: vec![],
                 expression: None,
                 routine: None,
