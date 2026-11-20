@@ -1,6 +1,15 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本轮基线 2ee29eb。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本批程序源码 d9f63d0。
+
+## 当前续接点
+
+- 本批已完成：源 tick 书签、MIDI Marker / CuePoint、数字定位与书签间循环，界面及重启检查通过。代码 d9f63d0；最新包与验证结果以本文件“交付状态”首条为准。
+- 下一批：原功能矩阵 P12 / P13 的循环错误阈值和下一轮预览，然后集中处理性能与成品体验。保留完整 Goal，完成审计尚未执行。
+- 已通过的 DuET 生成、音源连接、组合视图、练习版本和书签链路直接复用证据；只验证下一批实际影响的行为。
+- 工作区原有 9 项曲库路径 / 文档修改继续保持未提交，涉及 library.rs、main.rs、package_commands.rs、桌面资料根默认值与 GiantMIDI 脚本等；每次只提交本批拥有的修改。未经要求不推送。
+
+下文各批次记录保留实现关系和证据；旧批次中的“后续”描述以本续接点和 current-goal.md 为准。
 
 ## 当前主线
 
@@ -264,7 +273,12 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-planned-editions，程序源码提交 378bf23，包含日课 / 速度阶梯的统一练习版本、命名段落跨条件入计划、计划恢复原谱及阶梯 BPM 界面。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 20CFFC3FBBA2AE58F8CF3BB7D24ED820EB20FF7CA3994A7EBC7847F776136517。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/planned-editions-release.log 和 work/planned-editions-package-check/{release-evidence.json,startup.log}。最终 Debug 构建 work/planned-editions-desktop-final.log；核心 6 项检查 work/planned-editions-affected-test.log。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-bookmark-navigation，程序源码提交 d9f63d0，包含个人书签、MIDI 标记、数字定位与书签循环，并修正旧包替换导入的书签保护。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 CF7EAC06EFD11B0D8056576006F1953D847B9924B36FCDD39F3BFB92B575ACD4。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/bookmark-navigation-release.log、bookmarks-core-test.log 和 bookmark-navigation-package-check/{release-evidence.json,startup.log}。
+
+outputs/releases/Panthesia-20261119-bookmarks 为本批中间包，源码 f01c584；尚未包含旧包替换的书签保护修正，交付使用上面的 bookmark-navigation。
+
+
+上一批运行包为 outputs/releases/Panthesia-20261119-planned-editions，程序源码提交 378bf23，包含日课 / 速度阶梯的统一练习版本、命名段落跨条件入计划、计划恢复原谱及阶梯 BPM 界面。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 20CFFC3FBBA2AE58F8CF3BB7D24ED820EB20FF7CA3994A7EBC7847F776136517。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/planned-editions-release.log 和 work/planned-editions-package-check/{release-evidence.json,startup.log}。最终 Debug 构建 work/planned-editions-desktop-final.log；核心 6 项检查 work/planned-editions-affected-test.log。
 
 
 上一批运行包为 outputs/releases/Panthesia-20261119-passage-notation，程序源码提交 1cefcd3，加入谱面段落的原谱查找、验证和同步恢复。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 467DA9968B38CA16363773425C009C3C3449FCAC8E0D7CE2C78FAE6A42BFDE3B。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/passage-notation-release.log 及 work/passage-notation-package-check/{release-evidence.json,startup.log}。
