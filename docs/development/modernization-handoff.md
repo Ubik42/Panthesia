@@ -235,9 +235,20 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 证据 work/passage-practice-runtime/restore-evidence.json、final-reopen-evidence.json、restored.png、final-reopened.png、manager.png。未执行全套回归。谱面选段仍核对当前原谱身份，切换原谱版本后的自动选回是下一项数据核心衔接；随后处理计划 / 速度阶梯条件协同、独立书签和其他矩阵未完成项。整体 Goal active。
 
+## P3：保存段落恢复原谱版本
+
+- passage_practice 在恢复练习变换后，以 ScoreRange 原谱指纹查找当前演奏已登记的版本。实际读取、核对内容并解析后，验证原演奏顺序和范围，随后与练习设置一起在后台事务提交。切换过谱面或使用 MIDI 即时谱后，均可直接打开原谱选段。
+- 保存旧谱面的替代版本仍留在登记中。原谱缺失 / 改变或范围不一致时返回具体提示；失败准备不替换当前音乐数据与练习条件。现有范围字段已足够，不增加持久字段或交换格式版本。快捷栏反馈明确包含谱面恢复。
+- 一项核心行为测试通过，覆盖原谱恢复、转调量化恢复、其他版本保留、失败隔离与 MIDI 内容不变。Debug 构建及实际桌面操作通过：替代谱面 +2 / 1/16 → 原谱原调选段 0–2 秒；重启保留原谱；解除谱面后再次从快捷栏恢复，实际谱页 1 页 / 2 音。
+- 证据：work/passage-notation-core-test.log、passage-notation-desktop.log、passage-notation-runtime/{evidence,reopen-evidence,page-evidence}.json 与 reopened.png。使用独立样例目录，未修改用户资产。源码提交 1cefcd3。
+- 下一批集中衔接计划 / 速度阶梯与统一练习版本，之后按功能矩阵处理独立书签等既定缺口。整体 Goal 继续 active。
+
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-practice-editions，程序源码提交 e9cd047，覆盖段落练习版本快照、跨条件恢复、旧记录兼容及对应备份 / 曲目包语义。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 C4EFCF2E4D3642CE7A99AB20CE22B50E9C56C8FD94B98D6BF60704A94A08C706。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/practice-editions-release.log 及 work/practice-editions-package-check/release-evidence.json / startup.log。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-passage-notation，程序源码提交 1cefcd3，加入谱面段落的原谱查找、验证和同步恢复。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 467DA9968B38CA16363773425C009C3C3449FCAC8E0D7CE2C78FAE6A42BFDE3B。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/passage-notation-release.log 及 work/passage-notation-package-check/{release-evidence.json,startup.log}。
+
+
+上一批运行包为 outputs/releases/Panthesia-20261119-practice-editions，程序源码提交 e9cd047，覆盖段落练习版本快照、跨条件恢复、旧记录兼容及对应备份 / 曲目包语义。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 C4EFCF2E4D3642CE7A99AB20CE22B50E9C56C8FD94B98D6BF60704A94A08C706。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/practice-editions-release.log 及 work/practice-editions-package-check/release-evidence.json / startup.log。
 
 上一批运行包为 outputs/releases/Panthesia-20261119-saved-passages，程序源码提交 416a2ca，加入演奏时间线旁的 A/B 保存及段落重开。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 7F099C7977172C7FACFC7093ADF78CF3C9992A7B1F019F23EE5B9B24076C6029。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/saved-passages-release.log 及 work/saved-passages-package-check/release-evidence.json / startup.log。
 
