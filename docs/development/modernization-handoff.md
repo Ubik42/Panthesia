@@ -254,7 +254,10 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-passage-notation，程序源码提交 1cefcd3，加入谱面段落的原谱查找、验证和同步恢复。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 467DA9968B38CA16363773425C009C3C3449FCAC8E0D7CE2C78FAE6A42BFDE3B。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/passage-notation-release.log 及 work/passage-notation-package-check/{release-evidence.json,startup.log}。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-planned-editions，程序源码提交 378bf23，包含日课 / 速度阶梯的统一练习版本、命名段落跨条件入计划、计划恢复原谱及阶梯 BPM 界面。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 20CFFC3FBBA2AE58F8CF3BB7D24ED820EB20FF7CA3994A7EBC7847F776136517。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/planned-editions-release.log 和 work/planned-editions-package-check/{release-evidence.json,startup.log}。最终 Debug 构建 work/planned-editions-desktop-final.log；核心 6 项检查 work/planned-editions-affected-test.log。
+
+
+上一批运行包为 outputs/releases/Panthesia-20261119-passage-notation，程序源码提交 1cefcd3，加入谱面段落的原谱查找、验证和同步恢复。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 467DA9968B38CA16363773425C009C3C3449FCAC8E0D7CE2C78FAE6A42BFDE3B。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/passage-notation-release.log 及 work/passage-notation-package-check/{release-evidence.json,startup.log}。
 
 
 上一批运行包为 outputs/releases/Panthesia-20261119-practice-editions，程序源码提交 e9cd047，覆盖段落练习版本快照、跨条件恢复、旧记录兼容及对应备份 / 曲目包语义。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 C4EFCF2E4D3642CE7A99AB20CE22B50E9C56C8FD94B98D6BF60704A94A08C706。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/practice-editions-release.log 及 work/practice-editions-package-check/release-evidence.json / startup.log。
