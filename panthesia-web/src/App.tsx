@@ -2309,7 +2309,6 @@ export default function App() {
       {songOptions && song && <SongOptionsDialog close={()=>setSongOptions(false)}>
               {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
               {song && <SongEditionBar song={song} active={songOptions} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
-              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
       </SongOptionsDialog>}
       <footer hidden={true} className="statusbar">
         <span>
