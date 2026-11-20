@@ -18,6 +18,7 @@ export function useWorkspaceNavigation(options?: {
     sequence = useRef(0);
   const locked = workspace !== "practice" && locks[workspace];
   const commit = useCallback((next: Workspace, bypass = false) => {
+    if (next === "review") next = "library";
     const from = current.current;
     if (
       !bypass &&

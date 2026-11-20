@@ -6,7 +6,6 @@ import "./workspaces.css";
 const workspaces = [
   { id: "library", label: "曲库", accessible: "曲库管理", icon: Library },
   { id: "practice", label: "演奏", accessible: "练习工作区", icon: Music2 },
-  { id: "review", label: "回顾", accessible: "练习历史", icon: History },
 ] as const;
 
 export function WorkspaceNavigation({

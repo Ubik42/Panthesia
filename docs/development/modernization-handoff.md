@@ -1,17 +1,26 @@
-# Panthesia 当前开发交接
+# Panthesia 主线交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本批自动轮次准备与回放解耦源码提交见下方交付状态。
+更新：2026-11-19。当前分支 main。原长期 Goal 已清除；本次为用户明确授权的评分分支隔离和主线收束。
 
 ## 当前续接点
 
-- 本批已完成：自动轮次分析与单一存储线程分离，回放生成 / 校验 / JSON 编码后移到写盘队列，积压容量约束，练习范围身份跨轮复用，逐音伴奏规则参与评估缓存失效。最新运行包以“交付状态”首条为准。
-- 下一批：把轮次分析所用的歌曲与条件事实从通用编辑 Context / 临时 Player 中拆出，逐步改为独立演奏评估上下文；继续依据实际复杂曲目反馈收敛剩余渲染和评估开销。P14 范围外音符策略及其余矩阵缺口仍待排期。完整 Goal active，整体完成审计尚未执行。
-- 已通过的 DuET 生成、音源连接、组合视图、练习版本和书签链路直接复用证据；只验证下一批实际影响的行为。
-- 工作区原有 9 项曲库路径 / 文档修改继续保持未提交，涉及 library.rs、main.rs、package_commands.rs、桌面资料根默认值与 GiantMIDI 脚本等；每次只提交本批拥有的修改。未经要求不推送。
+- 评分完整保存到本地 feature/assessment-lab，提交 ca4aeb5；包含此前实现和最后未提交的独立评估上下文。
+- main 只提供连续播放和按键引导。已删除 round_save 模块、内部轮次发布请求、专用分析队列以及播放 / 变换 / 退出时的评分等待；实时音符不进入评分器或表现采集器。
+- 主界面为曲库 / 演奏两区；成绩、反馈、表现目标、达标日课和速度阶梯退出主线入口。曲库按最近打开整理，扫描目录统一显示 / 添加 / 停止扫描；谱面版本、转调量化、声音和外观继续使用现有实现。
+- MIDI、谱面、设置中的旧目标、历史和回放保留；旧高级模式在运行中按普通连续播放处理。原九项用户曲库修改前后补丁哈希相同，继续保持未提交。未经要求不推送。
+- 计划以 current-goal.md、modernization-roadmap.md 和 assessment-separation.md 为准。以下评分阶段记录用于追溯，不能据其“下一批 / active”字样恢复旧方向。
 
-下文各批次记录保留实现关系和证据；旧批次中的“后续”描述以本续接点和 current-goal.md 为准。
+## 本次：主线收束
 
-## 本批：自动轮次准备与回放解耦
+源码与成品提交见下方交付状态。新增 note_guidance：只记所需琴键，错键不会产生分数、错误阈值或成绩；正常循环在轮次边界直接续播。practice_policy 在命令入口隔离高级模式和评分写入，旧 flow 模式接入 listen。保留的旧历史模型用于资料读取和备份兼容。手动演奏录音是独立 MIDI 录音，不属于评分回放。
+
+受影响引擎编译与前端构建通过。一项新定向检查覆盖无输入循环、旧表现目标不阻塞播放、错键不计分、按键放行、即时切换、评分接口不可用、源 MIDI 和旧目标保留。日志 work/mainline-scope/{engine-check,mainline-test,web-build,desktop-build}.log。未跑全套旧评分测试。
+
+隔离原生实例使用此前合成数据副本。六条旧历史及回放哈希保持一致，连续播放无需键盘输入；实际 audioLevel=0.18954101，声音 ready。按键引导能停住 / 放行，切回连续播放清除等待；运行状态 summary=null、各评分计数为零、storage.operation=null。界面没有成绩或晋级入口；1360px / 800px 无横向溢出。自动发现 Output 目录在管理界面可见。MIDI 导入后 +2 半音、1/16 量化及九个谱音显示正常，原始文件哈希一致。证据 work/mainline-scope/runtime/{native-evidence,ui-evidence,catalog-score-evidence}.json 和 mainline-{waterfall,score,folders,narrow}.png。原生检查后仅移除命令面板残余历史入口，并补充目录空状态 / 自动目录停止扫描按钮，最终运行包重新编译。
+
+已知边界：复杂大曲整曲谱面容量限制和偶发帧间隔问题继续保留，DuET 环境仍由本机配置。本次收束不代表这些既有问题全部解决。
+
+## 历史：自动轮次准备与回放解耦
 
 - bootstrap 新建有界单线程 round-analysis 队列，共用现有任务注册与状态。pending_save::post_round_preparation 只处理冻结的轮次事实，独立于存储线程；移除旧 post_exclusive 入口。成绩、练习条件和历史根发布后可续练，存储线程较慢不会直接堵住后续一轮的成绩准备。
 - 自动轮次的回放物化、完整性校验和 JSON 编码移入 DeferredWrite；只冻结 capture / report / 内容与历史身份 / 时长，结果发布阶段不再先构造回放字节。手动保存沿用确认完成后的语义。历史与回放继续进入原事务和失败重试队列；编码失败、IO 失败及退出等待继续由现有队列接管，未新增平行历史存储。
@@ -346,7 +355,7 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-最新运行包为 outputs/releases/Panthesia-20261119-round-preparation，程序源码提交 50dfb76。包含独立自动轮次分析队列、回放物化 / 校验 / 编码后移、待写容量约束、范围身份跨轮复用及逐音伴奏规则的评估失效处理。manifest 标记 dirty=true（原有九项曲库修改），源码指纹 82C8270D3410E84BC935A5C49A6D63CA0CE823B95D2AC05F35204D6494E2407F。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。运行包检查使用独立引擎、曲库与 WebView 目录。日志 work/round-preparation-release.log、round-preparation-independent-check.log 及 round-preparation-package-check/{release-evidence.json,startup.log}。
+此前评分版运行包为 outputs/releases/Panthesia-20261119-round-preparation，程序源码提交 50dfb76。包含独立自动轮次分析队列、回放物化 / 校验 / 编码后移、待写容量约束、范围身份跨轮复用及逐音伴奏规则的评估失效处理。manifest 标记 dirty=true（原有九项曲库修改），源码指纹 82C8270D3410E84BC935A5C49A6D63CA0CE823B95D2AC05F35204D6494E2407F。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。运行包检查使用独立引擎、曲库与 WebView 目录。日志 work/round-preparation-release.log、round-preparation-independent-check.log 及 round-preparation-package-check/{release-evidence.json,startup.log}。
 
 
 上一批运行包为 outputs/releases/Panthesia-20261119-piano-viewport，主要改造提交 2779cb1，最终程序源码提交 be9e507。包含连续取景、鼠标 / 双指操作、前方密度和可配置快捷键、稳定绘制生命周期、取景保存 / 备份、5 BPM 速度快捷调整及固定预设的真实琴键边界。manifest 标记 dirty=true（原有九项曲库修改），源码指纹 6E34BFBE070E899A7E1D0FBFD9A2D5C856C6F664F76552526E8E399543F858DD。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查使用独立引擎、曲库和 WebView 目录。日志 work/piano-viewport-release-final.log、piano-viewport-independent-check.log 及 piano-viewport-package-check/{release-evidence.json,startup.log}。outputs/releases/Panthesia-20261119-continuous-viewport 是固定预设边界修正前的中间包，交付使用 piano-viewport。

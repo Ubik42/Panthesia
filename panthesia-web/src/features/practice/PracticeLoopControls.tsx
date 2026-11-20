@@ -209,35 +209,6 @@ export function PracticeLoopControls({
               ))}
             </select>
           </label>
-          <label className="practice-loop-rounds">
-            错误后自动重开
-            <select
-              aria-label="循环错误重开阈值"
-              value={state.loopRestartErrors}
-              onChange={(event) =>
-                command({
-                  type: "loopRestartErrors",
-                  count: Number(event.target.value),
-                })
-              }
-            >
-              {![0, 1, 2, 3, 5, 10, 20, 50, 100].includes(
-                state.loopRestartErrors,
-              ) && (
-                <option value={state.loopRestartErrors}>
-                  {state.loopRestartErrors} 个错音或漏音
-                </option>
-              )}
-              {[0, 1, 2, 3, 5, 10, 20, 50, 100].map((count) => (
-                <option key={count} value={count}>
-                  {count ? `${count} 个错音或漏音` : "关闭"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="parameter-help">
-            普通循环达到阈值后保存本轮并从起点重开，不计入完成遍数。日课和速度阶梯使用各自规则。
-          </p>
           <button
             type="button"
             className="practice-loop-passages"
@@ -250,7 +221,6 @@ export function PracticeLoopControls({
       {state.passage && (
         <span className="loop-progress">
           已完成 {state.repetitions} 遍
-          {state.loopRestarts ? ` · 因错误重开 ${state.loopRestarts} 次` : ""}
         </span>
       )}
     </section>

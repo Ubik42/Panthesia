@@ -78,7 +78,7 @@ export function PracticeTransport({
         : state.status === "finished"
           ? "再练一遍"
           : state.mode === "listen"
-            ? "开始聆听"
+            ? "开始播放"
             : "开始练习";
   const unavailable = !connected
     ? "等待引擎连接"
@@ -172,7 +172,7 @@ export function PracticeTransport({
             弹对后继续
           </button>
           <button
-            aria-pressed={state.mode === "flow"}
+            aria-pressed={state.mode === "listen"}
             title={nextDisabledReason}
             disabled={
               !available ||
@@ -181,7 +181,7 @@ export function PracticeTransport({
               state.recording ||
               !!nextDisabledReason
             }
-            onClick={() => command({ type: "mode", value: "flow" })}
+            onClick={() => command({ type: "mode", value: "listen" })}
           >
             连续播放
           </button>

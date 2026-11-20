@@ -155,17 +155,6 @@ impl Engine {
                     return Err(input.detail().into());
                 }
             }
-            if before.round_pending
-                && !before.exclusive
-                && !before.incomplete_recital
-                && (!report_temporary || before.error.is_none())
-            {
-                if let Err(error) = self.save_round_task() {
-                    if !report_temporary {
-                        return Err(error);
-                    }
-                }
-            }
             let engine = self.clone();
             let cancel = cancelled.clone();
             let drained = Arc::new(AtomicBool::new(false));

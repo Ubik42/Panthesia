@@ -53,7 +53,7 @@ export function NotePlaybackEditor({ song, locked, changed, onBusy }: {
   return <details className="note-playback-editor" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>逐音播放规则 <span>弹奏 · 伴奏 · 忽略</span></summary>
     {open && <>
-      <p>需要弹奏的音符参与等待和评分。自动伴奏由软件播放。忽略的音符停止发声，并从瀑布与 MIDI 练习谱中隐藏。音轨的静音与伴奏设置继续生效。</p>
+      <p>需要弹奏的音符用于按键后继续。自动伴奏由软件播放。忽略的音符停止发声，并从瀑布与 MIDI 练习谱中隐藏。音轨的静音与伴奏设置继续生效。</p>
       <div className="note-playback-controls">
         <label>音轨<select aria-label="播放规则音轨" value={track} disabled={busy} onChange={event => { setTrack(Number(event.target.value)); setOffset(0); }}>
           {song.tracks.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}

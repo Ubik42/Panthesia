@@ -39,6 +39,7 @@ impl Engine {
         self.practice_backup_preview_task(practice_backup_preview::PreviewInput::Bytes(bytes))
     }
     pub fn command(&self, command: Command) -> Result<serde_json::Value, String> {
+        let command = crate::practice_policy::normalize(command)?;
         let recording_note = matches!(command, Command::Note { .. })
             && self.state.lock().is_ok_and(|state| state.recording);
         if !recording_note {
@@ -134,15 +135,6 @@ impl Engine {
         }
         if matches!(command, Command::CurrentSong | Command::Session) {
             return self.song_document(matches!(command, Command::Session));
-        }
-        if matches!(&command, Command::PracticeVariant { .. }) {
-            let state = self.snapshot();
-            if !state.saved
-                && state.score.matched_notes + state.score.wrong_notes + state.score.missed_notes
-                    > 0
-            {
-                self.save_round_task()?;
-            }
         }
         if self.snapshot().content_id.is_some()
             && (asset_edit::supports(&command) || practice_edit::classify(&command).is_some())
@@ -290,7 +282,7 @@ impl Engine {
             Command::ExportPackage => return self.export_package_task(false),
             Command::ExportPackageFile => return self.export_package_task(true),
             Command::Recording { active: false } => return self.save_recording_task(),
-            Command::Save => return self.save_round_task(),
+            Command::Save => return Err("评分保存已移至独立分支".into()),
             Command::RetrySave => return self.retry_settings_save(None),
             Command::RetrySettingsSave { expected } => {
                 return self.retry_settings_save(Some(expected));

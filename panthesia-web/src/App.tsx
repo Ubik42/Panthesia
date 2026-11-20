@@ -1,3 +1,4 @@
+import {FolderManager} from "./features/library/FolderManager";
 import { pathKey } from "./engine/pathIdentity";
 import { SongBookmarks, type BookmarkNavigation } from "./features/practice/SongBookmarks";
 import { SavedPassageBar } from "./features/practice/SavedPassageBar";
@@ -922,10 +923,7 @@ export default function App() {
           case "display":
             setDisplayDialog(true);
             break;
-          case "history":
-            setFeedback(false);
-            void workspaceChange.current("review");
-            break;
+          case "history": return;
           case "passages":
             launchPracticeTool(() => setPassageDialog(true));
             break;
@@ -1812,12 +1810,9 @@ export default function App() {
             <button disabled={!song || state.recording} onClick={()=>action({type:["playing","countIn"].includes(playback.getSnapshot().status)?"pause":"play"})}>播放 / 暂停</button>
             <button disabled={!song} onClick={()=>action({type:"restart"})}>从头开始</button>
             <button disabled={!song || routineActive || ladderActive} onClick={()=>action({type:"mode",value:"wait"})}>弹对后继续</button>
-            <button disabled={!song || routineActive || ladderActive} onClick={()=>action({type:"mode",value:"flow"})}>连续播放</button>
-            <button disabled={!song} onClick={()=>action({type:"mode",value:"listen"})}>聆听示范</button>
+            <button disabled={!song || routineActive || ladderActive} onClick={()=>action({type:"mode",value:"listen"})}>连续播放</button>
             <button disabled={busy || openingActive || ladderActive || routineActive} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}> {state.recording?"停止录制":"录制演奏"}</button>
             <PreparationButton store={workspaceSessions.exercise} name="技术练习…" readyLabel="已生成" disabled={openingActive} open={()=>setExerciseDialog(true)}/>
-            <button onClick={()=>launchPracticeTool(()=>showRoutine())}>练习计划…</button>
-            {song && <button onClick={()=>void visitSongWorkspace("review",{contentId:song.contentId,title:song.title,path:song.sourcePath})}>本曲练习历史…</button>}
             {song?.generated && song.notes.length>0 && song.notes.every(n=>n.part==="left") && <button disabled={busy} onClick={()=>setLegacyExerciseDialog(true)}>核对旧版左手资料…</button>}
           </>},
           {label:"视图",content:<>
@@ -2331,37 +2326,6 @@ export default function App() {
               generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => setSettings(true)} />}
 
           </PracticeStage>
-          {state.routine && (
-            <RoutineStatus
-              state={state}
-              disabled={busy || state.recording || !connected || navigation.locked}
-              manage={() => showRoutine()}
-              end={() => action({ type: "stopRoutine" })}
-              resume={(routine) => { void run({ type: "openRoutineItem", routine_id: routine.routineId, day: routine.day, item_id: routine.itemId, resume: true }, true); }}
-              next={(r) => {
-                if (!r.nextItemId) return;
-                const nextItemId = r.nextItemId;
-                void run(
-                    {
-                      type: "openRoutineItem",
-                      routine_id: r.routineId,
-                      day: r.day,
-                      item_id: nextItemId,
-                      resume: true,
-                    },
-                    true,
-                  );
-              }}
-            />
-          )}
-          {state.ladder && (
-            <LadderStatus
-              song={song ?? undefined}
-              state={state}
-              action={action}
-              manage={() => setLadderDialog(true)}
-            />
-          )}
           <details className="practice-passage-details"><summary>小节与分段</summary>
           {song && (
             <LiveBarNavigator
@@ -2400,12 +2364,6 @@ export default function App() {
             disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
             changed={async()=>{const session=await api.session();installSession(session);}}
             manage={()=>launchPracticeTool(()=>setPassageDialog(true))} />}
-          <PracticeResultStrip
-            store={playback}
-            busy={busy}
-            feedback={showPracticeFeedback}
-            details={() => panels.revealInspector("results")}
-          />
           <PracticeQueueStrip store={playback} queue={queue} busy={busy || openingActive} connected={connected}
             open={openQueuedSong}
             manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
@@ -2454,21 +2412,7 @@ export default function App() {
             end={loopEnd}
             selectStart={setLoopStart}
             selectEnd={setLoopEnd}
-            expression={song && (
-              <SongExpressionEditor
-                key={song.contentId}
-                song={song}
-                state={state}
-                synchronize={refreshConfirmedSession}
-                sourceReady={startupReady && !binding && matchesSong(state, song) && (playback.getEngineId() ?? null) === (song.engineId ?? null)}
-                drafts={workspaceSessions.expressions}
-                reveal={expressionReveal?.contentId === song.contentId ? expressionReveal.id : undefined}
-                revealHandled={(id) => setExpressionReveal((old) => old?.id === id ? null : old)}
-                busy={busy}
-                locked={attemptLocked}
-                planActive={routineActive || ladderActive}
-              />
-            )}
+            expression={null}
           />
         )}
       </div>
@@ -2592,47 +2536,6 @@ export default function App() {
           changed={refresh}
         />
       )}
-      {routineDialog && (
-        <RoutineDialog
-          engineId={progressEngineId}
-          session={workspaceSessions.routineWorkbench}
-          initialPlan={routineLaunch}
-          initialPassage={routinePassage}
-          suspended={routineSuspended || workspace !== "practice"}
-          resumeRevision={routineResumeRevision}
-          song={song}
-          songs={songs}
-          collection={collection}
-          state={state}
-          close={() => {
-            setRoutineDialog(false);
-            setRoutineSuspended(false);
-            setRoutineLaunch(null);
-          }}
-          backup={() => {
-            setRoutineDialog(false);
-            setPracticeBackup(true);
-          }}
-          openLibrary={(focus) => {
-            setRoutineSuspended(true);
-            action({ type: "pause" });
-            setLibraryLaunch(focus);
-            setLibraryDialog(true);
-          }}
-          changed={refreshOrThrow}
-        />
-      )}
-      {ladderDialog && song && (
-        <LadderDialog
-          key={song.contentId}
-          song={song}
-          state={state}
-          start={loopStart}
-          end={loopEnd}
-          close={() => setLadderDialog(false)}
-          changed={refreshOrThrow}
-        />
-      )}
       {passageDialog && song && (
         <PassageDialog
           key={song.contentId}
@@ -2660,49 +2563,7 @@ export default function App() {
         manage={()=>setLibraryAdvanced(true)} resume={()=>void changeWorkspace("practice")}
         open={row=>load(row,row.contentId??undefined,"selected")} restore={restoreLibraryPractice}
         preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/>} 
-      {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && (
-        <LibraryDialog
-          engineId={progressEngineId}
-          readCache={workspaceSessions.libraryReads}
-          readCollection={readCollection}
-          metadataDrafts={workspaceSessions.metadata}
-          learningDrafts={workspaceSessions.learning}
-          initialBrowse={workspaceSessions.library}
-          searchRequest={librarySearch}
-          reviewSong={(target) => visitSongWorkspace("review", target)}
-          currentPractice={currentPracticeTarget}
-          continuePractice={continueLibraryPractice}
-          openUnavailable={currentPracticeUnavailable}
-          importFiles={() => { clearLiveNotes(); setImportDialog(true); }}
-          backToSource={changeWorkspace}
-          searchConsumed={(id) => setLibrarySearch((old) => old?.id === id ? null : old)}
-          rememberBrowse={workspaceSessions.rememberLibrary}
-          presentation="workspace"
-          navigationLockChanged={navigation.setLibraryLocked}
-          initialFocus={libraryLaunch === "normal" ? null : libraryLaunch}
-          focusConsumed={(focus) => setLibraryLaunch((old) => old === focus ? "normal" : old)}
-          rows={allLibraryRows}
-          rowsReady={libraryReady}
-          rowsError={libraryProblem}
-          refreshRows={refreshLibrary}
-          close={() => {
-            setLibraryDialog(false);
-            setLibraryLaunch("normal");
-            if (routineSuspended) {
-              setRoutineSuspended(false);
-              setRoutineResumeRevision((revision) => revision + 1);
-            }
-          }}
-          changed={refreshWithCollection}
-          confirmEditRefresh={refreshEdits}
-          preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus} />}
-          openVersion={async (row, contentId, kind, id, selection) => {
-            clearLiveNotes();
-            await libraryOpening.start(sourceForLibraryScore(row, contentId, kind, id, selection), row.title, row.path);
-          }}
-          open={(row, expectedContentId) => load(row, expectedContentId, "selected")}
-        />
-      )}
+      {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
       {libraryScoreRange && (
         <ScoreRangeDialog
           song={libraryScoreRange.song}
@@ -2771,199 +2632,8 @@ export default function App() {
           }}
         />
       )}
-      {feedback && (
-        <PlaybackView store={playback}>
-          {(live) => (
-            <FeedbackDialog
-              close={() => setFeedback(false)}
-              state={live}
-              contentId={song?.contentId ?? null}
-              trackNames={Object.fromEntries(
-                (song?.tracks ?? []).map((track) => [track.id, track.name]),
-              )}
-              practicePart={async (target: MeasurePartFeedback) => {
-                if (!song) throw new Error("请先选择曲目");
-                if (requestBusy.current) throw new Error("请等待当前操作完成");
-                requestBusy.current = true;
-                setBusy(true);
-                try {
-                  const initial = await api.session();
-                  if (initial.song?.contentId !== song.contentId)
-                    throw new Error("曲目已切换，请重新打开练习反馈");
-                  const current = initial.state;
-                  const send = (command: EngineCommand) => api.commandForEngine(current.stateOrder?.engineId, command);
-                  if (current.recording)
-                    throw new Error("请先停止录音，再重练指定小节和声部");
-                  if (current.routine)
-                    await send({ type: "stopRoutine" });
-                  else if (current.ladder?.active)
-                    await send({ type: "stopLadder" });
-                  if (["recital", "memory"].includes(current.mode))
-                    await send({ type: "mode", value: "flow" });
-                  await send({
-                    type: "prepareMeasurePart",
-                    contentId: song.contentId,
-                    measure: target.measure,
-                    part: target.part,
-                    trackId: target.track_id,
-                  });
-                  const session = await api.session();
-                  installSession(session);
-                  setFeedback(false);
-                  setError("");
-                } catch (e) {
-                  try {
-                    const session = await api.session();
-                    installSession(session);
-                  } catch {
-                    /* Keep the command error visible in the feedback dialog. */
-                  }
-                  throw e;
-                } finally {
-                  requestBusy.current = false;
-                  setBusy(false);
-                }
-              }}
-              arrangeNext={(source) => {
-                if (
-                  !song ||
-                  song.contentId !== source.contentId ||
-                  state.currentHistoryId !== source.id
-                )
-                  return;
-                setFeedbackPlan({ source, scoreRevision: song.scoreRevision });
-                setFeedback(false);
-              }}
-              retry={async () => {
-                await run({ type: "restart" });
-                setFeedback(false);
-                await run({ type: "play" });
-              }}
-              practice={async (start, end) => {
-                if (state.routine) await run({ type: "stopRoutine" });
-                else if (ladderActive) await run({ type: "stopLadder" });
-                if (recital) await run({ type: "mode", value: "flow" });
-                await run({ type: "measureLoop", start, end, enabled: true });
-                setFeedback(false);
-              }}
-            />
-          )}
-        </PlaybackView>
-      )}
-      {feedbackPlan && song?.contentId === feedbackPlan.source.contentId && (
-        <HistoryProblemPlan
-          key={`${feedbackPlan.source.contentId}:${feedbackPlan.source.id}`}
-          launchImmediately
-          review={{
-            contentId: feedbackPlan.source.contentId,
-            historyId: feedbackPlan.source.id,
-            scoreRevision: feedbackPlan.scoreRevision,
-            recordedAt: feedbackPlan.source.recordedAt,
-            title: feedbackPlan.source.title,
-            exact: true,
-            notes: feedbackPlan.source.notes,
-          }}
-          disabled={
-            busy || state.status === "playing" || state.status === "countIn"
-          }
-          dirtyChanged={() => {}}
-          onClose={() => setFeedbackPlan(null)}
-          openPlan={(id, day) => {
-            launchPracticeTool(() => {
-              setFeedbackPlan(null);
-              setRoutineLaunch({ id, day });
-              showRoutine();
-            });
-          }}
-        />
-      )}
-      {history && startupReady && (
-        <HistoryDialog
-          engineId={progressEngineId}
-          songRequest={historySongRequest}
-          songConsumed={(id) => setHistorySongRequest((old) => old?.id === id ? null : old)}
-          currentSong={currentPracticeTarget}
-          locateSong={(target) => visitSongWorkspace("library", target)}
-          backToSource={changeWorkspace}
-          readCache={workspaceSessions.historyReads}
-          annotationDrafts={workspaceSessions.annotations}
-          annotationRequest={annotationDraftRequest}
-          replayRequest={replayDraftRequest}
-          replayConsumed={(id) => setReplayDraftRequest((old) => old?.id === id ? null : old)}
-          annotationConsumed={(id) => setAnnotationDraftRequest((old) => old?.id === id ? null : old)}
-          initialBrowse={workspaceSessions.history}
-          rememberBrowse={workspaceSessions.rememberHistory}
-          presentation="workspace"
-          navigationLockChanged={navigation.setReviewLocked}
-          openPlan={(id, day) => {
-            launchPracticeTool(() => {
-              setHistory(false);
-              setRoutineLaunch({ id, day });
-              showRoutine();
-            });
-          }}
-          review={(data) => {
-            setHistoryScoreReview(data);
-            setHistoryScoreFocus(null);
-            setView("score");
-            setEditFingers(false);
-            setSelectedNote(null);
-            setFeedback(false);
-          }}
-          score={(focus) => {
-            setHistoryScoreReview(null);
-            setHistoryScoreFocus({ ...focus, request: crypto.randomUUID() });
-            setView("score");
-            setEditFingers(false);
-            setSelectedNote(null);
-          }}
-          paper={(focus) => {
-            setHistoryScoreReview(null);
-            setHistoryScoreFocus(null);
-            setHistoryPaperFocus({ ...focus, request: crypto.randomUUID() });
-            setView("paper");
-            setEditFingers(false);
-            setSelectedNote(null);
-          }}
-          finger={async (focus) => {
-            const loaded = getBoundSong();
-            if (!loaded || loaded.contentId !== focus.contentId)
-              throw new Error("曲目已经切换，请重新从历史定位指法");
-            const note = loaded.notes.find(
-              (n) =>
-                n.track === focus.track &&
-                n.index === focus.index &&
-                n.pitch === focus.pitch &&
-                Math.abs(n.start - focus.songTime) < 0.001,
-            );
-            if (!note)
-              throw new Error("原曲音符位置已经改变，无法安全定位指法");
-            setHistoryScoreReview(null);
-            setHistoryScoreFocus(null);
-            setHistoryPaperFocus(null);
-            setView("keyboard");
-            setEditFingers(false);
-            setSelectedNote(note);
-            setFingeringDialog(true);
-          }}
-          close={() => {
-            setHistory(false);
-            setFeedback(false);
-          }}
-          changed={async () => {
-            const current = await refreshConfirmedSession();
-            setFeedback(false);
-            void updateCollection().catch((failure) => {
-              setError(`当前练习已更新，最近曲目读取失败：${failure instanceof Error ? failure.message : String(failure)}`);
-            });
-            return current;
-          }}
-          backup={() => {
-            setHistory(false);
-            setPracticeBackup(true);
-          }}
-        />
-      )}
+      {null}
+      {null}
       {displayDialog && (
         <DisplaySettingsDialog
           input={state.input}

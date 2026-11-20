@@ -371,19 +371,7 @@ export function PassageDialog({
                   >
                     练已保存段
                   </button>
-                  <button
-                    disabled={busy || sourceChanged || pending || stale(row)}
-                    onClick={() =>
-                      addToRoutine({
-                        contentId: song.contentId,
-                        id: row.id,
-                        name: row.name,
-                        notes: row.notes,
-                      })
-                    }
-                  >
-                    加入计划…
-                  </button>
+
                 </div>
               </article>
             ))}
@@ -547,7 +535,7 @@ export function PassageDialog({
             </p>
             {dirty && (
               <p className="parameter-help">
-                “练已保存段”和“加入计划”采用保存版本。当前输入会继续暂存。
+                “练已保存段”采用保存版本。当前输入会继续暂存。
               </p>
             )}
             {problem && (

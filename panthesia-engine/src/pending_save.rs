@@ -135,21 +135,11 @@ fn merge_writes(
 #[derive(Default)]
 struct Queue {
     revision: u64,
-    preparing: usize,
     pending: Option<Batch>,
     failed: Option<BTreeMap<PathBuf, DeferredWrite>>,
     error: Option<String>,
     draining: bool,
     retrying: bool,
-}
-pub(crate) struct Preparation(Arc<Mutex<Queue>>);
-impl Drop for Preparation {
-    fn drop(&mut self) {
-        if let Ok(mut queue) = self.0.lock() {
-            queue.preparing = queue.preparing.saturating_sub(1);
-            queue.revision = queue.revision.wrapping_add(1);
-        }
-    }
 }
 #[derive(Clone)]
 pub(crate) struct Pipeline {
@@ -161,7 +151,6 @@ pub(crate) struct Pipeline {
     data: PathBuf,
     queue: Arc<Mutex<Queue>>,
     tasks: TaskPool,
-    round_tasks: TaskPool,
     tx: mpsc::Sender<Request>,
     busy: Arc<AtomicBool>,
 }
@@ -201,52 +190,10 @@ impl Pipeline {
     pub fn sender(&self) -> mpsc::Sender<Request> {
         self.tx.clone()
     }
-    /// Frozen round preparation has no filesystem side effects. Keep it independent
-    /// of archive encoding and transactions already queued on the storage lane.
-    pub fn post_round_preparation(
-        &self,
-        label: &str,
-        work: impl FnOnce(
-            crate::background_tasks::TaskToken,
-            Preparation,
-        ) -> Result<serde_json::Value, String>
-        + Send
-        + 'static,
-    ) -> Result<(), String> {
-        let guard = Preparation(self.queue.clone());
-        {
-            let mut queue = self.queue.lock().map_err(|_| "保存队列不可用")?;
-            queue.preparing += 1;
-            queue.revision = queue.revision.wrapping_add(1);
-        }
-        let pipeline = self.clone();
-        self.round_tasks.post(label, move |token| {
-            // One batch may be encoding/writing while another holds at most
-            // seven replays plus history. A stalled disk must not retain an
-            // unbounded sequence of immutable captures in memory.
-            loop {
-                token.check()?;
-                let ready = {
-                    let queue = pipeline.queue.lock().map_err(|_| "保存队列不可用")?;
-                    if let Some(error) = &queue.error {
-                        return Err(error.clone());
-                    }
-                    queue.pending.as_ref().is_none_or(|batch| batch.writes.len() < 8)
-                };
-                if ready {
-                    break;
-                }
-                token.stage("waitingStorage")?;
-                std::thread::sleep(std::time::Duration::from_millis(5));
-            }
-            work(token, guard)
-        })
-    }
     pub fn new(
         data: PathBuf,
         tasks: TaskPool,
-        round_tasks: TaskPool,
-        tx: mpsc::Sender<Request>,
+            tx: mpsc::Sender<Request>,
         busy: Arc<AtomicBool>,
         data_lock: Arc<crate::data_root_lock::DataRootLock>,
         reclaimer: crate::playback_memory::Reclaimer,
@@ -274,7 +221,6 @@ impl Pipeline {
             targets,
             data,
             tasks,
-            round_tasks,
             tx,
             busy,
             queue: Arc::new(Mutex::new(Queue::default())),
@@ -287,12 +233,11 @@ impl Pipeline {
             Ok(queue) => Status {
                 version: self.version(&queue),
                 operation: None,
-                pending: queue.preparing != 0
-                    || queue.draining
+                pending: queue.draining
                     || queue.pending.is_some()
                     || queue.failed.is_some()
                     || recovery.blocked(),
-                writing: queue.preparing != 0 || queue.draining || queue.pending.is_some(),
+                writing: queue.draining || queue.pending.is_some(),
                 unsaved_changes: queue
                     .failed
                     .as_ref()
@@ -607,7 +552,6 @@ impl crate::Player {
                 self.state.error = self.save_error.clone();
             }
             crate::storage_control::unblock(self);
-            self.continue_saved_round(false);
         }
     }
 }

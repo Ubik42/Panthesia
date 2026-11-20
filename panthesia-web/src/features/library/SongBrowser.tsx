@@ -174,7 +174,7 @@ export function SongBrowser({
     [globalSearch, setGlobalSearch] = useState(false),
     [sort, setSort] = useState(() => {
       const value = stored("panthesia-browser-sort", "title");
-      return ["title", "recent", "count", "progress"].includes(value)
+      return ["title", "recent"].includes(value)
         ? value
         : "title";
     }),
@@ -300,7 +300,7 @@ export function SongBrowser({
         const path = libraryPath(row.path),
           record = recordFor(row);
         if (tab === "favorites" && !record?.favorite) return false;
-        if (tab === "recent" && !record?.lastPracticed) return false;
+        if (tab === "recent" && !record?.lastUsed) return false;
         if (
           !(globalSearch && queryValue) &&
           selectedFolder &&
@@ -367,7 +367,7 @@ export function SongBrowser({
         .sort((a, b) => {
           const compared =
             sort === "recent"
-              ? a.lastPracticed - b.lastPracticed
+              ? a.lastUsed - b.lastUsed
               : sort === "count"
                 ? a.practiceCount - b.practiceCount
                 : sort === "progress"
@@ -705,7 +705,7 @@ export function SongBrowser({
             {[
               ["all", "全部"],
               ["favorites", "收藏"],
-              ["recent", "最近练习"],
+              ["recent", "最近打开"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -730,9 +730,7 @@ export function SongBrowser({
               onChange={(event) => setSort(event.target.value)}
             >
               <option value="title">按曲名</option>
-              <option value="recent">按最近练习</option>
-              <option value="count">按练习记录数</option>
-              <option value="progress">按练习状态</option>
+              <option value="recent">按最近打开</option>
             </select>
             <button
               aria-label={descending ? "切换为升序" : "切换为降序"}
@@ -750,10 +748,7 @@ export function SongBrowser({
             {folderName} · {groups.length.toLocaleString()} 首 ·{" "}
             {performanceCount.toLocaleString()} 份演奏
           </span>
-          <span>
-            已练习 <b>{practiced}</b> 首 · 近 90 天有整曲记录 <b>{complete}</b>{" "}
-            首
-          </span>
+
         </div>
         <div
           ref={list}
@@ -858,20 +853,7 @@ export function SongBrowser({
                     {group.performances.length} 份演奏
                   </span>
                 )}
-                <span className="browser-song-study">
-                  <strong>
-                    {group.completeVersions
-                      ? "有整曲记录"
-                      : group.lastPracticed
-                        ? "已练习"
-                        : "未练习"}
-                  </strong>
-                  <small>
-                    {group.lastPracticed
-                      ? `${practiceDate(group.lastPracticed)} · ${group.practiceCount} 次记录`
-                      : "—"}
-                  </small>
-                </span>
+                {group.lastUsed > 0 && <span className="browser-song-study"><small>{practiceDate(group.lastUsed)} 打开</small></span>}
                 {isCurrent && <span className="browser-current">当前歌曲</span>}
                 <ChevronRight size={15} />
               </button>
@@ -998,13 +980,6 @@ export function SongBrowser({
                 </p>
               )}
             </div>
-            <BrowserPracticeSummary
-              record={selectedRecord}
-              disabled={opening || !!unavailable}
-              resume={(attempt) => {
-                void continuePractice(attempt);
-              }}
-            />
             <div className="browser-sound-status">
               <i className={state.sound?.ready ? "ready" : ""} />
               <span>

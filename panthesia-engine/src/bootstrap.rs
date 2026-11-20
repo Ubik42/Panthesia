@@ -32,7 +32,6 @@ impl Engine {
         let data_lock = Arc::new(data_lock);
         let tasks = background_tasks::TaskPool::new(2, 8)?;
         let storage_tasks = tasks.storage_lane(32)?;
-        let round_tasks = tasks.serial_lane("round-analysis", 8)?;
         let devices = device_catalog::Catalog::start()?;
         let player_devices = devices.clone();
         let sound = sound_runtime::Host::start(silent,data.clone())?;
@@ -69,7 +68,6 @@ impl Engine {
         let pending_saves = pending_save::Pipeline::new(
             engine_data.clone(),
             storage_tasks.clone(),
-            round_tasks,
             tx.clone(),
             storage_busy.clone(),
             data_lock.clone(),

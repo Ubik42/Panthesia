@@ -52,9 +52,6 @@ pub(crate) enum Request {
     Shutdown,
     StorageFence(mpsc::SyncSender<Result<crate::storage_close::Fence,String>>),
     StorageRecoveryObserved(mpsc::SyncSender<Result<crate::pending_save::StorageStatus,String>>),
-    RoundSaveBegin { id:String, reply:mpsc::SyncSender<Result<Option<crate::round_save::Context>,String>> },
-    RoundAnalysisReady { id:String, assessment:crate::round_analysis::SharedAssessment },
-    RoundSaveFinish { id:String, result:Result<crate::round_save::Outcome,String>, automatic:bool, reply:Option<Reply> },
     SaveFinished { result: Result<(), String>, replies: Vec<crate::pending_save::Completion> },
     BackupImportBegin { id: String, reply: mpsc::SyncSender<Result<crate::practice_backup_import::Context, String>> },
     BackupImportFinish { id: String, result: Result<crate::practice_backup_import::Outcome, String>, reply: Option<Reply> },
@@ -160,10 +157,10 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
-        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::FeedbackContext(_) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::BackupImportFinish { .. } | Request::RoundAnalysisReady { .. } | Request::RoundSaveFinish { .. } | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
+        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::FeedbackContext(_) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::BackupImportFinish { .. } | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
         Request::RegisterImportedScore{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         Request::ScoreMappingContext{..} | Request::ScoreMappingInstall{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
-        Request::BackupImportBegin { .. } | Request::RoundSaveBegin { .. } if player.closing.load(std::sync::atomic::Ordering::Acquire) && !player.storage_busy.load(std::sync::atomic::Ordering::Acquire) => true,
+        Request::BackupImportBegin { .. } if player.closing.load(std::sync::atomic::Ordering::Acquire) && !player.storage_busy.load(std::sync::atomic::Ordering::Acquire) => true,
         _ => false,
     };
     if (player.storage_busy.load(std::sync::atomic::Ordering::Acquire)||player.closing.load(std::sync::atomic::Ordering::Acquire)) && !allowed {
@@ -290,30 +287,15 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::pending_save::respond(reply,Ok(crate::storage_close::Fence {
                 recording: player.recorder.is_recording(), recording_unsaved: player.recorder.has_take()&&!player.recording_saved,
                 unsaved_round, round_pending, incomplete_recital,
-                progress_pending: player.round_continuation_pending && (player.routine.is_some() || player.ladder.as_ref().is_some_and(|run|run.active) || player.state.passage.is_some()),
+                progress_pending: false,
                 exclusive: player.storage_id.is_some()||player.sound_change.is_some(),
                 error: storage.error.clone(), storage,
             }));
         }
         Request::StorageRecoveryObserved(reply) => {
             crate::storage_control::unblock(player);
-            player.continue_saved_round(false);
             crate::state_projection::publish(player, shared);
             crate::pending_save::respond(reply, Ok(crate::storage_control::status(player)));
-        }
-        Request::RoundSaveBegin { id, reply } => {
-            let result=player.begin_round_save(id.clone());
-            if reply.send(result).is_err() { let _=player.finish_round_save(&id,Err("本轮保存调用已关闭".into()),false); }
-            crate::state_projection::publish(&player, &shared);
-        }
-        Request::RoundSaveFinish { id,result,automatic,reply } => {
-            let result=player.finish_round_save(&id,result,automatic);
-            crate::state_projection::publish(&player, &shared);
-            if let Some(reply)=reply { crate::pending_save::respond(reply,result); }
-        }
-        Request::RoundAnalysisReady { id, assessment } => {
-            player.accept_round_assessment(&id, assessment);
-            crate::state_projection::publish(&player, &shared);
         }
         Request::SaveFinished { result, replies } => {
             player.finish_settings_save(&result);
@@ -589,9 +571,6 @@ impl Request {
             Self::Shutdown => {}
             Self::StorageFence(reply) => { fail!(reply); }
             Self::StorageRecoveryObserved(reply) => { fail!(reply); }
-            Self::RoundSaveBegin { reply,.. } => { fail!(reply); }
-            Self::RoundAnalysisReady { .. } => {}
-            Self::RoundSaveFinish { reply,.. } => { if let Some(reply)=reply { fail!(reply); } }
             Self::SaveFinished { result: _, replies } => { for reply in replies { reply(Err(message.into())); } }
             Self::PlaybackAdjustment(_, _, reply) | Self::Command(_, reply) | Self::ReplayCommit(_, _, _, reply) | Self::BasicCommit(_, _, _, reply) => { fail!(reply); }
             #[cfg(test)]

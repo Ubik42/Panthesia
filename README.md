@@ -2,7 +2,7 @@
 
 # Panthesia
 
-Panthesia 是 Ubik42 独立维护的本地钢琴练习、乐谱与音乐工作台。项目把选曲、分段练习、演奏反馈、看谱跟随、指法、录音回顾和音源连接成完整工作流，并与音频分轨、演奏 MIDI 和自动制谱工具衔接。
+Panthesia 是 Ubik42 独立维护的本地钢琴练习、乐谱与音乐工作台。项目把选曲、分段练习、看谱跟随、指法、演奏录音和音源连接成日常练琴工作流，并与音频分轨、演奏 MIDI 和自动制谱工具衔接。
 
 当前处于持续开发阶段。实现、实际验证和外部设备依赖分别记录在[功能对照](docs/development/synthesia-feature-matrix.md)、[架构路线](docs/development/modernization-roadmap.md)与[开发交接](docs/development/modernization-handoff.md)。清单中仍有未完成事项。
 
@@ -11,9 +11,9 @@ Panthesia 是 Ubik42 独立维护的本地钢琴练习、乐谱与音乐工作�
 ```text
 本地曲库 / MIDI / MusicXML
   → 声部、音源、手别与逐音播放设置
-  → 等音、连续、节奏与记忆练习，分段循环和速度调整
-  → 音准、节奏、力度、时值与踏板反馈
-  → 保存演奏和条件，回顾问题并继续练习
+  → 连续播放或按键引导，分段循环、BPM、转调与量化
+  → 瀑布、琴键和谱面跟随
+  → 保存练习条件，按自己的安排继续练习
 ```
 
 - 曲库提供文件夹树、多目录监视、搜索、收藏、队列、资料编辑和文件修复。
@@ -21,7 +21,9 @@ Panthesia 是 Ubik42 独立维护的本地钢琴练习、乐谱与音乐工作�
 - MusicXML/MXL、PDF 和图片谱面各自保留来源，原谱编辑衔接 MuseScore。
 - 每个音符可以需要弹奏、自动伴奏或忽略，播放职责与手别独立。
 - Windows MIDI、内置钢琴和 Pianoteq VST3 有独立设置与路由，具体兼容证据随交付版本记录。
-- 练习记录、计划、回放、备份与曲目包保存在本地。
+- 演奏录音、练习条件、备份与曲目包保存在本地。旧历史和回放文件继续保留。
+
+判定、评分、达标日课、表现目标和自动晋级保存在独立分支 `feature/assessment-lab`（`ca4aeb5`）。main 不提供评分开关，普通播放与循环不等待成绩保存。范围与资料兼容说明见[分支边界](docs/development/assessment-separation.md)。
 
 外部音频转谱链使用 BS-RoFormer-SW、Transkun 和 DuET，交付演奏 MIDI、MusicXML 与谱面 MIDI。模型推理在离线工具中完成，日常练习与实时音频可以独立运行。
 

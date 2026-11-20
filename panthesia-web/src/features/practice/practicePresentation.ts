@@ -1,31 +1,8 @@
 import type { CollectionSong, LoadedSong, Snapshot } from "../../api";
 
 export const practiceModes = [
-  {
-    value: "wait",
-    label: "弹对后继续",
-    detail: "弹对后继续，按自己的速度熟悉音符。",
-  },
-  {
-    value: "flow",
-    label: "连续播放",
-    detail: "曲目持续发声，可跟弹并记录错音、漏音和节奏。",
-  },
-  {
-    value: "listen",
-    label: "聆听",
-    detail: "自动演奏已启用的音轨，先熟悉曲目。",
-  },
-  {
-    value: "recital",
-    label: "完整演奏",
-    detail: "从曲首演奏一遍，完成后查看评分。",
-  },
-  {
-    value: "memory",
-    label: "背谱",
-    detail: "隐藏谱面、目标音符与指法，完成后查看评分。",
-  },
+  { value: "wait", label: "弹对后继续", detail: "按自己的速度逐步弹奏，所需琴键按下后继续。" },
+  { value: "listen", label: "连续播放", detail: "按当前 BPM 连续播放，可自由跟弹、暂停和循环。" },
 ] as const;
 
 export function practiceMode(mode: string) {

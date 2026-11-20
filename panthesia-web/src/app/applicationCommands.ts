@@ -288,7 +288,7 @@ export function applicationCommands(
   unavailable: Record<CommandRequirement, string | null>,
   shortcuts: Shortcuts,
 ): ApplicationCommand[] {
-  return definitions.map(
+  return definitions.filter(item => !["review", "songHistory", "routine", "ladder"].includes(item.id)).map(
     (item: CommandDefinition & { id: ApplicationCommandId }) => ({
       ...item,
       shortcut: item.shortcut ? shortcuts[item.shortcut] : null,

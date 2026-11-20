@@ -38,7 +38,6 @@ const shortcutGroups: {
       "library",
       "inspector",
       "display",
-      "history",
       "passages",
       "libraryManager",
       "commands",
