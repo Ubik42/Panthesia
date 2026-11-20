@@ -105,26 +105,30 @@ export function BrowserPracticeSummary({
           原文件位置暂不可用，请先在文件位置中修复。
         </p>
       )}
-      <div className="browser-whole-evidence">
-        <strong>
-          {whole ? "近 90 天有完整整曲记录" : "近 90 天尚无完整整曲记录"}
-        </strong>
-        {whole ? (
-          <p>
-            {attemptConditions(whole)}
-            <br />
-            最近命中率 {Math.round(whole.accuracy ?? 0)}% · 同条件{" "}
-            {record?.practice?.comparableWholeCount ?? 0} 次
-          </p>
-        ) : (
-          <p>完整弹完所选声部后，整曲成绩会显示在这里。</p>
-        )}
-      </div>
+      {!record?.generated && (
+        <div className="browser-whole-evidence">
+          <strong>
+            {whole ? "近 90 天有完整整曲记录" : "近 90 天尚无完整整曲记录"}
+          </strong>
+          {whole ? (
+            <p>
+              {attemptConditions(whole)}
+              <br />
+              最近命中率 {Math.round(whole.accuracy ?? 0)}% · 同条件{" "}
+              {record?.practice?.comparableWholeCount ?? 0} 次
+            </p>
+          ) : (
+            <p>在连续、完整演奏或背谱模式下完整弹完所选声部后显示。</p>
+          )}
+        </div>
+      )}
       {record?.review?.due && (
         <p className="browser-practice-due">
-          {record.review.sourceIsWholeSong
-            ? "整曲已到复习时间"
-            : "有选段可复习"}
+          {record.generated
+            ? "技术练习已到复习时间"
+            : record.review.sourceIsWholeSong
+              ? "整曲已到复习时间"
+              : "有选段可复习"}
         </p>
       )}
     </section>
