@@ -30,7 +30,7 @@ const historyReadCommands = new Set<EngineCommand["type"]>([
 let sessionReadSequence = 0;
 const service = "http://127.0.0.1:32124";
 const controlCommands = new Set<EngineCommand["type"]>([
-  "panic", "pause", "note", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",
+  "panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",
 ]);
 const backgroundCommands = new Set<EngineCommand["type"]>([
   "discoverSynthesiaMetadata", "previewDiscoveredSynthesiaMetadata", "importDiscoveredSynthesiaMetadata",

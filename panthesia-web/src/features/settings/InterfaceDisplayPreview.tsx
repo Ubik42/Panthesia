@@ -1,7 +1,7 @@
 import {
   displayPitch,
   handColor,
-  noteLabel,
+  productLabel,
   type DisplayPreferences,
 } from "../../displayPreferences";
 import { effectPalettes } from "../practice/pianoEffects";
@@ -19,10 +19,7 @@ export function InterfaceDisplayPreview({
 }: {
   value: DisplayPreferences;
 }) {
-  const label = (pitch: number) =>
-    value.keyLabels === "none" || (value.keyLabels === "c" && pitch % 12 !== 0)
-      ? ""
-      : displayPitch(pitch, value);
+  const label = (pitch: number) => productLabel(pitch,"key",value,{own:true,finger:pitch===60?1:null});
   const notes = [
     { pitch: 60, x: 9, width: 56, y: 44, height: 52, hand: "left", finger: 5 },
     {
@@ -84,7 +81,7 @@ export function InterfaceDisplayPreview({
               fill="#142032"
               fontWeight="650"
             >
-              {noteLabel(note.pitch, note.finger, value)}
+              {productLabel(note.pitch,"note",value,{own:note.hand==="right",finger:note.finger})}
             </text>
           </g>
         ))}
@@ -121,7 +118,7 @@ export function InterfaceDisplayPreview({
               fill="#263340"
               stroke="#121b24"
             />
-            {value.keyLabels === "all" && (
+            {!!label(pitch) && (
               <text
                 x={(after + 1) * 62 + 5}
                 y="136"

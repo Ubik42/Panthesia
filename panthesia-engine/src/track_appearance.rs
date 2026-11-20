@@ -6,6 +6,14 @@ use std::collections::BTreeMap;
 pub struct TrackAppearance {
     pub name: Option<String>,
     pub color: Option<String>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub hand_colors: Option<BTreeMap<String, PartColor>>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase")]
+pub struct PartColor { pub color:Option<String>, pub visible:bool }
+fn valid_color(color:&Option<String>)->bool {
+    color.as_ref().is_none_or(|c|c.len()==7&&c.starts_with('#')&&c.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit))
 }
 impl TrackAppearance {
     pub fn validate(&self) -> Result<(), String> {
@@ -20,6 +28,9 @@ impl TrackAppearance {
                 || !c.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
         }) {
             return Err("音轨颜色无效".into());
+        }
+        if self.hand_colors.as_ref().is_some_and(|colors|colors.len()>3||colors.iter().any(|(key,value)|!matches!(key.as_str(),"left"|"right"|"other")||!valid_color(&value.color))) {
+            return Err("声部配色无效".into());
         }
         Ok(())
     }
@@ -56,7 +67,14 @@ impl Player {
             return Err("找不到音轨".into());
         }
         let cid = file.content_id.clone();
+        let previous=self.preferences.track_appearances.get(&cid).and_then(|m|m.get(&id)).cloned();
         let appearance = appearance.map(|mut a| {
+            if a.hand_colors.is_none() { a.hand_colors=previous.as_ref().and_then(|p|p.hand_colors.clone()); }
+            if let Some(colors)=a.hand_colors.as_mut() {
+                if let Some(track)=self.config.tracks.iter().find(|t|t.track_id==id) {
+                    colors.insert(crate::hands::label(track.practice_part).into(),PartColor{color:a.color.clone(),visible:track.visible});
+                }
+            }
             a.name = a.name.map(|n| n.trim().to_string());
             a.color = a.color.map(|c| c.to_ascii_lowercase());
             a
@@ -70,7 +88,7 @@ impl Player {
             .track_appearances
             .entry(cid.clone())
             .or_default();
-        if let Some(a) = appearance.filter(|a| a.name.is_some() || a.color.is_some()) {
+        if let Some(a) = appearance.filter(|a| a.name.is_some() || a.color.is_some() || a.hand_colors.as_ref().is_some_and(|m|!m.is_empty())) {
             rows.insert(id, a);
         } else {
             rows.remove(&id);
@@ -83,6 +101,19 @@ impl Player {
             return Err(e);
         }
         Ok(serde_json::json!({"ok":true}))
+    }
+    /// Remember display choices separately for each hand; the same song remains one asset.
+    pub(crate) fn switch_part_color(&mut self,id:usize,next:panthesia_core::practice::PracticePart,visible:bool)->Result<bool,String> {
+        let cid=self.file.as_ref().ok_or("请先选择曲目")?.content_id.clone();
+        let track=self.config.tracks.iter().find(|t|t.track_id==id).ok_or("找不到声部")?;
+        let old=crate::hands::label(track.practice_part);
+        let key=crate::hands::label(next);
+        let a=self.preferences.track_appearances.entry(cid).or_default().entry(id).or_default();
+        let colors=a.hand_colors.get_or_insert_with(BTreeMap::new);
+        colors.insert(old.into(),PartColor{color:a.color.clone(),visible:track.visible});
+        let value=if old==key {PartColor{color:a.color.clone(),visible}} else {colors.get(key).cloned().unwrap_or(PartColor{color:None,visible})};
+        a.color=value.color.clone();colors.insert(key.into(),value.clone());
+        Ok(value.visible)
     }
     pub(crate) fn decorate_tracks(&self, v: &mut serde_json::Value) {
         let map = self.track_appearances();
@@ -107,6 +138,33 @@ impl Player {
 mod tests {
     use super::*;
     use crate::Command;
+    #[test]
+    fn per_hand_colors_roundtrip_and_part_reset_preserve_finger_annotations() {
+        use crate::Command;
+        let (mut p,_,_)=crate::history_loading::tests::seeded(true,false);
+        let file=p.file.as_ref().unwrap();let cid=file.content_id.clone();
+        let id=file.tracks.iter().find(|t|!t.notes.is_empty()).unwrap().track_id;
+        let fingers=(*p.fingers).clone();
+        p.command(Command::Track{id,mode:"human".into(),part:"left".into(),visible:true}).unwrap();
+        p.set_track_appearance(id,Some(TrackAppearance{name:None,color:Some("#123456".into()),hand_colors:None})).unwrap();
+        p.command(Command::Track{id,mode:"auto".into(),part:"other".into(),visible:false}).unwrap();
+        assert_eq!(p.track_appearances()[&id].color,None);
+        p.set_track_appearance(id,Some(TrackAppearance{name:None,color:Some("#abcdef".into()),hand_colors:None})).unwrap();
+        p.command(Command::Track{id,mode:"human".into(),part:"left".into(),visible:true}).unwrap();
+        assert_eq!(p.track_appearances()[&id].color.as_deref(),Some("#123456"));
+        assert!(p.config.tracks.iter().find(|t|t.track_id==id).unwrap().visible);
+        p.command(Command::Track{id,mode:"auto".into(),part:"other".into(),visible:true}).unwrap();
+        assert_eq!(p.track_appearances()[&id].color.as_deref(),Some("#abcdef"));
+        assert!(!p.config.tracks.iter().find(|t|t.track_id==id).unwrap().visible);
+        let bytes=p.export_piece_package(false).unwrap();let bytes:Vec<u8>=serde_json::from_value(bytes["bytes"].clone()).unwrap();
+        let decoded=crate::piece_package::Package::decode(&bytes).unwrap();
+        assert_eq!(decoded.manifest.track_appearances[&id],p.track_appearances()[&id]);
+        let proof=p.hand_suggestion_proof().unwrap();
+        p.command(Command::ResetPartSettings{content_id:cid,track:id,proof}).unwrap();
+        assert_eq!(*p.fingers,fingers);
+        assert!(p.track_appearances()[&id].color.is_none());
+        assert!(!p.note_hands.keys().any(|(t,_)|*t==id));
+    }
     #[test]
     fn source_names_appearance_persistence_and_no_transport_reset() {
         use midi_file::midly::{
@@ -176,6 +234,7 @@ mod tests {
         let a = TrackAppearance {
             name: Some("旋律练习".into()),
             color: Some("#f1ad67".into()),
+            hand_colors:None,
         };
         p.command(Command::TrackAppearance {
             id,
@@ -208,7 +267,7 @@ mod tests {
                 id,
                 appearance: Some(TrackAppearance {
                     name: Some("bad\nname".into()),
-                    color: None
+                    color: None, hand_colors:None
                 })
             })
             .is_err()
@@ -218,7 +277,7 @@ mod tests {
                 id,
                 appearance: Some(TrackAppearance {
                     name: None,
-                    color: Some("red".into())
+                    color: Some("red".into()), hand_colors:None
                 })
             })
             .is_err()

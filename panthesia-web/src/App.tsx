@@ -1,3 +1,5 @@
+import type { DeviceObject } from "./features/screens/MusicDeviceList";
+import { useProductNavigation } from "./features/screens/useProductNavigation";
 import { Bookmark as BookmarkIcon,Settings as DisplayGear,Repeat2 as LoopIcon,Music2 as ScoreIcon,Search as ZoomIcon } from "lucide-react";
 import { AboutDialog } from "./app/AboutDialog";
 import { ActionSearch } from "./app/ActionSearch";
@@ -189,6 +191,7 @@ export default function App() {
   );
   const setDisplay = interfaceSettings.setPreferences;
   const [displayDialog, setDisplayDialog] = useState(false);
+  const [displaySection,setDisplaySection]=useState<"display"|"appearance"|"keyboard"|"shortcuts"|"backup"|undefined>(undefined);
   useEffect(() => {
     document.documentElement.style.zoom = String(display.uiScale / 100);
     document.documentElement.style.setProperty(
@@ -287,7 +290,8 @@ export default function App() {
   const [expressionReveal, setExpressionReveal] = useState<{ contentId: string; id: string } | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
   const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
-  function openSoundSettings(){setSettingsTab("sound");setSettingsReturnToScores(false);setSettings(true);}
+  const [settingsDevice,setSettingsDevice]=useState<DeviceObject|undefined>();
+  function openSoundSettings(device?:DeviceObject){setSettingsDevice(device);setSettingsTab("sound");setSettingsReturnToScores(false);setSettings(true);}
   const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
   const [settings, setSettings] = useState(false),
     [editFingers, setEditFingers] = useState(false),
@@ -491,7 +495,12 @@ export default function App() {
       let commandAccepted = false;
       let readingSavedLists = false;
       try {
-        if ((value.type === "finger" || value.type === "trackSound" || value.type === "setPartHands" || value.type === "applyHands") && song) await api.editPractice(song, value);
+        if ((value.type === "trackSound" || value.type === "resetPartSettings" || value.type === "trackAppearance" || value.type === "setPartHands") && song) {
+          const current=getBoundSong();
+          if(!current || current.contentId!==song.contentId || current.engineId!==song.engineId) throw new Error("曲目已改变，请重新打开声部设置。");
+          await api.editPractice(current,value);
+        }
+        else if ((value.type === "finger" || value.type === "applyHands") && song) await api.editPractice(song, value);
         else if (value.type === "panic") await api.command(value);
         else if (isPlaybackAdjustment(value)) await api.adjustPlayback(capturePlaybackSource(playback.getSnapshot()), value, requestedAt);
         else await api.commandForEngine(playback.getSnapshot().stateOrder?.engineId, value);
@@ -530,7 +539,7 @@ export default function App() {
         setBusy(false);
       }
     },
-    [updateCollection, refreshLibrary, refreshOpenedSession, setState, song, clearLiveNotes, binding, playback],
+    [updateCollection, refreshLibrary, refreshOpenedSession, getBoundSong, setState, song, clearLiveNotes, binding, playback],
   );
   const changeWorkspace = useCallback(async (next: Workspace, signal?: AbortSignal) => {
     if (signal?.aborted) return false;
@@ -1735,20 +1744,11 @@ export default function App() {
       clearLiveNotes();
     }
   }, [openingActive, clearLiveNotes]);
-  const chooseSongs = async () => {
-    if (await changeWorkspace("library")) {setLibraryAdvanced(false);setLibrarySearch(null);productScreens.browse();setAppMenuOpen(false);}
-  };
-  const goHome = async () => {
-    if (await changeWorkspace("library")) {clearLiveNotes();productScreens.home();setAppMenuOpen(false);}
-  };
-  const openSongSetup = async (row:SongRow) => {
-    const ok=await load(row,row.contentId??undefined,"selected");
-    if(ok){setView("keyboard");productScreens.show("setup");setAppMenuOpen(false);panels.closeDrawer();}
-    return ok;
-  };
-  const openFreePlay = async () => {
-    if(await changeWorkspace("practice")){if(await run({type:"pause"})){clearLiveNotes();productScreens.show("freePlay");panels.closeDrawer();}}
-  };
+  const {chooseSongs,goHome,openSongSetup,openFreePlay}=useProductNavigation({
+    screens:productScreens,changeWorkspace,load,run,clearLiveNotes,
+    prepareBrowser:()=>{setLibraryAdvanced(false);setLibrarySearch(null);},
+    prepareSong:()=>setView("keyboard"),closeDrawer:panels.closeDrawer,closeMenu:()=>setAppMenuOpen(false),
+  });
   return (
     <div
       data-skin={display.skin}
@@ -1903,7 +1903,7 @@ export default function App() {
       {workspace !== "library" && startupReady && <LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus} />}
       {busy && !importDialog && !fingeringDialog && !exerciseDialog && <TaskActivity />}
       {startupReady && productScreens.screen==="home" && <HomeScreen rows={allLibraryRows} collection={collection} disabled={!!workspaceUnavailable||!connected} choose={()=>void chooseSongs()} freePlay={()=>void openFreePlay()} settings={()=>productScreens.settings()} open={openSongSetup}/>}
-      {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen back={()=>productScreens.home()} devices={()=>openSoundSettings()} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} folders={()=>productScreens.folders()} display={()=>setDisplayDialog(true)} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
+      {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen state={state} engineId={progressEngineId} visible={productScreens.screen==="settings"&&!settings&&!displayDialog} back={()=>productScreens.home()} devices={device=>openSoundSettings(device)} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} folders={()=>productScreens.folders()} display={section=>{setDisplaySection(section);setDisplayDialog(true);}} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
       {startupReady && productScreens.screen==="folders" && <FolderManager changed={refreshWithCollection} backLabel="设置" close={()=>productScreens.settings()}/>}
 
       {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void chooseSongs();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
@@ -2063,11 +2063,11 @@ export default function App() {
               <PreviewBarsControl value={seconds} change={setSeconds} label="前方预览" ariaLabel="预览小节数"/>
 
 
-            </ToolbarMore>
+            <button className="product-narrow-metronome" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}>节拍器：{state.metronome?"开启":"关闭"}</button></ToolbarMore>
             <button className="synthesia-metronome" title="节拍器" aria-label="节拍器" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}><MetronomeIcon size={27}/></button>
             <ToolbarMore label="键盘缩放" icon={<ZoomIcon size={27}/>} disabled={!song}>          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}</ToolbarMore>
-            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
+            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} tonic={song?.practiceVariant?.tonic} minor={song?.practiceVariant?.minor} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
             <ToolbarMore label="书签" icon={<BookmarkIcon size={27}/>} disabled={!song||busy}><div className="product-bookmark-menu" onClick={e=>e.stopPropagation()}>
           {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
             shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
@@ -2531,10 +2531,11 @@ export default function App() {
       {null}
       {displayDialog && (
         <DisplaySettingsDialog
+          page={productScreens.screen==="settings"} initialSection={displaySection}
           input={state.input}
           value={display}
           change={setDisplay}
-          close={() => setDisplayDialog(false)}
+          close={() => {setDisplayDialog(false);setDisplaySection(undefined);}}
         />
       )}
       {commandsOpen && <ActionSearch
@@ -2557,7 +2558,7 @@ export default function App() {
           setState(await api.state());
         }}
       />}
-      {settings && <DeviceSettingsDialog
+      {settings && <DeviceSettingsDialog selectedDevice={settingsTab==="sound"?settingsDevice:undefined} page={productScreens.screen==="settings"}
         initialTab={settingsTab}
         store={playback}
         state={state}

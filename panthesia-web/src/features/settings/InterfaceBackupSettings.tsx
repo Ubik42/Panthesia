@@ -23,6 +23,7 @@ const labels: Record<string, string> = {
   practiceFocus: "专注演奏布局",
   practiceView: "练习视图", practiceSplitAxis: "组合排列", practiceSplitRatio: "组合谱面比例",
   uiScale: "整体界面缩放",
+  keyLabelMode:"琴键标签内容",noteLabelMode:"音符标签内容",keyLabelsOwnOnly:"仅自己声部琴键标签",noteLabelsOwnOnly:"仅自己声部音符标签",
   notation: "音符名称",
   noteLabels: "音符提示",
   keyLabels: "键上名称",
@@ -54,6 +55,7 @@ const describe = (v: unknown) =>
       : ((
           {
             keyboard: "瀑布与琴键", score: "五线谱", paper: "谱页", combined: "谱面与瀑布", rows: "上下排列", columns: "左右并排",
+            octaves:"八度编号",mapping:"电脑键盘映射",english:"字母音名",fixed:"固定唱名",movable:"首调唱名",simple:"简单音名",legacy:"沿用已有设置",
             pitch: "音名",
             solfege: "固定唱名",
             degree: "大调级数",

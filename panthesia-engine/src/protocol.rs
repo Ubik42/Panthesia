@@ -18,6 +18,7 @@ pub enum Command {
     SongPreview { path: PathBuf },
     StartSongAudition { path: PathBuf, id: String },
     StopSongAudition { id: String },
+    StartInstrumentPreview { id:String, content_id:String, track:usize, program:Option<u8> },
     SongAuditionState { id: String },
     ReadRepertoire { path: Option<PathBuf>, content_id: Option<String> },
     SongCatalog,
@@ -251,6 +252,7 @@ pub enum Command {
         range: (usize, usize),
         reference: u8,
     },
+    ResetPartSettings { content_id:String, track:usize, proof:String },
     SetPartHands { content_id:String, track:usize, part:Option<PracticePart>, split_pitch:Option<u8>, proof:String, #[serde(default)] hints:Vec<panthesia_core::library::NoteHandHint>, #[serde(default)] clear:Vec<usize> },
     ApplyHands {
         content_id: String,

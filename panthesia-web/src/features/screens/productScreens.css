@@ -871,3 +871,320 @@
 .product-track-controls {
   grid-template-columns: 1.6fr 1fr 1fr;
 }
+.product-label-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.synthesia-layout .product-label-tabs button {
+  background: #e1ebef;
+  color: #344c59;
+  border: 1px solid #91a7b3;
+  border-radius: 0;
+  min-height: 42px;
+}
+.synthesia-layout .product-label-tabs button[aria-selected="true"] {
+  background: #039cd3;
+  color: white;
+}
+.product-label-modes {
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  overflow: auto;
+}
+.synthesia-layout .product-label-modes button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  color: #293f4b;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.synthesia-layout .product-label-modes button[aria-checked="true"] {
+  background: #049ed6;
+  color: white;
+}
+.product-label-modes small {
+  font-size: 15px;
+  min-width: 35px;
+  text-align: center;
+}
+.product-label-own {
+  justify-content: flex-start !important;
+}
+.product-track-controls {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.product-instrument-preview {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.product-instrument-preview span {
+  font-size: 18px;
+}
+.product-track-picker.picker-instrument {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.product-track-card.accepts-part-setting {
+  outline: 3px dashed #fff;
+  outline-offset: 4px;
+}
+.synthesia-layout .product-page-footer .product-all-parts {
+  margin-right: auto;
+  background: #058fbe;
+  color: white;
+  border: 2px dashed white;
+  min-width: 200px;
+}
+.product-narrow-metronome {
+  display: none !important;
+}
+@media (max-width: 760px) {
+  .product-narrow-metronome {
+    display: block !important;
+  }
+  .product-track-picker.picker-instrument {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .product-instrument-preview {
+    gap: 10px;
+  }
+}
+/* Settings entered from Home use the same full-page header and return hierarchy. */
+.synthesia-layout .product-settings-leaf {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  background: #edf1f3;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+.synthesia-layout .product-settings-leaf > .settings-dialog {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #edf1f3;
+  color: #2d4350;
+  color-scheme: light;
+  box-shadow: none;
+}
+.product-settings-leaf .synthesia-library-header {
+  flex-shrink: 0;
+}
+.product-settings-leaf .browse-detail-workspace {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+.product-settings-leaf .browse-detail-masthead {
+  position: static;
+  grid-row: 1/3;
+  background: #c5d9e2;
+  min-width: 0;
+  overflow: auto;
+}
+.product-settings-leaf .browse-detail-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: visible;
+  padding: 16px 0;
+}
+.synthesia-layout .product-settings-leaf .browse-detail-tabs button {
+  font-size: 20px;
+  min-height: 54px;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #304955;
+  white-space: normal;
+  text-align: left;
+}
+.synthesia-layout
+  .product-settings-leaf
+  .browse-detail-tabs
+  button[aria-selected="true"] {
+  background: #039ed6;
+  color: white;
+  box-shadow: none;
+}
+.product-settings-leaf .browse-detail-section {
+  grid-column: 2;
+  grid-row: 1/3;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px 32px;
+  background: #edf1f3;
+}
+.product-settings-leaf .dialog-actions {
+  background: #b5cfdb;
+  margin: 0;
+  padding: 12px 24px;
+  border-top: 1px solid #9aafb9;
+  flex-shrink: 0;
+}
+.synthesia-layout
+  .product-settings-leaf
+  button:not(.synthesia-back):not(.browse-detail-tabs button):not(
+    [aria-selected="true"]
+  ):not([aria-checked="true"]) {
+  color: #2b4350;
+  background: #e1e9ed;
+  border-color: #9daeb8;
+  box-shadow: none;
+}
+.synthesia-layout .product-settings-leaf input,
+.synthesia-layout .product-settings-leaf select {
+  background: #fff;
+  color: #2b4350;
+  border-color: #9daeb8;
+}
+.product-settings-leaf .device-settings-body {
+  width: min(100%, 1100px);
+  align-self: center;
+  flex: 1;
+  padding: 25px 32px;
+}
+.product-settings-leaf .device-settings-body[hidden] {
+  display: none;
+}
+.product-settings-leaf .device-audio-endpoint,
+.product-settings-leaf .device-section,
+.product-settings-leaf .device-advanced-settings {
+  background: #dce7ec;
+  color: #2d4350;
+  border-color: #a4b7c1;
+}
+.product-settings-leaf .device-help,
+.product-settings-leaf .device-note,
+.product-settings-leaf .device-section > label,
+.product-settings-leaf .device-section h3,
+.product-settings-leaf .interface-footer-note,
+.product-settings-leaf .device-connection {
+  color: #405b68;
+}
+.product-settings-leaf .interface-display-preview,
+.product-settings-leaf .computer-key-settings,
+.product-settings-leaf .shortcut-settings {
+  color: #2d4350;
+}
+.product-settings-leaf .device-settings-status {
+  padding: 0 32px;
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .product-settings-leaf .browse-detail-workspace {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  .synthesia-layout .product-settings-leaf .browse-detail-tabs button {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+  .product-settings-leaf .browse-detail-section {
+    padding: 16px;
+  }
+  .product-settings-leaf .device-settings-body {
+    padding: 16px;
+  }
+}
+.product-device-list {
+  max-width: 1100px;
+}
+.product-device-list h2 {
+  font-size: 25px;
+  font-weight: 400;
+  margin: 15px 12px 18px;
+}
+.product-device-list > div {
+  border: 1px solid #a6adb1;
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 36px;
+}
+.synthesia-layout .product-settings-body .product-device-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  margin: 0;
+  min-height: 68px;
+  border: 0;
+  border-bottom: 1px solid #a6adb1;
+  border-radius: 0;
+  background: #eee;
+  padding: 16px 20px;
+  font-size: 22px;
+  font-weight: 400;
+}
+.synthesia-layout .product-settings-body .product-device-row:last-child {
+  border-bottom: 0;
+}
+.synthesia-layout .product-settings-body .product-device-row > span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 22px;
+  color: #30383d;
+}
+.synthesia-layout .product-settings-body .product-device-row > small {
+  margin-left: auto;
+  font-size: 18px;
+  white-space: nowrap;
+  color: #3a62a0;
+}
+.product-device-row b {
+  font-size: 38px;
+  color: #7a858b;
+  font-weight: 400;
+  line-height: 1;
+}
+.product-device-object {
+  margin-bottom: 25px;
+  padding: 15px 0;
+}
+.product-device-object h2 {
+  font-size: 28px;
+  font-weight: 400;
+}
+.product-device-object p {
+  font-size: 17px;
+}
+.product-settings-leaf .device-audio-endpoint[hidden] {
+  display: none;
+}
+@media (max-width: 760px) {
+  .synthesia-layout .product-settings-body .product-device-row {
+    padding: 12px;
+    gap: 8px;
+  }
+  .synthesia-layout .product-settings-body .product-device-row > span {
+    font-size: 17px;
+  }
+  .synthesia-layout .product-settings-body .product-device-row > small {
+    font-size: 15px;
+  }
+}

@@ -102,6 +102,18 @@ impl Player {
                 .map(Some)
                 .map_err(|error| error.to_string());
             }
+            Command::ResetPartSettings {content_id,track,proof} => {
+                let file=self.file.as_ref().ok_or("请先选择曲目")?;
+                if file.content_id!=content_id || self.hand_suggestion_proof()?!=proof {return Err("曲目或手别已改变，请重新打开音轨设置".into());}
+                let defaults=panthesia_core::song_config::SongConfig::new(&file.tracks);
+                let default=defaults.tracks.iter().find(|t|t.track_id==track).ok_or("找不到声部")?.clone();
+                let hints=hands::hints(&self.note_hands).into_iter().filter(|h|h.track_id!=track).collect();
+                self.write_hands(hints,true)?;
+                let mut rules=(*self.config.note_players).clone();rules.retain(|(id,_),_|*id!=track);self.config.note_players=Arc::new(rules);
+                self.set_track_appearance(track,None)?;
+                self.set_track_sound(track,None)?;
+                self.command(Command::Track{id:track,mode:match default.player {panthesia_core::song_config::PlayerConfig::Auto=>"auto",panthesia_core::song_config::PlayerConfig::Mute=>"mute",_=>"human"}.into(),part:hands::label(default.practice_part).into(),visible:default.visible})?;
+            }
             Command::SetPartHands {content_id,track,part,split_pitch,proof,hints,clear} => {
                 let file=self.file.as_ref().ok_or("请先选择曲目")?;
                 if file.content_id!=content_id || self.hand_suggestion_proof()?!=proof{return Err("曲目或手别已改变，请重新打开音轨设置".into());}

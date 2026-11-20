@@ -92,7 +92,7 @@ const domains = [
   ["../../panthesia-core/src/song_config.rs", ["PlayerConfig", "NotePlaybackRule"]],
   ["../../panthesia-engine/src/note_playback.rs", ["PlaybackNote", "PlaybackPage"], "output"],
   ["../../panthesia-core/src/library.rs", ["SongMetadata", "FingerHint", "NoteHandHint", "FingerAction", "MeterCorrection", "MeterSegment", "MeasureLength", "MeterMap"]],
-  ["../../panthesia-engine/src/track_appearance.rs", ["TrackAppearance"]],
+  ["../../panthesia-engine/src/track_appearance.rs", ["TrackAppearance", "PartColor"]],
   ["../../panthesia-engine/src/track_sound.rs", ["TrackSound"]],
   ["../../panthesia-core/src/speed_ladder.rs", ["SpeedLadderPlan", "SpeedLadderProgress"], "output"],
   ["../../panthesia-core/src/practice_history.rs", ["PracticeTrackMode", "PracticeTrackSetup"], "output"],

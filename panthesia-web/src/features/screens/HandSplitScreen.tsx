@@ -40,6 +40,7 @@ export function HandSplitScreen({
   const [wholeSplit, setWholeSplit] = useState(false);
   const [rightPaint, setRightPaint] = useState<Paint>("RightHand");
   const roll = useRef<SVGSVGElement>(null);
+  const touches=useRef(new Map<number,{x:number;y:number}>());
   const gesture = useRef<{
     kind: "pan" | "split";
     x: number;
@@ -400,7 +401,18 @@ export function HandSplitScreen({
             ref={roll}
             onContextMenu={(e) => e.preventDefault()}
             onPointerDown={(e) => {
+              if (stale || saving || disabled) return;
               if (e.button !== 0 && e.button !== 2) return;
+              if(e.pointerType==="touch") {
+                touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+                if(touches.current.size===2){
+                  const [a,b]=[...touches.current.values()].map(p=>point(p.x,p.y));
+                  gesture.current={kind:"split",x:a.x,y:a.y,start};
+                  setLine({x:a.x,y:a.y,x2:b.x,y2:b.y});
+                  e.currentTarget.setPointerCapture(e.pointerId);e.preventDefault();return;
+                }
+                if(touches.current.size>2)return;
+              }
               const p = point(e.clientX, e.clientY);
               if (p.y > 410) return;
               e.preventDefault();
@@ -416,6 +428,14 @@ export function HandSplitScreen({
               if (e.button === 2) setLine({ ...p, x2: p.x, y2: p.y });
             }}
             onPointerMove={(e) => {
+              if(e.pointerType==="touch"&&touches.current.has(e.pointerId)) {
+                touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+                if(touches.current.size===2){
+                  const [a,b]=[...touches.current.values()].map(p=>point(p.x,p.y));
+                  gesture.current={kind:"split",x:a.x,y:a.y,start};
+                  setLine({x:a.x,y:a.y,x2:b.x,y2:b.y});return;
+                }
+              }
               const g = gesture.current;
               if (!g) return;
               const p = point(e.clientX, e.clientY);
@@ -431,8 +451,20 @@ export function HandSplitScreen({
                 );
               else setLine({ x: g.x, y: g.y, x2: p.x, y2: p.y });
             }}
-            onPointerUp={(e) => finishGesture(e.clientX, e.clientY)}
+            onPointerUp={(e) => {
+              if(e.pointerType==="touch") {
+                if(touches.current.size>=2){
+                  const end=[...touches.current.values()][1];
+                  finishGesture(end.x,end.y);touches.current.clear();return;
+                }
+                const g=gesture.current,p=point(e.clientX,e.clientY);
+                if(touches.current.has(e.pointerId)&&g?.kind==="pan"&&g.note!==undefined&&Math.hypot(p.x-g.x,p.y-g.y)<5)setNote(g.note,paint);
+                touches.current.delete(e.pointerId);
+              }
+              finishGesture(e.clientX, e.clientY);
+            }}
             onPointerCancel={() => {
+              touches.current.clear();
               gesture.current = null;
               setLine(null);
             }}
@@ -558,14 +590,14 @@ export function HandSplitScreen({
                     stroke={value ? "#fff" : "#223f55"}
                     strokeWidth={value ? 2 : 1}
                     onPointerDown={(e) => {
-                      if (e.button === 0) {
+                      if (e.pointerType!=="touch" && e.button === 0) {
                         e.preventDefault();
                         e.stopPropagation();
                         setNote(n.index, paint);
                       }
                     }}
                     onPointerEnter={(e) => {
-                      if (e.buttons === 1) setNote(n.index, paint);
+                      if (e.pointerType!=="touch" && e.buttons === 1) setNote(n.index, paint);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {

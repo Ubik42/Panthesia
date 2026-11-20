@@ -31,6 +31,8 @@ pub struct Track {
     pub id: usize,
     pub name: String,
     pub source_name:String,
+    pub source_program:u8,
+    pub source_instrument:String,
     pub notes: usize,
     pub mode: String,
     pub part: String,
@@ -133,6 +135,8 @@ pub fn build(
                     id: c.track_id,
                     name:t.name.clone().unwrap_or_else(||format!("音轨 {}",c.track_id+1)),
                     source_name:t.name.clone().unwrap_or_else(||format!("音轨 {}",c.track_id+1)),
+                    source_program:t.notes.first().and_then(|n| file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0),
+                    source_instrument: if t.has_drums && !t.has_other_than_drums { "打击乐".into() } else { midi_file::INSTRUMENT_NAMES[usize::from(t.notes.first().and_then(|n| file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0))].into() },
                     notes: t.notes.len(),
                     mode: match c.player {
                         PlayerConfig::Human => "human",

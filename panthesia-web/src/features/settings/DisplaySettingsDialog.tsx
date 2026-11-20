@@ -1,3 +1,5 @@
+import { ScreenHeader } from "../screens/ScreenHeader";
+import { LabelSettings } from "../screens/LabelSettings";
 import { PreviewBarsControl } from "../practice/PreviewBarsControl";
 import { KeyboardRangeSettings } from "./KeyboardRangeSettings";
 import { InterfaceDisplayPreview } from "./InterfaceDisplayPreview";
@@ -32,11 +34,15 @@ import {
 export function DisplaySettingsDialog({
   value,
   input = null,
+  page = false,
+  initialSection,
   change,
   close,
 }: {
   value: DisplayPreferences;
   input?: string | null;
+  page?:boolean;
+  initialSection?:SettingsSection;
   change: (value: DisplayPreferences) => void;
   close: () => void;
 }) {
@@ -47,6 +53,7 @@ export function DisplaySettingsDialog({
     workbench.getSnapshot,
   );
   const section = draft.section;
+  useEffect(()=>{if(initialSection)workbench.update({section:initialSection});},[initialSection]);
   const changeSection = (section: SettingsSection) => {
     setCapture(null);
     workbench.update({ section });
@@ -124,7 +131,7 @@ export function DisplaySettingsDialog({
     };
   }, [value, capture, section]);
   return (
-    <div className="modal-backdrop" onClick={close}>
+    <div className={page?"modal-backdrop product-settings-leaf":"modal-backdrop"} onClick={close}>
       <section
         className="settings-dialog display-settings-dialog"
         data-keyboard-capturing={capture !== null}
@@ -134,13 +141,14 @@ export function DisplaySettingsDialog({
         aria-labelledby="display-settings-title"
         onClick={(event) => event.stopPropagation()}
       >
+        {page&&<ScreenHeader title="外观与操作" back={close} backLabel="设置"/>}
         <BrowseDetailWorkspace<SettingsSection>
           label="界面与按键设置分区"
           value={section}
           change={changeSection}
           header={
             <>
-              <div className="dialog-heading">
+              <div className="dialog-heading" hidden={page}>
                 <div>
                   <h2 id="display-settings-title">界面与按键</h2>
                   <p>调整显示、练习室布局和按键，管理界面设置备份。</p>
@@ -167,77 +175,7 @@ export function DisplaySettingsDialog({
                 <>
                   <InterfaceDisplayPreview value={value} />
                   <div className="display-settings-fields">
-                    <label>
-                      音符名称
-                      <select
-                        aria-label="音符名称格式"
-                        value={value.notation}
-                        onChange={(event) =>
-                          update({
-                            notation: event.target
-                              .value as DisplayPreferences["notation"],
-                          })
-                        }
-                      >
-                        <option value="pitch">音名 · C</option>
-                        <option value="solfege">固定唱名 · Do</option>
-                        <option value="degree">首调大调级数 · 1</option>
-                      </select>
-                    </label>
-                    <label>
-                      音符提示
-                      <select
-                        aria-label="音符提示内容"
-                        value={value.noteLabels}
-                        onChange={(event) =>
-                          update({
-                            noteLabels: event.target
-                              .value as DisplayPreferences["noteLabels"],
-                          })
-                        }
-                      >
-                        <option value="auto">指法优先，未标指法显示名称</option>
-                        <option value="name">仅名称</option>
-                        <option value="finger">仅指法</option>
-                        <option value="both">指法与名称</option>
-                        <option value="none">不显示文字</option>
-                      </select>
-                    </label>
-                    <label>
-                      键上名称
-                      <select
-                        aria-label="键上名称范围"
-                        value={value.keyLabels}
-                        onChange={(event) =>
-                          update({
-                            keyLabels: event.target
-                              .value as DisplayPreferences["keyLabels"],
-                          })
-                        }
-                      >
-                        <option value="c">仅 C 键</option>
-                        <option value="white">全部白键</option>
-                        <option value="all">全部键</option>
-                        <option value="none">不显示</option>
-                      </select>
-                    </label>
-                    <label>
-                      级数主音
-                      <select
-                        aria-label="级数主音"
-                        disabled={value.notation !== "degree"}
-                        value={value.tonic}
-                        onChange={(event) =>
-                          update({ tonic: Number(event.target.value) })
-                        }
-                      >
-                        {Array.from({ length: 12 }, (_, index) => (
-                          <option value={index} key={index}>
-                            {pitchName(60 + index).slice(0, -1)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <LabelSettings value={value} change={update}/>
                     <label>
                       提示字号
                       <select
@@ -454,6 +392,8 @@ export function DisplaySettingsDialog({
                   notation: displayDefaults.notation,
                   noteLabels: displayDefaults.noteLabels,
                   keyLabels: displayDefaults.keyLabels,
+                  keyLabelMode: displayDefaults.keyLabelMode, noteLabelMode: displayDefaults.noteLabelMode,
+                  keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
                   tonic: displayDefaults.tonic,
                   octave: displayDefaults.octave,
                   fontSize: displayDefaults.fontSize,

@@ -26,6 +26,7 @@ pub(crate) struct Playback {
     position: f64,
     duration: f64,
     lease: Duration,
+    repeating: bool,
 }
 fn valid_id(id: &str) -> bool {
     id.starts_with("song-audition-")
@@ -168,6 +169,30 @@ impl Player {
             revision: self.score_revision,
         })
     }
+    /// Bounded in-memory instrument phrase. It never enters input, recording or assessment.
+    pub(crate) fn start_instrument_preview(&mut self, id:&str, content_id:&str, track:usize, program:Option<u8>) -> Result<Value,String> {
+        if !valid_id(id) || self.cancelled_song_auditions.iter().any(|v|v==id) { return Err("乐器预听已取消".into()); }
+        self.validate_song_audition()?;
+        if self.file.as_ref().is_none_or(|f|f.content_id != content_id) { return Err("曲目已变化，请重新选择乐器".into()); }
+        let file=self.file.as_ref().ok_or("请先选择曲目")?;
+        let source=file.tracks.iter().find(|t|t.track_id==track).ok_or("找不到声部")?;
+        if source.has_drums && !source.has_other_than_drums { return Err("打击乐声部暂不提供旋律预听".into()); }
+        let program=program.unwrap_or_else(|| source.notes.first().and_then(|n|file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0));
+        if program>127 { return Err("乐器编号超出范围".into()); }
+        self.stop_song_audition(None);
+        self.ensure_audio()?;
+        let mut events=Vec::with_capacity(20);
+        for (bytes,len) in [([176,121,0],3),([176,64,0],3),([176,0,0],3),([176,32,0],3),([192,program,0],2),([176,7,100],3),([176,10,64],3),([224,0,64],3)] {events.push(Event{at:0.,bytes,len});}
+        for (i,pitch) in [60,64,67,72].into_iter().enumerate() {
+            let at=i as f64*0.4;
+            events.push(Event{at,bytes:[144,pitch,80],len:3});
+            events.push(Event{at:at+0.3,bytes:[128,pitch,0],len:3});
+        }
+        events.sort_by(|a,b|a.at.total_cmp(&b.at));
+        self.song_audition=Some(Playback{id:id.into(),events:events.into(),cursor:0,position:0.,duration:2.,lease:Duration::ZERO,repeating:true});
+        self.tick_song_audition(Duration::ZERO);
+        Ok(self.song_audition_state(Some(id)))
+    }
     pub(crate) fn install_song_audition(
         &mut self,
         origin: Origin,
@@ -198,6 +223,7 @@ impl Player {
             position: 0.,
             duration: prepared.duration,
             lease: Duration::ZERO,
+            repeating: false,
         });
         self.tick_song_audition(Duration::ZERO);
         if self.song_audition.is_none() {
@@ -268,7 +294,11 @@ impl Player {
             self.send(&event.bytes[..event.len]);
         }
         p.cursor = end;
-        if p.position >= p.duration {
+        if p.position >= p.duration && p.repeating {
+            p.position = 0.;
+            p.cursor = 0;
+            self.song_audition = Some(p);
+        } else if p.position >= p.duration {
             self.retire(p);
             self.panic();
             self.restore_track_sound();
@@ -397,6 +427,34 @@ mod tests {
         let path = player.data.join("audition-fixture.mid");
         std::fs::write(&path, bytes).unwrap();
         path
+    }
+    #[test]
+    fn instrument_preview_loops_without_practice_input_and_expires_without_owner() {
+        let (mut player,_,_)=crate::history_loading::tests::seeded(true,false);
+        let file=player.file.as_ref().unwrap();
+        let cid=file.content_id.clone();
+        let track=file.tracks.iter().find(|t|!t.notes.is_empty()).unwrap().track_id;
+        let history=player.history.snapshot_bytes().unwrap();
+        let score=player.matcher.snapshot();
+        let input=player.state.midi_events;
+        let position=player.state.position;
+        let id="song-audition-instrument-owned";
+        assert!(player.start_instrument_preview(id,"stale",track,Some(0)).is_err());
+        player.start_instrument_preview(id,&cid,track,Some(0)).unwrap();
+        for _ in 0..12 {player.tick_song_audition(Duration::from_millis(500));player.song_audition_state(Some(id));}
+        assert!(player.song_audition.as_ref().unwrap().repeating);
+        assert_eq!(player.state.position,position);
+        assert_eq!(player.state.midi_events,input);
+        assert_eq!(player.matcher.snapshot(),score);
+        assert_eq!(player.history.snapshot_bytes().unwrap(),history);
+        assert!(player.state.pressed.is_empty());
+        assert!(!player.recorder.is_recording());
+        player.tick_song_audition(Duration::from_secs(4));
+        assert!(player.song_audition.is_none());
+        player.start_instrument_preview(id,&cid,track,Some(0)).unwrap();
+        player.stop_song_audition(Some(id));
+        assert!(player.song_audition.is_none());
+        assert!(player.start_instrument_preview(id,&cid,track,Some(0)).is_err());
     }
     #[test]
     fn midi_audition_keeps_performance_state_and_stops_at_end_without_ui_timers() {

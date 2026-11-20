@@ -5,7 +5,13 @@ import {
   type Shortcuts,
 } from "./shortcuts";
 import { pitchName } from "./engine/musicFormatting";
+export type LabelMode = "none" | "octaves" | "finger" | "mapping" | "english" | "degree" | "fixed" | "movable" | "simple" | "legacy";
+export const labelModes: LabelMode[] = ["none", "octaves", "finger", "mapping", "english", "degree", "fixed", "movable", "simple", "legacy"];
 export type DisplayPreferences = {
+  keyLabelMode: LabelMode;
+  noteLabelMode: LabelMode;
+  keyLabelsOwnOnly: boolean;
+  noteLabelsOwnOnly: boolean;
   practiceLayoutVersion: number;
   practiceFocus: boolean;
   practiceView: "keyboard" | "score" | "paper" | "combined";
@@ -80,6 +86,7 @@ export const zxcvCodes = [
   "Comma",
 ];
 export const displayDefaults: DisplayPreferences = {
+  keyLabelMode: "legacy", noteLabelMode: "legacy", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
   practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55,
@@ -144,6 +151,10 @@ export function normalizeDisplayPreferences(
       : [...asdfCodes];
   return {
     ...displayDefaults,
+    keyLabelMode: labelModes.includes(raw.keyLabelMode!) ? raw.keyLabelMode! : "legacy",
+    noteLabelMode: labelModes.includes(raw.noteLabelMode!) ? raw.noteLabelMode! : "legacy",
+    keyLabelsOwnOnly: raw.keyLabelsOwnOnly === true,
+    noteLabelsOwnOnly: raw.noteLabelsOwnOnly === true,
     skin: raw.skin === "midnight" || raw.skin === "rosewood" ? raw.skin : "studio",
     pianoMaterial: raw.pianoMaterial === "porcelain" || raw.pianoMaterial === "glass" ? raw.pianoMaterial : "ivory",
     effectStyle: raw.effectStyle === "ripple" || raw.effectStyle === "comet" ? raw.effectStyle : "bloom",
@@ -290,3 +301,40 @@ export const keyboardMap = (prefs: DisplayPreferences) =>
       12 * (prefs.keyboardOctave + 1) + index,
     ]),
   );
+
+/** A label is presentation only. Ownership comes from source hand and playback assignment. */
+export type LabelContext = { own?: boolean; tonic?: number; minor?: boolean; finger?: number | null };
+export function ownsPracticeNote(part: string, playbackMode: string | undefined, hands: string) {
+  return playbackMode !== "Auto" && playbackMode !== "Mute" &&
+    ((part === "left" && (hands === "both" || hands === "custom" || hands === "left")) ||
+     (part === "right" && (hands === "both" || hands === "custom" || hands === "right")));
+}
+const solfegeNames = ["Do", "Do♯", "Re", "Re♯", "Mi", "Fa", "Fa♯", "Sol", "Sol♯", "La", "La♯", "Si"];
+export function productLabel(pitch: number, target: "key" | "note", prefs: DisplayPreferences, context: LabelContext = {}) {
+  if ((target === "key" ? prefs.keyLabelsOwnOnly : prefs.noteLabelsOwnOnly) && !context.own) return "";
+  const mode = target === "key" ? prefs.keyLabelMode : prefs.noteLabelMode;
+  const pc = ((pitch % 12) + 12) % 12, register = Math.floor(pitch / 12) - 1;
+  const tonic = context.tonic ?? prefs.tonic, relative = (pc - tonic + 12) % 12;
+  switch (mode) {
+    case "none": return "";
+    case "octaves": return pc === 0 ? `C${register}` : "";
+    case "finger": return context.finger ? String(context.finger) : "";
+    case "mapping": {
+      if (!context.own || !prefs.keyboardEnabled) return "";
+      const index = pitch - 12 * (prefs.keyboardOctave + 1);
+      return index >= 0 && index < prefs.keyCodes.length ? codeLabel(prefs.keyCodes[index]) : "";
+    }
+    case "simple": return [0, 2, 4, 5, 7, 9, 11].includes(pc) ? displayPitch(pitch, {...prefs, notation: "pitch", octave: false}) : "";
+    case "english": return displayPitch(pitch, {...prefs, notation: "pitch"});
+    case "fixed": return solfegeNames[pc] + (prefs.octave ? register : "");
+    case "movable": return solfegeNames[relative] + (prefs.octave ? register : "");
+    case "degree": {
+      const scale = context.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+      const degree = scale.indexOf(relative);
+      return degree < 0 ? "" : String(degree + 1);
+    }
+    default:
+      return target === "note" ? noteLabel(pitch, context.finger, prefs) :
+        prefs.keyLabels === "none" || (prefs.keyLabels === "c" && pc !== 0) || (prefs.keyLabels === "white" && [1,3,6,8,10].includes(pc)) ? "" : displayPitch(pitch, prefs);
+  }
+}

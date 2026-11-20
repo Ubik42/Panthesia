@@ -1,5 +1,4 @@
 import {
-  displayPitch,
   type DisplayPreferences,
 } from "../../displayPreferences";
 
@@ -13,6 +12,7 @@ type Frame = {
   required: readonly number[];
   played: ReadonlySet<number>;
   colors: ReadonlyMap<number, string>;
+  labels: ReadonlyMap<number, string>;
 };
 
 /** Keyboard materials and live highlights have their own repaint lifetime. */
@@ -61,6 +61,7 @@ export class PianoKeyboard {
       required: requiredPitches,
       played,
       colors,
+      labels,
     } = input;
     const baseline = height - keyboardHeight;
     const { display, white, black, geometry } = this;
@@ -120,16 +121,13 @@ export class PianoKeyboard {
         ctx.fillRect(x + w - 3, baseline, 1, keyboardHeight - 2);
         ctx.fillStyle = active ? "#ffffffa0" : "#ffffff80";
         ctx.fillRect(x + 2, height - 6, w - 4, 2);
-        if (
-          display.keyLabels !== "none" &&
-          (display.keyLabels !== "c" || pitch % 12 === 0)
-        ) {
+        if (labels.get(pitch)) {
           ctx.fillStyle =
             display.pianoMaterial === "glass" && !active
               ? "#eff7ff"
               : "#53635e";
           ctx.font = `${display.fontSize}px sans-serif`;
-          const label = displayPitch(pitch, display);
+          const label = labels.get(pitch) ?? "";
           const size = Math.min(
             display.fontSize,
             (display.fontSize * (w - 3)) /
@@ -192,8 +190,8 @@ export class PianoKeyboard {
         ctx.moveTo(x + 2, baseline + keyboardHeight * 0.56);
         ctx.lineTo(x + w - 2, baseline + keyboardHeight * 0.56);
         ctx.stroke();
-        if (display.keyLabels === "all") {
-          const label = displayPitch(pitch, display);
+        if (labels.get(pitch)) {
+          const label = labels.get(pitch) ?? "";
           ctx.font = `${display.fontSize}px sans-serif`;
           const size = Math.min(
             display.fontSize,
@@ -213,7 +211,7 @@ export class PianoKeyboard {
         }
       }
     };
-    const cacheKey = `${width}:${height}:${keyboardHeight}:${dpr}`;
+    const cacheKey = `${width}:${height}:${keyboardHeight}:${dpr}|${[...labels].map(([p,l])=>`${p}:${l}`).join(",")}`;
     if (this.baseKey !== cacheKey) {
       const targetWidth = Math.ceil(width * dpr),
         targetHeight = Math.ceil((keyboardHeight + 7) * dpr);

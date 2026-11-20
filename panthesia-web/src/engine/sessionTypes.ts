@@ -5,7 +5,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "finger" | "editFingersFor" | "undoFingers" | "undoFingersFor" | "applyFingers"
   | "acceptFingerPlan" | "acceptHeldFingerPlan" | "clearHeldFingerActions"
   | "clearNoteHeldFingerActions" | "saveHeldActionEdit"
-  | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
+  | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "resetPartSettings" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
   | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
   | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"
@@ -13,7 +13,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "saveBookmark" | "removeBookmark"
   | "savePassage" | "removePassage" | "updatePassageDetails" | "saveScorePassage" | "saveTickPassage"
   | "saveLadder" | "updateLadderName" | "removeLadder" | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
-  | "resetMetadataDefaults" | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "setMetadata" | "editMetadata"
+  | "resetMetadataDefaults" | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "trackAppearance" | "setMetadata" | "editMetadata"
 }> | (Extract<EngineCommand, { type: "fingerPair" }> & { proof: string });
 export interface HistoryReadScope { channel: string; sequence: number }
 export type HistoryReadCommand = Extract<EngineCommand, {type:
@@ -199,6 +199,8 @@ export interface LoadedSong {
     id: number;
     name: string;
     sourceName: string;
+    sourceProgram?: number;
+    sourceInstrument?: string;
     color?: string | null;
     appearanceCustom?: boolean;
     notes: number;

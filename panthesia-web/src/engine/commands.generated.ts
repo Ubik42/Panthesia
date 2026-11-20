@@ -1929,6 +1929,12 @@ export interface MeterMap {
 export interface TrackAppearance {
   "name"?: string | null;
   "color"?: string | null;
+  "handColors"?: Record<string, PartColor> | null;
+}
+
+export interface PartColor {
+  "color"?: string | null;
+  "visible": boolean;
 }
 
 export interface TrackSound {
@@ -2475,6 +2481,7 @@ export type EngineCommand =
   | { type: "songPreview"; "path": string }
   | { type: "startSongAudition"; "path": string; "id": string }
   | { type: "stopSongAudition"; "id": string }
+  | { type: "startInstrumentPreview"; "id": string; "content_id": string; "track": number; "program"?: number | null }
   | { type: "songAuditionState"; "id": string }
   | { type: "readRepertoire"; "path"?: string | null; "content_id"?: string | null }
   | { type: "songCatalog" }
@@ -2615,6 +2622,7 @@ export type EngineCommand =
   | { type: "suggestFingers"; "hand"?: PracticePart | null; "track": number; "index": number; "profile"?: HandSpanProfile; "range"?: [number, number] | null }
   | { type: "applyFingers"; "content_id": string; "hints": Array<FingerHint> }
   | { type: "suggestHands"; "track": number; "range": [number, number]; "reference": number }
+  | { type: "resetPartSettings"; "content_id": string; "track": number; "proof": string }
   | { type: "setPartHands"; "content_id": string; "track": number; "part"?: PracticePart | null; "split_pitch"?: number | null; "proof": string; "hints"?: Array<NoteHandHint>; "clear"?: Array<number> }
   | { type: "applyHands"; "content_id": string; "hints": Array<NoteHandHint>; "clear"?: Array<[number, number]>; "proof"?: string | null }
   | { type: "noteHand"; "track": number; "index": number; "part"?: PracticePart | null }

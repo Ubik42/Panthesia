@@ -1,19 +1,16 @@
-import type {
-  HandUndoState,
-  PracticePart,
-} from "../../engine/commands.generated";
-import { useState, type CSSProperties } from "react";
+import type { PracticePart } from "../../engine/commands.generated";
+import type { CSSProperties } from "react";
+import { usePartSettings, type PartDrag } from "./usePartSettings";
 import {
   Hand,
+  Zap,
   Palette,
   KeyboardMusic,
-  Eye,
-  EyeOff,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { api, type LoadedSong, type EngineCommand } from "../../api";
-import { trackColors } from "../../TrackAppearanceControl";
+import { type LoadedSong, type EngineCommand } from "../../api";
+import { trackColors } from "./partPalette";
 import { Dialog } from "../../Dialog";
 import { ScreenHeader } from "./ScreenHeader";
 const groups = [
@@ -34,10 +31,6 @@ const groups = [
   "打击乐",
   "音效",
 ];
-type Choice = {
-  track: number;
-  kind: "hand" | "color" | "instrument" | "volume";
-};
 export function TrackSetupScreen({
   song,
   disabled,
@@ -55,110 +48,44 @@ export function TrackSetupScreen({
   custom: (track: number) => void;
   command: (value: EngineCommand) => Promise<boolean>;
 }) {
-  const [choice, setChoice] = useState<Choice | null>(null),
-    [group, setGroup] = useState(0),
-    [pending, setPending] = useState(false),
-    [error, setError] = useState("");
-  const track = song.tracks.find((t) => t.id === choice?.track),
-    sound = track ? song.trackSounds?.[String(track.id)] : undefined;
-  const act = async (value: EngineCommand, close = true) => {
-    if (pending || disabled) return;
-    setPending(true);
-    setError("");
-    try {
-      if (await command(value)) {
-        if (close) setChoice(null);
-      } else setError("设置未能保存，请重试。");
-    } finally {
-      setPending(false);
-    }
+  const {
+    choice,
+    setChoice,
+    group,
+    setGroup,
+    pending,
+    error,
+    track,
+    sound,
+    act,
+    chooseColor,
+    chooseHand,
+    update,
+    soundChange,
+    drag,
+    setDrag,
+    copyTo,
+    autoColor,
+    preview,
+    setPreview,
+  } = usePartSettings(song, disabled, command);
+  const beginDrag = (
+    event: React.DragEvent,
+    track: number,
+    kind: PartDrag["kind"],
+  ) => {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData(
+      "application/x-panthesia-part",
+      `${song.contentId}:${track}:${kind}`,
+    );
+    setDrag({ track, kind });
   };
-  const chooseColor = async (color: string | null) => {
-    if (!track || disabled || pending) return;
-    setPending(true);
-    setError("");
-    try {
-      const appearance =
-        track.name === track.sourceName && !color
-          ? null
-          : {
-              name: track.name === track.sourceName ? null : track.name,
-              color,
-            };
-      if (
-        !(await command({ type: "trackAppearance", id: track.id, appearance }))
-      )
-        return;
-      if (
-        !track.visible &&
-        !(await command({
-          type: "track",
-          id: track.id,
-          mode: track.mode,
-          part: track.part,
-          visible: true,
-        }))
-      )
-        return;
-      setChoice(null);
-    } finally {
-      setPending(false);
-    }
+  const accept = (event: React.DragEvent, ids: number[]) => {
+    if (!drag) return;
+    event.preventDefault();
+    void copyTo(ids);
   };
-  const chooseHand = async (part: PracticePart) => {
-    if (!track || disabled || pending) return;
-    setPending(true);
-    setError("");
-    try {
-      const state = await api.commandForEngine<HandUndoState>(
-        song.engineId ?? undefined,
-        { type: "handUndoState" },
-      );
-      if (
-        await command({
-          type: "setPartHands",
-          content_id: song.contentId,
-          track: track.id,
-          part,
-          split_pitch: null,
-          proof: state.proof,
-          hints: [],
-          clear: [],
-        })
-      )
-        setChoice(null);
-      else setError("手别未能保存，请重试。");
-    } catch {
-      setError("手别设置暂不可用，请重新打开。");
-    } finally {
-      setPending(false);
-    }
-  };
-  const update = (
-    t: LoadedSong["tracks"][number],
-    values: Partial<{ mode: string; part: string; visible: boolean }>,
-  ) => ({
-    type: "track" as const,
-    id: t.id,
-    mode: t.mode,
-    part: t.part,
-    visible: t.visible,
-    ...values,
-  });
-  const soundChange = (
-    patch: Partial<{ volume: number; program: number | null }>,
-  ) =>
-    track &&
-    act({
-      type: "trackSound",
-      id: track.id,
-      sound: {
-        volume: sound?.volume ?? 100,
-        pan: sound?.pan ?? null,
-        program: sound?.program ?? null,
-        ...patch,
-      },
-    });
   const labels = (t: LoadedSong["tracks"][number]) =>
     song.notes.some((n) => n.track === t.id && n.manualHand)
       ? "自定义"
@@ -169,7 +96,12 @@ export function TrackSetupScreen({
           : "背景";
   return (
     <main className="product-track-screen product-page">
-      <ScreenHeader title="手别、颜色与乐器" back={back} backLabel="歌曲设置">
+      <ScreenHeader
+        title="手别、颜色与乐器"
+        back={back}
+        backLabel="歌曲设置"
+        backDisabled={pending}
+      >
         <button
           className="synthesia-continue"
           onClick={back}
@@ -194,11 +126,21 @@ export function TrackSetupScreen({
             return (
               <article
                 key={t.id}
-                className="product-track-card"
+                className={`product-track-card ${drag && drag.track !== t.id ? "accepts-part-setting" : ""}`}
+                onDragOver={(e) => {
+                  if (drag) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                  }
+                }}
+                onDrop={(e) => accept(e, [t.id])}
+                onDragEnd={() => setDrag(null)}
                 style={{ "--part-color": color } as CSSProperties}
               >
                 <button
                   className="product-track-instrument"
+                  draggable={!disabled && !pending}
+                  onDragStart={(e) => beginDrag(e, t.id, "instrument")}
                   disabled={disabled || pending}
                   onClick={() => {
                     setGroup(pianoOnly ? 0 : Math.floor((s?.program ?? 0) / 8));
@@ -212,16 +154,18 @@ export function TrackSetupScreen({
                         ? (song.soundPresets?.find(
                             (p) => p.program === s.program,
                           )?.name ?? `音色 ${s.program + 1}`)
-                        : t.name}
+                        : (t.sourceInstrument ?? t.name)}
                     </strong>
                     <small>
-                      {t.notes.toLocaleString()} 个音符 · 音轨 {t.id + 1}
+                      {t.name} · {t.notes.toLocaleString()} 个音符
                     </small>
                   </span>
                 </button>
                 <div className="product-track-controls">
                   <button
                     aria-label={`${t.name}手别`}
+                    draggable={!disabled && !pending}
+                    onDragStart={(e) => beginDrag(e, t.id, "hand")}
                     disabled={disabled || pending}
                     onClick={() => setChoice({ track: t.id, kind: "hand" })}
                   >
@@ -230,6 +174,8 @@ export function TrackSetupScreen({
                   </button>
                   <button
                     aria-label={`${t.name}颜色`}
+                    draggable={!disabled && !pending}
+                    onDragStart={(e) => beginDrag(e, t.id, "color")}
                     disabled={disabled || pending}
                     onClick={() => setChoice({ track: t.id, kind: "color" })}
                   >
@@ -238,6 +184,8 @@ export function TrackSetupScreen({
                   </button>
                   <button
                     aria-label={`${t.name}声音`}
+                    draggable={!disabled && !pending}
+                    onDragStart={(e) => beginDrag(e, t.id, "volume")}
                     disabled={disabled || pending}
                     onClick={() =>
                       void act(
@@ -266,6 +214,36 @@ export function TrackSetupScreen({
           })}
       </div>
       <footer className="product-page-footer">
+        <button
+          draggable={!pending && !disabled}
+          disabled={pending || disabled}
+          title="拖到声部或全部声部，恢复默认设置"
+          onDragStart={(e) => beginDrag(e, -1, "reset")}
+          onDragEnd={() => setDrag(null)}
+        >
+          <Zap size={20} />
+          恢复默认
+        </button>
+        <button disabled={pending || disabled} onClick={() => void autoColor()}>
+          自动配色
+        </button>
+        {drag && (
+          <button
+            className="product-all-parts"
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }}
+            onDrop={(e) =>
+              accept(
+                e,
+                song.tracks.map((t) => t.id),
+              )
+            }
+          >
+            全部声部
+          </button>
+        )}
         <button onClick={back} disabled={pending}>
           返回歌曲设置
         </button>
@@ -287,7 +265,10 @@ export function TrackSetupScreen({
                   : "选择乐器"
           }
           close={() => {
-            if (!pending) setChoice(null);
+            if (!pending) {
+              setPreview(false);
+              setChoice(null);
+            }
           }}
         >
           <div className={`product-track-picker picker-${choice.kind}`}>
@@ -402,6 +383,18 @@ export function TrackSetupScreen({
                   <p>音色由当前外部音源管理，请在音源设置中选择。</p>
                 ) : (
                   <>
+                    <div className="product-instrument-preview">
+                      <button
+                        disabled={pending || disabled}
+                        aria-pressed={preview}
+                        onClick={() => setPreview((v) => !v)}
+                      >
+                        {preview ? "暂停预听" : "播放预听"}
+                      </button>
+                      <span>
+                        原曲：{track.sourceInstrument ?? track.sourceName}
+                      </span>
+                    </div>
                     <nav aria-label="乐器分类">
                       {groups.map((label, i) => (
                         <button

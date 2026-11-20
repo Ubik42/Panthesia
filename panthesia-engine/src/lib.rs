@@ -255,7 +255,7 @@ mod playback_driver;
 /// Only bounded control commands may use the reserved service and runtime lane.
 pub fn is_control_command(command: &Command) -> bool {
     matches!(command, Command::Panic | Command::Pause | Command::Note { .. }
-        | Command::StopSongAudition { .. } | Command::SongAuditionState { .. } | Command::StopFingerDemo { .. } | Command::FingerDemoState | Command::Tasks | Command::CancelTask { .. } | Command::CancelHistoryRead { .. }
+        | Command::StartInstrumentPreview { .. } | Command::StopSongAudition { .. } | Command::SongAuditionState { .. } | Command::StopFingerDemo { .. } | Command::FingerDemoState | Command::Tasks | Command::CancelTask { .. } | Command::CancelHistoryRead { .. }
         | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. })
 }
 
@@ -1195,6 +1195,7 @@ impl Player {
         match &command {
             Command::StopSongAudition{id}=>{self.stop_song_audition(Some(id));return Ok(self.song_audition_state(Some(id)));},
             Command::SongAuditionState{id}=>return Ok(self.song_audition_state(Some(id))),
+            Command::StartInstrumentPreview{id,content_id,track,program}=>return self.start_instrument_preview(id,content_id,*track,*program),
             _=>{}
         }
         if !(matches!(command,Command::Note{..})&&self.recorder.is_recording()) { storage_control::check_command(&self.storage_busy, &command)?; }
@@ -1225,7 +1226,7 @@ impl Player {
         }
         if self.routine.is_some() && matches!(command,
             Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
+            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ResetPartSettings{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
             |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
             |Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
             |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
@@ -1261,7 +1262,7 @@ impl Player {
         }
         if self.ladder.as_ref().is_some_and(|r|r.active) && matches!(command,
             Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
+            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ResetPartSettings{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
             |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
             |Command::OpenPassage{..}|Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
             |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
@@ -1317,7 +1318,7 @@ impl Player {
                     | Command::ApplyScoreRange { .. }
                     | Command::Mode { .. }
                     | Command::Track { .. }
-                    | Command::SetPartHands { .. } | Command::ApplyHands { .. }
+                    | Command::ResetPartSettings { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                     | Command::EditNotePlayback { .. }
                     | Command::NoteHand { .. }
                     | Command::Meter { .. } | Command::SaveMeterMap { .. }
@@ -1353,7 +1354,7 @@ impl Player {
                         | Command::Meter { .. } | Command::SaveMeterMap { .. }
                         | Command::EditNotePlayback { .. }
                     | Command::NoteHand { .. }
-                        | Command::SetPartHands { .. } | Command::ApplyHands { .. }
+                        | Command::ResetPartSettings { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                         | Command::UndoHands
                         | Command::Speed { .. }
                         | Command::CountIn { .. }
@@ -1495,7 +1496,7 @@ impl Player {
             Command::ExportPracticeVariant=>return self.export_practice_variant(),
             Command::AudioDevices=>return Ok(serde_json::json!({"devices":audio::Audio::devices()?})),
             Command::AudioDevice{..}=>return Err("请使用设备连接流程".into()),
-            Command::SongPreview{..}|Command::StartSongAudition{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}=>return Err("请使用曲目预览流程".into()),
+            Command::StartInstrumentPreview{..}|Command::SongPreview{..}|Command::StartSongAudition{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}=>return Err("请使用曲目预览流程".into()),
             Command::TrackAppearance{id,appearance} => return self.set_track_appearance(id,appearance),
             Command::TrackSound{id,sound} => return self.set_track_sound(id,sound),
             Command::SoundFont { path } => return self.set_soundfont(path),
@@ -1553,7 +1554,7 @@ impl Player {
                 self.coach = AdaptiveTempoCoach::default();
                 self.reset(0.);
             }
-            command @ (Command::SuggestHands { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
+            command @ (Command::SuggestHands { .. } | Command::ResetPartSettings { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                 | Command::NoteHand { .. } | Command::UndoHands | Command::UndoHandsFor { .. } | Command::HandUndoState | Command::ReadHandAssignments { .. }
                 | Command::HandSpanDefault { .. } | Command::HandSpanFor { .. } | Command::FingerProfiles) => {
                 if let Some(result) = self.hand_annotation_command(command)? { return Ok(result); }
@@ -2166,6 +2167,7 @@ impl Player {
                     "other" => PracticePart::Other,
                     _ => return Err("声部无效".into()),
                 };
+                let visible=self.switch_part_color(id,part,visible)?;
                 let track = self
                     .config
                     .tracks

@@ -23,7 +23,8 @@ import {
 import type { LoadedSong, Snapshot } from "./engine/sessionTypes";
 import {
   displayDefaults,
-  noteLabel,
+  productLabel,
+  ownsPracticeNote,
   handColor,
   type DisplayPreferences,
 } from "./displayPreferences";
@@ -129,6 +130,15 @@ export function Piano({
       ),
     [song?.tracks],
   );
+  const labelSources = useMemo(() => {
+    const pitches = new Map<number, LoadedSong["notes"][number][]>();
+    for (const note of song?.notes ?? []) {
+      const list = pitches.get(note.pitch);
+      if (!list) pitches.set(note.pitch, [note]);
+      else if (!list.some(n=>n.part===note.part && n.playbackMode===note.playbackMode)) list.push(note);
+    }
+    return pitches;
+  }, [song?.notes]);
   const canvas = useRef<HTMLCanvasElement>(null);
   const clock = useRef(new WaterfallClock());
   const latest = useRef({
@@ -139,6 +149,7 @@ export function Piano({
     trackColors,
     customTracks,
     automaticTracks,
+    labelSources,
     selectable: !!onSelect,
     practiceRange,
   });
@@ -163,11 +174,11 @@ export function Piano({
         frame.position === previous.position &&
         frame.status === previous.status &&
         frame.mode === previous.mode &&
+        frame.hands === previous.hands &&
         frame.pressed === previous.pressed &&
         frame.required === previous.required &&
         frame.speed === previous.speed &&
         frame.noteEpoch === previous.noteEpoch &&
-        frame.score.wrong_notes === previous.score.wrong_notes &&
         frame.contentId === previous.contentId &&
         frame.scoreRevision === previous.scoreRevision &&
         frame.stateOrder?.engineId === previous.stateOrder?.engineId &&
@@ -190,6 +201,7 @@ export function Piano({
         trackColors,
         customTracks,
         automaticTracks,
+        labelSources,
         selectable: !!onSelect,
         practiceRange,
       };
@@ -211,6 +223,7 @@ export function Piano({
     trackColors,
     customTracks,
     automaticTracks,
+    labelSources,
     onSelect,
     practiceRange,
   ]);
@@ -234,7 +247,6 @@ export function Piano({
     measure();
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let suspended = false;
-    let previousWrong = 0;
     const keyboard = new PianoKeyboard(
       display,
       white,
@@ -274,6 +286,7 @@ export function Piano({
         trackColors,
         customTracks,
         automaticTracks,
+        labelSources,
         selectable,
         practiceRange,
       } = latest.current;
@@ -558,11 +571,7 @@ export function Piano({
             required ? 1 : inRange ? 0.88 : 0.24,
           );
           const action = actions.current(note, position, state.speed);
-          const label = noteLabel(
-            note.pitch,
-            action?.to ?? note.finger,
-            display,
-          );
+          const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.tonic, minor: song.practiceVariant?.minor});
           if (label && w > 10 && h > 16) {
             sprites.paintLabel(
               ctx,
@@ -605,7 +614,7 @@ export function Piano({
             dpr,
             0.34,
           );
-          const label = noteLabel(note.pitch, note.finger, display);
+          const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.tonic, minor: song.practiceVariant?.minor});
           if (label && w > 10 && h > 16)
             sprites.paintLabel(
               ctx,
@@ -639,8 +648,6 @@ export function Piano({
       ctx.textAlign = "left";
       ctx.fillStyle = palette.right;
       ctx.fillRect(0, baseline - 2, width, 2);
-      const wrong = state.score.wrong_notes > previousWrong;
-      previousWrong = state.score.wrong_notes;
       if (display.effectsEnabled && !suspended) {
         effects.update({
           now,
@@ -656,9 +663,7 @@ export function Piano({
             .map((pitch) => ({
               pitch,
               color:
-                wrong && state.pressed.includes(pitch)
-                  ? "#ff718b"
-                  : (visualNotes.get(pitch) ?? palette.right),
+                visualNotes.get(pitch) ?? palette.right,
             })),
         });
         effects.paint(
@@ -675,6 +680,19 @@ export function Piano({
           dpr,
         );
       } else effects.clear();
+      const keyLabels = new Map<number,string>();
+      for (const pitch of [...white, ...black]) {
+        const candidates = labelSources.get(pitch) ?? [];
+        const own = !song || state.mode !== "listen" && candidates.some(n=>ownsPracticeNote(n.part,n.playbackMode,state.hands));
+        keyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.tonic,minor:song?.practiceVariant?.minor}));
+      }
+      if (display.keyLabelMode === "finger") {
+        timeline.visit(tick, tick + Math.max(1, song?.ppq ?? 480), note => {
+          const own = state.mode !== "listen" && ownsPracticeNote(note.part,note.playbackMode,state.hands);
+          const label = productLabel(note.pitch,"key",display,{own,finger:actions.current(note,position,state.speed)?.to ?? note.finger});
+          if (label && keyLabels.has(note.pitch) && !keyLabels.get(note.pitch)) keyLabels.set(note.pitch,label);
+        });
+      }
       keyboard.paint(ctx, {
         width,
         height,
@@ -684,9 +702,11 @@ export function Piano({
         required: state.required,
         played: playedNotes,
         colors: visualNotes,
+        labels: keyLabels,
       });
-      if (song && ["auto", "finger", "both"].includes(display.noteLabels)) {
+      if (song && (display.keyLabelMode === "finger" || (display.keyLabelMode === "legacy" && ["auto", "finger", "both"].includes(display.noteLabels)))) {
         for (const { note: n, action: a } of keyActions) {
+          if (display.keyLabelsOwnOnly && !ownsPracticeNote(n.part,n.playbackMode,state.hands)) continue;
           const { x, w } = geometry(n.pitch, width);
           const completed = position >= a.at;
           ctx.font = `bold ${Math.min(13, w - 4)}px sans-serif`;

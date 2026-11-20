@@ -41,7 +41,7 @@ const TimelineMarks = memo(function TimelineMarks({
             <line x1={x} x2={x} y1={0} y2={m.number % 4 === 1 ? 11 : 5} />
             {m.number % 4 === 1 && (
               <text x={x + 3} y={19}>
-                {m.number}
+                {m.displayNumber ?? m.number}
               </text>
             )}
           </g>

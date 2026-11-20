@@ -434,19 +434,20 @@
 }
 .synthesia-layout .practice-panel > .practice-timeline {
   flex: none;
-  min-height: 42px;
-  height: 42px;
+  min-height: 58px;
+  height: 58px;
   padding: 0;
   position: relative;
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: linear-gradient(#626262, #353535 52%, #222);
-  color: #e4e4e4;
+  background: linear-gradient(#555, #343434);
+  color: #fff;
 }
 .synthesia-layout .practice-timeline .time-ruler-labels {
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
+  height: 23px;
   padding: 0 12px;
   z-index: 3;
   font-size: 12px;
@@ -461,31 +462,49 @@
 }
 .synthesia-layout .practice-timeline .time-ruler-labels strong {
   font-size: 13px;
-  color: #ddd;
+  color: white;
 }
 .synthesia-layout .practice-timeline .time-ruler-labels small {
-  color: #bbb;
+  color: #e0e0e0;
 }
 .synthesia-layout .practice-timeline .time-ruler-track {
   position: absolute;
-  inset: 0;
-  height: 42px;
+  inset: 23px 8px 14px;
+  height: 21px;
   margin: 0;
 }
 .synthesia-layout .practice-timeline .time-ruler-track svg {
-  height: 42px;
-  opacity: 0.4;
+  height: 21px;
+  opacity: 1;
+}
+.synthesia-layout .practice-timeline .time-ruler-track line {
+  stroke: #bfc5c9;
+}
+.synthesia-layout .practice-timeline .time-ruler-track text {
+  fill: #fff;
+  font-size: 10px;
 }
 .synthesia-layout .practice-timeline .time-ruler-track input {
   position: absolute;
   inset: 0;
   width: 100%;
-  height: 42px;
+  height: 21px;
   margin: 0;
-  opacity: 0.25;
+  opacity: 0.65;
   cursor: pointer;
+  accent-color: #8fc549;
 }
-.synthesia-layout .practice-timeline .time-ruler-seconds,
+.synthesia-layout .practice-timeline .time-ruler-seconds {
+  position: absolute;
+  inset: auto 8px 0;
+  height: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #efefef;
+  font-size: 10px;
+  pointer-events: none;
+}
 .synthesia-layout .practice-timeline .practice-range-toolbar {
   display: none;
 }

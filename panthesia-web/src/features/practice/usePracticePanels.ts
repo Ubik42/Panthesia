@@ -7,7 +7,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { DisplayPreferences } from "../../displayPreferences";
-import type { PracticeInspectorTab } from "./PracticeInspectorTabs";
+type PracticeInspectorTab = "setup" | "tools" | "results";
 import { isComposingKey, ownsInputLayer } from "../../app/inputOwnership";
 
 /** Compact windows use one temporary drawer; desktop layout preferences survive. */

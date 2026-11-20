@@ -1,3 +1,4 @@
+import { productLabel } from "../../displayPreferences";
 import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import type { DisplayPreferences } from "../../displayPreferences";
@@ -63,7 +64,7 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
       ctx.globalAlpha = 1;
       effects.update({ now, position: elapsed / 1000, status: "playing", source: "preview", strikes: value.effectsEnabled ? pressed.map(p => ({ pitch: p, color: colors.get(p)! })) : [], performance: value.effectsPreset === "performance", strength: value.effectsIntensity / 100, reduced });
       if (value.effectsEnabled) effects.paint(ctx, now, baseline, width, p => geometry(p, width), value.effectsPreset === "performance", value.effectsIntensity / 100, reduced, value.effectStyle, ratio);
-      keyboard.paint(ctx, { width, height, dpr: ratio, keyboardHeight: 78, pressed, required: [], played: new Set(), colors });
+      keyboard.paint(ctx, { width, height, dpr: ratio, keyboardHeight: 78, pressed, required: [], played: new Set(), colors, labels:new Map([...whites,...blacks].map(p=>[p,productLabel(p,"key",value,{own:true})])) });
       if (demo && elapsed < 4400 && !stopped && !document.hidden) frame = requestAnimationFrame(paint);
       else setRunning(false);
     };
@@ -82,3 +83,4 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
     <p>设置立即生效并自动保存。演示只展示画面。</p>
   </figure>;
 }
+

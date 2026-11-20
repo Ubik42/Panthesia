@@ -1,3 +1,5 @@
+import type { DeviceObject } from "../screens/MusicDeviceList";
+import { ScreenHeader } from "../screens/ScreenHeader";
 import {
 Cable,
 KeyboardMusic,
@@ -40,6 +42,8 @@ export function DeviceSettingsDialog({
   reportError,
   close,
   initialTab = "sound",
+  page = false,
+  selectedDevice,
 }: {
   store: PlaybackStore;
   state: Pick<
@@ -61,6 +65,8 @@ export function DeviceSettingsDialog({
   reportError: (message: string) => void;
   close: () => void;
   initialTab?: "sound"|"duet";
+  page?:boolean;
+  selectedDevice?:DeviceObject;
 }) {
   const tab=initialTab;
   const inputActivity = usePlaybackFields(store, [
@@ -340,7 +346,7 @@ export function DeviceSettingsDialog({
 
   return (
     <div
-      className="modal-backdrop"
+      className={page?"modal-backdrop product-settings-leaf":"modal-backdrop"}
       onClick={() => {
         if (!dismissLocked) close();
       }}
@@ -353,7 +359,8 @@ export function DeviceSettingsDialog({
         aria-busy={locked}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="dialog-heading">
+        {page&&<ScreenHeader title={tab==="sound"?"音乐设备":"后台制谱设置"} back={close} backLabel="设置" backDisabled={dismissLocked}/>}
+        <div className="dialog-heading" hidden={page}>
           <div>
             <h2 id="device-title">{tab==="sound"?"键盘与音源":"后台制谱设置"}</h2>
             <p className="device-subtitle">
@@ -374,7 +381,9 @@ export function DeviceSettingsDialog({
 
         {tab==="duet"&&<div className="device-settings-body"><DuetRuntimePanel disabled={!!unavailable}/></div>}
         <div className="device-settings-body" hidden={tab!=="sound"}>
+          {selectedDevice&&<section className="product-device-object"><h2>{selectedDevice.label}</h2><button disabled={locked} aria-pressed={selectedDevice.kind==="input"?(state.input??"")===selectedDevice.name:selectedOutput===selectedDevice.name} onClick={()=>changeDevice(selectedDevice.kind,selectedDevice.name)}>{(selectedDevice.kind==="input"?(state.input??"")===selectedDevice.name:selectedOutput===selectedDevice.name)?"正在使用":"使用此设备"}</button>{selectedDevice.kind==="input"&&<><p>{state.inputConnected?"输入键盘已连接":"可以使用电脑键盘或屏幕键盘。"}</p><p>当前按键：{inputActivity.pressed.length?inputActivity.pressed.join("、"):"—"}</p><DeviceScanNotice label="输入设备" count={devices.inputs.length} empty="连接 MIDI 键盘后会自动显示。" status={devices.scans?.input} requesting={scanRequested("input")} legacyReady={devices.ready} legacyRefreshing={devices.refreshing} refresh={()=>void refreshDevices(true,"input")}/></>}</section>}
           <section
+            hidden={!!selectedDevice&&(selectedDevice.kind==="input"||selectedOutput!==selectedDevice.name)}
             className="device-audio-endpoint"
             aria-label="发声设备与试音"
           >
@@ -382,7 +391,7 @@ export function DeviceSettingsDialog({
               <Volume2 size={17} />
               连接与试音
             </h3>
-            <div className="sound-routing-selectors">
+            <div className="sound-routing-selectors" hidden={!!selectedDevice}>
               <label htmlFor="route-input">
                 输入键盘
                 <select

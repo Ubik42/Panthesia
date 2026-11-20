@@ -10,6 +10,7 @@ export const settingsGroups = {
   display: [
     "skin", "pianoMaterial", "effectStyle", "barOpacity", "beatOpacity", "subdivisionOpacity", "gridSubdivision",
     "effectsEnabled", "effectsPreset", "effectsPalette", "effectsIntensity", "reduceMotion",
+    "keyLabelMode", "noteLabelMode", "keyLabelsOwnOnly", "noteLabelsOwnOnly",
     "notation",
     "noteLabels",
     "keyLabels",
@@ -73,7 +74,7 @@ export function decodeInterfaceBackup(text: string): InterfaceBackup {
   for (const key of fields)
     if (
       key !== "shortcuts" &&
-      !(sourcePrefs[key] === undefined && ["keyboardViewport","practiceView","practiceSplitAxis","practiceSplitRatio","keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
+      !(sourcePrefs[key] === undefined && ["keyLabelMode","noteLabelMode","keyLabelsOwnOnly","noteLabelsOwnOnly","keyboardViewport","practiceView","practiceSplitAxis","practiceSplitRatio","keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
       !(key === "uiScale" && raw.preferences[key] === undefined) &&
       canonical(prefs[key]) !== canonical(sourcePrefs[key])
     )

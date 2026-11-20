@@ -1,106 +1,119 @@
-import type { DisplayPreferences } from "../../displayPreferences";
+import { useState } from "react";
+import {
+  productLabel,
+  type LabelMode,
+  type DisplayPreferences,
+} from "../../displayPreferences";
+const modes: [LabelMode, string][] = [
+  ["none", "不显示"],
+  ["octaves", "八度编号"],
+  ["finger", "指法数字"],
+  ["mapping", "电脑键盘映射"],
+  ["english", "字母音名"],
+  ["degree", "音阶级数"],
+  ["fixed", "固定唱名"],
+  ["movable", "首调唱名"],
+  ["simple", "简单音名（白键）"],
+  ["legacy", "沿用已有标签设置"],
+];
 export function LabelSettings({
   value,
   change,
+  tonic,
+  minor = false,
 }: {
   value: DisplayPreferences;
   change: (patch: Partial<DisplayPreferences>) => void;
+  tonic?: number;
+  minor?: boolean;
 }) {
+  const [target, setTarget] = useState<"key" | "note">("key");
+  const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
+  const ownOnly =
+    target === "key" ? value.keyLabelsOwnOnly : value.noteLabelsOwnOnly;
   return (
     <div
       className="product-label-settings"
       onClick={(e) => e.stopPropagation()}
     >
-      <h3>琴键标签</h3>
-      <label>
-        显示位置
-        <select
-          aria-label="琴键标签位置"
-          value={value.keyLabels}
-          onChange={(e) =>
-            change({
-              keyLabels: e.target.value as DisplayPreferences["keyLabels"],
-            })
-          }
-        >
-          <option value="none">不显示</option>
-          <option value="c">仅 C 键</option>
-          <option value="white">白键</option>
-          <option value="all">所有琴键</option>
-        </select>
-      </label>
-      <h3>音符标签</h3>
-      <label>
-        标签内容
-        <select
-          aria-label="音符标签内容"
-          value={value.noteLabels}
-          onChange={(e) =>
-            change({
-              noteLabels: e.target.value as DisplayPreferences["noteLabels"],
-            })
-          }
-        >
-          <option value="none">不显示</option>
-          <option value="auto">优先指法</option>
-          <option value="name">音名</option>
-          <option value="finger">指法</option>
-          <option value="both">指法与音名</option>
-        </select>
-      </label>
-      <h3>音名方式</h3>
-      <label>
-        记法
-        <select
-          aria-label="标签记法"
-          value={value.notation}
-          onChange={(e) =>
-            change({
-              notation: e.target.value as DisplayPreferences["notation"],
-            })
-          }
-        >
-          <option value="pitch">字母音名</option>
-          <option value="solfege">首调唱名</option>
-          <option value="degree">音级</option>
-        </select>
-      </label>
-      {value.notation !== "pitch" && (
-        <label>
-          主音
-          <select
-            aria-label="标签主音"
-            value={value.tonic}
-            onChange={(e) => change({ tonic: Number(e.target.value) })}
+      <div className="product-label-tabs" role="tablist" aria-label="标签位置">
+        {(["key", "note"] as const).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={target === t}
+            onClick={() => setTarget(t)}
           >
-            {[
-              "C",
-              "C♯",
-              "D",
-              "E♭",
-              "E",
-              "F",
-              "F♯",
-              "G",
-              "A♭",
-              "A",
-              "B♭",
-              "B",
-            ].map((n, i) => (
-              <option key={i} value={i}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+            {t === "key" ? "琴键标签" : "音符标签"}
+          </button>
+        ))}
+      </div>
+      <label className="product-label-own">
+        <input
+          type="checkbox"
+          checked={ownOnly}
+          onChange={(e) =>
+            change(
+              target === "key"
+                ? { keyLabelsOwnOnly: e.target.checked }
+                : { noteLabelsOwnOnly: e.target.checked },
+            )
+          }
+        />
+        仅显示自己声部的标签
+      </label>
+      <div
+        className="product-label-modes"
+        role="radiogroup"
+        aria-label={target === "key" ? "琴键标签内容" : "音符标签内容"}
+      >
+        {modes.map(([id, name]) => (
+          <button
+            key={id}
+            role="radio"
+            aria-checked={mode === id}
+            onClick={() =>
+              change(
+                target === "key" ? { keyLabelMode: id } : { noteLabelMode: id },
+              )
+            }
+          >
+            <span>{name}</span>
+            <small>
+              {productLabel(
+                60,
+                target,
+                {
+                  ...value,
+                  ...(target === "key"
+                    ? { keyLabelMode: id, keyLabelsOwnOnly: false }
+                    : { noteLabelMode: id, noteLabelsOwnOnly: false }),
+                },
+                { own: true, tonic, minor, finger: 1 },
+              )}
+            </small>
+          </button>
+        ))}
+      </div>
       <label>
         <input
           type="checkbox"
           checked={value.octave}
           onChange={(e) => change({ octave: e.target.checked })}
         />
-        显示八度
+        音名附带八度编号
+      </label>
+      <label>
+        字号
+        <select
+          aria-label="标签字号"
+          value={value.fontSize}
+          onChange={(e) => change({ fontSize: Number(e.target.value) })}
+        >
+          {[10, 12, 14, 16].map((n) => (
+            <option key={n}>{n}</option>
+          ))}
+        </select>
       </label>
     </div>
   );
