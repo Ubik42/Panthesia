@@ -5,9 +5,11 @@ use crate::{
     *,
 };
 use panthesia_core::library::{
-    FingerHint, ScoreAssociation, SongMetadata, SongSidecar, load_song_sidecar, resolve_score_path, save_song_sidecar,
+    FingerHint, ScoreAssociation, SongMetadata, SongSidecar, load_song_sidecar, resolve_score_path,
 };
 use std::collections::BTreeMap;
+#[cfg(test)]
+use panthesia_core::library::save_song_sidecar;
 
 impl Player {
     pub(super) fn export_piece_package(
@@ -182,10 +184,11 @@ impl Player {
             l.exercise_spec = None;
             l.settings.latency = 0;
         }
-        let manifest = Manifest {
+        let mut manifest = Manifest {
             format: "panthesia-piece".into(),
             practice_variant:if file.source_path.is_some(){self.variant()}else{Default::default()},
-            version: 19,
+            version: 20,
+            note_archive:None,
             content_id: midi_asset.hash.clone(),
             title: self.title.clone(),
             metadata,
@@ -236,6 +239,8 @@ impl Player {
             rating: entry.map_or(0, |e| e.rating),
             provenance,
         };
+        let annotations=SongSidecar{fingerings:manifest.fingerings.clone(),finger_actions:manifest.finger_actions.clone(),hands:manifest.hands.clone(),note_playback:manifest.note_playback.clone(),..Default::default()};
+        manifest.note_archive=Some(panthesia_core::song_annotations::archive(&path,&id,annotations,&file.source).map_err(|e|e.to_string())?);
         let package = Package { manifest, files };
         let summary = package.summary();
         check()?;
@@ -549,7 +554,7 @@ impl Player {
                 &policy
             },
         )?;
-        save_song_sidecar(&target, id, sidecar).map_err(|e| e.to_string())?;
+        panthesia_core::song_annotations::save_current(&target,id,sidecar,m.note_archive.as_ref()).map_err(|e|e.to_string())?;
         preferences.save(&self.preferences_path)?;
         self.preferences = preferences;
         let indexed=library::read_midi(&target)?;

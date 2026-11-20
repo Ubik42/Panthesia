@@ -186,6 +186,7 @@ pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, Strin
                 continue;
             }
             let mut event = event.clone();
+            event.order=1;
             if event.channel != 9 {
                 if let M::Aftertouch { key, vel } = event.message {
                     let pitch = i16::from(key.as_int()) + i16::from(variant.transpose);
@@ -201,6 +202,8 @@ pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, Strin
         }
         for note in &notes {
             events.push(MidiEvent {
+                source_note:Some(note.id()),
+                order:2,
                 channel: note.channel,
                 timestamp: note.start,
                 message: M::NoteOn {
@@ -211,6 +214,8 @@ pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, Strin
                 track_color_id: note.track_color_id,
             });
             events.push(MidiEvent {
+                source_note:Some(note.id()),
+                order:0,
                 channel: note.channel,
                 timestamp: note.end,
                 message: M::NoteOff {

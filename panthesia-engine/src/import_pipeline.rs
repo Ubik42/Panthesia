@@ -241,11 +241,7 @@ pub(crate) fn prepare_checked(
         if bytes.is_empty() || bytes.len() > 32_000_000 {
             return Err("MIDI 文件为空或超过 32 MB".into());
         }
-        let smf = midi_file::midly::Smf::parse(&bytes)
-            .map_err(|e| format!("MIDI 无法读取，请检查文件是否完整：{e}"))?;
-        let mut file = MidiFile::from_smf(name, &smf)?;
-        // Preserve the original byte identity even for non-canonical SMF encoding.
-        file.content_id = blake3::hash(&bytes).to_hex().to_string();
+        let file = MidiFile::from_bytes_checked(name,&bytes,check)?;
         Prepared {
             file,
             bytes,

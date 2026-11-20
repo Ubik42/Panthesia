@@ -197,7 +197,7 @@ type PracticeNotes = preferences::Shared<Vec<PracticeNote>>;
 type PracticeTimeSlices = preferences::Shared<Vec<panthesia_core::practice_history::PracticeTimeSlice>>;
 type SoundPresets = preferences::Shared<Vec<track_sound::Preset>>;
 type PlaybackEvents = preferences::Shared<Vec<midi_file::MidiEvent>>;
-type EventNotes = preferences::Shared<HashMap<(usize, u8, u8, Duration, bool), usize>>;
+type EventNotes = preferences::Shared<HashMap<midi_file::NoteId, usize>>;
 type SongFile = preferences::Shared<MidiFile>;
 type FingerAssignments = preferences::Shared<HashMap<(usize, Duration, u8), u8>>;
 type HandAssignments = preferences::Shared<HashMap<(usize, usize), PracticePart>>;
@@ -2883,15 +2883,7 @@ impl Player {
             use midi_file::midly::MidiMessage as M;
             let bytes = match event.message {
                 M::NoteOn { key, vel } => {
-                    if self
-                            .event_notes
-                            .get(&(
-                                event.track_id,
-                                event.channel,
-                                key.as_int(),
-                                event.timestamp,
-                                true,
-                            ))
+                    if event.source_note.and_then(|id| self.event_notes.get(&id))
                             .is_some_and(|&i| {
                                 !note_playback::reference_sounds(self.note_player(event.track_id, i), &self.state.mode)
                             })
@@ -2901,15 +2893,7 @@ impl Player {
                     vec![144 | event.channel, key.as_int(), vel.as_int()]
                 }
                 M::NoteOff { key, vel } => {
-                    if self
-                            .event_notes
-                            .get(&(
-                                event.track_id,
-                                event.channel,
-                                key.as_int(),
-                                event.timestamp,
-                                false,
-                            ))
+                    if event.source_note.and_then(|id| self.event_notes.get(&id))
                             .is_some_and(|&i| {
                                 !note_playback::reference_sounds(self.note_player(event.track_id, i), &self.state.mode)
                             })

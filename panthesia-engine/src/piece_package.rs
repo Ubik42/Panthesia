@@ -39,6 +39,8 @@ pub struct Manifest {
     pub practice_variant:panthesia_core::practice_transform::Variant,
     pub format: String,
     pub version: u16,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub note_archive:Option<panthesia_core::song_annotations::NoteArchive>,
     pub content_id: String,
     pub title: String,
     pub metadata: SongMetadata,
@@ -173,7 +175,9 @@ impl Package {
     }
     fn write_archive(&self, check: &dyn Fn() -> Result<(), String>) -> Result<Vec<u8>, String> {
         check()?;
-        let manifest = serde_json::to_vec_pretty(&self.manifest).map_err(|error| error.to_string())?;
+        let mut current=self.manifest.clone();
+        if current.note_archive.is_some(){current.version=20;current.format="panthesia-piece".into();}
+        let manifest = serde_json::to_vec_pretty(&current).map_err(|error| error.to_string())?;
         if manifest.len() > 4_000_000 || self.files.values().map(|bytes| bytes.len() as u64).sum::<u64>() + manifest.len() as u64 > 512_000_000 {return Err("曲目包展开大小或清单超过范围".into());}
         let mut zip = zip::ZipWriter::new(LimitedArchive(Cursor::new(Vec::new())));
         let options = zip::write::SimpleFileOptions::default()
@@ -249,16 +253,17 @@ impl Package {
                 return Err("曲目包包含重复文件或超大文件".into());
             }
         }
-        let manifest: Manifest = serde_json::from_slice(
+        let mut manifest: Manifest = serde_json::from_slice(
             files
                 .remove("manifest.json")
                 .ok_or("曲目包缺少清单")?
                 .as_slice(),
         )
         .map_err(|e| format!("曲目包清单无效：{e}"))?;
-        if !((manifest.format=="neothesia-piece" && (1..=18).contains(&manifest.version)) || (manifest.format=="panthesia-piece"&&manifest.version==19)) {
+        if !((manifest.format=="neothesia-piece" && (1..=18).contains(&manifest.version)) || (manifest.format=="panthesia-piece"&&(19..=20).contains(&manifest.version))) {
             return Err("曲目包版本暂不支持".into());
         }
+        if (manifest.version>=20)!=manifest.note_archive.is_some(){return Err("曲目包音符身份字段与格式版本不一致".into());}
         manifest.practice_variant.validate()?;
         if manifest.version<19 && manifest.practice_variant.active(){return Err("练习变换需要第 19 版曲目包".into());}
         if let Some(layers) = &manifest.metadata_layers {
@@ -321,12 +326,16 @@ impl Package {
         }
         let midi = &files[&manifest.midi.path];
         check()?;
-        let smf = midi_file::midly::Smf::parse(midi).map_err(|e| e.to_string())?;
-        let file = MidiFile::from_smf(&manifest.title, &smf)?;
+        let file = MidiFile::from_bytes_checked(&manifest.title,midi,check)?;
         check()?;
         if blake3::hash(midi).to_hex().as_str() != manifest.content_id {
             return Err("曲目包 MIDI 身份不一致".into());
         }
+        let annotations=panthesia_core::library::SongSidecar{fingerings:manifest.fingerings.clone(),finger_actions:manifest.finger_actions.clone(),hands:manifest.hands.clone(),note_playback:manifest.note_playback.clone(),..Default::default()};
+        let (annotations,notes)=panthesia_core::song_annotations::restore_archive(annotations,manifest.note_archive.as_ref(),&file.source).map_err(|e|e.to_string())?;
+        manifest.fingerings=annotations.fingerings;manifest.finger_actions=annotations.finger_actions;manifest.hands=annotations.hands;manifest.note_playback=annotations.note_playback;
+        // Old envelopes are projected once during decode, then stored using current identities.
+        manifest.note_archive=Some(notes);
         let effective_duration=if manifest.practice_variant.active(){crate::practice_variant::transform(&file,&manifest.practice_variant)?.duration}else{file.duration};
         if manifest.practice_loop.as_ref().is_some_and(|p| {
             !p.start.is_finite()

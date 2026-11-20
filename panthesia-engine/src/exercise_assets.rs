@@ -138,6 +138,7 @@ impl Prepared {
             cid,
             self.assets.sidecar.clone(),
         )?;
+        panthesia_core::song_annotations::bind_legacy_bytes(&stored.path,cid,&self.bytes,&||Ok(())).map_err(|e|e.to_string())?;
         Ok(())
     }
 }

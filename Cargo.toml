@@ -9,6 +9,8 @@ members = [
   "panthesia-core",
   "panthesia-image",
   "midi-file",
+  "panthesia-music",
+  "panthesia-keyboard",
   "midi-io",
   "nuon",
   "panthesia-engine",
@@ -27,9 +29,9 @@ wgpu-jumpstart = { path = "./wgpu-jumpstart" }
 panthesia-core = { path = "./panthesia-core" }
 panthesia-vst3 = { path = "./panthesia-vst3" }
 panthesia-image = { path = "./panthesia-image" }
-midi-file = { path = "./midi-file" }
+midi-file = { package = "panthesia-music", path = "./panthesia-music" }
 midi-io = { path = "./midi-io" }
-piano-layout = { path = "./piano-layout" }
+piano-layout = { package = "panthesia-keyboard", path = "./panthesia-keyboard" }
 ffmpeg-encoder = { path = "./ffmpeg-encoder" }
 nuon = { path = "./nuon" }
 

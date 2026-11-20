@@ -437,6 +437,8 @@ mod flow_tests {
     fn capacity_persistence_and_portable_settings() {
         let events: Vec<_> = (0..15)
             .map(|t| midi_file::MidiEvent {
+                source_note:None,
+                order:t,
                 track_id: t,
                 track_color_id: 0,
                 channel: 0,

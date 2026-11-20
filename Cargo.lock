@@ -3922,14 +3922,14 @@ dependencies = [
  "futures-channel",
  "lilt",
  "log",
- "midi-file",
  "midi-io",
  "nuon",
  "oxisynth",
  "panthesia-core",
  "panthesia-image",
+ "panthesia-keyboard",
+ "panthesia-music",
  "panthesia-vst3",
- "piano-layout",
  "pollster 1.0.1",
  "profiling",
  "puffin",
@@ -3967,9 +3967,9 @@ dependencies = [
  "clap",
  "env_logger",
  "ffmpeg-encoder",
- "midi-file",
  "oxisynth",
  "panthesia-core",
+ "panthesia-music",
  "pollster 1.0.1",
  "wgpu-jumpstart",
 ]
@@ -3988,10 +3988,10 @@ dependencies = [
  "glyphon",
  "log",
  "md5",
- "midi-file",
  "objc2-foundation 0.3.2",
  "panthesia-image",
- "piano-layout",
+ "panthesia-keyboard",
+ "panthesia-music",
  "profiling",
  "quick-xml 0.41.0",
  "ron",
@@ -4010,9 +4010,9 @@ name = "panthesia-desktop"
 version = "0.1.0"
 dependencies = [
  "blake3",
- "midi-file",
  "panthesia-core",
  "panthesia-engine",
+ "panthesia-music",
  "rfd",
  "serde",
  "serde_json",
@@ -4028,10 +4028,10 @@ dependencies = [
  "chrono",
  "cpal",
  "csv",
- "midi-file",
  "midir",
  "oxisynth",
  "panthesia-core",
+ "panthesia-music",
  "panthesia-vst3",
  "quick-xml 0.41.0",
  "rtrb",
@@ -4051,13 +4051,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "panthesia-keyboard"
+version = "0.1.0"
+
+[[package]]
+name = "panthesia-music"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "midi-file",
+ "midly",
+ "serde",
+]
+
+[[package]]
 name = "panthesia-vst3"
 version = "0.1.0"
 dependencies = [
  "cpal",
  "log",
- "midi-file",
  "panthesia-core",
+ "panthesia-music",
  "vst3-host",
 ]
 

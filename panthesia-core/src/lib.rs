@@ -5,6 +5,7 @@ pub use piano_layout;
 #[cfg(feature = "native-render")]
 pub use wgpu_jumpstart::{Color, Gpu, TransformUniform, Uniform};
 
+#[cfg(feature = "native-render")]
 pub mod config;
 pub mod product;
 pub mod practice_transform;

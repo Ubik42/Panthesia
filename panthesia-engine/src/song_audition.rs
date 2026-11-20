@@ -61,7 +61,7 @@ impl Prepared {
             .flat_map(|t| t.events.iter())
             .filter(|e| e.timestamp.as_secs_f64() < first + duration)
             .collect();
-        source.sort_by_key(|e| e.timestamp);
+        source.sort_by_key(|e| (e.timestamp,e.order));
         let mut initial = Vec::new();
         let mut events = Vec::new();
         // Establish the audition's default channel state, independent of the loaded song.

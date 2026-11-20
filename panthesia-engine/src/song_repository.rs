@@ -363,6 +363,7 @@ impl SongRepository {
         let managed = publish_asset(&Self::managed_path(&self.data, cid)?, &bytes, cid)?;
         check()?;
         self.import_annotations(annotation_origin, &managed, cid, parts, None)?;
+        panthesia_core::song_annotations::bind_legacy_bytes(&managed,cid,&bytes,check).map_err(error)?;
         let project = project_identity(source)?;
         let tx = self
             .db

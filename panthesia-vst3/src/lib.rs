@@ -494,11 +494,21 @@ fn plugin_state_path_in(uid:&str, root:Option<&Path>)->Option<PathBuf> {
         log::warn!("VST3 plugin returned an invalid class UID; state persistence is disabled");
         return None;
     }
-    let parent = root.map(Path::to_path_buf).or_else(||Some(panthesia_core::utils::resources::settings_ron()?
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join("vst3-state")))?;
+    let parent = root.map(Path::to_path_buf).or_else(legacy_state_root)?;
     Some(parent.join(format!("{}.bin", uid.to_ascii_lowercase())))
+}
+
+/// The active host always supplies its profile root. This is a read/migration
+/// fallback for the old standalone host, independent of its settings module.
+fn legacy_state_root()->Option<PathBuf>{
+    #[cfg(target_os="windows")]
+    {return std::env::current_dir().ok().map(|p|p.join("vst3-state"));}
+    #[cfg(target_os="macos")]
+    {return std::env::var_os("HOME").map(PathBuf::from).map(|p|p.join("Library/Application Support/Panthesia/vst3-state"));}
+    #[cfg(all(unix,not(target_os="macos")))]
+    {return std::env::var_os("XDG_CONFIG_HOME").filter(|v|!v.is_empty()).map(PathBuf::from).or_else(||std::env::var_os("HOME").map(PathBuf::from).map(|p|p.join(".config"))).map(|p|p.join("panthesia/vst3-state"));}
+    #[cfg(not(any(unix,target_os="windows")))]
+    {None}
 }
 
 fn read_state_file(path:&Path)->io::Result<Vec<u8>> {

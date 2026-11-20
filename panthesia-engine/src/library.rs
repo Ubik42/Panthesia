@@ -506,6 +506,9 @@ pub fn available_path(index:&crate::library_workspace::Workspace,content_id:&str
 pub(crate) fn read_midi(path:&Path)->Result<midi_file::MidiFile,String> {
     read_midi_limited(path, 512_000_000)
 }
+pub(crate) fn read_midi_checked(path:&Path,check:&impl Fn()->Result<(),String>)->Result<midi_file::MidiFile,String>{
+    check()?;let path=std::path::absolute(path).map_err(|e|e.to_string())?;let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,32_000_000).map_err(|e|e.to_string())?;midi_file::MidiFile::from_path_bytes_checked(path,&bytes,check)
+}
 pub(crate) fn read_midi_limited(path:&Path, limit:usize)->Result<midi_file::MidiFile,String> {
     let path=std::path::absolute(path).map_err(|e|format!("曲目位置无法解析：{e}"))?;
     let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,limit).map_err(|e|e.to_string())?;

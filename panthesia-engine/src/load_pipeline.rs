@@ -105,6 +105,7 @@ impl Assets {
         };
         match library::load_song_sidecar(path, &file.content_id) {
             Ok(sidecar) => {
+                let sidecar=if panthesia_core::song_annotations::document_path(path).is_none(){panthesia_core::song_annotations::project_legacy(sidecar,&file.source).map_err(|e|e.to_string())?}else{sidecar};
                 if sidecar.meter_map.is_some() || sidecar.meter.is_some() {
                     match Player::sidecar_grid(file, &sidecar) {
                         Ok(grid) => result.grid = Some(grid),
@@ -219,14 +220,7 @@ impl Timeline {
                 check()?;
             }
             duration = duration.max(note.end.as_secs_f64());
-            event_notes.insert(
-                (note.track_id, note.channel, note.note, note.start, true),
-                note.index,
-            );
-            event_notes.insert(
-                (note.track_id, note.channel, note.note, note.end, false),
-                note.index,
-            );
+            event_notes.insert(note.inner.id(),note.index);
         }
         let mut events = Vec::new();
         for track in file.tracks.iter() {
@@ -236,7 +230,7 @@ impl Timeline {
             }
         }
         check()?;
-        events.sort_by_key(|event| event.timestamp);
+        events.sort_by_key(|event| (event.timestamp,event.order));
         check()?;
         let sound = std::sync::Arc::new(crate::track_sound::Timeline::new_checked(&events, check)?);
         check()?;
@@ -334,7 +328,7 @@ impl Prepared {
         check()?;
         let path = std::path::absolute(path).map_err(|e| format!("曲目位置无法解析：{e}"))?;
         let watch = Watch::capture(&path)?;
-        let file = crate::library::read_midi(&path).map_err(|e| format!("曲目加载失败：{e}"))?;
+        let file = crate::library::read_midi_checked(&path,check).map_err(|e| format!("曲目加载失败：{e}"))?;
         check()?;
         if expected.is_some_and(|id| id != file.content_id) {
             return Err("曲库索引中的文件内容已改变，请重新检查这首曲目".into());

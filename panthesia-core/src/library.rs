@@ -158,6 +158,8 @@ struct MetadataSidecar {
 
 #[derive(Debug, Error)]
 pub enum MetadataError {
+    #[error("音符身份映射无效：{0}")]
+    InvalidNoteIdentity(String),
     #[error("曲目标注文档无效：{0}")]
     Document(#[source] serde_json::Error),
     #[error("could not read metadata sidecar: {0}")]
@@ -411,7 +413,7 @@ pub fn load_song_sidecar(
     midi_path: &Path,
     expected_content_id: &str,
 ) -> Result<SongSidecar, MetadataError> {
-    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::read(&path,expected_content_id);}
+    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::read(&path,expected_content_id,midi_path);}
     load_legacy_song_sidecar(midi_path,expected_content_id)
 }
 pub fn load_legacy_song_sidecar(midi_path:&Path,expected_content_id:&str)->Result<SongSidecar,MetadataError>{
@@ -578,7 +580,7 @@ pub fn save_song_sidecar(
     content_id: &str,
     sidecar: SongSidecar,
 ) -> Result<PathBuf, MetadataError> {
-    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::write(&path,content_id,sidecar);}
+    if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::write(&path,content_id,sidecar,midi_path);}
     validate_metadata_layers(sidecar.metadata_layers.as_ref(), &sidecar.metadata)?;
     let path = metadata_sidecar_path(midi_path);
     let sidecar = MetadataSidecar {
