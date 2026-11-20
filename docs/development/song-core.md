@@ -4,9 +4,13 @@
 
 ## 当前真实状态
 
-已有 MusicalWork、PerformanceEdition、PracticeEdition、NotationEdition 和 NotationGeneration 的读取/身份模型。持久化仍分散在 repertoire、library-workspace.json、web-preferences.json、MIDI 旁的 .neothesia.ron 以及制谱/谱面草稿中。SongProject 目前是读取投影。原始文件内容 ID 为 BLAKE3(原始 MIDI 字节)。
+已有 MusicalWork、PerformanceEdition、PracticeEdition、NotationEdition 和 NotationGeneration。SongRepository 已接管歌曲/演奏/来源位置/谱面目录的正常读写，数据库为 data/library/songs.sqlite3；原始 MIDI 副本在 data/library/assets/midi/<contentId>.mid。内容 ID 仍为 BLAKE3(原始 MIDI 字节)。关系备份恢复已接入原恢复日志，并包含分组锁的回退快照。
 
-手别有三种来源：MIDI 自身已分轨；每曲设置 songs[contentId].parts；sidecar 的 track_parts 与逐音 hands。自动推断仅为初值，用户覆盖必须持久保存。Look at the Sky 的可用源文件现位于“B站纯钢琴演奏视频转MIDI”目录，旧索引仍指向 Output；该问题尚未修复。
+迁移仍在 B01：workspace 继续提供部分元数据及索引，web-preferences.json 保存练习设置与每曲轨道手别，标注仍采用内容所有的 RON 附件。加载后标注读写已优先指向管理副本，原外部附件作为导入来源；独立标注存储和全部消费者迁移尚未完成。SongProject 继续作为关系与练习变换的读取投影。
+
+手别的现有来源是 MIDI 已有分轨、songs[contentId].parts、附件 track_parts 与逐音 hands。Look at the Sky 的当前五个文件对应四份内容，其中主演奏与原调自动对齐文件字节相同；五条旧路径有四条能精确映射，另有一份旧内容尚未找到。原调乐谱量化版已有轨道 1=RightHand、2=LeftHand 的每曲设置。真实资料本轮只读核对，尚未运行迁移；详见 evidence/song-relocation-2026-11-20.json。
+
+新目录首次导入旧 repertoire/workspace 前，将原字节存到 library/legacy-inputs，哈希随文件名记录；损坏输入或未来 schema 返回错误。目录读取与版本号来自同一事务快照，保存时校验版本；后台扫描不覆盖人工拆分。当前 Windows 文件发布先完成同步临时文件，再以同目录链接发布完整副本，最后提交数据库引用；取消可留下无引用的完整副本，不能宣称跨文件/数据库整体原子。
 
 ## 目标对象与归属
 

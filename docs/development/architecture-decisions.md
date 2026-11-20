@@ -33,7 +33,7 @@ Screens / screen controllers
 
 中心目录使用 SQLite/rusqlite，由专用存储服务写入。统一歌曲关系、资产位置、版本、手别和派生任务；大文件按内容哈希放在独立资产库。数据库原子提交与文件提交日志配合：先写临时资产、核对哈希并持久化，再提交引用；失败留下可回收临时文件，不提交空引用。数据库与外部文件不是同一个原子事务，不能仅凭 SQLite 事务宣称两者同时提交。
 
-SQLite 依据其[原子提交说明](https://www.sqlite.org/atomiccommit.html)处理关系记录；Rust 接入使用 [rusqlite](https://docs.rs/rusqlite/latest/rusqlite/)。实施时选择与当前工具链兼容的固定版本及锁文件。B01 完成前，旧存储仍是实际来源；禁止把该目标写成现成实现。
+SQLite 依据其[原子提交说明](https://www.sqlite.org/atomiccommit.html)处理关系记录；Rust 接入使用 [rusqlite](https://docs.rs/rusqlite/latest/rusqlite/)。实施时选择与当前工具链兼容的固定版本及锁文件。B01 当前已接入歌曲关系目录与 MIDI 副本；workspace、每曲设置和 RON 标注仍有活动消费者，完整统一存储尚未完成。依赖锁文件中的 thiserror 升级由 rusqlite 的跨目标传递依赖要求触发。
 
 迁移生成新目录、迁移清单和校验结果。切换后只写新存储；旧适配器提供只读导入和导出恢复。兼容不意味着同时维护两套活动核心。
 

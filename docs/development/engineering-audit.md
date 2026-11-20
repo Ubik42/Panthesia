@@ -15,13 +15,13 @@
 
 piano-layout/lib.rs、wgpu-jumpstart/lib.rs 与 core/utils/fps_ticker.rs 均有完整相同的文件；MIDI 包装和旧原生应用还存在修改后的沿用实现。原仓库作者字段、旧应用包目录、文档与 Flatpak 上游链接也未全部收束。
 
-## 真正运行的模块
+## 调查时的运行模块
 
 [依赖图](evidence/module-graph-2026-11-20.json)显示当前桌面的非可选工作区路径包括：panthesia-desktop、panthesia-engine、panthesia-core、panthesia-vst3、midi-file、piano-layout。native-render 默认关闭，因此旧 WGPU 包装不是新桌面默认运行依赖。此图未代替完整特性与目标平台解析。
 
 旧 panthesia 原生 UI、panthesia-cli、panthesia-ai、nuon、ffmpeg-encoder 等仍在 workspace。根 default-members 却指向旧 panthesia；旧 CI 监听 master，发布旧原生/CLI/macOS 包；另一个 feature CI 大量执行评分/表现测试。这些默认入口与主产品方向冲突，B00 收束。
 
-## 当前耦合点
+## 调查时的耦合点
 
 - App.tsx 2635 行，承担导航、前后台会话、导入、备份、编辑与工具装配；同层仍有旧评分窗口和大量业务表单。
 - engine/lib.rs 4572 行，其中含大量旧行为测试与聚合控制。不能把文件行数全当生产代码，也不能据模块已拆出宣称聚合已消失。
@@ -29,7 +29,7 @@ piano-layout/lib.rs、wgpu-jumpstart/lib.rs 与 core/utils/fps_ticker.rs 均有�
 - practice_backup.rs、MusicXML/score playback、PaperReader 各有大型实现；按数据/领域边界分批处理，避免一次重写同时伤及备份与实际演奏。
 - 两套图形路线、通用命令联合体、旧路径 sidecar 与新读取投影并存。应优先统一事实来源，随后替换消费者。
 
-## 当前用户可见缺口
+## 调查基线的用户可见缺口
 
 1. Look at the Sky 的五条旧路径不可用，新文件已存在；目录发现、身份重联和歌曲归并未完成。
 2. 左右手与谱面关联分散存储；文件搬移和解析替换仍可能影响附加标注。
@@ -49,3 +49,11 @@ piano-layout/lib.rs、wgpu-jumpstart/lib.rs 与 core/utils/fps_ticker.rs 均有�
 - [midly](https://github.com/kovaxis/midly)：格式解析/写入通用库，应用包装独立实现。
 - [SQLite 原子提交](https://www.sqlite.org/atomiccommit.html)、[rusqlite](https://docs.rs/rusqlite/latest/rusqlite/)：中心关系存储的事务边界；跨数据库/文件提交仍需自己的提交协议。
 - 根 LICENSE/NOTICE 仍适用于现有来源代码。最终来源与许可依据实际替换结果，不能由仓库改名或相似度统计替代。
+
+## B01 实施更新
+
+关系目录、MIDI 持有副本与移动回退已接入当前源码；详见 current-plan.md 检查点及 song-core.md。原调查统计和 a67ea54 包保持其原日期含义，不代表新实现的运行验证。
+
+只读迁移分析确认 Look at the Sky 并非简单的五份同一文件：四条旧记录可以精确按内容关联，一条旧内容当前未命中。源工程清单能明确当前四份演奏属于同一歌曲，当前主演奏和原调对齐文件完全相同。未经实际用户迁移及完整页面流程确认，不将此源码改造写作用户库已经修复。
+
+扫描检查暴露了旧 add_folder 将自动目录同时持久登记的问题；已修正登记/发现边界，并明确向扫描器传入根目录。定位期间的失败检查曾枚举实际曲库并向独立临时资料复制部分 MIDI，已停止该错误范围；实际曲库未发现任何 RON 附件写入，源码路径未执行原 MIDI 改写。修正后的检查只使用独立目录与自有样例，0.19 秒通过。记录该偏差，后续检查不依赖默认个人曲库根。

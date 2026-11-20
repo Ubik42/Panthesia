@@ -1,0 +1,111 @@
+{
+  "generatedAt": "2026-11-20T11:44:52.958436+00:00",
+  "readOnly": true,
+  "identityRule": "BLAKE3 of unchanged MIDI bytes; titles only select diagnosis candidates",
+  "manifestCanonical": "Look at the Sky - Porter Robinson.mid",
+  "manifestSha256MatchesCanonical": true,
+  "assets": [
+    {
+      "relativePath": "Look at the Sky - Porter Robinson.mid",
+      "contentId": "d514cbd689fac1b47a0f44a05a3a2730ef06d3a7c68e73614b371bd213a3ba67",
+      "sha256": "03329d09acf1f4bc1f3f907e2679cc50aa222bdb1d30836a3f0532675bd149a6",
+      "bytes": 22966,
+      "sidecarPresent": false
+    },
+    {
+      "relativePath": "versions/Look at the Sky - Porter Robinson_C大调_乐谱量化.mid",
+      "contentId": "80277809a99267046b59bdb856b5397b0e64d4a1d0c34518ede556f7253424b3",
+      "sha256": "6fd80ae1364c7f9d143ef92faecc8d18e67726fa4ed66598839fc5ee692847b7",
+      "bytes": 22633,
+      "sidecarPresent": false
+    },
+    {
+      "relativePath": "versions/Look at the Sky - Porter Robinson_C大调_自动对齐.mid",
+      "contentId": "7acbbc40e473c308d02fba4dd760abe9e42dc57a6af5e723694f2382b515e2ce",
+      "sha256": "745da7e213eed8955c4e1de1bd1d363dcad703012dba9af5f6a47f835c073cb9",
+      "bytes": 22966,
+      "sidecarPresent": false
+    },
+    {
+      "relativePath": "versions/Look at the Sky - Porter Robinson_原调_乐谱量化.mid",
+      "contentId": "42533a87e1a4878baa21d7588db1eaefd9bc46c2622bce306d27c7b09cf01b42",
+      "sha256": "f84a53dab7bf7271501c7097addbada4a1dd4f6bea27ccd7dcf8ca01e446bd91",
+      "bytes": 22633,
+      "sidecarPresent": false
+    },
+    {
+      "relativePath": "versions/Look at the Sky - Porter Robinson_原调_自动对齐.mid",
+      "contentId": "d514cbd689fac1b47a0f44a05a3a2730ef06d3a7c68e73614b371bd213a3ba67",
+      "sha256": "03329d09acf1f4bc1f3f907e2679cc50aa222bdb1d30836a3f0532675bd149a6",
+      "bytes": 22966,
+      "sidecarPresent": false
+    }
+  ],
+  "legacyCandidates": [
+    {
+      "oldPathPresent": false,
+      "contentId": "80277809a99267046b59bdb856b5397b0e64d4a1d0c34518ede556f7253424b3",
+      "exactMatches": [
+        "versions/Look at the Sky - Porter Robinson_C大调_乐谱量化.mid"
+      ],
+      "savedTrackParts": {},
+      "savedScoreVersions": 0,
+      "oldSidecarPresent": false,
+      "oldFileName": "Look at the Sky - Porter Robinson_C大调_乐谱量化.mid"
+    },
+    {
+      "oldPathPresent": false,
+      "contentId": "7acbbc40e473c308d02fba4dd760abe9e42dc57a6af5e723694f2382b515e2ce",
+      "exactMatches": [
+        "versions/Look at the Sky - Porter Robinson_C大调_自动对齐.mid"
+      ],
+      "savedTrackParts": {},
+      "savedScoreVersions": 0,
+      "oldSidecarPresent": false,
+      "oldFileName": "Look at the Sky - Porter Robinson_C大调_自动对齐.mid"
+    },
+    {
+      "oldPathPresent": false,
+      "contentId": "42533a87e1a4878baa21d7588db1eaefd9bc46c2622bce306d27c7b09cf01b42",
+      "exactMatches": [
+        "versions/Look at the Sky - Porter Robinson_原调_乐谱量化.mid"
+      ],
+      "savedTrackParts": {
+        "0": "Other",
+        "1": "RightHand",
+        "2": "LeftHand"
+      },
+      "savedScoreVersions": 0,
+      "oldSidecarPresent": false,
+      "oldFileName": "Look at the Sky - Porter Robinson_原调_乐谱量化.mid"
+    },
+    {
+      "oldPathPresent": false,
+      "contentId": "d514cbd689fac1b47a0f44a05a3a2730ef06d3a7c68e73614b371bd213a3ba67",
+      "exactMatches": [
+        "Look at the Sky - Porter Robinson.mid",
+        "versions/Look at the Sky - Porter Robinson_原调_自动对齐.mid"
+      ],
+      "savedTrackParts": {},
+      "savedScoreVersions": 0,
+      "oldSidecarPresent": false,
+      "oldFileName": "Look at the Sky - Porter Robinson_原调_自动对齐.mid"
+    },
+    {
+      "oldPathPresent": false,
+      "contentId": "d30d6551bed3327cc2608efe4c059df04265376f3a1c641950b61dfe44a3000e",
+      "exactMatches": [],
+      "savedTrackParts": {},
+      "savedScoreVersions": 0,
+      "oldSidecarPresent": false,
+      "oldFileName": "Look at the Sky - Porter Robinson.mid"
+    }
+  ],
+  "summary": {
+    "files": 5,
+    "distinctPerformances": 4,
+    "legacyCandidates": 5,
+    "exactlyRelocatable": 4,
+    "unmatched": 1
+  }
+}
