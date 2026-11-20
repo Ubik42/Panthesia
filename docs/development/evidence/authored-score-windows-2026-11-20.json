@@ -1,0 +1,717 @@
+{
+  "schemaVersion": 1,
+  "batch": "B05",
+  "scope": "P15 authored performance score windows; B05 remains active",
+  "implementationRevision": "5453e816072dadb2d13af766ddc8e14ba194c7ba",
+  "debugProcess": {
+    "pid": 22828,
+    "executable": "D:\\Music\\_tools\\Panthesia\\target\\debug\\panthesia-desktop.exe",
+    "profile": "D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p17-window\\profile",
+    "revision": "5453e816072dadb2d13af766ddc8e14ba194c7ba",
+    "binarySha256": "f78a96ea06f8e26d15eb80431221f4c7c8a49bc35cc5f6b42ad69eb3c743f5f6",
+    "startedAt": "2026-11-20T17:45:01.504Z"
+  },
+  "fullSourceFlowRevision": "614e10e2adc84096fe140690f1d614614a7604bf",
+  "nativeFlow": {
+    "startedAt": "2026-11-20T17:39:59.812Z",
+    "phases": [
+      "12728710-byte authored source with 25001 measures / 100004 notes imports and shows only first range",
+      "manual next range and global seek highlight source note 100002 in final authored measures",
+      "continuous playback jumps from written measure 64 to 1 on second repeat; source IDs follow later MIDI occurrence"
+    ],
+    "import": {
+      "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+      "notes": 100004,
+      "title": "长谱练习",
+      "hasScore": true,
+      "elapsed": 12210.09999999404
+    },
+    "first": {
+      "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+      "notes": 100004,
+      "hasScore": true,
+      "readiness": "Ready",
+      "window": {
+        "count": 32,
+        "end": 64,
+        "first": 0,
+        "firstNumber": "1",
+        "intervals": [
+          {
+            "end": 2,
+            "start": 0
+          },
+          {
+            "end": 4,
+            "start": 2
+          },
+          {
+            "end": 6,
+            "start": 4
+          },
+          {
+            "end": 8,
+            "start": 6
+          },
+          {
+            "end": 10,
+            "start": 8
+          },
+          {
+            "end": 12,
+            "start": 10
+          },
+          {
+            "end": 14,
+            "start": 12
+          },
+          {
+            "end": 16,
+            "start": 14
+          },
+          {
+            "end": 18,
+            "start": 16
+          },
+          {
+            "end": 20,
+            "start": 18
+          },
+          {
+            "end": 22,
+            "start": 20
+          },
+          {
+            "end": 24,
+            "start": 22
+          },
+          {
+            "end": 26,
+            "start": 24
+          },
+          {
+            "end": 28,
+            "start": 26
+          },
+          {
+            "end": 30,
+            "start": 28
+          },
+          {
+            "end": 32,
+            "start": 30
+          },
+          {
+            "end": 34,
+            "start": 32
+          },
+          {
+            "end": 36,
+            "start": 34
+          },
+          {
+            "end": 38,
+            "start": 36
+          },
+          {
+            "end": 40,
+            "start": 38
+          },
+          {
+            "end": 42,
+            "start": 40
+          },
+          {
+            "end": 44,
+            "start": 42
+          },
+          {
+            "end": 46,
+            "start": 44
+          },
+          {
+            "end": 48,
+            "start": 46
+          },
+          {
+            "end": 50,
+            "start": 48
+          },
+          {
+            "end": 52,
+            "start": 50
+          },
+          {
+            "end": 54,
+            "start": 52
+          },
+          {
+            "end": 56,
+            "start": 54
+          },
+          {
+            "end": 58,
+            "start": 56
+          },
+          {
+            "end": 60,
+            "start": 58
+          },
+          {
+            "end": 62,
+            "start": 60
+          },
+          {
+            "end": 64,
+            "start": 62
+          }
+        ],
+        "lastNumber": "32",
+        "previous": null,
+        "start": 0,
+        "total": 25001
+      },
+      "windowBytes": 16261,
+      "prepareMs": 30.80000001192093,
+      "playing": [
+        "long-n0"
+      ],
+      "position": 0,
+      "status": "countIn",
+      "error": null
+    },
+    "last": {
+      "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+      "notes": 100004,
+      "hasScore": true,
+      "readiness": "Ready",
+      "window": {
+        "count": 9,
+        "end": 50002,
+        "first": 24992,
+        "firstNumber": "24993",
+        "intervals": [
+          {
+            "end": 49986,
+            "start": 49984
+          },
+          {
+            "end": 49988,
+            "start": 49986
+          },
+          {
+            "end": 49990,
+            "start": 49988
+          },
+          {
+            "end": 49992,
+            "start": 49990
+          },
+          {
+            "end": 49994,
+            "start": 49992
+          },
+          {
+            "end": 49996,
+            "start": 49994
+          },
+          {
+            "end": 49998,
+            "start": 49996
+          },
+          {
+            "end": 50000,
+            "start": 49998
+          },
+          {
+            "end": 50002,
+            "start": 50000
+          }
+        ],
+        "lastNumber": "25001",
+        "previous": 24960,
+        "start": 49984,
+        "total": 25001
+      },
+      "windowBytes": 5006,
+      "prepareMs": 34.400000005960464,
+      "playing": [
+        "long-n100001",
+        "long-n100002"
+      ],
+      "position": 50001,
+      "status": "playing",
+      "error": null
+    },
+    "paper": "生成可定位纸谱\n关闭\n\n制作范围：原谱第 24993–25001 小节。\n\n软件会用当前已核对的关联乐谱生成本机谱页。请逐页查看音符位置；您可以在保存前跳过需要重新核对的音符。原有 PDF、图片和手工标记会保留。\n\n谱面名称\n\n共 1 页；可定位 36 个演奏音符；本次保留 36 个；跳过 99968 个。\n\n谱音对应不唯一或未配对 99968 处。\n\n上一页\n预览页码  / 1 页\n下一页\n预览缩放 \n适合宽度\n原尺寸\n放大\n本页保留 36 / 36 个位置\n定位演奏小节\n查看当前页全部音符\n第 24993 小节\n第 24994 小节\n第 24995 小节\n第 24996 小节\n第 24997 小节\n第 24998 小节\n第 24999 小节\n第 25000 小节\n第 25001 小节\nPiano\n24993\n24998\n长谱练习\n本页音符位置\n保留本页\n跳过本页\n36 个位置 · 第 1 / 1 页\n上一组\n下一组\n第 24993 小节 · C4 · 第 1 页 · 音轨 2\n第 24993 小节 · E4 · 第 1 页 · 音轨 2\n第 24993 小节 · G4 · 第 1 页 · 音轨 2\n第 24993 小节 · B4 · 第 1 页 · 音轨 2\n第 24994 小节 · C4 · 第 1 页 · 音轨 2\n第 24994 小节 · E4 · 第 1 页 · 音轨 2\n第 24994 小节 · G4 · 第 1 页 · 音轨 2\n第 24994 小节 · B4 · 第 1 页 · 音轨 2\n第 24995 小节 · C4 · 第 1 页 · 音轨 2\n第 24995 小节 · E4 · 第 1 页 · 音轨 2\n第 24995 小节 · G4 · 第 1 页 · 音轨 2\n第 24995 小节 · B4 · 第 1 页 · 音轨 2\n第 24996 小节 · C4 · 第 1 页 · 音轨 2\n第 24996 小节 · E4 · 第 1 页 · 音轨 2\n第 24996 小节 · G4 · 第 1 页 · 音轨 2\n第 24996 小节 · B4 · 第 1 页 · 音轨 2\n第 24997 小节 · C4 · 第 1 页 · 音轨 2\n第 24997 小节 · E4 · 第 1 页 · 音轨 2\n第 24997 小节 · G4 · 第 1 页 · 音轨 2\n第 24997 小节 · B4 · 第 1 页 · 音轨 2\n第 24998 小节 · C4 · 第 1 页 · 音轨 2\n第 24998 小节 · E4 · 第 1 页 · 音轨 2\n第 24998 小节 · G4 · 第 1 页 · 音轨 2\n第 24998 小节 · B4 · 第 1 页 · 音轨 2\n第 24999 小节 · C4 · 第 1 页 · 音轨 2\n第 24999 小节 · E4 · 第 1 页 · 音轨 2\n第 24999 小节 · G4 · 第 1 页 · 音轨 2\n第 24999 小节 · B4 · 第 1 页 · 音轨 2\n第 25000 小节 · C4 · 第 1 页 · 音轨 2\n第 25000 小节 · E4 · 第 1 页 · 音轨 2\n第 25000 小节 · G4 · 第 1 页 · 音轨 2\n第 25000 小节 · B4 · 第 1 页 · 音轨 2\n第 25001 小节 · C4 · 第 1 页 · 音轨 2\n第 25001 小节 · E4 · 第 1 页 · 音轨 2\n第 25001 小节 · G4 · 第 1 页 · 音轨 2\n第 25001 小节 · B4 · 第 1 页 · 音轨 2\n保留输入并关闭\n采用并保存",
+    "repeatImport": {
+      "contentId": "1324a9675953d2fbe1e32cb1a595b15dd0576973d02b6e1c34b358518b8b3ce0",
+      "notes": 136,
+      "title": "反复练习"
+    },
+    "repeat": {
+      "contentId": "1324a9675953d2fbe1e32cb1a595b15dd0576973d02b6e1c34b358518b8b3ce0",
+      "notes": 136,
+      "hasScore": true,
+      "readiness": "Ready",
+      "window": {
+        "count": 32,
+        "end": 192,
+        "first": 0,
+        "firstNumber": "1",
+        "intervals": [
+          {
+            "end": 2,
+            "start": 0
+          },
+          {
+            "end": 4,
+            "start": 2
+          },
+          {
+            "end": 6,
+            "start": 4
+          },
+          {
+            "end": 8,
+            "start": 6
+          },
+          {
+            "end": 10,
+            "start": 8
+          },
+          {
+            "end": 12,
+            "start": 10
+          },
+          {
+            "end": 14,
+            "start": 12
+          },
+          {
+            "end": 16,
+            "start": 14
+          },
+          {
+            "end": 18,
+            "start": 16
+          },
+          {
+            "end": 20,
+            "start": 18
+          },
+          {
+            "end": 22,
+            "start": 20
+          },
+          {
+            "end": 24,
+            "start": 22
+          },
+          {
+            "end": 26,
+            "start": 24
+          },
+          {
+            "end": 28,
+            "start": 26
+          },
+          {
+            "end": 30,
+            "start": 28
+          },
+          {
+            "end": 32,
+            "start": 30
+          },
+          {
+            "end": 34,
+            "start": 32
+          },
+          {
+            "end": 36,
+            "start": 34
+          },
+          {
+            "end": 38,
+            "start": 36
+          },
+          {
+            "end": 40,
+            "start": 38
+          },
+          {
+            "end": 42,
+            "start": 40
+          },
+          {
+            "end": 44,
+            "start": 42
+          },
+          {
+            "end": 46,
+            "start": 44
+          },
+          {
+            "end": 48,
+            "start": 46
+          },
+          {
+            "end": 50,
+            "start": 48
+          },
+          {
+            "end": 52,
+            "start": 50
+          },
+          {
+            "end": 54,
+            "start": 52
+          },
+          {
+            "end": 56,
+            "start": 54
+          },
+          {
+            "end": 58,
+            "start": 56
+          },
+          {
+            "end": 60,
+            "start": 58
+          },
+          {
+            "end": 62,
+            "start": 60
+          },
+          {
+            "end": 64,
+            "start": 62
+          },
+          {
+            "end": 130,
+            "start": 128
+          },
+          {
+            "end": 132,
+            "start": 130
+          },
+          {
+            "end": 134,
+            "start": 132
+          },
+          {
+            "end": 136,
+            "start": 134
+          },
+          {
+            "end": 138,
+            "start": 136
+          },
+          {
+            "end": 140,
+            "start": 138
+          },
+          {
+            "end": 142,
+            "start": 140
+          },
+          {
+            "end": 144,
+            "start": 142
+          },
+          {
+            "end": 146,
+            "start": 144
+          },
+          {
+            "end": 148,
+            "start": 146
+          },
+          {
+            "end": 150,
+            "start": 148
+          },
+          {
+            "end": 152,
+            "start": 150
+          },
+          {
+            "end": 154,
+            "start": 152
+          },
+          {
+            "end": 156,
+            "start": 154
+          },
+          {
+            "end": 158,
+            "start": 156
+          },
+          {
+            "end": 160,
+            "start": 158
+          },
+          {
+            "end": 162,
+            "start": 160
+          },
+          {
+            "end": 164,
+            "start": 162
+          },
+          {
+            "end": 166,
+            "start": 164
+          },
+          {
+            "end": 168,
+            "start": 166
+          },
+          {
+            "end": 170,
+            "start": 168
+          },
+          {
+            "end": 172,
+            "start": 170
+          },
+          {
+            "end": 174,
+            "start": 172
+          },
+          {
+            "end": 176,
+            "start": 174
+          },
+          {
+            "end": 178,
+            "start": 176
+          },
+          {
+            "end": 180,
+            "start": 178
+          },
+          {
+            "end": 182,
+            "start": 180
+          },
+          {
+            "end": 184,
+            "start": 182
+          },
+          {
+            "end": 186,
+            "start": 184
+          },
+          {
+            "end": 188,
+            "start": 186
+          },
+          {
+            "end": 190,
+            "start": 188
+          },
+          {
+            "end": 192,
+            "start": 190
+          }
+        ],
+        "lastNumber": "32",
+        "previous": null,
+        "start": 0,
+        "total": 72
+      },
+      "windowBytes": 5161,
+      "prepareMs": 4.100000008940697,
+      "playing": [
+        "repeat-n0"
+      ],
+      "position": 128.42583869999999,
+      "status": "playing",
+      "error": null
+    },
+    "remainingWorkers": 0,
+    "passed": true,
+    "finishedAt": "2026-11-20T17:40:44.771Z"
+  },
+  "finalPaper": {
+    "startedAt": "2026-11-20T17:45:11.745Z",
+    "summary": "共 1 页；可定位 36 个演奏音符；本次保留 36 个；跳过 0 个。",
+    "remainingWorkers": 0,
+    "passed": true,
+    "finishedAt": "2026-11-20T17:45:35.401Z"
+  },
+  "archive": {
+    "startedAt": "2026-11-20T17:42:38.438Z",
+    "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+    "export": {
+      "path": "\\\\?\\D:\\Music\\_tools\\Panthesia\\work\\original-product-reset\\p17-window\\profile\\package-transfers\\b6c98a09537c1cdcc84aba9f4ddeaf4e7bb1d19227bc1ab8a5bc0af848c723a8.neopiece",
+      "title": "长谱练习",
+      "summary": {
+        "archiveTotals": {
+          "fingerActions": 0,
+          "fingerings": 0,
+          "hands": 0,
+          "ladders": 0,
+          "paperBooks": 0,
+          "paperPages": 0,
+          "passages": 0,
+          "scores": 1
+        },
+        "bookmarks": [],
+        "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+        "fingerActions": 0,
+        "fingerings": 0,
+        "groups": [],
+        "hands": 0,
+        "ladders": [],
+        "metadata": {
+          "arranger": null,
+          "artist": null,
+          "collection": null,
+          "composer": null,
+          "copyright": null,
+          "difficulty": null,
+          "license": null,
+          "notes": null,
+          "subtitle": null,
+          "tags": [
+            "乐谱导入"
+          ],
+          "title": "长谱练习"
+        },
+        "notePlayback": 0,
+        "papers": [],
+        "passages": [],
+        "performances": [
+          {
+            "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+            "label": "长谱练习",
+            "papers": 0,
+            "scores": 1,
+            "title": "长谱练习"
+          }
+        ],
+        "provenance": {
+          "originalContentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+          "source": "个人曲目"
+        },
+        "rating": 0,
+        "scores": [
+          "Authored long.musicxml"
+        ],
+        "song": {
+          "id": "work-b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+          "title": "长谱练习"
+        },
+        "title": "长谱练习",
+        "trackAppearances": [],
+        "trackSounds": 0
+      }
+    },
+    "archiveBytes": 392216,
+    "inspection": {
+      "archiveTotals": {
+        "fingerActions": 0,
+        "fingerings": 0,
+        "hands": 0,
+        "ladders": 0,
+        "paperBooks": 0,
+        "paperPages": 0,
+        "passages": 0,
+        "scores": 1
+      },
+      "bookmarks": [],
+      "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+      "existing": true,
+      "fingerActions": 0,
+      "fingerings": 0,
+      "groups": [],
+      "hands": 0,
+      "ladders": [],
+      "metadata": {
+        "arranger": null,
+        "artist": null,
+        "collection": null,
+        "composer": null,
+        "copyright": null,
+        "difficulty": null,
+        "license": null,
+        "notes": null,
+        "subtitle": null,
+        "tags": [
+          "乐谱导入"
+        ],
+        "title": "长谱练习"
+      },
+      "notePlayback": 0,
+      "papers": [],
+      "passages": [],
+      "performances": [
+        {
+          "contentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+          "label": "长谱练习",
+          "papers": 0,
+          "scores": 1,
+          "title": "长谱练习"
+        }
+      ],
+      "provenance": {
+        "originalContentId": "b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+        "source": "个人曲目"
+      },
+      "rating": 0,
+      "scores": [
+        "Authored long.musicxml"
+      ],
+      "song": {
+        "id": "work-b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854",
+        "title": "长谱练习"
+      },
+      "title": "长谱练习",
+      "trackAppearances": [],
+      "trackSounds": 0
+    },
+    "passed": true,
+    "finishedAt": "2026-11-20T17:43:06.512Z"
+  },
+  "preservation": {
+    "sourceUnchanged": true,
+    "repeatSourceUnchanged": true,
+    "previousAnnotationsUnchanged": true,
+    "annotationSha256": "526bd0edb5cf404704ac91751bd4ad2524a231ab5fb29ff1bf4e2b954d3ab6ff",
+    "archiveOriginalScoreBytesEqual": true,
+    "archiveSources": [
+      {
+        "path": "performances/b780c387ebc54e74e361ae81c6ddf4ffc4df9ff2e8cc0c787e74849ff946e854.neopiece!scores/0.musicxml",
+        "bytes": 12728710,
+        "sha256": "bd8692f8250e83e48c79265752a91ff8abec7fe4e76dbc3e7a06c171ada228d1"
+      }
+    ]
+  },
+  "finalClose": {
+    "pid": 22828,
+    "exited": true,
+    "exitCode": 0,
+    "signal": null,
+    "at": "2026-11-20T17:46:37.122Z"
+  },
+  "targetedChecks": {
+    "sourceIndexCases": 2,
+    "sourceRouteCase": 1,
+    "routeVariants": [
+      "repeat",
+      "daCapoFine"
+    ]
+  },
+  "rawRoot": "work/original-product-reset/p17-window",
+  "retainedObservation": "route-limit-observation.json",
+  "remaining": [
+    "read-only source previews still use whole layouts and some 4 MB admission guards",
+    "within-song key projection",
+    "whole located-paper export and existing 80-page per-job cap",
+    "DuET actual generation/adoption/cancellation and transformation/ABC work",
+    "B06 recording and B07 retirement/audit/Release"
+  ]
+}

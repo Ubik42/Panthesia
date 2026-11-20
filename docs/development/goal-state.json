@@ -11,7 +11,7 @@
     "B04"
   ],
   "nextBatch": "B06",
-  "currentTask": "B05/P15：MIDI 练习谱范围生成/排版/映射已接入；继续外部原谱范围化与曲中调号投影，然后完成 P16–P17。",
+  "currentTask": "B05/P15：MIDI 与外部原谱的演奏范围链已接入；继续只读谱面查看范围化与曲中调号投影，然后完成 DuET/变换/ABC。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T16:13:51Z",
   "nextDirectionReviewAt": "2026-11-20T18:13:51Z",
@@ -27,36 +27,37 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "MIDI practice notation prepares 32-measure windows through the detached ScoreView command",
-    "Global note/segment IDs, source timing, boundary ties, meter/tempo and assigned hands survive range changes",
-    "Window mapping verifies displayed fingerprint and binds trusted token to measure range; key estimation runs off driver",
-    "Empty rest windows retain following; manual page edges and transport position move between ranges",
-    "Restored notation registry publishes through recoverable storage transaction before startup snapshot installs",
-    "Long timeline labels use viewport width and collision spacing; score diagnostics and DuET guidance live in existing options"
+    "SourceDocument indexes original partwise/timewise XML; display windows retain authored marks and recover prior attributes and active direction spans",
+    "SourceView uses complete performed visits and native source-event alignment; repeated written notes follow distinct MIDI occurrences",
+    "Asset/import/retention/package readers share 64 MiB admission; display requests stay within 4 MB and normally 32 measures",
+    "Original source performance and score ranges share the existing 100000-visit planner budget, retiring inconsistent 20000-visit rejects",
+    "Located paper names the displayed source range and counts omissions inside its performance intervals",
+    "Historical B05 checkpoints consolidated; current plan, handoff, architecture and source records updated"
   ],
   "remainingCritical": [
-    "B05 外部 MusicXML 原谱范围化、曲中调号投影、DuET 采用与练习变换/ABC 衔接",
+    "B05 只读谱面查看仍整曲/旧容量边界，曲中调号投影，DuET 实际生成采用及变换/ABC 衔接",
     "B06 完整录音与整体整合",
     "B07 旧应用实现退役、来源审核、正式包和实际使用交付"
   ],
   "nextEntry": [
-    "panthesia-engine/src/notation.rs",
-    "panthesia-engine/src/score_mapping.rs",
-    "panthesia-engine/src/practice_notation.rs",
-    "panthesia-core/src/practice_engraving.rs",
-    "panthesia-web/src/Notation.tsx",
-    "panthesia-web/src/features/scores/scoreRenderCache.ts",
+    "panthesia-web/src/ScoreFilePreview.tsx",
+    "panthesia-web/src/features/scores/ScoreDocumentPreview.tsx",
+    "panthesia-engine/src/notation_source.rs",
+    "panthesia-engine/src/source_notation.rs",
+    "panthesia-music/src/decode.rs",
+    "panthesia-engine/src/practice_variant.rs",
+    "panthesia-web/src/Piano.tsx",
     "panthesia-web/src-tauri/src/duet_score.rs",
     "panthesia-web/src-tauri/src/score_jobs.rs"
   ],
   "validation": [
-    "2 targeted core range cases passed, including 100001-note source and overlapping tied/meter/tempo windows",
-    "1 source-bound range mapping case and 1 checked startup registry publication case passed",
-    "Web/protocol and embedded Debug builds passed; original 35 engine warnings and Vite chunk warning remain",
-    "Native 100016-note / 6379-measure song: cross-range pages, far seek, empty rest window and end-note following passed",
-    "Continuous playback crossed 64-second boundary and remained playing with no engine error",
-    "Final 30661bc desktop: 1440x960 and 760x620 rulers have no label overlap or horizontal document overflow; guidance stays in options; normal exit 0",
-    "Source MIDI and previous owned annotations unchanged; original 9 workspace edits preserved"
+    "2 source-index cases passed: authored context/marks and timewise duplicate/anonymous IDs",
+    "1 engine case passed for repeat and D.C. occurrence mapping, including rejecting out-of-range renderer IDs",
+    "Web/protocol and embedded Debug builds passed; 35 existing engine warnings and Vite chunk warning remain",
+    "Native 12.728710 MB / 25001-measure / 100004-note authored source imported; first range 16261 bytes, final range 5006 bytes; note long-n100002 highlighted",
+    "Native continuous playback passed backward repeat from written measure 64 to 1 at global time 128.4 seconds",
+    "Large-song archive exported and inspected; original XML found byte-for-byte inside nested performance package",
+    "Final 5453e81 native paper scope contains 36 located notes, skips 0, releases worker and exits 0; original sources/previous annotations unchanged"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -70,8 +71,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T17:22:11.322181+00:00",
-  "implementationRevision": "30661bc302ef1a85bbac202e615b2b47c44d1bc6",
+  "lastImplementationCheckpointAt": "2026-11-20T17:48:00.602498+00:00",
+  "implementationRevision": "5453e816072dadb2d13af766ddc8e14ba194c7ba",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -97,10 +98,14 @@
     "ecab0b1",
     "8547393",
     "688df52",
-    "30661bc"
+    "30661bc",
+    "3a91b42",
+    "6d58014",
+    "614e10e",
+    "5453e81"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "6F60AD44FE6C08D4D4A33B09B19FA8E1A913DA07C2E8F08D91F136B256182E85",
+  "developmentExecutableSha256": "F78A96EA06F8E26D15EB80431221F4C7C8A49BC35CC5F6B42AD69EB3C743F5F6",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,
