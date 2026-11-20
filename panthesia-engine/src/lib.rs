@@ -1,5 +1,6 @@
 mod loop_practice;
 mod song_audition;
+mod library_progress;
 mod bookmarks;
 pub mod state_order;
 pub mod music_import;
@@ -1399,15 +1400,7 @@ impl Player {
             return library_workspace::execute(command, &self.data);
         }
         if matches!(command, Command::Collection) {
-            let index=library_workspace::Workspace::load(&self.data)?;
-            let songs: Vec<_> = self.history.recent_songs(usize::MAX).into_iter().map(|s| { let path=library::available_path(&index,&s.content_id,s.source_path.as_deref());
-                let available=s.source_path.is_none()||path.is_some();
-                serde_json::json!({
-                "contentId": s.content_id, "title": s.display_name, "storedPath":s.source_path, "path":path,
-                "favorite": s.favorite, "queuePosition": s.queue_position, "lastUsed": s.last_used_unix_ms,
-                "lastPracticed":self.history.song(&s.content_id).and_then(|h|h.sessions.last()).map(|s|s.recorded_at_unix_ms), "sessions": s.session_count, "accuracy": s.latest_accuracy,"available":available,"recommended":s.recommended_measures,"review":s.review.map(|r|serde_json::json!({"due":r.is_due,"dueAt":r.due_at_unix_ms,"sourceAt":r.source_at_unix_ms,"sourceIsWholeSong":r.source_is_whole_song,"days":r.days_until_due,"streak":r.mastery_streak,"intervalDays":r.interval_days,"reason":format!("{:?}",r.reason)})), "generated":self.history.setup(&s.content_id).is_some_and(|s|s.exercise_spec.is_some())
-            })}).collect();
-            return Ok(serde_json::json!({ "songs": songs }));
+            return self.collection_checked(&||Ok(()));
         }
         if let Command::OpenRecent { content_id } = &command {
             let record = self.history.song(content_id).ok_or("找不到该练习记录")?;

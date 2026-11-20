@@ -78,6 +78,26 @@ export interface Note {
   manualHand: boolean;
   playbackMode?: import("./commands.generated").PlayerConfig;
 }
+export interface LibraryAttempt {
+  id: string;
+  recordedAt: number;
+  kind: "whole" | "passage" | "exercise";
+  range: [number, number] | null;
+  mode: string | null;
+  hands: string;
+  bpm: number | null;
+  accuracy: number | null;
+  judged: number | null;
+  target: number | null;
+  restorable: boolean;
+  errorRestart: boolean;
+}
+export interface LibraryPracticeProgress {
+  last: LibraryAttempt | null;
+  whole: LibraryAttempt | null;
+  wholeCount: number;
+  comparableWholeCount: number;
+}
 export interface CollectionSong {
   contentId: string;
   title: string;
@@ -86,6 +106,7 @@ export interface CollectionSong {
   queuePosition: number | null;
   lastUsed: number;
   lastPracticed?: number | null;
+  practice?: LibraryPracticeProgress;
   sessions: number;
   accuracy: number | null;
   generated: boolean;

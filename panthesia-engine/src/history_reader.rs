@@ -159,7 +159,7 @@ impl Context {
                 reader.state.latency = self.latency;
                 // Dispatch only read methods, with no playback-command side effects or implicit saves.
                 match command {
-                    Command::Collection => reader.command(Command::Collection),
+                    Command::Collection => reader.collection_checked(&check),
                     Command::WeakPractice => reader.weak_practice_checked(&check),
                     Command::DueReview { offset, expected } => reader.due_review_checked(offset, expected.as_deref(), &check),
                     Command::History => reader.history_query_window_checked(

@@ -1,3 +1,4 @@
+import { portablePath } from "../../engine/pathIdentity";
 import { parseSongSearch, matchesSongSearch } from "./songSearch";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,6 +36,8 @@ import {
 } from "./songCatalog";
 import { useSongAudition } from "./useSongAudition";
 import { useSongCatalog } from "./useSongCatalog";
+import { BrowserPracticeSummary, practiceDate } from "./BrowserPracticeSummary";
+import type { LibraryAttempt } from "../../engine/sessionTypes";
 import { BrowserSongVersions } from "./BrowserSongVersions";
 
 interface Preview {
@@ -132,6 +135,7 @@ export function SongBrowser({
   collection,
   open,
   resume,
+  restore,
   devices,
   manage,
   refresh,
@@ -145,6 +149,11 @@ export function SongBrowser({
   collection: readonly CollectionSong[];
   open: (row: SongRow) => Promise<boolean>;
   resume: () => void;
+  restore: (
+    row: SongRow,
+    record: CollectionSong,
+    attempt: LibraryAttempt,
+  ) => Promise<boolean>;
   devices: () => void;
   manage: () => void;
   refresh: () => Promise<unknown>;
@@ -162,7 +171,16 @@ export function SongBrowser({
     ),
     [page, setPage] = useState(0),
     [tab, setTab] = useState("all"),
-    [globalSearch, setGlobalSearch] = useState(false);
+    [globalSearch, setGlobalSearch] = useState(false),
+    [sort, setSort] = useState(() => {
+      const value = stored("panthesia-browser-sort", "title");
+      return ["title", "recent", "count", "progress"].includes(value)
+        ? value
+        : "title";
+    }),
+    [descending, setDescending] = useState(
+      () => stored("panthesia-browser-sort-desc", "false") === "true",
+    );
   const [preview, setPreview] = useState<Preview | null>(null),
     [error, setError] = useState(""),
     [opening, setOpening] = useState(false),
@@ -228,15 +246,16 @@ export function SongBrowser({
       children: new Map<string, FolderNode>(),
       available: root.available,
     }));
+    const counted = new Set<string>();
     for (const row of rows) {
       const path = libraryPath(row.path);
+      if (counted.has(path)) continue;
+      counted.add(path);
       for (const root of nodes) {
         if (!path.startsWith(root.path + "/")) continue;
         root.count++;
         let node: FolderNode = root;
-        for (const segment of row.path
-          .replaceAll("\\", "/")
-          .replace(/^\/\/\?\//, "")
+        for (const segment of portablePath(row.path)
           .slice(root.path.length + 1)
           .split("/")
           .slice(0, -1)) {
@@ -281,7 +300,7 @@ export function SongBrowser({
         const path = libraryPath(row.path),
           record = recordFor(row);
         if (tab === "favorites" && !record?.favorite) return false;
-        if (tab === "recent" && !record?.lastUsed) return false;
+        if (tab === "recent" && !record?.lastPracticed) return false;
         if (
           !(globalSearch && queryValue) &&
           selectedFolder &&
@@ -344,18 +363,31 @@ export function SongBrowser({
   const groups = useMemo(
     () =>
       visibleGroups
-        .map((group) => ({
-          ...group,
-          performances:
-            allGroupsById.get(group.id)?.performances ?? group.performances,
-        }))
-        .sort((a, b) =>
-          tab === "recent"
-            ? b.lastUsed - a.lastUsed
-            : a.title.localeCompare(b.title, "zh-CN", { numeric: true }),
-        ),
-    [visibleGroups, allGroupsById, tab],
+        .map((group) => allGroupsById.get(group.id) ?? group)
+        .sort((a, b) => {
+          const compared =
+            sort === "recent"
+              ? a.lastPracticed - b.lastPracticed
+              : sort === "count"
+                ? a.practiceCount - b.practiceCount
+                : sort === "progress"
+                  ? { new: 0, practiced: 1, whole: 2 }[a.practiceStage] -
+                    { new: 0, practiced: 1, whole: 2 }[b.practiceStage]
+                  : a.title.localeCompare(b.title, "zh-CN", { numeric: true });
+          return compared
+            ? compared * (descending ? -1 : 1)
+            : a.id.localeCompare(b.id);
+        }),
+    [visibleGroups, allGroupsById, sort, descending],
   );
+  useEffect(() => {
+    try {
+      localStorage.setItem("panthesia-browser-sort", sort);
+      localStorage.setItem("panthesia-browser-sort-desc", String(descending));
+    } catch {}
+  }, [sort, descending]);
+  const practiced = groups.filter((group) => group.lastPracticed > 0).length;
+  const complete = groups.filter((group) => group.completeVersions > 0).length;
   const requested = rowByPath.get(libraryPath(selectedPath));
   const requestedKey = requested ? songKey(requested, catalogIndex) : null;
   const groupsById = useMemo(
@@ -364,20 +396,45 @@ export function SongBrowser({
   );
   const defaultGroup = useMemo(
     () =>
-      groups.find((group) => /look at the sky/i.test(group.title)) ?? groups[0],
-    [groups],
+      groups.find((group) =>
+        group.performances.some((performance) =>
+          performance.locations.some(
+            (row) =>
+              current?.sourcePath &&
+              libraryPath(row.path) === libraryPath(current.sourcePath),
+          ),
+        ),
+      ) ?? groups[0],
+    [groups, current?.sourcePath],
   );
   const selectedGroup = groupsById.get(requestedKey ?? "") ?? defaultGroup;
   const selected = selectedGroup
     ? songLocation(selectedGroup, selectedPath)
     : undefined;
   const audition = useSongAudition(selected?.path);
-  const stopPreview = () => { void audition.stop().catch(e => setError(String(e))); };
+  const stopPreview = () => {
+    void audition.stop().catch((e) => setError(String(e)));
+  };
   const selectedPerformance = selectedGroup?.performances.find(
     (performance) =>
       performance.id ===
       (selected?.contentId || libraryPath(selected?.path ?? "")),
   );
+  const selectedRecord =
+    selectedPerformance?.record ?? (selected ? recordFor(selected) : undefined);
+  const continuePractice = async (attempt: LibraryAttempt) => {
+    if (!selected || !selectedRecord || opening || unavailable) return;
+    setOpening(true);
+    setError("");
+    try {
+      await audition.stop();
+      await restore(selected, selectedRecord, attempt);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOpening(false);
+    }
+  };
   const chooseGroup = (group: BrowserSong) => {
     const row =
       group.id === selectedGroup?.id && selected
@@ -610,7 +667,12 @@ export function SongBrowser({
             <button
               className="browser-resume"
               disabled={!!unavailable}
-              onClick={() => { void audition.stop().then(resume).catch(e => setError(String(e))); }}
+              onClick={() => {
+                void audition
+                  .stop()
+                  .then(resume)
+                  .catch((e) => setError(String(e)));
+              }}
             >
               <span>
                 <small>继续上次演奏</small>
@@ -643,22 +705,54 @@ export function SongBrowser({
             {[
               ["all", "全部"],
               ["favorites", "收藏"],
-              ["recent", "最近"],
+              ["recent", "最近练习"],
             ].map(([id, label]) => (
               <button
                 key={id}
                 role="tab"
                 aria-selected={tab === id}
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  if (id === "recent") {
+                    setSort("recent");
+                    setDescending(true);
+                  }
+                }}
               >
                 {label}
               </button>
             ))}
           </div>
+          <div className="browser-sort">
+            <select
+              aria-label="曲库排序"
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              <option value="title">按曲名</option>
+              <option value="recent">按最近练习</option>
+              <option value="count">按练习记录数</option>
+              <option value="progress">按练习状态</option>
+            </select>
+            <button
+              aria-label={descending ? "切换为升序" : "切换为降序"}
+              onClick={() => setDescending((value) => !value)}
+            >
+              {descending ? "↓ 降序" : "↑ 升序"}
+            </button>
+          </div>
+        </div>
+        <div
+          className="browser-library-progress"
+          aria-label="当前曲库的练习概况"
+        >
           <span>
-            {folderName} <b> / </b>
-            {groups.length.toLocaleString()} 首 ·{" "}
+            {folderName} · {groups.length.toLocaleString()} 首 ·{" "}
             {performanceCount.toLocaleString()} 份演奏
+          </span>
+          <span>
+            已练习 <b>{practiced}</b> 首 · 近 90 天有整曲记录 <b>{complete}</b>{" "}
+            首
           </span>
         </div>
         <div
@@ -667,7 +761,8 @@ export function SongBrowser({
           role="listbox"
           aria-label="曲目"
           onKeyDown={(e) => {
-            if (!["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) return;
+            if (opening || !["ArrowDown", "ArrowUp", "Enter"].includes(e.key))
+              return;
             e.preventDefault();
             if (e.key === "Enter") {
               void begin();
@@ -713,20 +808,24 @@ export function SongBrowser({
             </p>
           )}
           {groups.slice(page * 60, (page + 1) * 60).map((group) => {
-            const isCurrent = !!current && group.performances.some(
-              (performance) =>
-                (!!performance.contentId && performance.contentId === current.contentId) ||
-                performance.locations.some(
-                  (row) =>
-                    libraryPath(row.path) ===
-                    libraryPath(current?.sourcePath ?? ""),
-                ),
-            );
+            const isCurrent =
+              !!current &&
+              group.performances.some(
+                (performance) =>
+                  (!!performance.contentId &&
+                    performance.contentId === current.contentId) ||
+                  performance.locations.some(
+                    (row) =>
+                      libraryPath(row.path) ===
+                      libraryPath(current?.sourcePath ?? ""),
+                  ),
+              );
             return (
               <button
                 key={group.id}
                 role="option"
                 aria-selected={group.id === selectedGroup?.id}
+                disabled={opening}
                 className={`browser-song ${group.id === selectedGroup?.id ? "selected" : ""}`}
                 onClick={() => chooseGroup(group)}
                 onDoubleClick={() => {
@@ -759,6 +858,20 @@ export function SongBrowser({
                     {group.performances.length} 份演奏
                   </span>
                 )}
+                <span className="browser-song-study">
+                  <strong>
+                    {group.completeVersions
+                      ? "有整曲记录"
+                      : group.lastPracticed
+                        ? "已练习"
+                        : "未练习"}
+                  </strong>
+                  <small>
+                    {group.lastPracticed
+                      ? `${practiceDate(group.lastPracticed)} · ${group.practiceCount} 次记录`
+                      : "—"}
+                  </small>
+                </span>
                 {isCurrent && <span className="browser-current">当前歌曲</span>}
                 <ChevronRight size={15} />
               </button>
@@ -848,26 +961,50 @@ export function SongBrowser({
               </div>
             </dl>
             <div className="browser-song-actions">
-            <button
-              className={`browser-audition${audition.active ? " is-playing" : ""}`}
-              aria-pressed={audition.active}
-              disabled={!preview || !!unavailable || opening}
-              onClick={listen}
-            >
-              {audition.active ? <Pause size={17} /> : <Headphones size={17} />}{" "}
-              {audition.phase === "preparing" ? "取消准备" : audition.active ? "停止试听" : "试听开头 8 秒"}
-              {audition.phase === "playing" && <span className="browser-audition-time">{audition.position.toFixed(1)} / {audition.duration.toFixed(1)} 秒</span>}
-            </button>
-            <button
-              className="browser-begin"
-              disabled={!!unavailable || opening}
-              onClick={() => void begin()}
-            >
-              <Play size={17} fill="currentColor" />
-              {opening ? "正在准备…" : "开始演奏"}
-            </button>
-            {audition.error && <p className="browser-audition-error" role="alert">{audition.error}</p>}
+              <button
+                className={`browser-audition${audition.active ? " is-playing" : ""}`}
+                aria-pressed={audition.active}
+                disabled={!preview || !!unavailable || opening}
+                onClick={listen}
+              >
+                {audition.active ? (
+                  <Pause size={17} />
+                ) : (
+                  <Headphones size={17} />
+                )}{" "}
+                {audition.phase === "preparing"
+                  ? "取消准备"
+                  : audition.active
+                    ? "停止试听"
+                    : "试听开头 8 秒"}
+                {audition.phase === "playing" && (
+                  <span className="browser-audition-time">
+                    {audition.position.toFixed(1)} /{" "}
+                    {audition.duration.toFixed(1)} 秒
+                  </span>
+                )}
+              </button>
+              <button
+                className="browser-begin"
+                disabled={!!unavailable || opening}
+                onClick={() => void begin()}
+              >
+                <Play size={17} fill="currentColor" />
+                {opening ? "正在准备…" : "开始演奏"}
+              </button>
+              {audition.error && (
+                <p className="browser-audition-error" role="alert">
+                  {audition.error}
+                </p>
+              )}
             </div>
+            <BrowserPracticeSummary
+              record={selectedRecord}
+              disabled={opening || !!unavailable}
+              resume={(attempt) => {
+                void continuePractice(attempt);
+              }}
+            />
             <div className="browser-sound-status">
               <i className={state.sound?.ready ? "ready" : ""} />
               <span>

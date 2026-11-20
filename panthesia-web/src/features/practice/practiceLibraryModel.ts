@@ -1,3 +1,4 @@
+import { pathKey } from "../../engine/pathIdentity";
 import type { CollectionSong, SongRow } from "../../api";
 import type { LibraryOpenLocation } from "../library/libraryOpen";
 
@@ -16,8 +17,7 @@ export const practiceLibraryDefaults = (): PracticeLibraryBrowse => ({
   page: 0,
   focusedKey: null,
 });
-export const practicePathKey = (path: string | null | undefined) =>
-  (path ?? "").replaceAll("\\", "/").toLowerCase();
+export const practicePathKey = pathKey;
 export function practiceCollectionByPath(
   collection: readonly CollectionSong[],
 ) {

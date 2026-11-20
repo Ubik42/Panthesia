@@ -842,3 +842,30 @@
     margin: 12px 0 0;
   }
 }
+.browser-library-progress { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: #6a7893; font-size: 11px; padding: 0 2px 12px; }
+.browser-library-progress b { color: #354774; font-weight: 600; }
+.browser-sort { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.browser-sort select, .browser-sort button { border: 1px solid #dce2ef; background: #fff; color: #536487; padding: 5px 8px; border-radius: 5px; font-size: 12px; min-height: 30px; }
+.browser-song-study { display: flex; flex-direction: column; gap: 4px; text-align: right; color: #536b82; white-space: nowrap; }
+.browser-song-study strong { font-size: 11px; font-weight: 500; }
+.browser-song-study small { font-size: 10px; color: #8591aa; }
+.browser-practice-summary { margin-top: 12px; padding: 14px 0 0; border-top: 1px solid #e6eaf2; font-size: 12px; color: #52617f; }
+.browser-practice-heading, .browser-practice-numbers { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.browser-practice-heading strong { color: #303f60; font-size: 13px; }
+.browser-practice-heading time { color: #8a95aa; font-size: 11px; }
+.browser-practice-conditions, .browser-whole-evidence p, .browser-practice-note { line-height: 1.7; margin: 8px 0; }
+.browser-practice-numbers { font-size: 11px; margin: 10px 0; }
+.browser-practice-numbers b { color: #3a5278; }
+.browser-continue-practice { width: 100%; justify-content: center; color: #3d568a; background: #f0f3fc; border: 1px solid #dbe3f4; min-height: 34px; font-size: 12px; }
+.browser-whole-evidence { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e1e6ef; }
+.browser-whole-evidence strong { font-size: 11px; font-weight: 600; }
+.browser-whole-evidence p, .browser-practice-note { font-size: 11px; color: #8090a9; }
+.browser-practice-due { color: #9b6b27; margin: 8px 0 0; font-size: 11px; }
+.browser-practice-summary.is-new p { color: #8a95aa; font-size: 11px; line-height: 1.6; }
+@media (max-width: 850px) {
+  .browser-list-toolbar { flex-wrap: wrap; gap: 10px; }
+  .browser-library-progress { font-size: 10px; }
+  .browser-song-study { display: none; }
+  .browser-practice-summary { margin-top: 8px; }
+  .browser-whole-evidence, .browser-practice-summary.is-new { display: none; }
+}

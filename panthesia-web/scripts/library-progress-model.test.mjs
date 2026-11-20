@@ -1,0 +1,20 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
+const bundled = await build({entryPoints:[fileURLToPath(new URL('../src/features/library/songCatalog.ts',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node'});
+const { groupSongs, songLocation } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const paths = await build({entryPoints:[fileURLToPath(new URL('../src/engine/pathIdentity.ts',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node'});
+const {pathKey}=await import(`data:text/javascript;base64,${Buffer.from(paths.outputFiles[0].text).toString('base64')}`);
+test('canonical and ordinary Windows locations share one performance and its practice count',()=>{
+ assert.equal(pathKey('\\\\?\\D:\\Music\\Song.mid'),pathKey('d:/music/song.mid'));
+ assert.equal(pathKey('\\\\?\\UNC\\host\\Music\\Song.mid'),pathKey('\\\\host\\music\\song.mid'));
+ const index=new Map([['a',{workId:'work',title:'一首歌',label:'原奏'}],['b',{workId:'work',title:'一首歌',label:'慢奏'}]]);
+ const rows=[{contentId:'a',path:'D:/music/a.mid',title:'原奏'},{contentId:'a',path:'\\\\?\\D:\\music\\a.mid',title:'同一位置'}, {contentId:'a',path:'D:/copies/a.mid',title:'副本'}, {contentId:'b',path:'D:/music/b.mid',title:'慢奏'}];
+ const records=new Map([['a',{contentId:'a',lastUsed:9,lastPracticed:2,sessions:2,practice:{whole:{id:'whole'}}}],['b',{contentId:'b',lastUsed:5,lastPracticed:4,sessions:1,practice:{whole:null}}]]);
+ const [song]=groupSongs(rows,index,row=>records.get(row.contentId));
+ assert.equal(song.performances.length,2);assert.equal(song.performances[0].locations.length,2);
+ assert.equal(song.practiceCount,3);assert.equal(song.completeVersions,1);assert.equal(song.lastPracticed,4);
+ assert.equal(songLocation(song,'').contentId,'b');
+ assert.equal(songLocation(song,'\\\\?\\D:\\MUSIC\\A.MID').contentId,'a');
+});

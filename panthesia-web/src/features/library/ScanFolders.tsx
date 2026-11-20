@@ -2,12 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Folder, RefreshCw } from "lucide-react";
 import { api, type SongRow } from "../../api";
 import type { LibraryFolder } from "./useLibraryReads";
-export const libraryPath = (path: string) =>
-  path
-    .replaceAll("\\", "/")
-    .replace(/^\/\/\?\//, "")
-    .toLowerCase()
-    .replace(/\/$/, "");
+import { pathKey as libraryPath } from "../../engine/pathIdentity";
+export { libraryPath };
 export function ScanFolders({
   rows,
   selected,

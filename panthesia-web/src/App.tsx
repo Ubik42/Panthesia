@@ -1,3 +1,4 @@
+import { pathKey } from "./engine/pathIdentity";
 import { SongBookmarks, type BookmarkNavigation } from "./features/practice/SongBookmarks";
 import { SavedPassageBar } from "./features/practice/SavedPassageBar";
 import type { DisplayPreferences } from "./displayPreferences";
@@ -8,6 +9,7 @@ import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQ
 import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
 import { SongCredits } from "./features/practice/SongCredits";
+import { prepareLibraryPractice } from "./features/library/prepareLibraryPractice";
 import { SongBrowser } from "./features/library/SongBrowser";
 import { ApplicationMenu } from "./app/ApplicationMenu";
 import { PracticeQueueStrip } from "./features/practice/PracticeQueueStrip";
@@ -152,8 +154,7 @@ import { HistoryProblemPlan } from "./HistoryProblemPlan";
 import { HistoryDialog, type HistoryPaperTarget } from "./HistoryDialog";
 import { SongExpressionEditor } from "./features/practice/SongExpressionEditor";
 import { matchesSong } from "./engine/stateOrder";
-const normalize = (path: string | null | undefined) =>
-  (path || "").replaceAll("\\", "/").toLowerCase();
+const normalize = pathKey;
 
 export default function App() {
   const releaseInput = useRef<() => void>(() => {});
@@ -1117,6 +1118,29 @@ export default function App() {
       setError(failure instanceof Error ? failure.message : String(failure));
       return false;
     }
+  };
+  const restoreLibraryPractice = async (row: SongRow, record: CollectionSong, attempt: import("./engine/sessionTypes").LibraryAttempt) => {
+    if (requestBusy.current || songOpeningActive.current || !connected || !startupReady) return false;
+    const origin = playback.getSnapshot().stateOrder?.engineId;
+    if (!origin) return false;
+    const owner = navigation.getCurrent().workspace;
+    const stillHere = () => playback.getSnapshot().stateOrder?.engineId === origin && navigation.getCurrent().workspace === owner;
+    requestBusy.current = true; setBusy(true); clearLiveNotes();
+    let result: Awaited<ReturnType<typeof prepareLibraryPractice>>;
+    try {
+      result = await prepareLibraryPractice({ engineId: origin, contentId: record.contentId, id: attempt.id, title: row.title }, stillHere);
+      await refresh();
+      const state = playback.getSnapshot();
+      if (!stillHere() || state.contentId !== result.prepared.contentId || state.scoreRevision !== result.prepared.scoreRevision)
+        throw new Error("恢复结果已保留，当前曲目有变化，可从工作进度接续。");
+    } finally { requestBusy.current = false; setBusy(false); }
+    if (!(await changeWorkspace("practice"))) throw new Error("练习已准备好，可从工作进度返回演奏页。");
+    const current = playback.getSnapshot();
+    if (current.stateOrder?.engineId !== origin || current.contentId !== result.prepared.contentId || current.scoreRevision !== result.prepared.scoreRevision)
+      throw new Error("当前练习已变化，请核对工作进度后重新恢复。");
+    getHistoryOperations().present(result.intent.request.id);
+    panels.closeDrawer();
+    return true;
   };
   const openQueuedSong = async (record: CollectionSong): Promise<boolean> => {
     const origin = playback.getSnapshot(),
@@ -2623,7 +2647,7 @@ export default function App() {
         rows={allLibraryRows} ready={libraryReady} current={song} state={state} collection={collection}
         unavailable={workspaceUnavailable} refresh={refreshWithCollection} devices={()=>setSettings(true)}
         manage={()=>setLibraryAdvanced(true)} resume={()=>void changeWorkspace("practice")}
-        open={row=>load(row,row.contentId??undefined,"selected")}
+        open={row=>load(row,row.contentId??undefined,"selected")} restore={restoreLibraryPractice}
         preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/>} 
       {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && (
         <LibraryDialog

@@ -3,7 +3,7 @@ use crate::{
     song_learning::Draft,
 };
 use chrono::{Datelike, Duration, Local, TimeZone, Utc};
-use panthesia_core::practice_history::{PracticeHistoryStore, PracticeSessionKind};
+use panthesia_core::practice_history::{PracticeHistoryStore, PracticeSession, PracticeSessionKind};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -225,6 +225,24 @@ fn collect(
         .expect("uncancelled evidence collection")
 }
 
+/// Full-song evidence shared by the library and detailed learning review.
+pub(crate) fn complete_whole_attempt(session: &PracticeSession, now: u64) -> bool {
+    matches!(session.kind, PracticeSessionKind::WholeSong)
+            && session.recorded_at_unix_ms <= now
+            && now - session.recorded_at_unix_ms <= RECENT_MS
+            && matches!(session.mode.as_deref(), Some("flow" | "recital" | "memory"))
+            && session
+                .scope
+                .as_ref()
+                .is_some_and(|scope| !scope.is_empty())
+            && session.context.as_ref().is_some_and(|ctx| {
+                ctx.loop_restart.is_none() && ctx.target_notes > 0
+                    && ctx.judged_notes >= ctx.target_notes
+                    && ctx.exercise_spec.is_none()
+            })
+            && session.summary.overall.accuracy().is_some()
+}
+
 fn collect_checked(
     history: &PracticeHistoryStore,
     preferences: &Preferences,
@@ -279,20 +297,7 @@ fn collect_checked(
     let mut candidates = Vec::new();
     for session in sessions {
         check()?;
-        if matches!(session.kind, PracticeSessionKind::WholeSong)
-            && session.recorded_at_unix_ms <= now
-            && now - session.recorded_at_unix_ms <= RECENT_MS
-            && matches!(session.mode.as_deref(), Some("flow" | "recital" | "memory"))
-            && session
-                .scope
-                .as_ref()
-                .is_some_and(|scope| !scope.is_empty())
-            && session.context.as_ref().is_some_and(|ctx| {
-                ctx.loop_restart.is_none() && ctx.target_notes > 0
-                    && ctx.judged_notes >= ctx.target_notes
-                    && ctx.exercise_spec.is_none()
-            })
-            && session.summary.overall.accuracy().is_some()
+        if complete_whole_attempt(session, now)
         {
             candidates.push(session);
         }
