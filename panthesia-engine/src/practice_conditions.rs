@@ -281,8 +281,59 @@ pub(super) fn scope_checked<E>(
 }
 
 impl Player {
-    pub(super) fn practice_scope_checked<E>(&self, check: impl FnMut() -> Result<(), E>) -> Result<String, E> {
-        scope_checked(self.file.as_deref(), &self.notes, &self.config, &self.note_hands, &self.state.hands, check)
+    pub(super) fn practice_scope_checked<E>(
+        &self, mut check: impl FnMut() -> Result<(), E>,
+    ) -> Result<String, E> {
+        check()?;
+        if let Some(cached) = self.projections.scope.borrow().as_ref()
+            .filter(|cached| cached.matches(self))
+        {
+            return Ok(cached.value.clone());
+        }
+        let value = scope_checked(
+            self.file.as_deref(), &self.notes, &self.config,
+            &self.note_hands, &self.state.hands, &mut check,
+        )?;
+        let old = self.projections.scope.replace(Some(Scope {
+            file: self.file.clone(),
+            notes: self.notes.clone(),
+            config: self.config.clone(),
+            assignments: self.note_hands.clone(),
+            hands: self.state.hands.clone(),
+            value: value.clone(),
+        }.into()));
+        self.retire(old);
+        Ok(value)
+    }
+}
+
+/// Musical identity belongs to a selection, not to one attempt's judgement report.
+/// Retaining exact roots lets short loops avoid rescanning all notes of a long song.
+pub(crate) struct Scope {
+    file: Option<SongFile>,
+    notes: PracticeNotes,
+    config: SongConfig,
+    assignments: HandAssignments,
+    hands: String,
+    value: String,
+}
+impl Scope {
+    pub(super) fn matches(&self, player: &Player) -> bool {
+        let file = match (&self.file, &player.file) {
+            (Some(old), Some(current)) => old.same_snapshot(current),
+            (None, None) => true,
+            _ => false,
+        };
+        file && self.notes.same_snapshot(&player.notes)
+            && self.assignments.same_snapshot(&player.note_hands)
+            && self.hands == player.state.hands
+            && Arc::ptr_eq(&self.config.note_players, &player.config.note_players)
+            && self.config.tracks.len() == player.config.tracks.len()
+            && self.config.tracks.iter().zip(player.config.tracks.iter())
+                .all(|(old, current)| {
+                    old.track_id == current.track_id && old.player == current.player
+                        && old.practice_part == current.practice_part
+                })
     }
 }
 
@@ -291,6 +342,46 @@ mod tests {
     use super::*;
     use panthesia_core::practice_history::PracticeSessionContext;
     use std::collections::BTreeMap;
+
+    #[test]
+    fn selection_scope_survives_new_attempts_and_tracks_musical_changes() {
+        let (mut player, _, _) = crate::history_loading::tests::seeded(true, false);
+        let expected = |player: &Player| scope(
+            player.file.as_deref(), &player.notes, &player.config,
+            &player.note_hands, &player.state.hands,
+        );
+        assert_eq!(player.practice_scope(), expected(&player));
+        let original = player.projections.scope.borrow().clone().unwrap();
+        player.reset(0.);
+        assert_eq!(player.practice_scope(), expected(&player));
+        assert!(player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&original));
+        // Speed and range are stored separately in history conditions, not scope.
+        player.state.speed = 1.25;
+        player.state.passage = None;
+        assert_eq!(player.practice_scope(), expected(&player));
+        assert!(player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&original));
+        player.state.hands = "left".into();
+        assert_eq!(player.practice_scope(), expected(&player));
+        let left = player.projections.scope.borrow().clone().unwrap();
+        assert!(!left.same_snapshot(&original));
+        let note = player.notes.first().unwrap();
+        let key = (note.track_id, note.index);
+        Arc::make_mut(&mut player.config.note_players).insert(key, PlayerConfig::Auto);
+        assert_eq!(player.practice_scope(), expected(&player));
+        assert!(!player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&left));
+        // Per-note routing also invalidates assessment target selection.
+        let tasks = background_tasks::TaskPool::new(1, 2).unwrap();
+        let context = player.capture_asset_context(false, true);
+        let report = player.matcher.report();
+        tasks.run("assessment routing identity", None, move |token| {
+            let mut player = context.into_player(true)?;
+            let assessment = round_analysis::Assessment::prepare(&player, &report, &token)?;
+            assert!(assessment.reusable(&player, &report));
+            Arc::make_mut(&mut player.config.note_players).remove(&key);
+            assert!(!assessment.reusable(&player, &report));
+            Ok(serde_json::Value::Null)
+        }).unwrap();
+    }
 
     fn attempt() -> PracticeSession {
         PracticeSession {

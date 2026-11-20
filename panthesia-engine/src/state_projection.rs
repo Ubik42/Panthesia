@@ -5,6 +5,7 @@ use std::cell::RefCell;
 
 #[derive(Default)]
 pub(super) struct Cache {
+    pub(super) scope: RefCell<Option<preferences::Shared<crate::practice_conditions::Scope>>>,
     pub(super) attempt: RefCell<Option<crate::round_analysis::Attempt>>,
     pub(super) assessment: RefCell<Option<crate::round_analysis::SharedAssessment>>,
     pub(super) target_count: RefCell<Option<crate::round_analysis::TargetCount>>,

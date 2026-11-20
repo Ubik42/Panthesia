@@ -967,7 +967,12 @@ impl Player {
         )
     }
     fn grid_signature(&self)->String {let mut grid=self.file.as_deref().map(practice_conditions::grid).unwrap_or_else(||"grid-v1-cbf29ce484222325".into());let variant=self.variant();if variant.active(){grid.push_str(&variant.signature());}grid}
-    fn practice_scope(&self)->String {practice_conditions::scope(self.file.as_deref(),&self.notes,&self.config,&self.note_hands,&self.state.hands)}
+    fn practice_scope(&self)->String {
+        match self.practice_scope_checked(|| Ok::<(), std::convert::Infallible>(())) {
+            Ok(scope) => scope,
+            Err(never) => match never {},
+        }
+    }
     fn note_player(&self, track: usize, index: usize) -> PlayerConfig {
         let base = self.config.player_for(track, index);
         if base != PlayerConfig::Human {
@@ -1191,7 +1196,10 @@ impl Player {
         self.state.loop_abort_limit=0;
         self.round_continuation_pending = false;
         self.active_expression_goal = None;
-        let projections = std::mem::take(&mut self.projections);
+        let mut projections = std::mem::take(&mut self.projections);
+        if projections.scope.borrow().as_ref().is_some_and(|scope| scope.matches(self)) {
+            self.projections.scope = std::mem::take(&mut projections.scope);
+        }
         self.retire(projections);
         self.expression_attempt_started = false;
         self.panic();

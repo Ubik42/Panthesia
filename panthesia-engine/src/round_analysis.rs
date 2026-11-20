@@ -74,6 +74,7 @@ impl Selection {
                         && old.practice_part == current.practice_part
                 });
         file && self.notes.same_snapshot(&player.notes)
+            && Arc::ptr_eq(&self.config.note_players, &player.config.note_players)
             && tracks
             && self.hands == player.state.hands
             && self.assignments.same_snapshot(&player.note_hands)

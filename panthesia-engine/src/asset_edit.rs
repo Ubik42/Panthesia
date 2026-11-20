@@ -275,6 +275,7 @@ fn execute(reader: &mut Player, command: Command) -> Result<Value, String> {
     }
 }
 pub(crate) struct Context {
+    scope: Option<preferences::Shared<crate::practice_conditions::Scope>>,
     engine_id: Option<String>,
     undo: Option<crate::practice_edit::Undo>,
     data: PathBuf,
@@ -353,6 +354,7 @@ impl Context {
     }
     pub(super) fn into_player(self, rebuild_timeline: bool) -> Result<Player, String> {
         let mut player = Player::empty(self.data, PathBuf::new(), true);
+        player.projections.scope.replace(self.scope);
         player.detached_engine_id = self.engine_id;
         if let Some(preferences) = self.preferences {
             player.preferences = preferences;
@@ -957,6 +959,7 @@ impl Player {
         let mut state = self.state.clone();
         state.content_id = self.file.as_ref().map(|file| file.content_id.clone());
         Context {
+            scope: runtime.then(|| self.projections.scope.borrow().clone()).flatten(),
             engine_id: self.source_engine_id().map(str::to_owned),
             undo: None,
             data: self.data.clone(),

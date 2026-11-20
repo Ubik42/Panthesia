@@ -48,6 +48,9 @@ pub struct Capture {
     truncated: bool,
 }
 impl Capture {
+    pub(crate) fn has_references(&self) -> bool {
+        !self.references.is_empty()
+    }
     pub(crate) fn note_evidence(
         &self, results: &[panthesia_core::practice::PracticeResult], expected_notes: usize,
         velocity: bool, pedal: bool, check: impl Fn() -> Result<(), String>,

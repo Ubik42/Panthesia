@@ -128,10 +128,14 @@ impl TaskPool {
         )
     }
     pub fn storage_lane(&self, capacity: usize) -> Result<Self, String> {
+        self.serial_lane("storage", capacity)
+    }
+    /// Dedicated bounded CPU lanes share observable tasks, not another lane's queue.
+    pub fn serial_lane(&self, name: &str, capacity: usize) -> Result<Self, String> {
         Self::with_records(
             1,
             capacity,
-            "storage",
+            name,
             self.records.clone(),
             self.serial.clone(),
             self.cancelled_scopes.clone(),

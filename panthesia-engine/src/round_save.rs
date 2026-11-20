@@ -1,4 +1,4 @@
-//! Freeze and analyze an attempt, then publish it; automatic disk writes use the save queue.
+//! Publish frozen round facts before archive encoding; storage owns durable byte preparation.
 use crate::*;
 use panthesia_core::practice::{AttemptSummary, PracticeReport};
 use panthesia_core::practice_history::PracticeTimeEntry;
@@ -34,6 +34,7 @@ impl PendingTime {
     }
 }
 pub(crate) struct Outcome {
+    scope: Option<preferences::Shared<crate::practice_conditions::Scope>>,
     history: PracticeHistoryStore,
     history_id: String,
     summary: preferences::Shared<AttemptSummary>,
@@ -82,15 +83,6 @@ impl Context {
         }
         token.stage("serializing")?;
         let history_id = self.session.stable_id();
-        let archive = performance_archive::prepare_checked(
-            &self.content_id,
-            &history_id,
-            &self.capture,
-            self.duration,
-            self.report.results(),
-            || token.check(),
-        )?;
-        token.check()?;
         let history = self
             .history
             .stage_session_with_time(
@@ -108,8 +100,27 @@ impl Context {
             let (result, writes) = atomic_file::capture(
                 vec![path.clone(), history_path.clone()].into(),
                 || -> std::io::Result<()> {
-                    if let Some(bytes) = &archive {
-                        atomic_file::write(&path, bytes)?;
+                    if self.capture.has_references() {
+                        // The immutable roots outlive the reset into the next round.
+                        // Materialization, validation and JSON encoding run on the
+                        // existing storage lane; its failed batch retains these roots.
+                        let content_id = self.content_id;
+                        let replay_id = history_id.clone();
+                        let capture = self.capture;
+                        let report = self.report;
+                        let duration = self.duration;
+                        atomic_file::write_generated(&path, move || {
+                            performance_archive::prepare_checked(
+                                &content_id,
+                                &replay_id,
+                                &capture,
+                                duration,
+                                report.results(),
+                                || Ok(()),
+                            )
+                            .map_err(std::io::Error::other)?
+                            .ok_or_else(|| std::io::Error::other("本轮回放缺少参考音符"))
+                        })?;
                     }
                     atomic_file::write_generated(&history_path, move || {
                         root.snapshot_bytes().map_err(std::io::Error::other)
@@ -120,6 +131,14 @@ impl Context {
             token.begin_commit()?;
             writes
         } else {
+            let archive = performance_archive::prepare_checked(
+                &self.content_id,
+                &history_id,
+                &self.capture,
+                self.duration,
+                self.report.results(),
+                || token.check(),
+            )?;
             let bytes = history.snapshot_bytes().map_err(|e| e.to_string())?;
             token.check()?;
             token.begin_commit()?;
@@ -140,6 +159,7 @@ impl Context {
             Vec::new()
         };
         Ok(Outcome {
+            scope: conditions.projections.scope.borrow().clone(),
             _preparation: None,
             writes,
             history,
@@ -325,7 +345,7 @@ impl Player {
             self.continue_finished_round();
             return Ok(());
         };
-        let mut guard = Guard {
+        let guard = Guard {
             pipeline: pipeline.clone(),
             observing: false,
             tx: pipeline.sender(),
@@ -335,8 +355,9 @@ impl Player {
         };
         let worker = pipeline.clone();
         if let Err(error) =
-            pipeline.post_exclusive("保存本轮练习", move |token, preparation| {
-                guard.observing = true;
+            pipeline.post_round_preparation("分析本轮练习", move |token, preparation| {
+                // Preparation never observes transient transaction files on the
+                // concurrently running storage lane. Its owner observes after IO.
                 let result = context
                     .commit(&token, &worker, &guard.id, true)
                     .map(|mut outcome| {
@@ -371,6 +392,10 @@ impl Player {
         let resume = automatic && unchanged_epoch;
         match result {
             Ok(outcome) => {
+                if let Some(scope) = outcome.scope.filter(|scope| scope.matches(self)) {
+                    let old = self.projections.scope.replace(Some(scope));
+                    self.retire(old);
+                }
                 if outcome.assessment.matches_attempt(self) {
                     self.retain_round_assessment(outcome.assessment);
                 } else {
@@ -517,11 +542,13 @@ mod tests {
         assert!(player.matcher.snapshot().matched_notes > 0);
         player.state.status = "finished".into();
         let tasks = background_tasks::TaskPool::new(1, 8).unwrap();
+        let round_tasks = tasks.serial_lane("test-round-analysis", 8).unwrap();
         let (tx, rx) = mpsc::channel();
         let lock = Arc::new(DataRootLock::acquire(&player.data).unwrap());
         let pipeline = pending_save::Pipeline::new(
             player.data.clone(),
             tasks.clone(),
+            round_tasks,
             tx,
             player.storage_busy.clone(),
             lock,
@@ -533,19 +560,32 @@ mod tests {
         let context = player.begin_round_save(operation.into()).unwrap().unwrap();
         let history_path = player.data.join("web-practice-history.ron");
         let before = std::fs::read(&history_path).unwrap();
+        let history_count = player.history.session_count(&cid);
         let (send, receive) = mpsc::channel();
         let (release, gate) = mpsc::channel();
-        let worker = pipeline.clone();
-        pipeline
-            .post_exclusive("held round publication", move |token, preparation| {
-                let mut outcome = context.commit(&token, &worker, operation, true)?;
-                outcome._preparation = Some(preparation);
-                send.send(outcome).map_err(|_| "test receiver closed")?;
+        let (entered, disk_ready) = mpsc::channel();
+        tasks
+            .post("hold storage independently", move |_| {
+                entered.send(()).map_err(|_| "test receiver closed")?;
                 gate.recv().map_err(|_| "test gate closed")?;
                 Ok(serde_json::Value::Null)
             })
             .unwrap();
+        disk_ready.recv_timeout(Duration::from_secs(5)).unwrap();
+        let worker = pipeline.clone();
+        pipeline
+            .post_round_preparation(
+                "round publication while storage held",
+                move |token, preparation| {
+                    let mut outcome = context.commit(&token, &worker, operation, true)?;
+                    outcome._preparation = Some(preparation);
+                    send.send(outcome).map_err(|_| "test receiver closed")?;
+                    Ok(serde_json::Value::Null)
+                },
+            )
+            .unwrap();
         let outcome = receive.recv_timeout(Duration::from_secs(5)).unwrap();
+        let first_id = outcome.history_id.clone();
         let archive = performance_archive::path(&player.data, &cid, &outcome.history_id);
         assert!(pipeline.status().pending);
         let shared = Arc::new(Mutex::new(player.snapshot()));
@@ -564,6 +604,74 @@ mod tests {
         assert_eq!(std::fs::read(&history_path).unwrap(), before);
         assert!(!archive.exists());
         assert!(pipeline.status().pending);
+        let first_scope = player.projections.scope.borrow().clone().unwrap();
+        // The next attempt can be prepared and published even while the first
+        // archive and the shared history file are still waiting on storage.
+        player.tick(Duration::from_millis(10));
+        for pitch in player.matcher.required_note_pitches() {
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 70,
+                    active: true,
+                })
+                .unwrap();
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 0,
+                    active: false,
+                })
+                .unwrap();
+        }
+        assert!(player.matcher.snapshot().matched_notes > 0);
+        player.state.status = "finished".into();
+        let second_operation = "round-held-disk-second";
+        let second = player
+            .begin_round_save(second_operation.into())
+            .unwrap()
+            .unwrap();
+        let (send, receive) = mpsc::channel();
+        let worker = pipeline.clone();
+        pipeline
+            .post_round_preparation(
+                "second round while storage held",
+                move |token, preparation| {
+                    let mut outcome = second.commit(&token, &worker, second_operation, true)?;
+                    outcome._preparation = Some(preparation);
+                    send.send(outcome).map_err(|_| "test receiver closed")?;
+                    Ok(serde_json::Value::Null)
+                },
+            )
+            .unwrap();
+        let outcome = receive.recv_timeout(Duration::from_secs(5)).unwrap();
+        let second_id = outcome.history_id.clone();
+        assert_ne!(second_id, first_id);
+        let second_archive = performance_archive::path(&player.data, &cid, &second_id);
+        runtime_request::handle(
+            &mut player,
+            runtime_request::Request::RoundSaveFinish {
+                id: second_operation.into(),
+                result: Ok(outcome),
+                automatic: true,
+                reply: None,
+            },
+            &shared,
+        );
+        assert_eq!(player.state.status, "playing");
+        assert_eq!(player.state.repetitions, 2);
+        assert!(
+            player
+                .projections
+                .scope
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .same_snapshot(&first_scope)
+        );
+        assert_eq!(player.history.session_count(&cid), history_count + 2);
+        assert!(!second_archive.exists());
+        assert_eq!(std::fs::read(&history_path).unwrap(), before);
         // The disk lane is still held. Make its upcoming history transaction fail.
         let retained = player.data.join("history-before-failure.ron");
         std::fs::rename(&history_path, &retained).unwrap();
@@ -605,6 +713,26 @@ mod tests {
             .unwrap();
         assert!(!pipeline.status().pending);
         assert_eq!(std::fs::read(&archive).unwrap(), archive_bytes);
+        let first = performance_archive::read(&player.data, &cid, &first_id).unwrap();
+        let second = performance_archive::read(&player.data, &cid, &second_id).unwrap();
+        assert!(
+            first
+                .inputs
+                .iter()
+                .any(|input| input.bytes[0] == 144 && input.bytes[2] == 90)
+        );
+        assert!(
+            second
+                .inputs
+                .iter()
+                .any(|input| input.bytes[0] == 144 && input.bytes[2] == 70)
+        );
+        assert!(
+            !second
+                .inputs
+                .iter()
+                .any(|input| input.bytes[0] == 144 && input.bytes[2] == 90)
+        );
         assert_eq!(
             std::fs::read(&history_path).unwrap(),
             player.history.snapshot_bytes().unwrap()

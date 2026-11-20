@@ -161,6 +161,7 @@ pub(crate) struct Pipeline {
     data: PathBuf,
     queue: Arc<Mutex<Queue>>,
     tasks: TaskPool,
+    round_tasks: TaskPool,
     tx: mpsc::Sender<Request>,
     busy: Arc<AtomicBool>,
 }
@@ -200,7 +201,9 @@ impl Pipeline {
     pub fn sender(&self) -> mpsc::Sender<Request> {
         self.tx.clone()
     }
-    pub fn post_exclusive(
+    /// Frozen round preparation has no filesystem side effects. Keep it independent
+    /// of archive encoding and transactions already queued on the storage lane.
+    pub fn post_round_preparation(
         &self,
         label: &str,
         work: impl FnOnce(
@@ -216,11 +219,33 @@ impl Pipeline {
             queue.preparing += 1;
             queue.revision = queue.revision.wrapping_add(1);
         }
-        self.tasks.post(label, move |token| work(token, guard))
+        let pipeline = self.clone();
+        self.round_tasks.post(label, move |token| {
+            // One batch may be encoding/writing while another holds at most
+            // seven replays plus history. A stalled disk must not retain an
+            // unbounded sequence of immutable captures in memory.
+            loop {
+                token.check()?;
+                let ready = {
+                    let queue = pipeline.queue.lock().map_err(|_| "保存队列不可用")?;
+                    if let Some(error) = &queue.error {
+                        return Err(error.clone());
+                    }
+                    queue.pending.as_ref().is_none_or(|batch| batch.writes.len() < 8)
+                };
+                if ready {
+                    break;
+                }
+                token.stage("waitingStorage")?;
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            work(token, guard)
+        })
     }
     pub fn new(
         data: PathBuf,
         tasks: TaskPool,
+        round_tasks: TaskPool,
         tx: mpsc::Sender<Request>,
         busy: Arc<AtomicBool>,
         data_lock: Arc<crate::data_root_lock::DataRootLock>,
@@ -249,6 +274,7 @@ impl Pipeline {
             targets,
             data,
             tasks,
+            round_tasks,
             tx,
             busy,
             queue: Arc::new(Mutex::new(Queue::default())),
