@@ -21,6 +21,7 @@ export function useProductScreens(workspace: Workspace) {
     settings: () => setFront("settings"),
     folders: () => setFront("folders"),
     browse: () => setFront(null),
+    resume: () => setFront(null),
     show,
     split: (track: number) => {
       setSplitTrack(track);

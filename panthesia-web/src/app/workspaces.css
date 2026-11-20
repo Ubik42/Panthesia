@@ -1,18 +1,3 @@
-.workspace-navigation {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.workspace-navigation-reason {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 .library-current-practice {
   display: inline-block;
   margin-top: 4px;
@@ -23,20 +8,6 @@
   color: #c3dfa9;
   font-size: 10px;
   line-height: 1.5;
-}
-.workspace-navigation button {
-  min-width: 90px;
-  min-height: 35px;
-  background: transparent;
-  border-color: transparent;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-}
-.workspace-navigation button[aria-current="page"] {
-  color: #d8efbf;
-  background: #394531;
-  border-color: #596f43;
 }
 .workspace-topbar {
   flex-shrink: 0;
@@ -123,9 +94,6 @@
     padding: 8px 10px;
     flex-wrap: wrap;
   }
-  .workspace-navigation button {
-    min-width: 70px;
-  }
   .workspace-topbar .engine-indicator {
     font-size: 10px;
   }
@@ -141,8 +109,6 @@
   min-width: 0;
 }
 .workbench > .menubar[hidden] { display: none !important; }
-.workspace-navigation button { border-radius: 7px; transition: background-color .15s, color .15s; }
-.workspace-navigation button:focus-visible,
 .workspace-tools summary:focus-visible { outline: 2px solid #a9df74; outline-offset: 3px; }
 .workspace-tools { position: relative; flex-shrink: 0; }
 .workspace-tools > summary {
@@ -223,19 +189,6 @@
 
 .workspace {
   position: relative;
-}
-.practice-panel-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: #070a1099;
-}
-.practice-panel-backdrop:hover:not(:disabled) {
-  background: #070a1099;
 }
 .workbench > .workspace[data-practice-compact] > .library-panel,
 .workbench > .workspace[data-practice-compact] > .practice-inspector {

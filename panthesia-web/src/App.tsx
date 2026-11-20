@@ -1,15 +1,20 @@
+import {usePerformanceKeyboard} from "./features/practice/usePerformanceKeyboard";
+import {SongEditorHost} from "./features/screens/SongEditorHost";
+import {useSongEditors} from "./features/screens/useSongEditors";
+import {openWorkEntry} from "./features/activity/workNavigation";
+import {PerformanceTools} from "./features/practice/PerformanceTools";
+import {useScorePairing} from "./features/scores/useScorePairing";
+import { usePracticeToolNavigation } from "./features/screens/usePracticeToolNavigation";
+import { usePlaybackActions } from "./features/practice/usePlaybackActions";
 import type { DeviceObject } from "./features/screens/MusicDeviceList";
 import { useProductNavigation } from "./features/screens/useProductNavigation";
-import { Bookmark as BookmarkIcon,Settings as DisplayGear,Repeat2 as LoopIcon,Music2 as ScoreIcon,Search as ZoomIcon } from "lucide-react";
 import { AboutDialog } from "./app/AboutDialog";
 import { ActionSearch } from "./app/ActionSearch";
 import { applicationCommands,type ApplicationCommandId } from "./app/applicationCommands";
 import { ApplicationMenu } from "./app/ApplicationMenu";
-import { CurrentPracticeBar } from "./app/CurrentPracticeBar";
 import { DesktopCloseProgress } from "./app/DesktopCloseProgress";
 import { installDiagnostics } from "./app/diagnostics";
-import { isCapturingKeys,isComposingKey,isTextEntry,isVisibleInput,topInputScope,topPopup,visibleDialogs } from "./app/inputOwnership";
-import { PracticeReturnBar } from "./app/PracticeReturnBar";
+import { isComposingKey,isVisibleInput,topInputScope,topPopup } from "./app/inputOwnership";
 import { PreparationButton } from "./app/PreparationButton";
 import { performRecoveryAction,type RecoveryHost } from "./app/recovery/recoveryActions";
 import { SessionRecoveryDialog } from "./app/recovery/SessionRecovery";
@@ -35,47 +40,34 @@ import type { LibrarySearchRequest } from "./features/library/libraryBrowse";
 import { type LibraryOpenLocation } from "./features/library/libraryOpen";
 import { LibraryOpenRecovery } from "./features/library/LibraryOpenRecovery";
 import { checkLibraryPrepared,sourceForLibraryRow } from "./features/library/libraryOpenStore";
-import { prepareLibraryPractice } from "./features/library/prepareLibraryPractice";
 import { SongBrowser } from "./features/library/SongBrowser";
 import { useLibraryOpening } from "./features/library/useLibraryOpening";
-import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
-import { normalizePreviewBars,panKeyboardViewport,resolveKeyboardViewport,viewportRange,zoomKeyboardViewport,type KeyboardViewport } from "./features/practice/keyboardViewport";
-import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
-import { capturePlaybackSource,isPlaybackAdjustment,samePlaybackSource } from "./features/practice/playbackCommands";
+import { resolveKeyboardViewport,viewportRange,type KeyboardViewport } from "./features/practice/keyboardViewport";
+import { samePlaybackSource } from "./features/practice/playbackCommands";
 import { PlaybackView } from "./features/practice/PlaybackView";
-import { PracticeLegend } from "./features/practice/PracticeLegend";
-import { collectionSongRow,practiceCollectionByPath,type PracticeLibraryItem } from "./features/practice/practiceLibraryModel";
-import { PracticeLibraryPanel } from "./features/practice/PracticeLibraryPanel";
-import { PracticeRangeControls } from "./features/practice/PracticeRangeControls";
+import { collectionSongRow,practiceCollectionByPath } from "./features/practice/practiceLibraryModel";
 import {
-PracticePedal,
 PracticeStageReadout
 } from "./features/practice/PracticeReadouts";
 import { PracticeStage } from "./features/practice/PracticeStage";
 import { PracticeTransport } from "./features/practice/PracticeTransport";
-import { PracticeVariantPanel } from "./features/practice/PracticeVariantPanel";
 import { PracticeWelcome } from "./features/practice/PracticeWelcome";
-import { PreviewBarsControl } from "./features/practice/PreviewBarsControl";
-import { SongBookmarks,type BookmarkNavigation } from "./features/practice/SongBookmarks";
-import { SongEditionBar } from "./features/practice/SongEditionBar";
+import { type BookmarkNavigation } from "./features/practice/SongBookmarks";
 import { SongSetupScreen } from "./features/practice/SongSetupScreen";
-import { LabelsIcon,MetronomeIcon } from "./features/practice/SynthesiaToolbarIcons";
 import { useLiveNotes } from "./features/practice/useLiveNotes";
-import { usePracticePanels } from "./features/practice/usePracticePanels";
+import {usePerformanceSize} from "./features/practice/usePerformanceSize";
 import { usePracticeSession } from "./features/practice/usePracticeSession";
 import { getHistoryOperations } from "./features/review/historyOperationStore";
 import { requireHistoryScoreTarget,requireHistorySource } from "./features/review/historySource";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import { HandSplitScreen } from "./features/screens/HandSplitScreen";
 import { HomeScreen } from "./features/screens/HomeScreen";
-import { LabelSettings } from "./features/screens/LabelSettings";
 import { ScreenHeader } from "./features/screens/ScreenHeader";
 import { SettingsScreen } from "./features/screens/SettingsScreen";
-import { SongOptionsDialog } from "./features/screens/SongOptionsDialog";
 import { TrackSetupScreen } from "./features/screens/TrackSetupScreen";
 import { useProductScreens } from "./features/screens/useProductScreens";
 import { getInterfaceSettings } from "./features/settings/interfaceSettingsStore";
-import { getInterfaceWorkbench,hasLayoutNameInput } from "./features/settings/interfaceWorkbenchStore";
+import { getInterfaceWorkbench } from "./features/settings/interfaceWorkbenchStore";
 import { product } from "./product.generated";
 
 import {
@@ -94,16 +86,10 @@ type PlaybackAdjustmentCommand,
 type Snapshot,
 type SongRow
 } from "./api";
-import { ToolbarMore } from "./app/ToolbarMore";
 import {
 useWorkspaceNavigation,
 type Workspace,
 } from "./app/useWorkspaceNavigation";
-import { WorkspaceNavigation } from "./app/WorkspaceNavigation";
-import {
-codeLabel,
-keyboardMap,
-} from "./displayPreferences";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { matchesSong } from "./engine/stateOrder";
 import { DeviceSettingsDialog } from "./features/devices/DeviceSettingsDialog";
@@ -112,11 +98,9 @@ import { MediaExportDialog } from "./features/exports/MediaExportDialog";
 import type { MediaExportSource } from "./features/exports/mediaExportStore";
 import { FingeringWorkbench } from "./features/fingering/FingeringWorkbench";
 import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
-import { activeMeasures,nextAvailableQueueSong,seekableMeasures } from "./features/practice/practicePresentation";
 import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { usePracticeRange } from "./features/practice/usePracticeRange";
 import { FingeringDialog } from "./FingeringDialog";
-import { HandsDialog } from "./HandsDialog";
 import { type HistoryPaperTarget } from "./HistoryDialog";
 import type {
 HistoryScoreFocus,
@@ -124,7 +108,6 @@ HistoryScoreReview,
 } from "./historyScoreFocus";
 import { ImportDialog } from "./ImportDialog";
 import { LegacyExerciseTracksDialog } from "./LegacyExerciseTracksDialog";
-import { MeterDialog } from "./MeterDialog";
 import { Notation } from "./Notation";
 import { PackageDialog } from "./PackageDialog";
 import { PaperScore } from "./PaperScore";
@@ -137,14 +120,12 @@ MetadataDialog,
 type FeedbackPlanSource
 } from "./PracticeDialogs";
 import { ScoreRangeDialog } from "./ScoreRangeDialog";
-import { ScoresDialog } from "./ScoresDialog";
-import { eventShortcut,shortcutActions,shortcutLabel } from "./shortcuts";
+import { shortcutLabel } from "./shortcuts";
 const normalize = pathKey;
 
 export default function App() {
   useEffect(installDiagnostics, []);
   const [appMenuOpen,setAppMenuOpen]=useState(false);
-  const [songOptions,setSongOptions]=useState(false);
 
   useEffect(() => {
     if (!appMenuOpen) return;
@@ -203,11 +184,8 @@ export default function App() {
       document.documentElement.style.removeProperty("--ui-scale");
     };
   }, [display.uiScale]);
-  const panels = usePracticePanels(display, setDisplay);
-  const { libraryOpen, inspector, setLibraryOpen, inspectorTab, setInspectorTab } = panels;
-  const setInspector=setSongOptions;
-  const panelActions = useRef({ libraryOpen, inspector, setLibraryOpen, setInspector });
-  panelActions.current = { libraryOpen, inspector, setLibraryOpen, setInspector };
+  const performanceSize=usePerformanceSize();
+  const productActions=useRef<{browse:(signal?:AbortSignal)=>Promise<boolean>;resume:(signal?:AbortSignal)=>Promise<boolean>}>({browse:async()=>false,resume:async()=>false});
   const view = display.practiceView;
   const setView = useCallback((next: string | ((previous: string) => string)) => setDisplay(previous => ({ ...previous,
     practiceView: (typeof next === "function" ? next(previous.practiceView) : next) as DisplayPreferences["practiceView"],
@@ -244,6 +222,8 @@ export default function App() {
     updateCollection,
     refreshLibrary,
   } = usePracticeSession();
+  const editors=useSongEditors(song);
+  const {songOptions,setSongOptions,scoresDialog,setScoresDialog,meterDialog,setMeterDialog,handsDialog,setHandsDialog,fingeringDialog,setFingeringDialog,fingeringWorkbenchOpen,setFingeringWorkbenchOpen}=editors;
   const songOpeningActive = useRef(false);
   const { onNote, pointerNote, clear: clearLiveNotes } = useLiveNotes(playback, connected && !binding && !workspaceSessions.desktopClose.status, setError,
     () => !songOpeningActive.current && !document.hidden && !topInputScope() && !topPopup(null));
@@ -271,14 +251,6 @@ export default function App() {
   useEffect(() => {
     sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, closing: !!workspaceSessions.desktopClose.status, title: song?.title, path: song?.sourcePath, state });
   }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, !!workspaceSessions.desktopClose.status, song?.title, song?.sourcePath, state]);
-  const [practiceLibraryBrowse, setPracticeLibraryBrowse] = useState(workspaceSessions.browse.initialPractice);
-  const [practiceLibraryScroll] = useState(() => {
-    const saved = workspaceSessions.browse.initialPracticeScroll();
-    return new Map<string, number>(saved ? [[saved.key, saved.top]] : []);
-  });
-  useEffect(() => {
-    workspaceSessions.browse.rememberPractice(practiceLibraryBrowse);
-  }, [practiceLibraryBrowse, workspaceSessions.browse]);
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [librarySearch, setLibrarySearch] = useState<LibrarySearchRequest | null>(null);
@@ -305,8 +277,6 @@ export default function App() {
       scoreRevision: number;
     } | null>(null),
     [metadata, setMetadata] = useState(false),
-    [fingeringDialog, setFingeringDialog] = useState(false),
-    [fingeringWorkbenchOpen, setFingeringWorkbenchOpen] = useState(false),
     [fingeringDraft, setFingeringDraft] = useState<import("./features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
     [legacyExerciseDialog, setLegacyExerciseDialog] = useState(false),
     [libraryLaunch, setLibraryLaunch] = useState<
@@ -335,9 +305,6 @@ export default function App() {
     [practiceBackup, setPracticeBackup] = useState(false),
     [progressOpen, setProgressOpen] = useState(false),
     [recoveryOpen, setRecoveryOpen] = useState(false),
-    [handsDialog, setHandsDialog] = useState(false),
-    [meterDialog, setMeterDialog] = useState(false),
-    [scoresDialog, setScoresDialog] = useState(false),
     [paperRevision, setPaperRevision] = useState(0),
     [importDialog, setImportDialog] = useState(false),
     [packageDialog, setPackageDialog] = useState(false),
@@ -422,22 +389,6 @@ export default function App() {
     routineActive ||
     ladderActive ||
     (recital && ["playing", "paused", "countIn"].includes(state.status));
-  const completionShown = useRef(false);
-  const completionBlocked = !!workspaceSessions.desktopClose.status || requestPending || aboutOpen || commandsOpen || progressOpen || recoveryOpen || workspace !== "practice" || settings || displayDialog ||
-    exerciseDialog || metadata || fingeringDialog || passageDialog || ladderDialog || routineDialog ||
-    practiceBackup || handsDialog || meterDialog || scoresDialog || importDialog || packageDialog || !!mediaExport;
-  useEffect(() => {
-    const finished = recital && state.status === "finished";
-    const preparing = state.storage?.operation === "round" || state.songExpressionGoalState === "pending";
-    if (finished && preparing) {
-      if (completionBlocked) completionShown.current = true;
-      return;
-    }
-    if (finished && !completionShown.current && !completionBlocked) setFeedback(true);
-    // The result remains in the practice summary. Do not interrupt an explicit
-    // search, edit or navigation with a deferred completion dialog.
-    completionShown.current = finished;
-  }, [recital, state.status, state.storage?.operation, state.songExpressionGoalState, completionBlocked]);
   useEffect(() => {
     if (state.mode === "memory") {
       setSelectedNote(null);
@@ -447,8 +398,6 @@ export default function App() {
   const [loopStart, setLoopStart] = useState(1),
     [loopEnd, setLoopEnd] = useState(0);
   const practiceRange=usePracticeRange(song,playback);
-  const scoreInput = useRef<HTMLInputElement>(null);
-  const scorePairTarget = useRef<{ contentId: string; title: string } | null>(null);
   const requestBusy = useRef(false);
   useEffect(() => {
     setLoopStart(
@@ -481,66 +430,10 @@ export default function App() {
       window.clearTimeout(timer);
     };
   }, [state.speed, song?.engineId, song?.contentId, !!song?.fingerActions?.length, installSession]);
-  const run = useCallback(
-    async (value: EngineCommand, changesSong = false, requestedAt?: number, collectionRefresh: "wait" | "background" = "wait") => {
-      if (requestBusy.current) return false;
-      if (songOpeningActive.current && !["panic", "pause"].includes(value.type)) { setNotice("正在准备曲目，可在打开进度中取消或接续。"); return false; }
-      if (binding && !["pause", "panic", "retryStartup", "skipStartupSong", "retrySave"].includes(value.type)) {
-        setError("正在读取当前练习，请等待完成后再操作。"); return false;
-      }
-      if (changesSong || ["pause", "panic", "restart", "seek", "seekMeasure", "seekBeat", "stepBeat"].includes(value.type)) clearLiveNotes();
-      requestBusy.current = true;
-      setBusy(true);
-      let coreReady = false;
-      let commandAccepted = false;
-      let readingSavedLists = false;
-      try {
-        if ((value.type === "track" || value.type === "trackSound" || value.type === "resetPartSettings" || value.type === "trackAppearance" || value.type === "setPartHands") && song) {
-          const current=getBoundSong();
-          if(!current || current.contentId!==song.contentId || current.engineId!==song.engineId) throw new Error("曲目已改变，请重新打开声部设置。");
-          await api.editPractice(current,value);
-        }
-        else if ((value.type === "finger" || value.type === "applyHands") && song) await api.editPractice(song, value);
-        else if (value.type === "panic") await api.command(value);
-        else if (isPlaybackAdjustment(value)) await api.adjustPlayback(capturePlaybackSource(playback.getSnapshot()), value, requestedAt);
-        else await api.commandForEngine(playback.getSnapshot().stateOrder?.engineId, value);
-        commandAccepted = true;
-        if (changesSong) {
-          await refreshOpenedSession();
-        } else setState(await api.state());
-        coreReady = true;
-        if (
-          [
-            "load",
-            "loadIndexed",
-            "openRecent",
-            "favorite",
-            "queue",
-            "moveQueue",
-            "save",
-            "generate",
-            "recording",
-          ].includes(value.type)
-        ) {
-          if (collectionRefresh === "background") void updateCollection().catch(() => {});
-          else { readingSavedLists = true; await updateCollection(); }
-        }
-        if(value.type === "recording" && !value.active) { readingSavedLists = true; await refreshLibrary(); }
-        setError("");
-        return true;
-      } catch (e) {
-        const message = String(e instanceof Error ? e.message : e);
-        if (commandAccepted && changesSong && !coreReady) setError("");
-        else if (coreReady && readingSavedLists) setError("");
-        else setError(coreReady ? `操作已完成，界面读取尚未结束：${message}` : message);
-        return coreReady;
-      } finally {
-        requestBusy.current = false;
-        setBusy(false);
-      }
-    },
-    [updateCollection, refreshLibrary, refreshOpenedSession, getBoundSong, setState, song, clearLiveNotes, binding, playback],
-  );
+  const {run,action,adjustRealtime,playbackAdjustments}=usePlaybackActions({
+    session:{playback,getBoundSong,setState,setError,refreshOpenedSession,updateCollection,refreshLibrary},
+    song,binding,connected,startupReady,requestBusy,songOpeningActive,setBusy,setNotice,clearLiveNotes,
+  });
   const changeWorkspace = useCallback(async (next: Workspace, signal?: AbortSignal) => {
     if (signal?.aborted) return false;
     if (next === workspace) return navigation.navigate(next);
@@ -609,391 +502,23 @@ export default function App() {
   };
   const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, feedback, metadata, editDraftsOpen, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, ladderDialog, routineDialog, practiceBackup, handsDialog, meterDialog,
-    scoresDialog, importDialog, packageDialog, !!mediaExport, panels.drawer]);
-  const toolIntent = useRef<{ controller: AbortController; context: string } | null>(null);
-  useEffect(() => {
-    if (toolIntent.current && toolIntent.current.context !== toolContext) toolIntent.current.controller.abort();
-  }, [toolContext]);
-  useEffect(() => () => { toolIntent.current?.controller.abort(); }, []);
-  const openPracticeTool = useCallback(async (signal: AbortSignal | undefined, open: () => void, pause = true) => {
-    toolIntent.current?.controller.abort();
-    const intent = new AbortController();
-    toolIntent.current = { controller: intent, context: toolContext };
-    const abort = () => intent.abort();
-    if (signal?.aborted) intent.abort();
-    signal?.addEventListener("abort", abort, { once: true });
-    const origin = playback.getSnapshot();
-    try {
-      if (!(await changeWorkspace("practice", intent.signal)) || intent.signal.aborted) return false;
-      if (pause && ["playing", "countIn"].includes(playback.getSnapshot().status)) {
-        if (!(await run({ type: "pause" })) || intent.signal.aborted) return false;
-      }
-      if (intent.signal.aborted) return false;
-      const current = playback.getSnapshot();
-      if (!samePlaybackSource(origin, current)) throw new Error("当前练习已改变，请重新选择要执行的操作。");
-      open();
-      return true;
-    } finally {
-      signal?.removeEventListener("abort", abort);
-      if (toolIntent.current?.controller === intent) toolIntent.current = null;
-    }
-  }, [changeWorkspace, playback, run, toolContext]);
-  const launchPracticeTool = useCallback((open: () => void) => {
-    void openPracticeTool(undefined, open).catch((failure) =>
-      setError(failure instanceof Error ? failure.message : String(failure)));
-  }, [openPracticeTool, setError]);
-  const workspaceChange = useRef(changeWorkspace);
-  workspaceChange.current = changeWorkspace;
+    scoresDialog, importDialog, packageDialog, !!mediaExport]);
+  const {openPracticeTool,launchPracticeTool}=usePracticeToolNavigation({toolContext,changeWorkspace,playback,run,setError});
   useEffect(() => {
     if (api.desktop || !state.storage?.pending) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [state.storage?.pending]);
-  const action = (value: EngineCommand) => {
-    if (value.type === "pause") {
-      clearLiveNotes();
-      const origin = playback.getEngineId();
-      void api.commandForEngine(origin, value).then(() => api.state()).then((snapshot) => {
-        if (snapshot.stateOrder?.engineId === origin && playback.getEngineId() === origin) setState(snapshot);
-      }).catch((failure) => { if (playback.getEngineId() === origin) setError(failure instanceof Error ? failure.message : String(failure)); });
-      return;
-    }
-    if (value.type === "panic") {
-      clearLiveNotes();
-      void api
-        .command(value)
-        .then(async () => setState(await api.state()))
-        .catch((failure) =>
-          setError(
-            failure instanceof Error ? failure.message : String(failure),
-          ),
-        );
-      return;
-    }
-    if (!startupReady || binding || !connected) return;
-    if (songOpeningActive.current) { setNotice("正在准备曲目，可在打开进度中取消或接续。"); return; }
-    if (value.type === "speed" || value.type === "volume" || value.type === "seek" || value.type === "mode") {
-      void adjustRealtime(value);
-    } else
-      void run(
-        value,
-        [
-          "track",
-          "trackSound",
-          "trackAppearance",
-          "hands",
-          "finger",
-          "pairScore",
-        ].includes(value.type),
-      );
-  };
-  const playbackAdjustments = useMemo(()=>new PlaybackAdjustmentQueue(
-    ()=>playback.getSnapshot(),
-    async(source,command,createdAtMs)=>{await api.adjustPlayback(source,command,createdAtMs);return api.state();},
-  ),[playback]);
-  useEffect(()=>{if(binding||!connected)playbackAdjustments.cancel();},[binding,connected,playbackAdjustments]);
-  useEffect(()=>()=>playbackAdjustments.cancel(),[playbackAdjustments]);
-  const adjustRealtime = async(value:PlaybackAdjustmentCommand) => {
-    if(!startupReady||binding||!connected||songOpeningActive.current)return false;
-    if(value.type==="seek")clearLiveNotes();
-    try {
-      const snapshot=await playbackAdjustments.enqueue(value);
-      if(!snapshot)return false;
-      setState(snapshot);setError("");return true;
-    } catch(error) {setError(error instanceof Error?error.message:String(error));return false;}
-  };
-  const shortcutQueue = useRef<Promise<unknown>>(Promise.resolve());
-  const shortcutGeneration = useRef(0);
-  const invalidateKeyboardActions = useCallback(() => {
-    shortcutGeneration.current++;
-    shortcutQueue.current = Promise.resolve();
-  }, []);
-  releaseInput.current = () => { invalidateKeyboardActions(); clearLiveNotes(); };
-  useEffect(() => {
-    const silence = (event: KeyboardEvent) => {
-      if (
-        !display.shortcuts.silence ||
-        event.repeat ||
-        isComposingKey(event) ||
-        eventShortcut(event) !== display.shortcuts.silence
-      )
-        return;
-      if (isCapturingKeys()) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      invalidateKeyboardActions();
-      clearLiveNotes();
-      void api
-        .command({ type: "panic" })
-        .then(async () => setState(await api.state()))
-        .catch((failure) =>
-          setError(
-            failure instanceof Error ? failure.message : String(failure),
-          ),
-        );
-    };
-    window.addEventListener("keydown", silence, true);
-    return () => window.removeEventListener("keydown", silence, true);
-  }, [display.shortcuts.silence, setState, clearLiveNotes, invalidateKeyboardActions]);
-  const keyboardPaused = !!workspaceSessions.desktopClose.status || !startupReady || Boolean(state.storage?.operation) ||
-    workspace !== "practice" || !["performance","freePlay"].includes(productScreens.screen) || inputOwnership.modal || inputOwnership.popup;
-  const shortcutScope = JSON.stringify([song?.engineId, song?.contentId, song?.scoreRevision, workspace, loopStart, loopEnd]);
-  const keyboardContext = useRef({ paused: keyboardPaused, scope: shortcutScope });
-  keyboardContext.current = { paused: keyboardPaused, scope: shortcutScope };
-  useEffect(() => {
-    invalidateKeyboardActions();
-  }, [shortcutScope, keyboardPaused, display.shortcuts, inputOwnership.revision, invalidateKeyboardActions]);
-  useEffect(() => {
-    const keys = keyboardMap(display);
-    const held = new Set<number>();
-    const clear = () => {
-      held.forEach((p) => onNote(p, false));
-      held.clear();
-      invalidateKeyboardActions();
-      clearLiveNotes();
-    };
-    const down = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || isComposingKey(e) || isCapturingKeys()) return;
-      const editableTarget = isTextEntry(e.target);
-      const zoomChord = eventShortcut(e),
-        zoomAction = zoomChord
-          ? shortcutActions.find(
-              (a) =>
-                display.shortcuts[a.id] === zoomChord &&
-                ["zoomIn", "zoomOut", "zoomReset"].includes(a.id),
-            )
-          : undefined;
-      if (zoomAction && !editableTarget && !e.repeat && !e.isComposing && !e.defaultPrevented) {
-        e.preventDefault();
-        setDisplay((p) => ({
-          ...p,
-          uiScale:
-            zoomAction.id === "zoomReset"
-              ? 100
-              : Math.max(
-                  80,
-                  Math.min(
-                    150,
-                    p.uiScale + (zoomAction.id === "zoomIn" ? 10 : -10),
-                  ),
-                ),
-        }));
-        return;
-      }
-
-      if (zoomChord && zoomChord === display.shortcuts.commands && !e.defaultPrevented && !e.repeat && !e.isComposing) {
-        if (visibleDialogs().some((node) => !node.matches("[data-practice-drawer]"))) return;
-        e.preventDefault();
-        clear();
-        setCommandsOpen(true);
-        return;
-      }
-      if (songOpeningActive.current && !editableTarget && !e.defaultPrevented && !e.isComposing && !e.repeat && zoomChord === display.shortcuts.playPause && ["playing", "countIn"].includes(playback.getSnapshot().status)) {
-        e.preventDefault();
-        clear();
-        action({ type: "pause" });
-        return;
-      }
-      if (keyboardPaused || topInputScope() || topPopup(null) || songOpeningActive.current || editableTarget || e.repeat) return;
-      if (e.target instanceof Element) {
-        if (!e.ctrlKey && !e.altKey && !e.shiftKey && ["Space", "Enter"].includes(e.code) &&
-          e.target.closest('button,summary,a[href],[role="button"],[role="checkbox"],[role="switch"],[role="radio"]')) return;
-      }
-      const chord = eventShortcut(e),
-        shortcut = chord
-          ? shortcutActions.find((a) => display.shortcuts[a.id] === chord)
-          : undefined;
-      if (shortcut) {
-        e.preventDefault();
-        const current = playback.getSnapshot();
-        const disallowed = (c: Snapshot) =>
-          [
-            "previousMeasure",
-            "nextMeasure",
-            "slower",
-            "faster",
-            "metronome",
-            "loop",
-          ].includes(shortcut.id) &&
-          (!!c.routine ||
-            !!c.ladder?.active ||
-            (shortcut.id !== "metronome" &&
-              ["recital", "memory"].includes(c.mode)));
-        if (disallowed(current)) {
-          setError("当前完整演奏、计划或阶梯中，请用该练习的控制操作。");
-          return;
-        }
-        const execute = (build: (latest: Snapshot) => EngineCommand) => {
-          const generation = shortcutGeneration.current;
-          const scope = keyboardContext.current.scope;
-          const currentOwner = () => generation === shortcutGeneration.current &&
-            !keyboardContext.current.paused && keyboardContext.current.scope === scope &&
-            !document.hidden && !topInputScope() && !topPopup(null);
-          const origin = capturePlaybackSource(playback.getSnapshot());
-          const createdAt = Date.now();
-          shortcutQueue.current = shortcutQueue.current
-            .then(async () => {
-              if (!currentOwner()) return;
-              const latest = await api.state();
-              if (!currentOwner()) return;
-              if (!samePlaybackSource(origin, latest)) throw new Error("曲目已改变，已取消上一首曲目的快捷键操作。");
-              if (Date.now() - createdAt > 2000) throw new Error("快捷键请求已过期，请在当前练习中重新按键。");
-              if (disallowed(latest)) throw new Error("当前完整演奏、计划或阶梯中，请用该练习的控制操作。");
-              const ready = await run(build(latest), false, createdAt);
-              if (!ready && generation === shortcutGeneration.current) shortcutGeneration.current++;
-            })
-            .catch((failure) => {
-              if (generation !== shortcutGeneration.current) return;
-              shortcutGeneration.current++;
-              setError(failure instanceof Error ? failure.message : String(failure));
-            });
-        };
-        if(shortcut.id.startsWith("bookmark")) {
-          if(!current.routine&&!current.ladder?.active&&!["recital","memory"].includes(current.mode)) bookmarkNavigation.current?.jump(Number(shortcut.id.slice(8))-1);
-          return;
-        }
-        switch (shortcut.id) {
-          case "previewMore": case "previewLess":
-            setDisplay(previous=>({...previous,previewBars:normalizePreviewBars(previous.previewBars+(shortcut.id==="previewMore"?1:-1))}));
-            break;
-          case "keyboardZoomIn": case "keyboardZoomOut": case "keyboardPanLow": case "keyboardPanHigh":
-            setDisplay(previous=>{
-              const view=resolveKeyboardViewport(previous,getBoundSong()?.notes??[],playback.getSnapshot().input);
-              const next=shortcut.id==="keyboardZoomIn"?zoomKeyboardViewport(view,1/1.2):shortcut.id==="keyboardZoomOut"?zoomKeyboardViewport(view,1.2):panKeyboardViewport(view,shortcut.id==="keyboardPanLow"?-3.5:3.5);
-              const range=viewportRange(next);
-              return {...previous,range:"custom",keyboardViewport:next,keyboardLow:range.low,keyboardHigh:range.high};
-            });
-            break;
-          case "playPause":
-            execute((c) => ({
-              type: ["playing", "countIn"].includes(c.status)
-                ? "pause"
-                : "play",
-            }));
-            break;
-          case "restart":
-            execute(() => ({ type: "restart" }));
-            break;
-          case "silence":
-            clear();
-            execute(() => ({ type: "pause" }));
-            break;
-          case "previousMeasure":
-          case "nextMeasure":
-            execute((c) => {
-              const range = seekableMeasures(song, c.passage);
-              if (!range) throw new Error("当前选段内没有可跳转的小节起点，请用逐拍导航。");
-              return {
-                type: "seekMeasure",
-                measure: Math.max(
-                  range.first,
-                  Math.min(
-                    range.last,
-                    c.measure + (shortcut.id === "nextMeasure" ? 1 : -1),
-                  ),
-                ),
-              };
-            });
-            break;
-          case "slower":
-          case "faster":
-            execute((c) => ({
-              type: "speed",
-              value: Math.max(
-                0.25,
-                Math.min(
-                  2,
-                  (Math.round(c.bpm * c.speed) +
-                    (shortcut.id === "faster" ? 5 : -5)) /
-                    Math.max(1, c.bpm),
-                ),
-              ),
-            }));
-            break;
-          case "loop":
-            execute((c) => {
-              const range = activeMeasures(song, c.passage);
-              return {
-                type: "measureLoop",
-                enabled: !c.passage,
-                start: c.passage ? range?.first ?? 1 : loopStart,
-                end: c.passage ? range?.last ?? 1 : loopEnd,
-              };
-            });
-            break;
-          case "metronome":
-            execute((c) => ({ type: "metronome", enabled: !c.metronome }));
-            break;
-          case "view":
-            setView((v) =>
-              v === "keyboard" ? "score" : v === "score" ? "combined" : v === "combined" ? "paper" : "keyboard",
-            );
-            break;
-          case "library":
-            panelActions.current.setLibraryOpen(!panelActions.current.libraryOpen);
-            break;
-          case "inspector":
-            panelActions.current.setInspector(!panelActions.current.inspector);
-            break;
-          case "display":
-            setDisplayDialog(true);
-            break;
-          case "history": return;
-          case "passages":
-            launchPracticeTool(() => setPassageDialog(true));
-            break;
-          case "libraryManager":
-            void workspaceChange.current("library");
-            break;
-        }
-        return;
-      }
-      if (document.querySelector('[data-practice-drawer][role="dialog"]')) return;
-      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-      const pitch = display.keyboardEnabled ? keys[e.code] : undefined;
-      if (pitch !== undefined) {
-        e.preventDefault();
-        held.add(pitch);
-        onNote(pitch, true);
-      }
-    };
-    const up = (e: KeyboardEvent) => {
-      const p = keys[e.code];
-      if (p !== undefined && held.delete(p)) onNote(p, false);
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    window.addEventListener("blur", clear);
-    const hide = () => { if (document.hidden) clear(); };
-    document.addEventListener("visibilitychange", hide);
-    document.addEventListener("compositionstart", clear);
-    return () => {
-      clear();
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-      window.removeEventListener("blur", clear);
-      document.removeEventListener("visibilitychange", hide);
-      document.removeEventListener("compositionstart", clear);
-    };
-  }, [
-    keyboardPaused,
-    launchPracticeTool,
-    display.keyCodes,
-    display.shortcuts,
-    loopStart,
-    loopEnd,
-    song,
-    display.keyboardOctave,
-    display.keyboardEnabled,
-    onNote,
-    clearLiveNotes,
-    invalidateKeyboardActions,
-    run,
-    playback,
-    setDisplay,
-    setError,
-  ]);
+  const scorePairing=useScorePairing({song,playback,run,setView,setError});
+  const keyboardPaused=!!workspaceSessions.desktopClose.status||!startupReady||Boolean(state.storage?.operation)||workspace!=="practice"||!["performance","freePlay"].includes(productScreens.screen)||inputOwnership.modal||inputOwnership.popup;
+  const shortcutScope=JSON.stringify([song?.engineId,song?.contentId,song?.scoreRevision,workspace,loopStart,loopEnd]);
+  const {keyboardContext,invalidateKeyboardActions}=usePerformanceKeyboard({
+    display,setDisplay,song,playback,getBoundSong,keyboardPaused,shortcutScope,ownershipRevision:inputOwnership.revision,songOpeningActive,
+    run,action,setState,setError,onNote,clearLiveNotes,loopStart,loopEnd,bookmarkNavigation,
+    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>setDisplayDialog(true),passages:()=>launchPracticeTool(()=>setPassageDialog(true))},
+  });
+  releaseInput.current=()=>{invalidateKeyboardActions();clearLiveNotes();};
   useEffect(() => {
     const escapeWorkspace = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || isComposingKey(event) ||
@@ -1008,28 +533,7 @@ export default function App() {
     window.addEventListener("keydown", escapeWorkspace);
     return () => window.removeEventListener("keydown", escapeWorkspace);
   }, []);
-  const showPracticeFeedback = () => {
-    const live = playback.getSnapshot();
-    const origin = capturePlaybackSource(live);
-    if (["playing", "countIn"].includes(live.status)) {
-      void run({ type: "pause" }).then((ok) => {
-        if (ok && samePlaybackSource(origin, playback.getSnapshot())) setFeedback(true);
-      });
-    } else setFeedback(true);
-  };
-  const selectedRow = useMemo(
-    () => songs.find((r) => normalize(r.path) === normalize(song?.sourcePath)),
-    [songs, song?.sourcePath],
-  );
-  const currentRecord = collection.find((r) => r.contentId === song?.contentId);
-  const byPath = useMemo(() => practiceCollectionByPath(collection), [collection]);
-  const queue = useMemo(
-    () =>
-      collection
-        .filter((r) => r.queuePosition !== null)
-        .sort((a, b) => a.queuePosition! - b.queuePosition!),
-    [collection],
-  );
+  const byPath=useMemo(()=>practiceCollectionByPath(collection),[collection]);
   const allLibraryRows = useMemo(() => {
     const rows = songs.map(row=>{
       const record=byPath.get(normalize(row.path));
@@ -1146,72 +650,6 @@ export default function App() {
       return false;
     }
   };
-  const restoreLibraryPractice = async (row: SongRow, record: CollectionSong, attempt: import("./engine/sessionTypes").LibraryAttempt) => {
-    if (requestBusy.current || songOpeningActive.current || !connected || !startupReady) return false;
-    const origin = playback.getSnapshot().stateOrder?.engineId;
-    if (!origin) return false;
-    const owner = navigation.getCurrent().workspace;
-    const stillHere = () => playback.getSnapshot().stateOrder?.engineId === origin && navigation.getCurrent().workspace === owner;
-    requestBusy.current = true; setBusy(true); clearLiveNotes();
-    let result: Awaited<ReturnType<typeof prepareLibraryPractice>>;
-    try {
-      result = await prepareLibraryPractice({ engineId: origin, contentId: record.contentId, id: attempt.id, title: row.title }, stillHere);
-      await refresh();
-      const state = playback.getSnapshot();
-      if (!stillHere() || state.contentId !== result.prepared.contentId || state.scoreRevision !== result.prepared.scoreRevision)
-        throw new Error("恢复结果已保留，当前曲目有变化，可从工作进度接续。");
-    } finally { requestBusy.current = false; setBusy(false); }
-    if (!(await changeWorkspace("practice"))) throw new Error("练习已准备好，可从工作进度返回演奏页。");
-    const current = playback.getSnapshot();
-    if (current.stateOrder?.engineId !== origin || current.contentId !== result.prepared.contentId || current.scoreRevision !== result.prepared.scoreRevision)
-      throw new Error("当前练习已变化，请核对工作进度后重新恢复。");
-    getHistoryOperations().present(result.intent.request.id);
-    panels.closeDrawer();
-    return true;
-  };
-  const openQueuedSong = async (record: CollectionSong): Promise<boolean> => {
-    const origin = playback.getSnapshot(),
-      owner = navigation.getCurrent().workspace;
-    if (requestBusy.current || songOpeningActive.current || !connected)
-      return false;
-    try {
-      if (origin.recording) throw new Error("请先停止并保存当前录音。");
-      if (origin.routine || origin.ladder?.active)
-        throw new Error("请先结束当前计划项目或速度阶梯，再切换队列曲目。");
-      const judged =
-        origin.score.matched_notes +
-        origin.score.wrong_notes +
-        origin.score.missed_notes;
-      if (
-        ["recital", "memory"].includes(origin.mode) &&
-        origin.status !== "finished" &&
-        judged > 0
-      )
-        throw new Error("请先完成本轮完整演奏，再继续下一首。");
-      if (judged > 0 && !origin.saved && origin.mode !== "listen") {
-        if (!(await run({ type: "save" }, false, undefined, "background")))
-          return false;
-        const saved = playback.getSnapshot();
-        if (
-          saved.stateOrder?.engineId !== origin.stateOrder?.engineId ||
-          saved.contentId !== origin.contentId ||
-          saved.scoreRevision !== origin.scoreRevision ||
-          !saved.saved
-        )
-          throw new Error("本轮保存结果或当前曲目仍需核对，下一首尚未打开。");
-      }
-      if (
-        navigation.getCurrent().workspace !== owner ||
-        playback.getSnapshot().stateOrder?.engineId !==
-          origin.stateOrder?.engineId
-      )
-        return false;
-      return load(collectionSongRow(record), record.contentId, "recent");
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
-      return false;
-    }
-  };
   const importMidi = async () => {
     if (requestBusy.current || busy || !startupReady || state.recording) return;
     if (songOpeningActive.current) {
@@ -1282,28 +720,6 @@ export default function App() {
       throw new Error("请先完成当前保存、录音或曲目打开，再打开曲目。");
     if (navigation.locked)
       throw new Error("请先保存或取消当前工作区中的编辑，再打开曲目。");
-    if (live.routine || live.ladder?.active)
-      throw new Error("请先结束当前计划项目或速度阶梯，再打开曲目。");
-    const judged =
-      live.score.matched_notes + live.score.wrong_notes + live.score.missed_notes;
-    if (
-      ["recital", "memory"].includes(live.mode) &&
-      live.status !== "finished" &&
-      judged > 0
-    )
-      throw new Error("请先完成本轮完整演奏，再打开曲目。");
-    if (judged > 0 && !live.saved && live.mode !== "listen") {
-      if (!(await run({ type: "save" }, false, undefined, "background")))
-        return false;
-      const saved = playback.getSnapshot();
-      if (
-        !saved.saved ||
-        saved.stateOrder?.engineId !== live.stateOrder?.engineId ||
-        saved.contentId !== live.contentId ||
-        saved.scoreRevision !== live.scoreRevision
-      )
-        throw new Error("本轮保存结果需要核对，目标曲目继续保留。");
-    }
     if (signal?.aborted) return false;
     if (navigation.getCurrent().workspace !== owner)
       throw new Error("工作区已变化，原打开来源继续保留。");
@@ -1330,18 +746,9 @@ export default function App() {
       value.title,
       value.sourcePath,
     ).then(ok=>{if(ok)productScreens.show("setup");return ok;});
-  const followingQueue = useMemo(
-    () => nextAvailableQueueSong(queue, song?.contentId),
-    [queue, song?.contentId],
-  );
-  const next = followingQueue.song;
   const exportMidi = () => {
     if (song) setMediaExport({contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId});
   };
-  const togglePracticeFocus = () => setDisplay(previous => ({
-    ...previous, practiceFocus: !previous.practiceFocus,
-    ...(!previous.practiceFocus ? {libraryOpen:false,inspector:false} : {}),
-  }));
   const fullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else
@@ -1349,158 +756,49 @@ export default function App() {
         .requestFullscreen()
         .catch(() => setError("当前窗口无法进入全屏"));
   };
-  const openWork = async (entry: WorkEntry, signal: AbortSignal) => {
-    if (signal.aborted || workspaceSessions.desktopClose.status)
-      return { ok: false, error: "退出准备尚未结束，请返回窗口后继续。" };
-    if (navigation.locked && entry.target !== "drafts" && entry.target !== "devices" && entry.target !== "interface-settings")
-      return {
-        ok: false,
-        error:
-          "请先保存或取消当前工作区中的编辑，再打开对应工作台。原进度继续保留。",
-      };
-    if (entry.target === "scores" || entry.target === "score" || entry.target === "passage" || entry.target === "ladder" || entry.target === "hands" || entry.target === "meter") {
-      if (!entry.source)
-        return {
-          ok: false,
-          error: "暂未找到来源曲目，可从曲库打开原曲目后继续。",
-        };
-      if (!connected || binding || !startupReady)
-        return {
-          ok: false,
-          error: "练习室正在连接或恢复，完成后可返回来源曲目。",
-        };
-      if (state.recording)
-        return { ok: false, error: "请先停止并保存当前录音，再返回来源曲目。" };
-      if (operationBusy)
-        return { ok: false, error: "当前资料仍在处理，完成后可返回来源曲目。" };
-      const currentPath = allLibraryRows.find(
-        (row) =>
-          byPath.get(normalize(row.path))?.contentId === entry.source!.contentId,
-      )?.path;
-      if (
-        !(await resumeEditingSong(
-          entry.source.contentId,
-          currentPath || entry.source.path,
-        )) ||
-        signal.aborted
-      )
-        return {
-          ok: false,
-          error:
-            "来源曲目尚未打开。原任务保留，请从曲库检查文件位置或先处理练习室提示。",
-        };
-      if (entry.target === "passage" || entry.target === "ladder" || entry.target === "hands" || entry.target === "meter") {
-        const current = getBoundSong();
-        if (!current || current.contentId !== entry.source.contentId)
-          return { ok: false, error: "来源曲目仍在切换，请稍后继续原输入。" };
-        if (!(await openPracticeTool(signal, () => {
-          if (entry.target === "passage") setPassageDialog(true);
-          else if (entry.target === "ladder") setLadderDialog(true);
-          else if (entry.target === "hands") setHandsDialog(true);
-          else setMeterDialog(true);
-        })))
-          return { ok: false, error: "当前练习仍在处理，请完成当前操作后继续原输入。" };
-      } else if (entry.target === "scores") {
-        if (entry.stale && entry.restoreScoreKey) {
-          const actual = playback.getSnapshot();
-          workspaceSessions.scores.recoverPreview(entry.restoreScoreKey, {
-            contentId: entry.source.contentId,
-            engineId: actual.stateOrder?.engineId,
-            scoreRevision: actual.scoreRevision ?? 0,
-            title: entry.source.title,
-            path: currentPath || entry.source.path,
-          });
-        }
-        setScoresDialog(true);
-      } else {
-        if (playback.getSnapshot().mode === "memory")
-          return {
-            ok: false,
-            error:
-              "当前为背谱模式。请先切换练习模式，再打开谱面工具。原制作进度继续保留。",
-          };
-        setView("score");
-        setScoreToolRequest(
-          entry.scoreTool
-            ? {
-                id: crypto.randomUUID(),
-                contentId: entry.source.contentId,
-                engineId: playback.getSnapshot().stateOrder?.engineId,
-                kind: entry.scoreTool,
-                sourceFingerprint: entry.sourceFingerprint,
-              }
-            : null,
-        );
+  const openWork=(entry:WorkEntry,signal:AbortSignal)=>openWorkEntry(entry,signal,{
+    unavailable:target=>{
+      if(workspaceSessions.desktopClose.status)return "正在准备退出，请返回窗口后继续。";
+      if(navigation.locked&&!["drafts","devices","interface-settings"].includes(target))return "请先保存或取消当前编辑，再接续任务。";
+      if(["scores","score","passage","hands","meter"].includes(target)){
+        if(!connected||binding||!startupReady)return "练习室正在恢复，完成后可返回来源曲目。";
+        if(state.recording)return "请先停止并保存录音，再返回来源曲目。";
+        if(operationBusy)return "当前资料正在保存，完成后可接续任务。";
       }
-    } else if (entry.target === "imports") setImportDialog(true);
-    else if (entry.target === "package") {
-      setPackageFile(undefined);
-      setPackageDialog(true);
-    } else if (entry.target === "backup") setPracticeBackup(true);
-    else if (entry.target === "devices") openSoundSettings();
-    else if (entry.target === "exercise") setExerciseDialog(true);
-    else if (entry.target === "routine") {
-      if (
-        !(await openPracticeTool(signal, () => {
-          setRoutineLaunch(null);
-          showRoutine();
-        }))
-      )
-        return {
-          ok: false,
-          error:
-            "当前练习仍在处理，请先完成录音、保存或当前编辑，再继续编排计划。",
-        };
-    } else if (entry.target === "interface-settings") {
-      const draft = getInterfaceWorkbench();
-      const input = draft.getSnapshot(), settingsState = interfaceSettings.getSnapshot();
-      const unfinishedExport = input.preparedExport && !["saved", "requested"].includes(input.preparedExport.phase);
-      if (settingsState.protected || settingsState.error || input.storageError || input.preview || input.error || unfinishedExport) {
-        draft.update({ section: "backup" });
-      } else if (hasLayoutNameInput(input, settingsState.layouts)) {
-        draft.update({ section: "layout" });
-      }
+      return null;
+    },
+    prepare:(source,signal)=>{
+      if(signal.aborted)return Promise.resolve(false);
+      const path=allLibraryRows.find(row=>byPath.get(normalize(row.path))?.contentId===source.contentId)?.path;
+      return resumeEditingSong(source.contentId,path||source.path);
+    },
+    current:getBoundSong,snapshot:playback.getSnapshot,scores:workspaceSessions.scores,
+    openEditor:(target,signal)=>openPracticeTool(signal,()=>{
+      if(target==="passage")setPassageDialog(true);else if(target==="hands")setHandsDialog(true);else setMeterDialog(true);
+    }),
+    openScores:()=>setScoresDialog(true),
+    openScore:request=>{setView("score");productScreens.show("performance");setScoreToolRequest(request);},
+    openSimple:target=>{
+      if(target==="imports")setImportDialog(true);
+      else if(target==="package"){setPackageFile(undefined);setPackageDialog(true);}
+      else if(target==="backup")setPracticeBackup(true);
+      else if(target==="devices")openSoundSettings();
+      else if(target==="exercise")setExerciseDialog(true);
+      else if(target==="drafts")setEditDraftsOpen(true);
+    },
+    openInterface:()=>{
+      const draft=getInterfaceWorkbench(),input=draft.getSnapshot(),settings=interfaceSettings.getSnapshot();
+      if(settings.protected||settings.error||input.storageError||input.preview||input.error||input.preparedExport&&!["saved","requested"].includes(input.preparedExport.phase))draft.update({section:"backup"});
       setDisplayDialog(true);
-    } else if (entry.target === "library-open") {
+    },
+    browsePending:async(id,signal)=>{
       libraryOpening.store.keepPending();
-      const destination = entry.libraryOpenWorkspace ?? "library";
-      if (navigation.getCurrent().workspace !== destination && !(await changeWorkspace(destination, signal))) return { ok: false, error: "当前工作区仍在处理，可稍后接续曲目打开进度。" };
-      if (entry.libraryOpenWorkspace === "practice") panels.closeDrawer();
-      if (entry.libraryOpenId) setLibraryOpenFocus({ requestId: crypto.randomUUID(), id: entry.libraryOpenId });
-    } else if (entry.target === "replay" || entry.target === "history-action") {
-      if (entry.target === "history-action" && !entry.source) {
-        if (!(await changeWorkspace("review", signal))) return { ok: false, error: "当前工作区仍在处理，可稍后打开历史操作进度。" };
-        setProgressOpen(false);
-        return { ok: true };
-      }
-      if (!entry.source || !entry.historyId) return { ok: false, error: "原演奏记录身份尚未读到，可复制输入保留。" };
-      if (!connected || !startupReady) return { ok: false, error: "练习室正在连接，完成后可返回原演奏。" };
-      const origin = playback.getSnapshot().stateOrder?.engineId;
-      const detail = await api.commandForEngine<import("./features/review/historyTypes").HistoryDetail>(origin, { type: "readHistoryDetail", content_id: entry.source.contentId, id: entry.historyId });
-      if (signal.aborted) return { ok: false, error: "已取消打开，原输入继续保留。" };
-      if (origin !== playback.getSnapshot().stateOrder?.engineId) return { ok: false, error: "练习室连接已改变，可重新打开原演奏。" };
-      if (!detail || detail.contentId !== entry.source.contentId || detail.id !== entry.historyId) return { ok: false, error: "原演奏记录暂未读到，可复制输入保留。" };
-      if (!(await changeWorkspace("review", signal))) return { ok: false, error: "当前工作区仍在处理，原输入继续保留。" };
-      if (entry.historyOperationId) getHistoryOperations().resume(entry.historyOperationId);
-      setReplayDraftRequest({ id: crypto.randomUUID(), entry: detail });
-    } else if (entry.target === "drafts") setEditDraftsOpen(true);
-    else if (entry.target === "media") {
-      if (!entry.source)
-        return {
-          ok: false,
-          error: "导出来源尚未读到，可从原曲目重新打开导出窗口。",
-        };
-      setMediaExport({
-        contentId: entry.source.contentId,
-        title: entry.source.title || entry.subject,
-        path: entry.source.path,
-        engineId: playback.getSnapshot().stateOrder?.engineId,
-        kind: entry.mediaKind,
-      });
-    }
-    setProgressOpen(false);
-    return { ok: true };
-  };
+      if(!(await productActions.current.browse(signal)))return false;
+      if(id)setLibraryOpenFocus({requestId:crypto.randomUUID(),id});return true;
+    },
+    openMedia:entry=>setMediaExport({contentId:entry.source.contentId,title:entry.source.title||entry.subject,path:entry.source.path,engineId:playback.getEngineId(),kind:entry.mediaKind}),
+    done:()=>setProgressOpen(false),
+  });
   const openRecovery = () => { clearLiveNotes(); setProgressOpen(false); setRecoveryOpen(true); };
   const recoveryHost = useRef<RecoveryHost | null>(null);
   recoveryHost.current = {
@@ -1521,7 +819,7 @@ export default function App() {
       if (opened) setRecoveryOpen(false);
       return opened;
     },
-    library: (signal) => changeWorkspace("library", signal),
+    library: (signal) => productActions.current.browse(signal),
     locateStartupSong: async (warning, signal) => {
       const source = warning.source;
       if (!api.desktop || source?.kind !== "file" || !source.contentId)
@@ -1601,12 +899,13 @@ export default function App() {
   const commandActions = applicationCommands({
     sessionRecovery: () => { openRecovery(); return true; },
     workProgress: () => { clearLiveNotes(); setProgressOpen(true); return true; },
-    library: (signal) => changeWorkspace("library", signal),
-    practice: (signal) => changeWorkspace("practice", signal),
+    library: (signal) => productActions.current.browse(signal),
+    practice: (signal) => productActions.current.resume(signal),
     review: (signal) => changeWorkspace("review", signal),
     songHistory: (signal) => song ? visitSongWorkspace("review", { contentId: song.contentId, title: song.title, path: song.sourcePath }, signal) : false,
     play: async (signal) => {
-      if (!(await changeWorkspace("practice", signal)) || signal.aborted) return false;
+      if (!(await productActions.current.resume(signal)) || signal.aborted) return false;
+      productScreens.show("performance");
       return run({ type: ["playing", "countIn"].includes(playback.getSnapshot().status) ? "pause" : "play" });
     },
     import: (signal) => openPracticeTool(signal, () => setImportDialog(true), false),
@@ -1621,8 +920,8 @@ export default function App() {
     metadata: (signal) => openPracticeTool(signal, () => { setMetadataDraftPath(null); setMetadata(true); }, false),
     keyboard: (signal) => openPracticeTool(signal, () => setView("keyboard"), false),
     score: (signal) => openPracticeTool(signal, () => setView("score"), false),
-    libraryPanel: (signal) => openPracticeTool(signal, () => setLibraryOpen(!panelActions.current.libraryOpen), false),
-    inspector: (signal) => openPracticeTool(signal, () => setInspector(!panelActions.current.inspector), false),
+    libraryPanel: () => productActions.current.browse(),
+    inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
     display: () => setDisplayDialog(true),
     backup: () => setPracticeBackup(true),
@@ -1698,8 +997,7 @@ export default function App() {
       clearLiveNotes();
       setError("");
       setNotice((prepared.importWarnings ?? []).join("；"));
-      panels.closeDrawer();
-      setRoutineSuspended(false);
+        setRoutineSuspended(false);
       setRoutineDialog(false);
       setRoutineLaunch(null);
       if (prepared.view !== "practice") {
@@ -1717,8 +1015,8 @@ export default function App() {
           last: prepared.source.selection.last.ordinal,
         });
       }
-      if (owner === "review") navigation.closeReview();
-      else setLibraryDialog(false);
+      navigation.closeLibrary();
+      productScreens.show(prepared.view === "practice" ? "setup" : "performance");
       void updateCollection().catch(() => {});
       return true;
     },
@@ -1739,20 +1037,20 @@ export default function App() {
   useEffect(() => {
     if (openingActive) {
       playbackAdjustments.cancel();
-      shortcutGeneration.current++;
-      shortcutQueue.current = Promise.resolve();
+      invalidateKeyboardActions();
       clearLiveNotes();
     }
   }, [openingActive, clearLiveNotes]);
-  const {chooseSongs,goHome,openSongSetup,openFreePlay}=useProductNavigation({
+  const {chooseSongs,goHome,openSongSetup,openFreePlay,resumePractice}=useProductNavigation({
     screens:productScreens,changeWorkspace,load,run,clearLiveNotes,
     prepareBrowser:()=>{setLibraryAdvanced(false);setLibrarySearch(null);},
-    prepareSong:()=>setView("keyboard"),closeDrawer:panels.closeDrawer,closeMenu:()=>setAppMenuOpen(false),
+    prepareSong:()=>setView("keyboard"),closeMenu:()=>setAppMenuOpen(false),
   });
+  productActions.current={browse:chooseSongs,resume:resumePractice};
   return (
     <div
       data-skin={display.skin}
-      className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
+      className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""}`}
       data-product-screen={productScreens.screen}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
@@ -1834,7 +1132,7 @@ export default function App() {
           {label:"设置",content:<>
             <button onClick={()=>openSoundSettings()}>键盘与音源…</button><button onClick={()=>setDisplayDialog(true)}>界面与快捷键…</button>
             <button disabled={!song} onClick={()=>setScoresDialog(true)}>谱面管理…</button>
-            <button disabled={!song} onClick={()=>{if(song){scorePairTarget.current={contentId:song.contentId,title:song.title};scoreInput.current?.click();}}}>配对原谱…</button>
+            <button disabled={!song} onClick={scorePairing.request}>配对原谱…</button>
             <button disabled={!song || busy} onClick={()=>setFingeringWorkbenchOpen(true)}>指法工作台…</button>
             <button onClick={()=>setSongOptions(true)}>练习参数…</button>
           </>},
@@ -1847,13 +1145,6 @@ export default function App() {
             <button onClick={()=>setAboutOpen(true)}>关于 Panthesia…</button>
           </>},
         ]}/>
-        <WorkspaceNavigation
-          active={workspace}
-          disabled={!!workspaceUnavailable}
-          unavailable={workspaceUnavailable}
-          pending={navigation.pending}
-          change={(next) => { void changeWorkspace(next); }}
-        />
         <span className="menu-spacer" />
         <span className={`engine-indicator ${connected ? "connected" : ""}`} role="status"
           title={connected ? startupReady ? "练习室已连接" : "正在恢复练习室" : "练习室连接中断"}>
@@ -1864,24 +1155,6 @@ export default function App() {
           <Maximize2 size={16} />
         </button>
       </header>
-      {workspace === "review" && startupReady && (song || workspace === "review") && <CurrentPracticeBar
-        workspace={workspace} song={song} state={state} sourceReady={!!currentPracticeTarget && connected}
-        unavailable={workspaceUnavailable} sourceUnavailable={currentPracticeUnavailable}
-        resume={() => { void changeWorkspace("practice"); }}
-        locate={() => { if (currentPracticeTarget) void visitSongWorkspace("library", currentPracticeTarget); }}
-        review={() => { if (currentPracticeTarget) void visitSongWorkspace("review", currentPracticeTarget); }}
-        choose={() => { void changeWorkspace("library"); }} />}
-      {workspace === "practice" && startupReady && navigation.returnWorkspace === "review" && <PracticeReturnBar
-        workspace={navigation.returnWorkspace}
-        dismiss={navigation.dismissReturn}
-        title={navigation.returnWorkspace === "review" ? workspaceSessions.history?.selected?.title ?? workspaceSessions.history?.song?.title
-          : allLibraryRows.find((row) => normalize(row.path) === workspaceSessions.library?.active)?.title}
-        context={navigation.returnWorkspace === "review"
-          ? historyResumeContext(workspaceSessions.history)
-          : libraryResumeContext(workspaceSessions.library)}
-        disabled={!!workspaceUnavailable}
-        unavailable={workspaceUnavailable}
-        resume={() => { if (navigation.returnWorkspace) void changeWorkspace(navigation.returnWorkspace); }} />}
       {workspace === "practice" && routineDialog && routineSuspended && <div className="routine-return-banner" role="status">
         <div><strong>练习计划的输入已保留</strong><span>可以继续编排，或关闭计划窗口并保留草稿后练习。</span></div>
         <button disabled={busy || !startupReady} onClick={showRoutine}>继续编排计划</button>
@@ -1914,172 +1187,29 @@ export default function App() {
 
       <div
         className="workspace"
-        ref={panels.root}
-        data-practice-compact={panels.compact ? "" : undefined}
-        data-practice-short={panels.short ? "" : undefined}
+        ref={performanceSize.root}
+        data-practice-compact={performanceSize.compact ? "" : undefined}
+        data-practice-short={performanceSize.short ? "" : undefined}
         hidden={workspace !== "practice" || !startupReady || productScreens.screen!=="performance"}
         inert={workspace !== "practice" || !startupReady || productScreens.screen!=="performance"}
         style={
           {
-            "--library-width": `${display.libraryWidth}px`,
-            "--inspector-width": `${display.inspectorWidth}px`,
             "--keyboard-height": `${display.keyboardHeight}px`,
             "--paper-preview-height": `${display.paperPreviewHeight}px`,
           } as React.CSSProperties
         }
       >
-        {panels.drawer && (
-          <button
-            className="practice-panel-backdrop"
-            aria-label="返回练习画面"
-            onClick={panels.closeDrawer}
-          />
-        )}
-        {libraryOpen && <PracticeLibraryPanel
-          rows={allLibraryRows} collection={collection} browse={practiceLibraryBrowse} change={setPracticeLibraryBrowse} scrollMemory={practiceLibraryScroll} rememberScroll={workspaceSessions.browse.rememberPracticeScroll} ready={libraryReady} readError={libraryProblem}
-          current={song ? { contentId: song.contentId, title: song.title, path: song.sourcePath, generated: song.generated } : null}
-          compact={panels.compact} width={display.libraryWidth} resize={(value) => setDisplay((previous) => ({ ...previous, libraryWidth: value }))}
-          close={() => setLibraryOpen(false)} manage={() => { void changeWorkspace("library"); }} refresh={refreshWithCollection}
-          unavailable={!connected ? "练习室连接中断，连接后可打开曲目。" : busy ? "正在处理当前练习，完成后可打开曲目。" : state.recording ? "请先停止并保存录音。" : importingName ? `正在导入：${importingName}。可从顶部导入入口返回。` : openingActive ? "正在打开上一首曲目，可从打开进度中接续或取消。" : null}
-          opening={openingActive && !importingName ? { path: openingIntent?.path ?? "", title: openingIntent?.title || "所选曲目" } : null}
-          progress={() => { clearLiveNotes(); setProgressOpen(true); }}
-          open={async (item: PracticeLibraryItem) => {
-            const current = getBoundSong();
-            if (current && item.contentId === current.contentId && (item.location === "recent" || normalize(item.row.path) === normalize(current.sourcePath) || current.generated && item.row.path === `exercise:${current.contentId}`)) { panels.closeDrawer(); return true; }
-            return load(item.row, item.contentId, item.location);
-          }} />}
         <main className="practice-panel">
           <PracticeTransport
             store={playback}
-            back={() => {void run({type:"pause"}).then(ok=>{if(ok){setSongSetup(true);panels.closeDrawer();}});}}
-            tools={          <div className="synthesia-play-tools">
-            <ToolbarMore icon={<ScoreIcon size={27}/>} label="歌曲设置" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
-              <button onClick={() => setSongOptions(true)}>练习与版本设置…</button>
-              <button onClick={() => setScoresDialog(true)}>谱面管理…</button>
-              <button onClick={() => openSoundSettings()}>键盘与音源…</button>
-              <button onClick={() => setDisplayDialog(true)}>外观、网格与按键…</button>
-              <button onClick={() => setFingeringWorkbenchOpen(true)}>指法工作台…</button>
-              <button disabled={!song || busy} onClick={() => {void run({type:"pause"}).then(ok=>{if(ok)productScreens.show("parts");});}}>手别、颜色与乐器</button>
-              <button
-                disabled={!song || busy}
-                onClick={() => {
-                  if (!song) return;
-                  scorePairTarget.current = { contentId: song.contentId, title: song.title };
-                  scoreInput.current?.click();
-                }}
-              >
-                配对乐谱
-              </button>
-              <input
-                ref={scoreInput}
-                type="file"
-                accept=".musicxml,.xml,.mxl"
-                aria-label="配对乐谱文件"
-                hidden
-                onChange={async (e) => {
-                  const file = e.target.files?.[0], target = scorePairTarget.current;
-                  scorePairTarget.current = null;
-                  e.target.value = "";
-                  if (!file || !target) return;
-                  if (file.size > 4_000_000) {
-                    setError("乐谱超过 4 MB");
-                    return;
-                  }
-                  try {
-                    if (playback.getSnapshot().contentId !== target.contentId) throw new Error(`当前曲目已切换，请重新为“${target.title}”选择乐谱。`);
-                    const bytes = Array.from(
-                      new Uint8Array(await file.arrayBuffer()),
-                    );
-                    if (playback.getSnapshot().contentId !== target.contentId) throw new Error("读取乐谱期间曲目已切换，请重新选择要配对的曲目。");
-                    const paired = await run(
-                      {
-                        type: "pairScore",
-                        bytes,
-                        name: file.name,
-                        content_id: target.contentId,
-                      },
-                      true,
-                    );
-                    if (paired && playback.getSnapshot().contentId === target.contentId) setView("score");
-                  } catch (err) {
-                    setError(String(err));
-                  }
-                }}
-              />
-              <button
-                className={editFingers ? "selected" : ""}
-                disabled={!song || recital || ladderActive || routineActive}
-                onClick={() => {
-                  setEditFingers(!editFingers);
-                  setSelectedNote(null);
-                }}
-              >
-                编辑指法
-              </button>
-              <button
-                disabled={
-                  !song || busy || recital || ladderActive || routineActive
-                }
-                onClick={() => {
-                  launchPracticeTool(() => { setSelectedNote(null); setFingeringDialog(true); });
-                }}
-              >
-                指法建议
-              </button>
-            </ToolbarMore>
-
-            <ToolbarMore icon={<DisplayGear size={27}/>} label="显示设置" scale={display.uiScale / 100} disabled={navigation.locked || !startupReady}>
-            <div className="practice-view-tabs" role="group" aria-label="练习视图">
-              <button
-                className={view === "keyboard" ? "selected" : ""}
-                aria-pressed={view === "keyboard"}
-                onClick={() => setView("keyboard")}
-              >
-                瀑布与琴键
-              </button>
-              <button
-                className={view === "score" ? "selected" : ""}
-                aria-pressed={view === "score"}
-                onClick={() => setView("score")}
-              >
-                五线谱
-              </button>
-              <button className={view === "combined" ? "selected" : ""} aria-pressed={view === "combined"} disabled={!song} onClick={() => setView("combined")}>谱面与瀑布</button>
-              <button
-                className={view === "paper" ? "selected" : ""}
-                aria-pressed={view === "paper"}
-                disabled={!song}
-                onClick={() => setView("paper")}
-              >
-                谱页
-              </button>
-            </div>
-              <PracticeLegend song={song} display={display} />
-              <button
-                aria-label="界面与按键设置"
-                onClick={() => setDisplayDialog(true)}
-              >
-                界面与按键
-              </button>
-              <PreviewBarsControl value={seconds} change={setSeconds} label="前方预览" ariaLabel="预览小节数"/>
-
-
-            <button className="product-narrow-metronome" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}>节拍器：{state.metronome?"开启":"关闭"}</button></ToolbarMore>
-            <button className="synthesia-metronome" title="节拍器" aria-label="节拍器" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}><MetronomeIcon size={27}/></button>
-            <ToolbarMore label="键盘缩放" icon={<ZoomIcon size={27}/>} disabled={!song}>          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
-            change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}</ToolbarMore>
-            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} tonic={song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic} minor={song?.practiceVariant?.minor} fifths={song?.practiceVariant?.effectiveFifths} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
-            <ToolbarMore label="书签" icon={<BookmarkIcon size={27}/>} disabled={!song||busy}><div className="product-bookmark-menu" onClick={e=>e.stopPropagation()}>
-          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
-            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
-            song={song} store={playback} range={practiceRange} visible={productScreens.screen === "performance"}
-            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
-            seek={(position)=>adjustRealtime({type:"seek",position})}
-            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
-            </div></ToolbarMore>
-            <ToolbarMore label="循环" icon={<LoopIcon size={27}/>} disabled={!song||busy}><div className="product-loop-menu" onClick={e=>e.stopPropagation()}><PracticeRangeControls range={practiceRange} disabled={!connected||busy||state.recording} active={!!state.passage} loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} toggle={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}/><label><input type="checkbox" checked={display.loopPreview} onChange={e=>setDisplay(previous=>({...previous,loopPreview:e.target.checked}))}/>预览下一轮</label></div></ToolbarMore>
-          </div>
-}
+            back={() => {void run({type:"pause"}).then(ok=>{if(ok){setSongSetup(true);}});}}
+            tools={<PerformanceTools song={song} playback={playback} display={display} setDisplay={setDisplay}
+              status={{busy,openingActive,connected,locked:navigation.locked,startupReady,editable:!recital&&!ladderActive&&!routineActive}}
+              keyboard={{range:pianoRange,viewport:pianoViewport,outside:outsidePianoRange}} practiceRange={practiceRange} bookmarkNavigation={bookmarkNavigation}
+              visible={productScreens.screen==="performance"} editFingers={editFingers} setEditFingers={setEditFingers} clearSelection={()=>setSelectedNote(null)}
+              action={action} run={run} adjustRealtime={adjustRealtime} setView={setView}
+              open={{songOptions:()=>setSongOptions(true),scores:()=>setScoresDialog(true),devices:()=>openSoundSettings(),display:()=>setDisplayDialog(true),fingeringWorkbench:()=>setFingeringWorkbenchOpen(true),
+                parts:()=>{void run({type:"pause"}).then(ok=>{if(ok)productScreens.show("parts");});},pairScore:scorePairing.request,fingering:()=>launchPracticeTool(()=>{setSelectedNote(null);setFingeringDialog(true);})}}/>}
             menu={() => setAppMenuOpen(v=>!v)}
             available={!!song}
             busy={busy || openingActive}
@@ -2306,44 +1436,24 @@ export default function App() {
         </main>
 
       </div>
-      {songOptions && song && <SongOptionsDialog close={()=>setSongOptions(false)}>
-              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
-              {song && <SongEditionBar song={song} active={songOptions} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
-      </SongOptionsDialog>}
-      <footer hidden={true} className="statusbar">
-        <span>
-          <KeyboardMusic size={13} />
-          {state.input
-            ? `${state.input}${state.inputConnected ? " · 已连接" : " · 未连接"}`
-            : display.keyboardEnabled
-              ? `电脑键盘 · ${display.keyCodes.map(codeLabel).join(" ")} · C${display.keyboardOctave}`
-              : "电脑键盘演奏已关闭"}
-        </span>
-        <span>{state.output}</span>
-        <PracticePedal store={playback} />
-        {selectedRow?.source === "GiantMIDI-Piano" && (
-          <span className="transcription-note">
-            GiantMIDI · 自动转录，尚未校对
-          </span>
-        )}
-        <span className="menu-spacer" />
-        {selectedRow && (
-          <details className="source-info">
-            <summary>来源与许可</summary>
-            <div>
-              <strong>{selectedRow.source}</strong>
-              <p>{selectedRow.license}</p>
-              <p>{selectedRow.sourceUrl}</p>
-            </div>
-          </details>
-        )}
-        <button onClick={() => action({ type: "panic" })}>停止发声</button>
-        <span>
-          {display.shortcuts.playPause
-            ? `${shortcutLabel(display.shortcuts.playPause)}：播放 / 暂停`
-            : "播放快捷键未分配"}
-        </span>
-      </footer>
+      <input ref={scorePairing.input} type="file" accept=".musicxml,.xml,.mxl" aria-label="配对乐谱文件" hidden onChange={scorePairing.change}/>
+      <SongEditorHost song={song} editors={editors} disabled={busy||openingActive||state.recording}
+        scoreWorkspace={workspaceSessions.scores} configureDuet={()=>{setScoresDialog(false);setSettingsTab("duet");setSettingsReturnToScores(true);setSettings(true);}}
+        openScorePractice={async()=>{
+          if(!song)return;
+          const current=playback.getSnapshot();
+          if(current.contentId!==song.contentId||playback.getEngineId()!==song.engineId)throw new Error("当前歌曲已改变，请返回对应歌曲打开谱面。");
+          if(!(await changeWorkspace("practice")))throw new Error("谱面已采用，可稍后打开演奏。");
+          setView("score");productScreens.show("performance");setScoresDialog(false);setPaperRevision(value=>value+1);
+        }} paperChanged={()=>setPaperRevision(value=>value+1)}
+        changed={async kind=>{await refreshConfirmedSession();if(kind==="meter"){setLoopStart(1);setLoopEnd(1);}await updateCollection();}}
+        loopStart={loopStart} loopEnd={loopEnd}
+        applyVariant={async value=>{
+          if(!song)return false;
+          const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);
+          if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;
+        }} execute={command=>run(command,true)}
+        openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}/>
       {mediaExport && <MediaExportDialog source={mediaExport} kind={mediaExport.kind ?? "midi"} close={() => setMediaExport(null)} />}
       {packageDialog && (
         <PackageDialog
@@ -2368,58 +1478,6 @@ export default function App() {
             workspaceSessions.libraryReads.invalidate();
             if (catalogOnly) await refreshLibrary();
             else await refreshOrThrow();
-          }}
-        />
-      )}
-      {scoresDialog && song && (
-        <ScoresDialog
-          workspace={workspaceSessions.scores}
-          configureDuet={()=>{setScoresDialog(false);setSettingsTab("duet");setSettingsReturnToScores(true);setSettings(true);}}
-          song={song}
-          openPractice={async () => {
-            const current = playback.getSnapshot();
-            if (current.contentId !== song.contentId || playback.getEngineId() !== song.engineId)
-              throw new Error("当前歌曲已改变，请返回对应歌曲打开谱面。");
-            if (!(await changeWorkspace("practice")))
-              throw new Error("谱面已采用。当前工作区正在处理，请稍后打开演奏。");
-            setView("score");
-            setScoresDialog(false);
-            setPaperRevision(value => value + 1);
-          }}
-          close={() => {
-            setScoresDialog(false);
-            setPaperRevision((v) => v + 1);
-          }}
-          changed={async () => {
-            const session = await api.session();
-            installSession(session);
-            await updateCollection();
-          }}
-        />
-      )}
-      {meterDialog && song && (
-        <MeterDialog
-          song={song}
-          close={() => setMeterDialog(false)}
-          changed={async () => {
-            const session = await api.session();
-            installSession(session);
-            setLoopStart(1);
-            setLoopEnd(1);
-            await updateCollection();
-          }}
-        />
-      )}
-      {handsDialog && song && (
-        <HandsDialog
-          song={song}
-          start={loopStart}
-          end={loopEnd}
-          close={() => setHandsDialog(false)}
-          changed={async () => {
-            const session = await api.session();
-            installSession(session);
-            await updateCollection();
           }}
         />
       )}
@@ -2579,7 +1637,7 @@ export default function App() {
         resumeExpression={async (contentId, path) => {
           if (!(await resumeEditingSong(contentId, path))) return false;
           if (["playing", "countIn"].includes(playback.getSnapshot().status) && !(await run({ type: "pause" }))) return false;
-          setInspectorTab("tools"); setInspector(true); setExpressionReveal({ contentId, id: crypto.randomUUID() }); return true;
+          setSongOptions(true); setExpressionReveal({ contentId, id: crypto.randomUUID() }); return true;
         }}
         resumeAnnotation={async (entry) => {
           if (!(await changeWorkspace("review"))) return false;

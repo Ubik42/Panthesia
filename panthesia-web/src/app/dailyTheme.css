@@ -183,27 +183,6 @@ summary:focus-visible {
   color: #495bc0;
   background: #edf0fc;
 }
-.daily-workbench .workspace-topbar .workspace-navigation {
-  border-left: 1px solid #e2e6ef;
-  gap: 3px;
-  padding-left: 18px;
-  margin: 0;
-}
-.daily-workbench .workspace-topbar .workspace-navigation button {
-  font-size: 12px;
-  color: #8691a9;
-  min-width: 65px;
-  gap: 7px;
-  background: transparent;
-}
-.daily-workbench
-  .workspace-topbar
-  .workspace-navigation
-  button[aria-current="page"] {
-  background: #edf0fb;
-  color: #5362bf;
-  box-shadow: none;
-}
 .daily-workbench .workspace-topbar > .icon-button {
   color: #8993a8;
   background: transparent;
@@ -765,9 +744,6 @@ summary:focus-visible {
   .daily-workbench .workspace-topbar .app-name {
     min-width: 115px;
   }
-  .daily-workbench .workspace-topbar .workspace-navigation {
-    padding-left: 10px;
-  }
   .daily-workbench .practice-transport {
     gap: 12px;
     padding: 10px 16px;
@@ -799,12 +775,6 @@ summary:focus-visible {
   .daily-workbench .application-menubar .toolbar-more > summary {
     padding: 6px;
     font-size: 11px;
-  }
-  .daily-workbench .workspace-topbar .workspace-navigation {
-    padding-left: 5px;
-  }
-  .daily-workbench .workspace-topbar .workspace-navigation button {
-    min-width: 50px;
   }
   .daily-workbench .practice-panel .song-toolbar {
     gap: 8px;

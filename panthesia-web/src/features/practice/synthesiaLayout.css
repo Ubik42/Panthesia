@@ -21,8 +21,7 @@
   background: #f3f5f6;
   color: #273542;
 }
-.synthesia-layout .workspace-topbar .engine-indicator,
-.synthesia-layout .workspace-topbar .workspace-navigation {
+.synthesia-layout .workspace-topbar .engine-indicator {
   display: none;
 }
 .synthesia-layout .synthesia-library-header {

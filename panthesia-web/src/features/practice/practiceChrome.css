@@ -53,24 +53,6 @@
 .application-menubar .toolbar-more-actions > button:hover {
   background: #414a56;
 }
-.workspace-topbar .workspace-navigation {
-  gap: 0;
-  margin-left: 8px;
-  border-left: 1px solid #48505a;
-  padding-left: 12px;
-}
-.workspace-topbar .workspace-navigation button {
-  min-width: 65px;
-  min-height: 30px;
-  font-size: 12px;
-  border: 0;
-  border-radius: 3px;
-}
-.workspace-topbar .workspace-navigation button[aria-current="page"] {
-  background: #424b56;
-  color: #f0f2f5;
-  box-shadow: inset 0 -2px #9dbbaf;
-}
 .workspace-topbar > .engine-indicator {
   font-size: 0;
   gap: 0;
@@ -243,16 +225,6 @@
   color: #a5b9c8;
   padding-left: 30px;
 }
-.practice-library .panel-heading {
-  min-height: 43px;
-  padding: 7px 12px;
-}
-.practice-library .panel-heading strong {
-  color: #e2e7ed;
-}
-.practice-library .practice-library-filter-row select {
-  max-width: 140px;
-}
 .practice-welcome-art,
 .practice-welcome-eyebrow {
   display: none;
@@ -284,10 +256,6 @@
   .workspace-topbar {
     gap: 6px;
   }
-  .workspace-topbar .workspace-navigation {
-    margin-left: 0;
-    padding-left: 6px;
-  }
   .application-menubar .toolbar-more > summary {
     padding: 7px;
   }
@@ -299,9 +267,6 @@
   }
 }
 @media (max-width: 800px) {
-  .workspace-topbar .workspace-navigation {
-    margin-left: auto;
-  }
   .workspace-topbar .app-name {
     min-width: 96px;
   }

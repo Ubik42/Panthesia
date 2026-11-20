@@ -5,7 +5,7 @@ import type { useProductScreens } from "./useProductScreens";
 /** Guarded engine transitions and page transitions form one navigation operation. */
 export function useProductNavigation(options: {
   screens: ReturnType<typeof useProductScreens>;
-  changeWorkspace: (next: Workspace) => Promise<boolean>;
+  changeWorkspace: (next: Workspace, signal?: AbortSignal) => Promise<boolean>;
   load: (
     row: SongRow,
     contentId: string | undefined,
@@ -15,7 +15,6 @@ export function useProductNavigation(options: {
   clearLiveNotes: () => void;
   prepareBrowser: () => void;
   prepareSong: () => void;
-  closeDrawer: () => void;
   closeMenu: () => void;
 }) {
   const current = useRef(options);
@@ -31,11 +30,20 @@ export function useProductNavigation(options: {
     }
   };
   return {
-    chooseSongs: () =>
+    chooseSongs: (signal?: AbortSignal) =>
       navigate(async (o) => {
-        if (!(await o.changeWorkspace("library"))) return false;
+        if (!(await o.changeWorkspace("library", signal)) || signal?.aborted)
+          return false;
         o.prepareBrowser();
         o.screens.browse();
+        o.closeMenu();
+        return true;
+      }),
+    resumePractice: (signal?: AbortSignal) =>
+      navigate(async (o) => {
+        if (!(await o.changeWorkspace("practice", signal)) || signal?.aborted)
+          return false;
+        o.screens.resume();
         o.closeMenu();
         return true;
       }),
@@ -54,7 +62,6 @@ export function useProductNavigation(options: {
         o.prepareSong();
         o.screens.show("setup");
         o.closeMenu();
-        o.closeDrawer();
         return true;
       }),
     openFreePlay: () =>
@@ -66,7 +73,6 @@ export function useProductNavigation(options: {
           return false;
         o.clearLiveNotes();
         o.screens.show("freePlay");
-        o.closeDrawer();
         return true;
       }),
   };

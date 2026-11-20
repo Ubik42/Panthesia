@@ -199,7 +199,9 @@ async fn open_practice_data_folder(state:tauri::State<'_,State>)->Result<(),Stri
 async fn reveal_library_file(state:tauri::State<'_,State>,path:PathBuf)->Result<(),String>{
     let known=state.engine.command(Command::Collection)?;let indexed=state.engine.command(Command::LibraryWorkspace)?;
     {let rows=state.songs.lock().map_err(|e|e.to_string())?;library::validate_repository_paths(&state.data,vec![path.clone()],&rows,&known,&indexed)?;}
+    let data=state.data.clone();
     tauri::async_runtime::spawn_blocking(move||{
+        let path=if path.is_file(){path}else{panthesia_engine::song_repository::SongRepository::open(&data).and_then(|repository|repository.resolve(&path,None)).unwrap_or(path)};
         let requested_file=path.is_file();
         let mut target=path.clone();
         if !requested_file {while !target.is_dir(){if !target.pop(){return Err("原文件和上级文件夹均不可用".into());}}}
