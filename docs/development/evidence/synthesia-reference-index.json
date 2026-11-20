@@ -114,6 +114,16 @@
         "url": "https://cdn.synthesia.app/images/guides/b5da347e-e719-4ea9-90fa-d2ea65c345e5.png",
         "cache": "work/original-product-reset/references/assignHands-2.png",
         "sha256": "130b8463826f04cc0e007cfd079030e91f96f1503f3b13d58a37308c11c76618"
+      },
+      {
+        "url": "https://cdn.synthesia.app/images/guides/f9eb2182-1ac7-4926-9e53-43a5567162c4.png",
+        "cache": "work/original-product-reset/references/assignHands-3.png",
+        "sha256": "7f96adbf5e230a323ec8613c0ffbd7d710be3e97188b05258d269a96c9fc2604"
+      },
+      {
+        "url": "https://cdn.synthesia.app/images/guides/9e3a6b91-5daf-4b4f-8d6e-c33895514803.png",
+        "cache": "work/original-product-reset/references/assignHands-4.png",
+        "sha256": "9d62ec0989ac9f08c04240a28a17f3c83104980e38b33eb9b5f106f6e9e67069"
       }
     ],
     "retrieved": "2026-11-20"

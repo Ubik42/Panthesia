@@ -9,7 +9,7 @@
     "B02"
   ],
   "nextBatch": "B04",
-  "currentTask": "B03/P08–P11：逐屏完成 Synthesia 主页、选曲、歌曲设置、音轨卡片与演奏弹出菜单，拆分屏幕控制器。",
+  "currentTask": "B03/P09–P11：补齐官方声部预听/配色/复制、完整标签与设置叶页，并继续抽出导航/播放/后台/编辑控制器。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T14:21:12Z",
   "nextDirectionReviewAt": "2026-11-20T16:21:12Z",
@@ -25,30 +25,31 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "原创 panthesia-music 与 panthesia-keyboard 接管产品普通依赖",
-    "tick 时间、踏板/跨轨配对、稳定源 NoteId 与旧索引映射接入",
-    "标注 v2 保留未知行和原 JSON 快照；曲目包 v20 携带稳定身份",
-    "独立桌面完整打开/编辑/变换/播放/导出与新资料恢复通过"
+    "主页/最近歌曲与完整选曲→设置→演奏返回流程接入",
+    "音轨卡片、颜色/隐藏/静音与分类乐器接入",
+    "独立分手瀑布、整首分界、拖线和源身份事务接入",
+    "La/书签/循环独立菜单；旧主检查栏退出",
+    "目录设置页、初始自由演奏和屏幕输入/返回接入"
   ],
   "remainingCritical": [
-    "B03 完整 Synthesia 页面与下级交互",
+    "B03 官方声部细节、完整标签/设置叶页与控制器收束",
     "B04 实时会话/声音路由与瀑布性能",
-    "B05–B06 长谱、后台生成、自由演奏与整合",
+    "B05–B06 长谱、后台生成、完整录音与整合",
     "B07 退役源码、来源审核与正式包"
   ],
   "nextEntry": [
-    "docs/development/interaction-model.md",
-    "docs/development/evidence/synthesia-reference-index.json",
+    "panthesia-web/src/features/screens",
+    "panthesia-web/src/features/devices/DeviceSettingsDialog.tsx",
     "panthesia-web/src/App.tsx",
-    "panthesia-web/src",
-    "docs/development/current-plan.md"
+    "panthesia-web/src/features/practice/PracticeTransport.tsx",
+    "docs/development/interaction-model.md"
   ],
   "validation": [
-    "5 music + 1 keyboard + 2 annotation identity checks passed",
-    "Desktop Debug/custom-protocol build passed",
-    "Owned native v1 adoption, note editing, transform, playback, immediate wait switch, pause/seek and export passed",
-    "Clean-profile package restore preserved hand/fingers, source identity and unapplied rows",
-    "Two owned native windows closed normally; no real user music used as test fixtures"
+    "Web protocol/type/build and Debug/custom-protocol build passed",
+    "One 5000-note source-bound split/reset/stale-proof/transform check passed",
+    "Owned native home/library/setup/parts/split/settings/folders/play/free-play flow passed",
+    "Left/right/both waiting launches, immediate mode switch, bookmark and A/B loop persisted",
+    "760x620 layout has no horizontal/toolbar overflow; final owned window closed normally"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -62,8 +63,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T14:21:12Z",
-  "implementationRevision": "c706a2d76d1ce0baee2ae8076999e1274594bc2d",
+  "lastImplementationCheckpointAt": "2026-11-20T14:56:01Z",
+  "implementationRevision": "fb37bd78dcc18e9e9e6fb58c16d60f423bdf915f",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -71,10 +72,11 @@
     "c72d1fb",
     "16081cf",
     "8b1d4ff",
-    "c706a2d"
+    "c706a2d",
+    "fb37bd7"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "254CC13A0CD3066A5D3E334A5F0FD6D433168872B2EA6F42641010C9BC78F14C",
+  "developmentExecutableSha256": "F2368E8D9B2BD1F38CEC92F13160C75B773C2F0B1DE59E1683A37D794CC55E6C",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,

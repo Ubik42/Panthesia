@@ -48,3 +48,7 @@ SongRepository 由本次 Codex 工作按当前数据规范与 SQLite 事务协�
 c706a2d：panthesia-music 与 panthesia-keyboard 由本次 Codex 按标准格式、音乐时间与琴键几何规格生成，未复制旧模块实现；为迁移已查看旧 API 与索引规则，并对三份内置 MIDI 做确定映射核对。消费者切换使用 Cargo package alias；别名保持不代表旧包仍被使用。桌面 --edges normal 依赖图已排除旧 MIDI/布局及 native-render 库。旧配置/FPS/资源模块退出默认编译；VST3 的旧状态位置使用独立窄适配。
 
 新增标注 v2 和曲目包 v20，源 NoteId 与未映射原行进入持久化及归档。旧结构 SongSidecar、Player、标注校验与其他 core 模块仍存在，原创替换整体继续 P12/P20；本批不宣称整个工程已经完成来源清理。规格、作者/生成来源、消费者和检查边界见 [music-domain.md](music-domain.md)，证据见 evidence/music-domain-2026-11-20.json。
+
+## B03 新实现记录
+
+fb37bd7：features/screens 页面、图形分手与状态控制器由本次 Codex 根据当前产品规范和 Synthesia 官方指南实现；使用自有品牌、Lucide 图标和自绘 SVG/Canvas，不将官方参考图作为产品资源。新 SetPartHands 操作接入既有后台事务与稳定源身份。旧主检查栏退出活动产品 JSX；原 HandsDialog、旧工作区恢复及其他过渡模块尚有按需消费者，物理退役仍需 P11/P20 按引用收束。此批没有宣称旧应用实现整体退出。
