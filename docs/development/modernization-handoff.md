@@ -333,7 +333,9 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-library-practice，主要改造提交 927ec75，最终程序源码提交 264bd5e。包含曲库练习投影、四类双向排序、按历史条件恢复、Windows / UNC 路径统一与目录去重，并明确整曲成绩适用模式、区分生成技术练习提示。manifest 标记 dirty=true（原有曲库路径修改），源码指纹 80F9F6E034DD1AFFBC36C658AE91599B77FCBC93FD50595B838C494855E9F1FB。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查隔离引擎与 WebView 资料。见 work/library-practice-release.log、library-practice-independent-check.log 及 library-practice-package-check/{release-evidence.json,startup.log}。
+最新运行包为 outputs/releases/Panthesia-20261119-piano-viewport，主要改造提交 2779cb1，最终程序源码提交 be9e507。包含连续取景、鼠标 / 双指操作、前方密度和可配置快捷键、稳定绘制生命周期、取景保存 / 备份、5 BPM 速度快捷调整及固定预设的真实琴键边界。manifest 标记 dirty=true（原有九项曲库修改），源码指纹 6E34BFBE070E899A7E1D0FBFD9A2D5C856C6F664F76552526E8E399543F858DD。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查使用独立引擎、曲库和 WebView 目录。日志 work/piano-viewport-release-final.log、piano-viewport-independent-check.log 及 piano-viewport-package-check/{release-evidence.json,startup.log}。outputs/releases/Panthesia-20261119-continuous-viewport 是固定预设边界修正前的中间包，交付使用 piano-viewport。
+
+前一批运行包为 outputs/releases/Panthesia-20261119-library-practice，主要改造提交 927ec75，最终程序源码提交 264bd5e。包含曲库练习投影、四类双向排序、按历史条件恢复、Windows / UNC 路径统一与目录去重，并明确整曲成绩适用模式、区分生成技术练习提示。manifest 标记 dirty=true（原有曲库路径修改），源码指纹 80F9F6E034DD1AFFBC36C658AE91599B77FCBC93FD50595B838C494855E9F1FB。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查隔离引擎与 WebView 资料。见 work/library-practice-release.log、library-practice-independent-check.log 及 library-practice-package-check/{release-evidence.json,startup.log}。
 
 outputs/releases/Panthesia-20261119-library-progress 为本批中间构建（927ec75），未包含最终整曲 / 技术练习提示区分；交付使用上面的 library-practice。
 
