@@ -5,7 +5,7 @@
 ## 当前续接点
 
 - 本批已完成：选曲试听从界面计时迁入独立引擎通道，原 MIDI 事件播放、请求取消、换曲 / 关窗 / 开始演奏止音、进度显示及窄窗口操作布局；修复未知内容身份曲目的“当前歌曲”误标。最新包以“交付状态”首条为准。
-- 下一批：L05 / L06 选曲页的最近演奏及学习进度，直接复用现有练习历史和歌曲身份，整理排序、进度与恢复练习入口。长轮次分析 / 回放编码仍在续练前执行，复杂曲目渲染继续按实际反馈优化。完整 Goal active，整体完成审计尚未执行。
+- 下一批：L05 / L06 选曲页的最近演奏及学习进度，直接复用现有练习历史和歌曲身份，整理排序、进度与恢复练习入口。长轮次分析 / 回放编码仍在续练前执行，复杂曲目渲染继续按实际反馈优化。已确认 Collection 已提供 lastPracticed / sessions / review，而 groupSongs 目前只聚合 lastUsed，列表没有练习进度。下一批应复用现有 SongLearningEvidence 区分整曲、分段和练习条件，不把最近一次命中率直接当作整曲熟练度。完整 Goal active，整体完成审计尚未执行。
 - 已通过的 DuET 生成、音源连接、组合视图、练习版本和书签链路直接复用证据；只验证下一批实际影响的行为。
 - 工作区原有 9 项曲库路径 / 文档修改继续保持未提交，涉及 library.rs、main.rs、package_commands.rs、桌面资料根默认值与 GiantMIDI 脚本等；每次只提交本批拥有的修改。未经要求不推送。
 
@@ -309,7 +309,10 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-loop-latency，程序源码提交 21d85bb，包含循环按待判定音符结算、自动轮次后台持久化与长曲选段计数优化。manifest 标记 dirty=true（原有曲库路径修改），源码指纹 663AA6D7BBEB937F19AE12525ECDE976230086A37FB0028CF410D3F2206546CB。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查隔离引擎与 WebView 资料。见 work/round-handoff-release.log、loop-latency-independent-check.log 及 loop-latency-package-check/{release-evidence.json,startup.log}。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-song-audition，程序源码提交 4dd4619，包含独立引擎选曲试听、请求取消与止音衔接、进度显示、窄窗操作布局和当前歌曲误标修复。manifest 标记 dirty=true（原有曲库路径修改），源码指纹 F4B9FE04B49B638B3C9A5FE433EE0C021E519CCF9254C7EF81979AA5A25BF769。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查隔离引擎与 WebView 资料。见 work/song-audition-release.log、song-audition-independent-check.log 及 song-audition-package-check/{release-evidence.json,startup.log}。
+
+
+上一批运行包为 outputs/releases/Panthesia-20261119-loop-latency，程序源码提交 21d85bb，包含循环按待判定音符结算、自动轮次后台持久化与长曲选段计数优化。manifest 标记 dirty=true（原有曲库路径修改），源码指纹 663AA6D7BBEB937F19AE12525ECDE976230086A37FB0028CF410D3F2206546CB。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。检查隔离引擎与 WebView 资料。见 work/round-handoff-release.log、loop-latency-independent-check.log 及 loop-latency-package-check/{release-evidence.json,startup.log}。
 
 
 上一批运行包为 outputs/releases/Panthesia-20261119-loop-practice，程序源码提交 d9c76fc，包含普通循环错误阈值重开、失败结果语义和瀑布下一轮预览。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 CCE8BF4AF70D3B7961062B57CB219D54A5571C076BE236BCAA141FBE135E3E58。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。独立启动同样隔离 WebView2 用户目录。见 work/loop-practice-release.log 及 loop-practice-package-check/{release-evidence.json,startup.log}。
