@@ -571,7 +571,7 @@ export function Piano({
             required ? 1 : inRange ? 0.88 : 0.24,
           );
           const action = actions.current(note, position, state.speed);
-          const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.tonic, minor: song.practiceVariant?.minor});
+          const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.effectiveTonic??song.practiceVariant?.tonic, fifths: song.practiceVariant?.effectiveFifths, minor: song.practiceVariant?.minor});
           if (label && w > 10 && h > 16) {
             sprites.paintLabel(
               ctx,
@@ -614,7 +614,7 @@ export function Piano({
             dpr,
             0.34,
           );
-          const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.tonic, minor: song.practiceVariant?.minor});
+          const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.effectiveTonic??song.practiceVariant?.tonic, fifths: song.practiceVariant?.effectiveFifths, minor: song.practiceVariant?.minor});
           if (label && w > 10 && h > 16)
             sprites.paintLabel(
               ctx,
@@ -684,7 +684,7 @@ export function Piano({
       for (const pitch of [...white, ...black]) {
         const candidates = labelSources.get(pitch) ?? [];
         const own = !song || state.mode !== "listen" && candidates.some(n=>ownsPracticeNote(n.part,n.playbackMode,state.hands));
-        keyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.tonic,minor:song?.practiceVariant?.minor}));
+        keyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic,fifths:song?.practiceVariant?.effectiveFifths,minor:song?.practiceVariant?.minor}));
       }
       if (display.keyLabelMode === "finger") {
         timeline.visit(tick, tick + Math.max(1, song?.ppq ?? 480), note => {

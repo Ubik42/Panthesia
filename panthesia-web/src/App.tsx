@@ -495,7 +495,7 @@ export default function App() {
       let commandAccepted = false;
       let readingSavedLists = false;
       try {
-        if ((value.type === "trackSound" || value.type === "resetPartSettings" || value.type === "trackAppearance" || value.type === "setPartHands") && song) {
+        if ((value.type === "track" || value.type === "trackSound" || value.type === "resetPartSettings" || value.type === "trackAppearance" || value.type === "setPartHands") && song) {
           const current=getBoundSong();
           if(!current || current.contentId!==song.contentId || current.engineId!==song.engineId) throw new Error("曲目已改变，请重新打开声部设置。");
           await api.editPractice(current,value);
@@ -2068,7 +2068,7 @@ export default function App() {
             <button className="synthesia-metronome" title="节拍器" aria-label="节拍器" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}><MetronomeIcon size={27}/></button>
             <ToolbarMore label="键盘缩放" icon={<ZoomIcon size={27}/>} disabled={!song}>          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}</ToolbarMore>
-            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} tonic={song?.practiceVariant?.tonic} minor={song?.practiceVariant?.minor} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
+            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} tonic={song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic} minor={song?.practiceVariant?.minor} fifths={song?.practiceVariant?.effectiveFifths} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
             <ToolbarMore label="书签" icon={<BookmarkIcon size={27}/>} disabled={!song||busy}><div className="product-bookmark-menu" onClick={e=>e.stopPropagation()}>
           {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
             shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}

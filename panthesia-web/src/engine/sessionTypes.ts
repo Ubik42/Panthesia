@@ -5,7 +5,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "finger" | "editFingersFor" | "undoFingers" | "undoFingersFor" | "applyFingers"
   | "acceptFingerPlan" | "acceptHeldFingerPlan" | "clearHeldFingerActions"
   | "clearNoteHeldFingerActions" | "saveHeldActionEdit"
-  | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "resetPartSettings" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
+  | "track" | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "resetPartSettings" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
   | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
   | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"
@@ -145,7 +145,7 @@ export interface MeterMapPreview {
   measures: LoadedSong["measures"];
 }
 export interface LoadedSong {
-  practiceVariant?: {editionId?:string|null; settings: import("./commands.generated").Variant; tonic: number; minor: boolean; keySource: "manual" | "midi" | "estimate"; sourceHasScore: boolean; minPitch: number | null; maxPitch: number | null; active: boolean};
+  practiceVariant?: {editionId?:string|null; settings: import("./commands.generated").Variant; tonic: number; effectiveTonic?:number; effectiveFifths?:number; minor: boolean; keySource: "manual" | "midi" | "estimate"; sourceHasScore: boolean; minPitch: number | null; maxPitch: number | null; active: boolean};
   engineId?: string | null;
   grid?: string;
   meterMap?: MeterMap | null;

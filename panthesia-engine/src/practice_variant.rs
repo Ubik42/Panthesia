@@ -13,6 +13,15 @@ mod tests {
         num::{u4, u15},
     };
     #[test]
+    fn label_key_follows_transpose_without_overwriting_source_tonic() {
+        let (mut p,_,_)=crate::history_loading::tests::seeded(true,false);
+        let cid=p.file.as_ref().unwrap().content_id.clone();
+        p.preferences.variants.insert(cid.clone(),Variant{tonic:Some(0),minor:Some(false),transpose:2,..Default::default()});
+        let document=p.variant_document();assert_eq!(document["tonic"],0);assert_eq!(document["effectiveTonic"],2);assert_eq!(document["effectiveFifths"],2);
+        p.preferences.variants.insert(cid,Variant{tonic:Some(8),minor:Some(true),transpose:0,..Default::default()});
+        let document=p.variant_document();assert_eq!(document["effectiveTonic"],8);assert_eq!(document["effectiveFifths"],5);
+    }
+    #[test]
     fn practice_transform_preserves_source_drums_and_round_trips_export() {
         let event = |delta: u32, channel: u8, key: u8, on: bool| TrackEvent {
             delta: delta.into(),
@@ -425,8 +434,10 @@ impl Player {
             .filter(|n| n.channel != 9)
             .map(|n| n.note)
             .collect();
+        let effective_tonic=(i16::from(tonic)+i16::from(variant.transpose)).rem_euclid(12) as u8;
+        let effective_fifths=signature.filter(|(_,m)|*m==minor).map(|(f,_)|f).filter(|f|((i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)) as u8==effective_tonic).unwrap_or_else(||(-7i8..=7).filter(|f|((i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)) as u8==effective_tonic).min_by_key(|f|f.abs()).unwrap_or(0));
         let edition=source.and_then(|file|panthesia_core::song_project::PracticeEdition::new(&file.content_id,variant.clone()).ok());
-        serde_json::json!({"editionId":edition.map(|e|e.id),"settings":variant,"tonic":tonic,"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
+        serde_json::json!({"editionId":edition.map(|e|e.id),"settings":variant,"tonic":tonic,"effectiveTonic":effective_tonic,"effectiveFifths":effective_fifths,"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
     }
     pub(super) fn apply_variant_memory(&mut self, value: &Variant) -> Result<(), String> {
         if !self.variant().active() {

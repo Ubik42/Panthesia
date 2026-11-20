@@ -144,7 +144,7 @@ export function TrackSetupScreen({
                   onDragStart={(e) => beginDrag(e, t.id, "instrument")}
                   disabled={disabled || pending}
                   onClick={() => {
-                    setGroup(pianoOnly ? 0 : Math.floor((s?.program ?? 0) / 8));
+                    setGroup(pianoOnly ? 0 : Math.floor((s?.program ?? t.sourceProgram ?? 0) / 8));
                     setChoice({ track: t.id, kind: "instrument" });
                   }}
                 >

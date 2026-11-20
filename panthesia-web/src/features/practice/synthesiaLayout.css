@@ -734,3 +734,4 @@
   background: transparent;
   border-radius: 0;
 }
+.synthesia-layout .practice-timeline .time-ruler-labels>span:first-child {color:#fff;}

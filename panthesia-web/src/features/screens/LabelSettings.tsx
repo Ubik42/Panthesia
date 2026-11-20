@@ -21,11 +21,13 @@ export function LabelSettings({
   change,
   tonic,
   minor = false,
+  fifths,
 }: {
   value: DisplayPreferences;
   change: (patch: Partial<DisplayPreferences>) => void;
   tonic?: number;
   minor?: boolean;
+  fifths?: number;
 }) {
   const [target, setTarget] = useState<"key" | "note">("key");
   const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
@@ -67,33 +69,37 @@ export function LabelSettings({
         role="radiogroup"
         aria-label={target === "key" ? "琴键标签内容" : "音符标签内容"}
       >
-        {modes.map(([id, name]) => (
-          <button
-            key={id}
-            role="radio"
-            aria-checked={mode === id}
-            onClick={() =>
-              change(
-                target === "key" ? { keyLabelMode: id } : { noteLabelMode: id },
-              )
-            }
-          >
-            <span>{name}</span>
-            <small>
-              {productLabel(
-                60,
-                target,
-                {
-                  ...value,
-                  ...(target === "key"
-                    ? { keyLabelMode: id, keyLabelsOwnOnly: false }
-                    : { noteLabelMode: id, noteLabelsOwnOnly: false }),
-                },
-                { own: true, tonic, minor, finger: 1 },
-              )}
-            </small>
-          </button>
-        ))}
+        {modes
+          .filter(([id]) => id !== "legacy" || mode === "legacy")
+          .map(([id, name]) => (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={mode === id}
+              onClick={() =>
+                change(
+                  target === "key"
+                    ? { keyLabelMode: id }
+                    : { noteLabelMode: id },
+                )
+              }
+            >
+              <span>{name}</span>
+              <small>
+                {productLabel(
+                  60,
+                  target,
+                  {
+                    ...value,
+                    ...(target === "key"
+                      ? { keyLabelMode: id, keyLabelsOwnOnly: false }
+                      : { noteLabelMode: id, noteLabelsOwnOnly: false }),
+                  },
+                  { own: true, tonic, minor, fifths, finger: 1 },
+                )}
+              </small>
+            </button>
+          ))}
       </div>
       <label>
         <input

@@ -4,7 +4,7 @@ import {
   shortcutDefaults,
   type Shortcuts,
 } from "./shortcuts";
-import { pitchName } from "./engine/musicFormatting";
+import { pitchName, keyPitchName } from "./engine/musicFormatting";
 export type LabelMode = "none" | "octaves" | "finger" | "mapping" | "english" | "degree" | "fixed" | "movable" | "simple" | "legacy";
 export const labelModes: LabelMode[] = ["none", "octaves", "finger", "mapping", "english", "degree", "fixed", "movable", "simple", "legacy"];
 export type DisplayPreferences = {
@@ -86,7 +86,7 @@ export const zxcvCodes = [
   "Comma",
 ];
 export const displayDefaults: DisplayPreferences = {
-  keyLabelMode: "legacy", noteLabelMode: "legacy", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
+  keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
   practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55,
@@ -151,8 +151,8 @@ export function normalizeDisplayPreferences(
       : [...asdfCodes];
   return {
     ...displayDefaults,
-    keyLabelMode: labelModes.includes(raw.keyLabelMode!) ? raw.keyLabelMode! : "legacy",
-    noteLabelMode: labelModes.includes(raw.noteLabelMode!) ? raw.noteLabelMode! : "legacy",
+    keyLabelMode: labelModes.includes(raw.keyLabelMode!) ? raw.keyLabelMode! : raw.keyLabels===undefined?displayDefaults.keyLabelMode:"legacy",
+    noteLabelMode: labelModes.includes(raw.noteLabelMode!) ? raw.noteLabelMode! : raw.noteLabels===undefined?displayDefaults.noteLabelMode:"legacy",
     keyLabelsOwnOnly: raw.keyLabelsOwnOnly === true,
     noteLabelsOwnOnly: raw.noteLabelsOwnOnly === true,
     skin: raw.skin === "midnight" || raw.skin === "rosewood" ? raw.skin : "studio",
@@ -303,7 +303,7 @@ export const keyboardMap = (prefs: DisplayPreferences) =>
   );
 
 /** A label is presentation only. Ownership comes from source hand and playback assignment. */
-export type LabelContext = { own?: boolean; tonic?: number; minor?: boolean; finger?: number | null };
+export type LabelContext = { own?: boolean; tonic?: number; minor?: boolean; fifths?:number; finger?: number | null };
 export function ownsPracticeNote(part: string, playbackMode: string | undefined, hands: string) {
   return playbackMode !== "Auto" && playbackMode !== "Mute" &&
     ((part === "left" && (hands === "both" || hands === "custom" || hands === "left")) ||
@@ -325,7 +325,7 @@ export function productLabel(pitch: number, target: "key" | "note", prefs: Displ
       return index >= 0 && index < prefs.keyCodes.length ? codeLabel(prefs.keyCodes[index]) : "";
     }
     case "simple": return [0, 2, 4, 5, 7, 9, 11].includes(pc) ? displayPitch(pitch, {...prefs, notation: "pitch", octave: false}) : "";
-    case "english": return displayPitch(pitch, {...prefs, notation: "pitch"});
+    case "english": {const name=keyPitchName(pitch,tonic,context.minor,context.fifths);return prefs.octave?name:name.replace(/-?\d+$/,"");}
     case "fixed": return solfegeNames[pc] + (prefs.octave ? register : "");
     case "movable": return solfegeNames[relative] + (prefs.octave ? register : "");
     case "degree": {
