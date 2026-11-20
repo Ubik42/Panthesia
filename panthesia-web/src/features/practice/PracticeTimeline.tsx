@@ -1,4 +1,4 @@
-import { memo,useMemo } from "react";
+import { memo,useMemo,useEffect,useRef,useState } from "react";
 import { clock,type LoadedSong } from "../../api";
 import { usePlaybackFields } from "./PlaybackView";
 import { rangeTime } from "./PracticeRangeControls";
@@ -25,23 +25,36 @@ const TimelineMarks = memo(function TimelineMarks({
   start: number;
   end: number;
 }) {
+  const root=useRef<SVGSVGElement>(null),[width,setWidth]=useState(1000);
+  useEffect(()=>{
+    const element=root.current;if(!element)return;
+    const resize=()=>{const width=element.getBoundingClientRect().width;if(width>0)setWidth(width);};
+    const observer=new ResizeObserver(resize);observer.observe(element);resize();
+    return ()=>observer.disconnect();
+  },[]);
   const marks = useMemo(() => {
     const rows = (song?.measures ?? []).filter(
       (m) => m.start >= start && m.start <= end,
     );
     const every = Math.max(1, Math.ceil(rows.length / 80));
-    return rows.filter((_, i) => i % every === 0);
-  }, [song?.measures, start, end]);
+    let labelEnd=-Infinity;
+    return rows.filter((_, i) => i % every === 0).map(m=>{
+      const x=((m.start-start)/Math.max(0.01,end-start))*width;
+      const text=String(m.displayNumber??m.number),textWidth=Math.max(14,text.length*7);
+      const label=m.number%4===1&&x+3>=labelEnd+10&&x+3+textWidth<=width;
+      if(label)labelEnd=x+3+textWidth;
+      return {measure:m,x,label,text};
+    });
+  }, [song?.measures, start, end,width]);
   return (
-    <svg viewBox="0 0 1000 20" preserveAspectRatio="none" aria-hidden="true">
-      {marks.map((m) => {
-        const x = ((m.start - start) / Math.max(0.01, end - start)) * 1000;
+    <svg ref={root} viewBox={`0 0 ${width} 20`} preserveAspectRatio="none" aria-hidden="true">
+      {marks.map(({measure:m,x,label,text}) => {
         return (
           <g key={m.number}>
             <line x1={x} x2={x} y1={0} y2={m.number % 4 === 1 ? 11 : 5} />
-            {m.number % 4 === 1 && (
+            {label && (
               <text x={x + 3} y={19}>
-                {m.displayNumber ?? m.number}
+                {text}
               </text>
             )}
           </g>

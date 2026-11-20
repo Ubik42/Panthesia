@@ -796,6 +796,7 @@ export function Notation({
           }}
         />
       )}
+      {asset?.practiceNotationKind === "simplified" && <p className="score-rhythm-note">书面节奏按十六分音符整理，演奏保持原时序。复杂节奏可从“添加 / 管理谱面”使用 DuET 制谱。</p>}
         </ToolbarMore>
       </div>
       {historyReview?.contentId === song.contentId && (
@@ -877,7 +878,7 @@ export function Notation({
           close={() => setLocatingPaper(false)}
         />
       )}
-      {asset?.practiceNotationKind === "simplified" && <p className="score-rhythm-note">书面节奏按十六分音符整理，演奏保持原时序。复杂节奏可从“添加 / 管理谱面”使用 DuET 制谱。</p>}
+
       <TaskActivity contentId={song.contentId} label="对应乐谱音符" cancelLabel="取消对应" />
       {pageView.error && <p className="score-message" role="alert">{pageView.error}</p>}
       {pageView.loading && pages.length>0 && <p className="score-message" role="status">正在读取谱页…</p>}
