@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-20",
+  "implementationRevision": "4613db343149d3b5529ae4483c8953d1ef53e0cb",
+  "focusedStorageChecks": 6,
+  "ownedDesktopFlow": {
+    "saveAndRelocate": "work/original-product-reset/annotation-window2/save-relocate-evidence.json",
+    "reopen": "work/original-product-reset/annotation-window2/reopen-evidence.json",
+    "binarySha256": "F356ACC174D6BC3DCC9663D0559A790E3FD7D2D8A160D7176C7DAE4D8B8501C2"
+  },
+  "projectMigration": {
+    "project": "Look at the Sky - Porter Robinson",
+    "status": "complete",
+    "sourceFiles": 5,
+    "distinctPerformances": 4,
+    "playableRows": 4,
+    "songId": "work-d514cbd689fac1b47a0f44a05a3a2730ef06d3a7c68e73614b371bd213a3ba67",
+    "legacyInputsUnchanged": true,
+    "quantizedTrackParts": {
+      "0": "Other",
+      "1": "RightHand",
+      "2": "LeftHand"
+    },
+    "unmatchedLegacyIdentityRetained": "d30d6551bed3327cc2608efe4c059df04265376f3a1c641950b61dfe44a3000e",
+    "receipt": "work/original-product-reset/look-at-the-sky-migration-final-20261120.json",
+    "snapshot": "work/original-product-reset/look-at-the-sky-migration-final-20261120.snapshot/manifest.json",
+    "preFirstMigrationSnapshot": "work/original-product-reset/look-at-the-sky-migration-20261120.snapshot/manifest.json"
+  },
+  "remaining": [
+    "non-file performance compatibility writers",
+    "owned score and paper assets",
+    "complete song-and-asset backup",
+    "remaining library migration"
+  ],
+  "formalPackageChanged": false
+}

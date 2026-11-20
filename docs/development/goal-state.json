@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "status": "active",
-  "objectiveVersion": "2026-11-20/1",
+  "objectiveVersion": "2026-11-20/2",
   "currentBatch": "B01",
   "completedBatches": [
     "B00"
   ],
   "nextBatch": "B02",
-  "currentTask": "B01/P01–P04：目录与管理副本已接入，继续标注写入口、完整迁移与真实库收束。",
+  "currentTask": "B01：文件演奏标注已统一、Look at the Sky 已迁移；继续谱面资产持有、完整备份和兼容写入口退出。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T11:27:25Z",
-  "nextDirectionReviewAt": "2026-11-20T13:27:25Z",
-  "goalPromptSha256": "2f046cd7cdb14d2aa592025713b902ac00e45ef8e597253a37e921013ab9b5cc",
+  "lastDirectionReviewAt": "2026-11-20T12:27:43Z",
+  "nextDirectionReviewAt": "2026-11-20T14:27:43Z",
+  "goalPromptSha256": "f7ee3561cd822fac74cfe00a90d265c1c1e1fb9317ad27f6aaa16787c7cf2265",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -23,33 +23,36 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "SQLite 歌曲/演奏/位置目录及原字节迁移快照",
-    "导入/加载/扫描管理副本、旧路径和最近使用回退",
-    "明确工程版本关系、人工分组锁和事务版本校验",
-    "关系目录备份恢复与中断回退",
-    "自动目录/手动登记边界及显式扫描根",
-    "Look at the Sky 只读精确关系核对"
+    "文件演奏统一 JSON 内容标注，手别/逐音/指法/小节/采用谱面同属内容",
+    "文件导入与扫描共享管理副本，旧附件/设置迁移快照",
+    "轨道编辑的普通与演奏调节入口均转后台事务",
+    "旧 Sidecar 日志兼容，新文档身份/版本保护",
+    "退出 workspace 条目追加，旧目录记录一次性导入",
+    "独立桌面保存、源文件移动与重开确认",
+    "真实 Look at the Sky 五来源/四演奏/一歌曲迁移完成"
   ],
   "remainingCritical": [
-    "真实库受管理迁移与失效记录处置（源码已接入，实际迁移未执行）",
-    "标注中心存储和数据迁移",
+    "其余曲库与谱面资产的迁移、完整歌曲备份",
+    "非文件演奏与旧兼容写入口退出",
     "旧 MIDI/布局实现替换",
     "完整下级交互复刻",
     "实时声音/渲染与长谱边界",
     "退役实现和来源审计"
   ],
   "nextEntry": [
-    "panthesia-engine/src/song_repository.rs",
-    "panthesia-engine/src/hand_annotations.rs",
-    "panthesia-engine/src/lib.rs",
+    "panthesia-engine/src/library_scores.rs",
+    "panthesia-engine/src/score_attachments",
+    "panthesia-engine/src/package_commands.rs",
+    "panthesia-engine/src/exercise_assets.rs",
     "panthesia-engine/src/library.rs",
     "panthesia-engine/src/practice_backup.rs"
   ],
   "validation": [
-    "Four focused song repository checks passed",
-    "Folder move/replace/remove monitor check passed with isolated fixtures",
-    "cargo check -p panthesia-desktop --locked passed",
-    "Real library inspected read-only; four exact relocations and one unmatched legacy identity"
+    "Six focused repository/migration checks passed",
+    "Owned desktop IPC: track/note hand/finger edits, source move and restart passed",
+    "Current Debug desktop built; final binary reopened owned profile successfully",
+    "Owned project migration passed before real migration",
+    "Look at the Sky migrated: 5 sources, 4 contents, 1 song, 4 playable rows, original inputs unchanged"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -63,10 +66,14 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T11:54:46.865414+00:00",
-  "implementationRevision": "43bd4ee7a551fd8b1e13527d88b392219e32143a",
+  "lastImplementationCheckpointAt": "2026-11-20T12:27:02.017640+00:00",
+  "implementationRevision": "4613db343149d3b5529ae4483c8953d1ef53e0cb",
   "implementationCommits": [
     "1dfa556",
-    "43bd4ee"
-  ]
+    "43bd4ee",
+    "4613db3"
+  ],
+  "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
+  "developmentExecutableSha256": "F356ACC174D6BC3DCC9663D0559A790E3FD7D2D8A160D7176C7DAE4D8B8501C2",
+  "developmentIncludesBaselineUncommitted": true
 }

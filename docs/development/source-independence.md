@@ -34,3 +34,5 @@
 ## B01 新实现记录
 
 SongRepository 由本次 Codex 工作按当前数据规范与 SQLite 事务协议新写，消费者为目录扫描、歌曲加载、歌曲关系编辑、桌面路径校验及关系备份恢复。它仍使用现有 core 的 RepertoireRegistry、SongSidecar 与旧 MIDI 读取包装，因此此项不关闭 P05–P07，也不改变现有 LICENSE/NOTICE。旧 repertoire.json 正常写入已退出；workspace 投影、imports 和旧 RON 适配器待 P01/P04 收束后退出。
+
+2026-11-20，4613db3：新增 core/song_annotations 文档适配器和工程迁移命令；文件演奏/导入/编辑接入新地址，旧 Sidecar 日志仍兼容旧目标。新文档复用现有 SongSidecar 数据类型与校验器，不宣称旧 core 已完成独立替换。移除选曲对旧 workspace 的条目追加；非文件演奏与旧元数据兼容入口仍待退出。

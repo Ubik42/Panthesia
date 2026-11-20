@@ -4,9 +4,7 @@
 
 ## 当前进度
 
-B00 已完成。B01 正在实施：SQLite 目录、管理副本、移动回退、明确工程版本归并及关系恢复已接入；完整标注与真实资料迁移仍待收束。主产品仍有旧实现，完整原创与完整交互复刻都未完成。
-
-来源清单、依赖图与参考索引在 evidence/。旧控制计划和旧交接已移至 archive/2026-11-20；旧日志只作历史证据。默认 Cargo 目标改为 panthesia-desktop；CI 围绕当前 Windows 桌面，旧原生与评分批量测试流程退出活动目录。
+B00 已完成，B01 继续收束。文件演奏的内容标注、统一导入、移动回退和后台轨道编辑已接入，Look at the Sky 已实际迁移。完整原创与完整界面复刻仍未完成。
 
 ## 最近可运行包
 
@@ -14,18 +12,17 @@ B00 已完成。B01 正在实施：SQLite 目录、管理副本、移动回退�
 
 三张主界面证据：work/ui-simplification/runtime/synthesia-evidence.json；目录导航：folder-evidence.json；运行包：work/ui-simplification/package-evidence.json。UI01/UI02/UI05 主布局已有，其余下级面板、主页和自由演奏等仍需完成。
 
-## B01 本轮改造与下一入口
+## B01 当前改造与下一入口
 
-实现提交：1dfa556、43bd4ee。
+实现提交：4613db3；上一批目录与副本提交 1dfa556、43bd4ee。
 
-- song_repository.rs 接管歌曲/演奏/位置/谱面关系，repertoire 正常写入退出旧 JSON；旧 repertoire/workspace 原字节先存快照。
-- 导入、加载与扫描保存完整 MIDI 副本；旧路径及最近使用支持内容回退，失效旧行不直接追加为可播放结果。桌面路径登记校验同步支持管理位置。
-- 明确 midi-info.json 工程关系归并演奏，人工拆分被锁定；自动目录不再随 add_folder 全部写成手动目录，扫描根显式传入；带 catalog.csv 的资料集继续按目录延迟读取，自动发现不批量复制。
-- 关系恢复日志增加 SQLite 目录与分组锁快照；中断后回退该快照，MIDI 副本保持不可变。
-- 只读报告 work/original-product-reset/look-at-the-sky-relocation.json，摘要 evidence/song-relocation-2026-11-20.json。五个当前文件对应四份内容，四条旧路径精确匹配、一条旧身份未找到；实际用户资料未运行新迁移。
-- 已通过四项存储/恢复检查、一次目录扫描改名/替换检查及当前桌面编译。日志 work/original-product-reset/{repository-tests,monitor-repository-test,desktop-repository-check}.log。未重打运行包。
+普通文件演奏使用 library/assets/midi 副本和 library/annotations/<contentId>.json。旧 RON 与旧有效 parts 只在首次采用时迁入，并保存原字节快照；后续普通演奏不再写回 parts。轨道播放职责仍是会话配置。Track 编辑的普通命令和 adjust_playback 都进入后台事务，旧 Sidecar 日志明确恢复旧 RON 地址。旧 workspace 条目追加已移除，目录记录一次性导入 SQLite。
 
-继续 B01，不重做整库调查：从 annotation_path、hand_annotations、library::enriched、library_metadata 和 practice_backup 继续；收束 preferences.parts、RON 附件与 workspace 活动写入口，加入完整资产迁移/备份和回退清单，然后实际迁移并核对完整选曲→演奏。导入 imports、副本、workspace 投影和内容附件目前属于过渡路径，不能宣称 P01/P04 已全部完成。当前可运行包仍是上文 a67ea54。
+六项定向存储检查通过；独立桌面 IPC 完成分手/指法保存、移动源文件、按旧位置打开和重启恢复。证据位于 work/original-product-reset/annotation-window2。最终 Debug 已构建并重新打开独立资料确认；正式包仍是上文 a67ea54。开发构建包含原有九项未提交工作，不把其来源混入本轮提交。
+
+真实 Look at the Sky 已迁移：五个来源、四份内容、一个歌曲、四条可播放记录，量化版轨 1=右手、轨 2=左手。原源文件与旧设置/工作区哈希未变；未匹配旧身份保留。最终回执 work/original-product-reset/look-at-the-sky-migration-final-20261120.json，冷快照同名 .snapshot；首次迁移前快照也保留。工程工具 examples/migrate-song-project.rs 支持先生成计划，再在独占资料锁和冷快照下执行 --apply；已完成的报告与快照不会被覆盖。摘要见 evidence/annotation-migration-2026-11-20.json。
+
+下一批继续 B01：从 library_scores、score_attachments、package_commands 接入谱面/PDF 资产持有及完整备份，再迁出内置模板、生成练习、曲目包等非文件演奏入口和旧元数据兼容写入。其余真实曲库随后迁移。不要重复当前六项检查或整库调查；新改动只检查关联风险。B01 尚未完成，不能直接进入 B02 或宣称整体交付。
 
 ## 工作区保护
 
