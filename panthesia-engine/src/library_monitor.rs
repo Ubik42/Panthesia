@@ -583,6 +583,11 @@ mod tests {
         let first = root.join("one.mid");
         std::fs::write(&first, include_bytes!("../assets/five-finger.mid")).unwrap();
         library::add_folder(&data, root.clone()).unwrap();
+        let public_catalog=data.join("public-catalog");std::fs::create_dir_all(&public_catalog).unwrap();
+        std::fs::write(public_catalog.join("catalog.csv"),b"Title,LocalPath\n").unwrap();
+        std::fs::write(public_catalog.join("catalog.mid"),include_bytes!("../assets/basic-chords.mid")).unwrap();
+        let discovered=library::folders_at(&data.join("isolated-profile"),&data.join("Datasets")).unwrap();
+        assert!(discovered.contains(&root));assert!(!discovered.contains(&public_catalog));
         let rows = Arc::new(Mutex::new(Vec::new()));
         let mut w = Worker::new(data.clone(), data.join("public"), rows.clone());
         w.discover().unwrap();

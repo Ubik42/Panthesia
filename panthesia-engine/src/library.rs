@@ -321,7 +321,7 @@ fn discovered_folders(data: &Path,root:&Path) -> Result<Vec<PathBuf>,String> {
         if let Ok(entries)=std::fs::read_dir(base){
             for entry in entries.flatten().take(256){
                 let path=entry.path();
-                if entry.file_type().is_ok_and(|kind|kind.is_dir()&&!kind.is_symlink()) && folder_key(&path)!=folder_key(&root) && !path.starts_with(data) && contains_midi(&path,2) {candidates.push(path);}
+                if entry.file_type().is_ok_and(|kind|kind.is_dir()&&!kind.is_symlink()) && folder_key(&path)!=folder_key(&root) && !path.starts_with(data) && !path.join("catalog.csv").is_file() && contains_midi(&path,2) {candidates.push(path);}
             }
         }
     }

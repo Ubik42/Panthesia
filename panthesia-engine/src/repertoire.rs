@@ -392,7 +392,7 @@ impl Engine {
                     token.begin_commit()?;
                     let mut repository=crate::song_repository::SongRepository::open(&data)?;
                     repository.save_registry(&view.registry,expected_revision.as_deref().ok_or("歌曲资料版本缺失")?,manual_group.as_deref())?;
-                    view.revision=repository.revision()?;
+                    (view.registry,view.revision)=repository.snapshot()?;
                 }
                 serde_json::to_value(result).map_err(|e| e.to_string())
             })
