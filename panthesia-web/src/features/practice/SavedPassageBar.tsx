@@ -208,7 +208,7 @@ export function SavedPassageBar({
       await changed();
       if (alive.current)
         setMessage(
-          `已打开“${row.name}”，使用保存的转调、量化、速度、声部和练习模式。`,
+          `已打开“${row.name}”，使用保存的${row.scoreRange ? "谱面、" : ""}转调、量化、速度、声部和练习模式。`,
         );
     });
   return (
@@ -236,7 +236,15 @@ export function SavedPassageBar({
             ))}
           </select>
         </label>
-        <button disabled={locked || !row || stale} onClick={open}>
+        <button
+          disabled={locked || !row || stale}
+          title={
+            row?.scoreRange
+              ? "恢复保存的谱面版本与练习条件，并打开原谱选段"
+              : "恢复保存的练习条件并打开选段"
+          }
+          onClick={open}
+        >
           练习此段
         </button>
         <button

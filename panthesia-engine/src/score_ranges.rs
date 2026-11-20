@@ -59,6 +59,34 @@ mod tests {
         p
     }
     #[test]
+    fn saved_score_passage_restores_registered_notation_and_rejects_changed_source() {
+        let mut p=player();
+        let cid=p.file.as_ref().unwrap().content_id.clone();
+        let source=p.file.as_ref().unwrap().source_path.clone().unwrap();
+        let source_bytes=std::fs::read(&source).unwrap();
+        let wanted=p.notation.as_ref().unwrap().source_fingerprint.clone();
+        let preview=p.preview_score_range(0,0).unwrap();
+        let range:ScoreRange=serde_json::from_value(preview["range"].clone()).unwrap();
+        let saved=p.save_score_passage(None,"原谱选段".into(),String::new(),range).unwrap();
+        let id=saved["passage"]["id"].as_str().unwrap().to_owned();
+        let replacement=XML.replace("<part-name>Piano</part-name>","<part-name>Alternative Piano</part-name>").into_bytes();
+        p.command(Command::PairScore{bytes:replacement.clone(),name:"替代谱面.musicxml".into(),content_id:cid.clone(),expected:None}).unwrap();
+        let alternative=p.notation.as_ref().unwrap().source_fingerprint.clone();assert_ne!(wanted,alternative);
+        p.set_variant(&cid,p.score_revision,crate::practice_variant::Variant{transpose:2,quantize:16,..Default::default()}).unwrap();
+        p.command(Command::OpenPassage{id:id.clone()}).unwrap();
+        assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,wanted);assert!(!p.variant().active());
+        assert_eq!(p.state.passage.as_ref().unwrap().start,preview["start"].as_f64().unwrap());
+        assert!(p.preferences.score_versions[&cid].iter().any(|version|version.content_id==alternative));
+        assert_eq!(panthesia_core::library::load_song_sidecar(&source,&cid).unwrap().score.unwrap().content_id,wanted);
+        p.command(Command::PairScore{bytes:replacement,name:"替代谱面.musicxml".into(),content_id:cid.clone(),expected:None}).unwrap();
+        let old=p.preferences.score_versions[&cid].iter().find(|version|version.content_id==wanted).unwrap().path.clone();
+        let before=p.file.clone();std::fs::write(&old,b"changed source").unwrap();
+        assert!(p.command(Command::OpenPassage{id}).is_err());assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,alternative);
+        assert!(p.file.as_ref().unwrap().same_snapshot(before.as_ref().unwrap()));
+        assert_eq!(panthesia_core::library::load_song_sidecar(&source,&cid).unwrap().score.unwrap().content_id,alternative);
+        assert_eq!(std::fs::read(&source).unwrap(),source_bytes);
+    }
+    #[test]
     fn written_beat_trim_repeat_partial_visit_and_portable_daily() {
         let mut p=player();let ppq=u64::from(p.file.as_ref().unwrap().musical_time.ppq);
         let v=p.preview_score_range_trim(0,2,ppq/2,ppq/4).unwrap();assert_eq!(v["start"],0.5);assert_eq!(v["end"],3.75);assert_eq!(v["crossings"],1);assert_eq!(v["rows"][0]["startBeat"],1.5);assert_eq!(v["rows"][2]["endBeat"],2.75);

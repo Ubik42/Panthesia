@@ -51,6 +51,11 @@ impl Player {
             .preferences
             .variants
             .insert(content.clone(), edition.transform.clone());
+        let notation_path = if let Some(range) = &preset.score_range {
+            prepared.restore_passage_notation(range)?
+        } else {
+            None
+        };
         if preset.practice.is_none() {
             if let Some(saved) = prepared
                 .preferences
@@ -62,6 +67,11 @@ impl Player {
             }
         }
         let result = prepared.open_passage_conditions(preset)?;
+        if let Some(path) = notation_path {
+            let midi = prepared.annotation_path(prepared.file.as_ref().ok_or("请先选择曲目")?)?;
+            panthesia_core::library::save_score_association(&midi, &content, &path)
+                .map_err(|error| error.to_string())?;
+        }
         let status = prepared.state.status.clone();
         let keep = prepared.score_revision == self.score_revision;
         let mut playback = song_switch::Playback::take(&mut prepared)?;
@@ -74,6 +84,59 @@ impl Player {
         playback.install(self);
         self.state.status = status;
         Ok(result)
+    }
+
+    /// Resolve the saved content identity across registered locations, without guessing another score.
+    fn restore_passage_notation(
+        &mut self,
+        range: &crate::score_ranges::ScoreRange,
+    ) -> Result<Option<PathBuf>, String> {
+        if self
+            .notation
+            .as_ref()
+            .is_some_and(|asset| asset.source_fingerprint == range.score_identity)
+        {
+            return Ok(None);
+        }
+        let file = self.file.as_ref().ok_or("请先选择曲目")?;
+        let content = file.content_id.clone();
+        let midi = self.annotation_path(file)?;
+        let (versions, _) = library_scores::versions(&self.preferences, &midi, &content)?;
+        let mut selected = None;
+        for version in versions
+            .iter()
+            .filter(|version| version.content_id == range.score_identity)
+        {
+            let Ok(bytes) =
+                panthesia_core::utils::atomic_file::read_dependency(&version.path, 4_000_000)
+            else {
+                continue;
+            };
+            if blake3::hash(&bytes).to_hex().as_str() != range.score_identity {
+                continue;
+            }
+            let asset = notation::ScoreAsset::new(
+                bytes,
+                version.name.clone(),
+                self.source_file.as_deref().unwrap_or(file),
+            )?;
+            selected = Some((version.path.clone(), Arc::new(asset)));
+            break;
+        }
+        let (path, asset) =
+            selected.ok_or("保存段落所用的谱面版本已缺失或内容已改变，请在谱面管理中恢复原版本")?;
+        let previous = self.notation.replace(asset);
+        if let Err(error) = self.validate_score_range(range) {
+            self.notation = previous;
+            return Err(format!("已找到保存的谱面，但段落范围需要重新核对：{error}"));
+        }
+        if versions.len() > 100 {
+            return Err("这首曲目已有 100 份谱面，请先整理谱面版本".into());
+        }
+        // Keep the previously selected association registered when switching back to an older edition.
+        self.preferences.score_versions.insert(content, versions);
+        self.score_revision = self.score_revision.wrapping_add(1);
+        Ok(Some(path))
     }
     fn open_passage_conditions(
         &mut self,
