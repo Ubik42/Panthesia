@@ -41,7 +41,7 @@ impl Prepared {
         data: &std::path::Path,
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<crate::catalog_import::Published, String> {
-        use panthesia_core::{library, utils::atomic_file};
+        use panthesia_core::library;
         check()?;
         let cid = self.file.content_id.clone();
         // One performance owns one annotation document. Distinct written sources remain
@@ -68,47 +68,7 @@ impl Prepared {
         }
         let mut score_warnings = Vec::new();
         let score = if let Some(score) = &self.score {
-            let root = data.join("scores");
-            let extension = if score.bytes.starts_with(b"PK") {
-                "mxl"
-            } else {
-                "musicxml"
-            };
-            let stem = format!("catalog-{cid}-{}", score.source_fingerprint);
-            let mut chosen = None;
-            let mut restored_score = false;
-            for index in 0..1000 {
-                check()?;
-                let candidate = root.join(if index == 0 {
-                    format!("{stem}.{extension}")
-                } else {
-                    format!("{stem}-restored-{index}.{extension}")
-                });
-                match atomic_file::read_dependency(&candidate, 4_000_000) {
-                    Ok(bytes)
-                        if blake3::hash(&bytes).to_hex().as_str() == score.source_fingerprint =>
-                    {
-                        restored_score = index > 0;
-                        chosen = Some(candidate);
-                        break;
-                    }
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                        atomic_file::write(&candidate, &score.bytes)
-                            .map_err(|error| error.to_string())?;
-                        restored_score = index > 0;
-                        chosen = Some(candidate);
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-            let stored_score = chosen.ok_or("谱面恢复副本过多，请先整理曲库")?;
-            if restored_score {
-                score_warnings.push(format!(
-                    "原谱面文件已变化或无法读取，已保留原件；本次谱面保存到 {}",
-                    stored_score.display()
-                ));
-            }
+            let stored_score=crate::notation_assets::retain(data,&score.bytes)?;
             let repair_association = sidecar.score.as_ref().is_some_and(|association| {
                 association.content_id == score.source_fingerprint
                     && !library::verify_score_association(&path, association).unwrap_or(false)

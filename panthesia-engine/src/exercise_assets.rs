@@ -34,9 +34,14 @@ pub(crate) struct Prepared {
     pub assets: Assets,
     bytes: Vec<u8>,
     destination: PathBuf,
+    source: PathBuf,
     watches: Vec<Watch>,
 }
 impl Prepared {
+    pub(crate) fn anchor(&self) -> &Path {
+        &self.destination
+    }
+
     #[cfg(test)]
     pub(crate) fn destination_for_test(&self) -> PathBuf {
         self.destination.clone()
@@ -62,7 +67,7 @@ impl Prepared {
         let id = blake3::hash(&bytes).to_hex().to_string();
         let mut watches = Vec::new();
         let (destination, source) = import_storage::planned_annotations(
-            &data.join("song-assets"),
+            &data.join("library/assets/exercises"),
             &file.content_id,
             &id,
             &file.content_id,
@@ -72,6 +77,24 @@ impl Prepared {
                 Ok(())
             },
         )?;
+        let source = if panthesia_core::utils::atomic_file::is_file(
+            &library::metadata_sidecar_path(&source),
+        ) {
+            source
+        } else {
+            import_storage::planned_annotations(
+                &data.join("song-assets"),
+                &file.content_id,
+                &id,
+                &file.content_id,
+                |path| {
+                    check()?;
+                    watches.push(Watch::capture(path)?);
+                    Ok(())
+                },
+            )?
+            .1
+        };
         if let Ok(sidecar) = library::load_song_sidecar(&source, &file.content_id) {
             if let Some(score) = sidecar.score {
                 watches.push(Watch::capture(&library::resolve_score_path(
@@ -84,6 +107,7 @@ impl Prepared {
             assets,
             bytes,
             destination,
+            source,
             watches,
         };
         check()?;
@@ -99,7 +123,7 @@ impl Prepared {
     pub fn store(&self, data: &Path, cid: &str) -> Result<(), String> {
         let id = blake3::hash(&self.bytes).to_hex().to_string();
         let stored = import_storage::store_with_identity(
-            &data.join("song-assets"),
+            &data.join("library/assets/exercises"),
             cid,
             &id,
             cid,
@@ -108,6 +132,12 @@ impl Prepared {
         if stored.path != self.destination {
             return Err("生成练习的附加资料位置已变化，请重新打开练习".into());
         }
+        crate::song_repository::SongRepository::open(data)?.prepare_generated_annotations(
+            &self.source,
+            &stored.path,
+            cid,
+            self.assets.sidecar.clone(),
+        )?;
         Ok(())
     }
 }

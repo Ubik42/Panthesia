@@ -356,21 +356,7 @@ impl Player {
             return Err("所选原文件与此保存版本不同，未建立关联".into());
         }
         if v.path == path || std::fs::canonicalize(&v.path).ok().zip(std::fs::canonicalize(&path).ok()).is_some_and(|(a,b)|a==b) {
-            let directory = self.data.join("scores");
-            std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-            let snapshot = directory.join(format!(
-                "source-snapshot-{}.{}",
-                std::time::SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|e| e.to_string())?
-                    .as_nanos(),
-                if bytes.starts_with(b"PK") {
-                    "mxl"
-                } else {
-                    "musicxml"
-                }
-            ));
-            panthesia_core::utils::atomic_file::write(&snapshot, &bytes).map_err(|e| e.to_string())?;
+            let snapshot=crate::notation_assets::retain(&self.data,&bytes)?;
             versions
                 .iter_mut()
                 .find(|row| row.id == version_id)

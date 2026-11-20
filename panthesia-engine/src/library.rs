@@ -74,147 +74,48 @@ pub fn read(root: &Path) -> Result<Vec<SongRow>, String> {
 
 /// This original exercise is bundled, so first launch does not depend on an
 /// external corpus. Third-party datasets continue to live outside the package.
-pub(crate) fn builtin_rows(data:&Path) -> Result<Vec<SongRow>,String> {
+pub(crate) fn builtin_rows(data:&Path)->Result<Vec<SongRow>,String>{
+    use panthesia_core::{library as metadata,practice::PracticePart};
     static BUILTINS:std::sync::Mutex<()>=std::sync::Mutex::new(());
     let _guard=BUILTINS.lock().map_err(|_|"内置练习缓存暂不可用")?;
-    std::fs::create_dir_all(data).map_err(|e| e.to_string())?;
-    let path = data.join("five-finger.mid");
-    write_builtin(&path,include_bytes!("../assets/five-finger.mid"))?;
-    let mut rows = vec![SongRow { arranger: None,
-        id: "builtin/five-finger".into(),
-        title: "五指热身 · 从中央 C 开始".into(),
-        composer: "Panthesia 原创练习".into(),
-        source: "内置练习".into(),
-        category: "入门/五指练习".into(),
-        license: "随项目许可发布".into(),
-        source_url: String::new(),
-        path,
-        content_id: None,
-        tags: vec![],
-        difficulty: None,
-        rating: 0,
-    }];
-    for (name, title, category, bytes) in [
-        (
-            "c-major-scale",
-            "C 大调音阶 · 一个八度",
-            "入门/音阶",
-            include_bytes!("../assets/c-major-scale.mid").as_slice(),
-        ),
-        (
-            "bass-five-finger",
-            "低音五指练习 · 左手音区",
-            "入门/低音",
-            include_bytes!("../assets/bass-five-finger.mid").as_slice(),
-        ),
-        (
-            "parallel-five-finger",
-            "双音同步 · 两个八度五指",
-            "入门/双音",
-            include_bytes!("../assets/parallel-five-finger.mid").as_slice(),
-        ),
-        (
-            "basic-chords",
-            "三和弦练习 · C / F / G",
-            "入门/和弦",
-            include_bytes!("../assets/basic-chords.mid").as_slice(),
-        ),
+    let preferences=crate::preferences::Preferences::load(&data.join("web-preferences.json"))?;
+    let mut repository=crate::song_repository::SongRepository::open(data)?;
+    let mut rows=Vec::new();
+    for (name,title,category,midi,score) in [
+        ("five-finger","五指热身 · 从中央 C 开始","入门/五指练习",include_bytes!("../assets/five-finger.mid").as_slice(),include_bytes!("../assets/starter-pack/five-finger.musicxml").as_slice()),
+        ("c-major-scale","C 大调音阶 · 一个八度","入门/音阶",include_bytes!("../assets/c-major-scale.mid").as_slice(),include_bytes!("../assets/starter-pack/c-major-scale.musicxml").as_slice()),
+        ("bass-five-finger","低音五指练习 · 左手音区","入门/低音",include_bytes!("../assets/bass-five-finger.mid").as_slice(),include_bytes!("../assets/starter-pack/bass-five-finger.musicxml").as_slice()),
+        ("parallel-five-finger","双音同步 · 两个八度五指","入门/双音",include_bytes!("../assets/parallel-five-finger.mid").as_slice(),include_bytes!("../assets/starter-pack/parallel-five-finger.musicxml").as_slice()),
+        ("basic-chords","三和弦练习 · C / F / G","入门/和弦",include_bytes!("../assets/basic-chords.mid").as_slice(),include_bytes!("../assets/starter-pack/basic-chords.musicxml").as_slice()),
     ] {
-        let path = data.join(format!("{name}.mid"));
-        write_builtin(&path,bytes)?;
-        rows.push(SongRow { arranger: None,
-            id: format!("builtin/{name}"),
-            title: title.into(),
-            composer: "Panthesia 原创练习".into(),
-            source: "内置练习".into(),
-            category: category.into(),
-            license: "随项目许可发布".into(),
-            source_url: String::new(),
-            path,
-            content_id: None,
-            tags: vec![],
-            difficulty: None,
-            rating: 0,
-        });
+        let cid=blake3::hash(midi).to_hex().to_string();let legacy=data.join(format!("{name}.mid"));
+        let source=match std::fs::read(&legacy){
+            Ok(bytes) if bytes==midi=>legacy.clone(),
+            Ok(bytes)=>{
+                // A modified old cache is user content; leave it at its original location.
+                let old_id=blake3::hash(&bytes).to_hex().to_string();
+                if midi_file::MidiFile::from_path_bytes(&legacy,&bytes).is_ok(){
+                    if let Err(error)=repository.retain_with_parts(&legacy,&old_id,"旧版内置练习","",preferences.songs.get(&old_id).map(|s|&s.parts),&||Ok(())){eprintln!("旧版练习资料保留在原位置：{error}");}
+                }
+                crate::import_storage::store(&data.join("library/assets/midi"),&cid,&cid,midi)?.path
+            },
+            Err(e) if e.kind()==std::io::ErrorKind::NotFound=>crate::import_storage::store(&data.join("library/assets/midi"),&cid,&cid,midi)?.path,
+            Err(e)=>return Err(e.to_string()),
+        };
+        let path=repository.retain_with_parts(&source,&cid,title,"Panthesia 原创练习",preferences.songs.get(&cid).map(|s|&s.parts),&||Ok(()))?;
+        let mut annotations=metadata::load_song_sidecar(&path,&cid).map_err(|e|e.to_string())?;let before=annotations.clone();
+        if annotations.score.is_none(){let score=crate::notation_assets::retain(data,score)?;annotations.score=Some(metadata::ScoreAssociation{content_id:blake3::hash(&std::fs::read(&score).map_err(|e|e.to_string())?).to_hex().to_string(),path:score});}
+        if annotations.metadata.title.is_none(){annotations.metadata.title=Some(title.into());}
+        if annotations.metadata.composer.is_none(){annotations.metadata.composer=Some("Panthesia 原创练习".into());}
+        if annotations.track_parts.is_empty(){for track in midi_file::MidiFile::new(&path)?.tracks.iter().filter(|t|!t.notes.is_empty()){let part=if name=="bass-five-finger" || name=="parallel-five-finger"&&track.notes[0].channel==1{PracticePart::LeftHand}else{PracticePart::RightHand};annotations.track_parts.insert(track.track_id,part);}}
+        if annotations!=before{metadata::save_song_sidecar(&path,&cid,annotations).map_err(|e|e.to_string())?;}
+        let row=SongRow{arranger:None,id:format!("builtin/{name}"),title:title.into(),composer:"Panthesia 原创练习".into(),source:"内置练习".into(),category:category.into(),license:"随项目许可发布".into(),source_url:String::new(),path,content_id:Some(cid.clone()),tags:vec![],difficulty:None,rating:0};
+        repository.register_row(&row,&cid)?;rows.push(row);
     }
-    for (name, bytes) in [
-        ("five-finger", include_bytes!("../assets/starter-pack/five-finger.musicxml").as_slice()),
-        ("c-major-scale", include_bytes!("../assets/starter-pack/c-major-scale.musicxml").as_slice()),
-        ("bass-five-finger", include_bytes!("../assets/starter-pack/bass-five-finger.musicxml").as_slice()),
-        ("parallel-five-finger", include_bytes!("../assets/starter-pack/parallel-five-finger.musicxml").as_slice()),
-        ("basic-chords", include_bytes!("../assets/starter-pack/basic-chords.musicxml").as_slice()),
-    ] {
-        let midi = data.join(format!("{name}.mid"));
-        let score = data.join(format!("{name}.musicxml"));
-        let initialized = data.join(format!("{name}-notation-v1.initialized"));
-        if initialized.exists() { continue; }
-        // User edits or paired scores remain authoritative. Builtin notation is immutable.
-        if !score.exists() { panthesia_core::utils::atomic_file::write(&score, bytes).map_err(|e|e.to_string())?; }
-        if std::fs::read(&score).map_err(|e|e.to_string())? != bytes { continue; }
-        let file = midi_file::MidiFile::new(&midi)?;
-        match panthesia_core::library::load_song_sidecar(&midi, &file.content_id) {
-            Ok(sidecar) if sidecar.score.is_some() => {},
-            Ok(_) => { panthesia_core::library::save_score_association(&midi, &file.content_id, &score).map_err(|e|e.to_string())?; },
-            Err(panthesia_core::library::MetadataError::Read(e)) if e.kind() == std::io::ErrorKind::NotFound => { panthesia_core::library::save_score_association(&midi, &file.content_id, &score).map_err(|e|e.to_string())?; },
-            Err(e) => return Err(format!("内置练习的个人资料需先恢复：{e}")),
-        }
-        let mut sidecar = panthesia_core::library::load_song_sidecar(&midi, &file.content_id).map_err(|e|e.to_string())?;
-        if let Some(row) = rows.iter().find(|row|row.path == midi) {
-            let missing_title = sidecar.metadata.title.is_none();
-            let missing_composer = sidecar.metadata.composer.is_none();
-            if missing_title { sidecar.metadata.title = Some(row.title.clone()); }
-            if missing_composer { sidecar.metadata.composer = Some(row.composer.clone()); }
-            if missing_title || missing_composer { panthesia_core::library::save_song_sidecar(&midi,&file.content_id,sidecar).map_err(|e|e.to_string())?; }
-        }
-        panthesia_core::utils::atomic_file::write(&initialized, b"1").map_err(|e|e.to_string())?;
-    }
-    for row in &mut rows { row.content_id = Some(midi_file::MidiFile::new(&row.path)?.content_id); }
     Ok(rows)
 }
-pub(crate) fn is_builtin_notation(data: &Path, path: &Path, fingerprint: &str) -> bool {
-    [("five-finger",include_bytes!("../assets/starter-pack/five-finger.musicxml").as_slice()),("c-major-scale",include_bytes!("../assets/starter-pack/c-major-scale.musicxml").as_slice()),("bass-five-finger",include_bytes!("../assets/starter-pack/bass-five-finger.musicxml").as_slice()),("parallel-five-finger",include_bytes!("../assets/starter-pack/parallel-five-finger.musicxml").as_slice()),("basic-chords",include_bytes!("../assets/starter-pack/basic-chords.musicxml").as_slice())].iter().any(|(name,bytes)|path==data.join(format!("{name}.musicxml")) && blake3::hash(bytes).to_hex().as_str()==fingerprint)
-}
-fn write_builtin(path:&Path, bytes:&[u8]) -> Result<(),String> {
-    match std::fs::read(path) {
-        Ok(old) if old==bytes=>return Ok(()),
-        Ok(old)=> {
-            let name=path.file_stem().and_then(|s|s.to_str()).ok_or("内置练习位置无效")?;
-            let identity=blake3::hash(&old).to_hex().to_string();
-            let copy=path.parent().ok_or("内置练习目录无效")?.join("builtin-previous").join(format!("{name}-{identity}.mid"));
-            match std::fs::read(&copy) {
-                Ok(existing) if existing==old=>{},
-                Ok(_)=>return Err(format!("旧版内置练习保留文件内容有冲突：{}",copy.display())),
-                Err(error) if error.kind()==std::io::ErrorKind::NotFound=>panthesia_core::utils::atomic_file::write(&copy,&old).map_err(|e|format!("旧版内置练习无法保留：{e}"))?,
-                Err(error)=>return Err(format!("旧版内置练习保留文件无法读取：{error}")),
-            }
-            preserve_builtin_annotations(path,&copy,&identity)?;
-        }
-        Err(error) if error.kind()==std::io::ErrorKind::NotFound=>{},
-        Err(error)=>return Err(format!("内置练习无法读取：{error}")),
-    }
-    panthesia_core::utils::atomic_file::write(path,bytes).map_err(|e|e.to_string())
-}
-fn preserve_builtin_annotations(original:&Path,archived:&Path,identity:&str)->Result<(),String> {
-    use panthesia_core::library::{load_song_sidecar,metadata_sidecar_path,save_song_sidecar};
-    let destination=metadata_sidecar_path(archived);
-    match destination.try_exists() {Ok(true)=>return Ok(()),Ok(false)=>{},Err(error)=>return Err(error.to_string())}
-    let raw=match std::fs::read(metadata_sidecar_path(original)) {
-        Ok(raw)=>raw,
-        Err(error) if error.kind()==std::io::ErrorKind::NotFound=>return Ok(()),
-        Err(error)=>return Err(format!("旧版指法与谱面资料无法保留：{error}")),
-    };
-    match load_song_sidecar(original,identity) {
-        Ok(mut sidecar)=> {
-            // Relative score links must continue to refer to the original source directory.
-            if let Some(score)=&mut sidecar.score {score.path=panthesia_core::library::resolve_score_path(original,score);}
-            save_song_sidecar(archived,identity,sidecar).map_err(|e|e.to_string())?;
-        }
-        Err(_)=> {
-            // Preserve unreadable metadata byte-for-byte for later repair.
-            panthesia_core::utils::atomic_file::write(&destination,&raw).map_err(|e|e.to_string())?;
-        }
-    }
-    Ok(())
+pub(crate) fn is_builtin_notation(data:&Path,path:&Path,fingerprint:&str)->bool{
+    [("five-finger",include_bytes!("../assets/starter-pack/five-finger.musicxml").as_slice()),("c-major-scale",include_bytes!("../assets/starter-pack/c-major-scale.musicxml").as_slice()),("bass-five-finger",include_bytes!("../assets/starter-pack/bass-five-finger.musicxml").as_slice()),("parallel-five-finger",include_bytes!("../assets/starter-pack/parallel-five-finger.musicxml").as_slice()),("basic-chords",include_bytes!("../assets/starter-pack/basic-chords.musicxml").as_slice())].iter().any(|(name,bytes)|blake3::hash(bytes).to_hex().as_str()==fingerprint&&(path==data.join(format!("{name}.musicxml"))||path.parent()==Some(data.join("library/assets/notation").as_path())))
 }
 pub(crate) fn recording_title(path:&Path)->String {
     let stem=path.file_stem().unwrap_or_default().to_string_lossy();
@@ -657,8 +558,11 @@ pub(crate) fn read_midi_limited(path:&Path, limit:usize)->Result<midi_file::Midi
 pub fn verified_file(data:&Path,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
  let index=crate::library_workspace::Workspace::load_hint(data)?;
  let repository=crate::song_repository::SongRepository::open(data)?;
- let owned=repository.resolve(Path::new(""),Some(content_id)).ok();
- verified_file_in_workspace(&index,content_id,owned.into_iter().chain(preferred))
+ // Prefer the repository-owned asset over stale workspace aliases for all callers.
+ if let Ok(path)=repository.resolve(Path::new(""),Some(content_id)){
+     if let Ok(file)=read_midi(&path){if file.content_id==content_id{return Ok(file);}}
+ }
+ verified_file_in_workspace(&index,content_id,preferred)
 }
 pub fn verified_file_in_workspace(index:&crate::library_workspace::Workspace,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
  for path in candidate_paths(index,content_id,preferred) {if let Ok(file)=read_midi(&path){if file.content_id==content_id{return Ok(file);}}}

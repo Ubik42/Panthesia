@@ -61,9 +61,8 @@ impl Input {
         if let Some(source)=prepared.file.source_path.as_ref() {
             let mut repository=crate::song_repository::SongRepository::open(&reader.data)?;
             let managed=repository.retain_with_parts(source,&prepared.file.content_id,&prepared.title,"",reader.preferences.songs.get(&prepared.file.content_id).map(|s|&s.parts),&||token.check())?;
-            prepared.assets=crate::load_pipeline::Assets::read_checked(&prepared.file,&managed,
-                reader.preferences.score_versions.get(&prepared.file.content_id).map(Vec::as_slice).unwrap_or_default(),&||token.check())?;
-            prepared.file.source_path=Some(managed);
+            reader.retain_notation_assets(&prepared.file.content_id,&managed)?;
+            prepared.rebind_annotations(managed,reader.preferences.score_versions.get(&prepared.file.content_id).map(Vec::as_slice).unwrap_or_default(),&||token.check())?;
         }
         token.source(
             prepared.file.content_id.clone(),
@@ -341,6 +340,10 @@ pub(crate) struct Playback {
     ladder: Option<preferences::LadderRun>,
 }
 impl Playback {
+    pub(super) fn source_descriptor(&self)->Option<(PathBuf,String,String)>{
+        let source=self.source_file.as_ref().unwrap_or(&self.file);
+        Some((source.source_path.clone()?,source.content_id.clone(),self.title.clone()))
+    }
     pub(super) fn take(reader: &mut Player) -> Result<Self, String> {
         let sound = reader.prepare_track_sound();
         Ok(Self {
@@ -521,7 +524,7 @@ impl Engine {
                 flush.flush()?;
                 Ok(serde_json::json!({"ok":true}))
             })?;
-            let (outcome, writes, observed) = context.prepare_switch(prepared, &token)?;
+            let (mut outcome, writes, observed) = context.prepare_switch(prepared, &token)?;
             token.check()?;
             token.begin_commit()?;
             let data = self.data.clone();
@@ -529,6 +532,7 @@ impl Engine {
                 asset_storage::commit(&data, writes, observed)?;
                 Ok(serde_json::json!({"ok":true}))
             })?;
+            outcome.register_published_source(&self.data);
             Ok(outcome)
         })();
         lease.finish(result)

@@ -393,6 +393,16 @@ impl Prepared {
         prepared.check()?;
         Ok(prepared)
     }
+    pub(crate) fn rebind_annotations(&mut self,anchor:PathBuf,versions:&[ScoreVersion],check:&impl Fn()->Result<(),String>)->Result<(),String>{
+        let mut watches=vec![Watch::capture(&anchor)?,Watch::capture(&library::metadata_sidecar_path(&anchor))?];
+        if let Ok(sidecar)=library::load_song_sidecar(&anchor,&self.file.content_id){
+            if let Some(score)=sidecar.score{watches.push(Watch::capture(&library::resolve_score_path(&anchor,&score))?);}
+        }
+        let assets=Assets::read_checked(&self.file,&anchor,versions,check)?;
+        check()?;
+        for watch in &watches{watch.check()?;}
+        self.assets=assets;self.watches=watches;self.file.source_path=Some(anchor);Ok(())
+    }
     pub fn check(&self) -> Result<(), String> {
         for watch in &self.watches {
             watch.check()?;

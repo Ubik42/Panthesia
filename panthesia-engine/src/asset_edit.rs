@@ -310,6 +310,17 @@ pub(crate) struct Outcome {
     revision: Option<u64>,
     switch: Option<crate::song_switch::Playback>,
 }
+impl Outcome {
+    pub(super) fn register_published_source(&mut self,data:&std::path::Path){
+        let Some((path,cid,title))=self.switch.as_ref().and_then(|s|s.source_descriptor()) else{return;};
+        if panthesia_core::song_annotations::document_path(&path).is_none(){return;}
+        let result=crate::song_repository::SongRepository::open(data).and_then(|mut repository|repository.retain(&path,&cid,&title,"",&||Ok(())));
+        if let Err(error)=result{
+            let warning=format!("曲目已保存，后台将继续更新曲库：{error}");
+            self.warning=Some(self.warning.take().map_or_else(||warning.clone(),|old|format!("{old}\n{warning}")));
+        }
+    }
+}
 impl Context {
     pub(super) fn score_identity(&self) -> Option<(String, u64)> {
         self.file

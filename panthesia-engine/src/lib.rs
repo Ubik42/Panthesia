@@ -1,4 +1,7 @@
+#[cfg(test)]
+mod unified_asset_tests;
 pub mod song_repository;
+mod notation_assets;
 mod loop_practice;
 mod note_guidance;
 mod practice_policy;
@@ -503,7 +506,7 @@ impl Player {
             let owned = song_repository::SongRepository::managed_path(&self.data,&file.content_id)?;
             return Ok(if owned.is_file(){owned}else{path.clone()});
         }
-        let root = self.data.join("song-assets");
+        let root = self.data.join("library/assets/exercises");
         let spec=self.exercise.ok_or("曲目缺少可保存的内容")?;
         let bytes=exercise_assets::canonical_bytes(spec)?;
         let bytes_id=blake3::hash(&bytes).to_hex().to_string();
@@ -711,7 +714,7 @@ impl Player {
                 self.state.hands = settings.hands.clone();
             }
             for t in &mut self.config.tracks {
-                if let Some(part) = settings.parts.get(&t.track_id).filter(|_|!file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some())) {
+                if let Some(part) = settings.parts.get(&t.track_id).filter(|_|!(self.exercise.is_some() || file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some()))) {
                     t.practice_part = *part
                 }
             }
@@ -854,7 +857,7 @@ impl Player {
             }
             let settings = preferences::SessionSettings {
                     tracks: self.config.practice_track_setup(),
-                    parts: if file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some()){Default::default()}else{self
+                    parts: if self.exercise.is_some() || file.source_path.as_ref().is_some_and(|p|panthesia_core::song_annotations::document_path(p).is_some()){Default::default()}else{self
                         .config
                         .tracks
                         .iter()

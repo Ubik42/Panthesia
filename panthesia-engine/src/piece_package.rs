@@ -35,6 +35,8 @@ pub struct Paper {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Manifest {
+    #[serde(default)]
+    pub practice_variant:panthesia_core::practice_transform::Variant,
     pub format: String,
     pub version: u16,
     pub content_id: String,
@@ -254,9 +256,11 @@ impl Package {
                 .as_slice(),
         )
         .map_err(|e| format!("曲目包清单无效：{e}"))?;
-        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].contains(&manifest.version) {
+        if !((manifest.format=="neothesia-piece" && (1..=18).contains(&manifest.version)) || (manifest.format=="panthesia-piece"&&manifest.version==19)) {
             return Err("曲目包版本暂不支持".into());
         }
+        manifest.practice_variant.validate()?;
+        if manifest.version<19 && manifest.practice_variant.active(){return Err("练习变换需要第 19 版曲目包".into());}
         if let Some(layers) = &manifest.metadata_layers {
             if manifest.version < 15 { return Err("来源默认值与个人覆盖需要第 15 版曲目包".into()); }
             layers.validate()?;
@@ -323,12 +327,13 @@ impl Package {
         if blake3::hash(midi).to_hex().as_str() != manifest.content_id {
             return Err("曲目包 MIDI 身份不一致".into());
         }
+        let effective_duration=if manifest.practice_variant.active(){crate::practice_variant::transform(&file,&manifest.practice_variant)?.duration}else{file.duration};
         if manifest.practice_loop.as_ref().is_some_and(|p| {
             !p.start.is_finite()
                 || !p.end.is_finite()
                 || p.start < 0.
                 || p.end <= p.start
-                || p.end > file.duration.as_secs_f64() + 0.0001
+                || p.end > effective_duration.as_secs_f64() + 0.0001
         }) {
             return Err("曲目包当前练习范围无效".into());
         }

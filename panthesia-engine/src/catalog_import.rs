@@ -75,7 +75,7 @@ pub(super) fn committed(
         || !(source.parent() == Some(data.join("imports").as_path()) || source.parent() == Some(data.join("library/assets/midi").as_path()))
         || !valid_hash(&song.content_id)
         || saved.published.score.as_ref().is_some_and(|score| {
-            score.path.parent() != Some(data.join("scores").as_path())
+            !(score.path.parent() == Some(data.join("scores").as_path()) || score.path.parent() == Some(data.join("library/assets/notation").as_path()))
                 || !crate::asset_storage::captures(data, &score.path)
         })
     {

@@ -251,59 +251,9 @@ impl Player {
         self.store_library_score_bytes(&score.bytes,&score.name,cid)
     }
     fn store_library_score_bytes(&mut self,bytes:&[u8],name:&str,cid:&str)->Result<PathBuf,String>{
-        let hash = blake3::hash(bytes).to_hex().to_string();
-        let file_key = cid
-            .chars()
-            .filter(|c| c.is_ascii_alphanumeric())
-            .collect::<String>();
-        let found = self
-            .preferences
-            .score_versions
-            .get(cid)
-            .and_then(|v| {
-                v.iter()
-                    .find(|v| v.content_id == hash && v.name == name)
-            })
-            .cloned();
-        let directory = self.data.join("scores");
-        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-        let path = if let Some(v) = &found {
-            if v.path.parent() == Some(directory.as_path())
-            {
-                v.path.clone()
-            } else {
-                directory.join(format!(
-                    "{}-{}.{}",
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_err(|e| e.to_string())?
-                        .as_nanos(),
-                    file_key,
-                    if bytes.starts_with(b"PK") {
-                        "mxl"
-                    } else {
-                        "musicxml"
-                    }
-                ))
-            }
-        } else {
-            directory.join(format!(
-                "{}-{}.{}",
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|e| e.to_string())?
-                    .as_nanos(),
-                file_key,
-                if bytes.starts_with(b"PK") {
-                    "mxl"
-                } else {
-                    "musicxml"
-                }
-            ))
-        };
-        if path.parent() == Some(directory.as_path()) {
-            panthesia_core::utils::atomic_file::write(&path, bytes).map_err(|e| e.to_string())?;
-        }
+        let hash=blake3::hash(bytes).to_hex().to_string();
+        let found=self.preferences.score_versions.get(cid).and_then(|rows|rows.iter().find(|v|v.content_id==hash&&v.name==name)).cloned();
+        let path=crate::notation_assets::retain(&self.data,bytes)?;
         if let Some(v) = found {
             if v.path != path {
                 let row = self.preferences

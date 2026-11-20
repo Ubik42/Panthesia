@@ -334,7 +334,7 @@ pub(crate) struct Prepared {
     song_error: Option<String>,
 }
 impl Prepared {
-    fn read(data: Data, root: &std::path::Path, control: &Control) -> Self {
+    fn read(mut data: Data, root: &std::path::Path, control: &Control) -> Self {
         if data.blocked {
             return Self {
                 data,
@@ -369,9 +369,9 @@ impl Prepared {
                     .get(&prepared.file.content_id)
                     .map(Vec::as_slice)
                     .unwrap_or_default();
-                return prepared
-                    .read_assets_checked(root, versions, &check)
-                    .map(|p| Some(Song::Exercise(p)));
+                let prepared=prepared.read_assets_checked(root,versions,&check)?;
+                let versions=data.preferences.score_versions.entry(prepared.file.content_id.clone()).or_default();
+                return prepared.materialize_for_startup(root,versions).map(|p|Some(Song::Exercise(p)));
             }
             if let Some(path) = data.preferences.path.clone() {
                 if path.parent().and_then(|p| p.canonicalize().ok()).as_deref() == Some(root)
@@ -428,6 +428,21 @@ impl Prepared {
             }
             Ok(None)
         })();
+        let prepared=prepared.and_then(|song|{
+            match song {
+                Some(Song::File(mut file))=>{
+                    file.check()?;check()?;
+                    let source=file.file.source_path.as_ref().ok_or("曲目缺少来源")?;
+                    let cid=file.file.content_id.clone();
+                    let owned=crate::song_repository::SongRepository::open(root)?.retain_with_parts(source,&cid,&file.title,"",data.preferences.songs.get(&cid).map(|s|&s.parts),&check)?;
+                    let versions=data.preferences.score_versions.entry(cid).or_default();
+                    crate::notation_assets::retain_editions(root,&file.file.content_id,&owned,versions)?;
+                    file.rebind_annotations(owned,versions,&check)?;
+                    Ok(Some(Song::File(file)))
+                },
+                other=>Ok(other),
+            }
+        });
         match prepared {
             Ok(song) => Self {
                 data,

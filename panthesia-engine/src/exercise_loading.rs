@@ -53,6 +53,28 @@ pub(crate) fn prepare_checked(
     })
 }
 impl Prepared {
+    pub(crate) fn materialize_for_startup(
+        mut self,
+        data: &std::path::Path,
+        versions: &mut Vec<crate::preferences::ScoreVersion>,
+    ) -> Result<Self, String> {
+        if let Some(assets) = &self.assets {
+            assets.store(data, &self.file.content_id)?;
+            crate::notation_assets::retain_editions(
+                data,
+                &self.file.content_id,
+                assets.anchor(),
+                versions,
+            )?;
+        }
+        self.assets = Some(crate::exercise_assets::Prepared::read(
+            data,
+            &self.file,
+            self.plan.spec,
+            versions,
+        )?);
+        Ok(self)
+    }
     pub(crate) fn install_startup(self, player: &mut Player) -> Result<(), String> {
         self.check()?;
         player.install_prepared(
@@ -103,7 +125,18 @@ impl Prepared {
         let assets = match self.assets {
             Some(assets) => {
                 assets.store(&player.data, &self.file.content_id)?;
-                Some(assets.assets)
+                player.retain_notation_assets(&self.file.content_id, assets.anchor())?;
+                Some(load_pipeline::Assets::read_checked(
+                    &self.file,
+                    assets.anchor(),
+                    player
+                        .preferences
+                        .score_versions
+                        .get(&self.file.content_id)
+                        .map(Vec::as_slice)
+                        .unwrap_or_default(),
+                    &|| Ok(()),
+                )?)
             }
             None => None,
         };
@@ -223,7 +256,8 @@ mod tests {
             include_bytes!("../../panthesia-core/src/score_performance_test.musicxml").to_vec();
         player
             .command(Command::PairScore {
-            expected: None,                bytes: xml.clone(),
+                expected: None,
+                bytes: xml.clone(),
                 name: "生成练习原谱.musicxml".into(),
                 content_id: cid.clone(),
             })

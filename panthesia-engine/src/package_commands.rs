@@ -5,7 +5,7 @@ use crate::{
     *,
 };
 use panthesia_core::library::{
-    ScoreAssociation, SongMetadata, SongSidecar, load_song_sidecar, resolve_score_path, save_song_sidecar,
+    FingerHint, ScoreAssociation, SongMetadata, SongSidecar, load_song_sidecar, resolve_score_path, save_song_sidecar,
 };
 use std::collections::BTreeMap;
 
@@ -29,7 +29,7 @@ impl Player {
         check()?;
         self.remember_active_score()?;
         let midi = self.prepare_midi_export()?;
-        let file = self.file.as_ref().ok_or("请先打开曲目")?;
+        let file = self.source_file.as_ref().or(self.file.as_ref()).ok_or("请先打开曲目")?;
         let id = file.content_id.clone();
         let path = self.annotation_path(file)?;
         let sidecar = read_sidecar(&path, &id)?;
@@ -124,21 +124,9 @@ impl Player {
             .and_then(|b| serde_json::from_slice::<Manifest>(&b).ok())
             .map(|m| m.provenance);
         let provenance=origin.map(|r|serde_json::json!({"source":r.source,"category":r.category,"license":r.license,"sourceUrl":r.source_url})).or(previous_origin).unwrap_or_else(||serde_json::json!({"source":"个人曲目","originalContentId":id}));
-        let fingers = file
-            .tracks
-            .iter()
-            .flat_map(|t| {
-                t.notes.iter().enumerate().filter_map(|(index, n)| {
-                    self.fingers
-                        .get(&(t.track_id, n.start, n.note))
-                        .map(|finger| panthesia_core::library::FingerHint {
-                            track_id: t.track_id,
-                            note_index: index,
-                            finger: *finger,
-                        })
-                })
-            })
-            .collect();
+        let fingers=if file.source_path.is_some(){sidecar.fingerings.clone()}else{
+            file.tracks.iter().flat_map(|t|t.notes.iter().enumerate().filter_map(|(index,n)|self.fingers.get(&(t.track_id,n.start,n.note)).map(|finger|FingerHint{track_id:t.track_id,note_index:index,finger:*finger}))).collect()
+        };
         let settings = SessionSettings {
             tracks: self.config.practice_track_setup(),
             parts: self
@@ -194,8 +182,9 @@ impl Player {
             l.settings.latency = 0;
         }
         let manifest = Manifest {
-            format: "neothesia-piece".into(),
-            version: if self.preferences.bookmarks.get(&id).is_some_and(|rows|!rows.is_empty()){18}else if self.preferences.ladder_presets.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){17}else if self.preferences.passages.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){16}else if metadata_layers.is_some(){15}else if !self.config.note_players.is_empty(){14}else if metadata.has_extended_fields(){13}else if self.meter_map.as_ref().is_some_and(|m| !m.measure_lengths.is_empty()){12}else if papers.iter().any(|p|!p.note_anchors.is_empty()){11}else if self.meter_map.is_some(){10}else if papers.iter().any(|p|p.annotations.iter().any(|n|n.ink.is_some()||n.width.is_some())||p.mapping.as_ref().is_some_and(|m|m.anchors.iter().any(|a|a.region.is_some()))){9}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.as_ref().is_some_and(|r|r.start_trim>0||r.end_trim>0))){8}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.precise_range.is_some())){7}else if !self.saved_actions()?.is_empty(){6}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.is_some())){5}else if papers.iter().any(|p|!p.annotations.is_empty()){4}else if papers.iter().any(|p|p.mapping.is_some()){3}else{2},
+            format: "panthesia-piece".into(),
+            practice_variant:if file.source_path.is_some(){self.variant()}else{Default::default()},
+            version: 19,
             content_id: midi_asset.hash.clone(),
             title: self.title.clone(),
             metadata,
@@ -279,13 +268,16 @@ impl Player {
                     })
                     .map(|e| e.path.clone())
             });
+        let owned=crate::song_repository::SongRepository::managed_path(&self.data,id)?;
+        let old_path=if panthesia_core::utils::atomic_file::is_file(&panthesia_core::library::metadata_sidecar_path(&owned)){Some(owned)}else{old_path};
         let old = old_path.as_ref().map(|p| read_sidecar(p, id)).transpose()?;
         let local_exists = old_path.is_some() || self.preferences.songs.contains_key(id);
         let directory = self
             .data
             .join("packages")
             .join(blake3::hash(&bytes).to_hex().as_str());
-        let target = directory.join("performance.mid");
+        let target=crate::import_storage::planned_annotations(&self.data.join("library/assets/midi"),id,id,id,|_|Ok(()))?.0;
+        let owned_scores=m.scores.iter().map(|a|crate::notation_assets::retain(&self.data,&package.files[&a.path])).collect::<Result<Vec<_>,_>>()?;
         let mut imported = SongSidecar {
             metadata: m.metadata.clone(),
             metadata_layers: m.metadata_layers.clone(),
@@ -301,7 +293,7 @@ impl Player {
         if let Some(index) = m.active_score {
             let a = &m.scores[index];
             imported.score = Some(ScoreAssociation {
-                path: directory.join(&a.path),
+                path: owned_scores[index].clone(),
                 content_id: a.hash.clone(),
             });
         }
@@ -385,6 +377,7 @@ impl Player {
         let imported_settings = !local_exists || policy == "replace";
         if imported_settings {
             preferences.songs.insert(id.clone(), m.settings.clone());
+            if m.version>=19{preferences.variants.insert(id.clone(),m.practice_variant.clone());}
             preferences.track_sounds.insert(id.clone(),m.track_sounds.clone());
             preferences.track_appearances.insert(id.clone(),m.track_appearances.clone());
             preferences.passages.insert(id.clone(), m.passages.clone());
@@ -505,7 +498,7 @@ impl Player {
                 versions.push(ScoreVersion {
                     id: format!("package-{}-{i}", a.hash),
                     name: a.name.clone(),
-                    path: directory.join(&a.path),
+                    path: owned_scores[i].clone(),
                     content_id: a.hash.clone(),
                 });
             }
@@ -529,7 +522,7 @@ impl Player {
         let paper_dir = self.data.join("score-attachments").join(blake3::hash(id.as_bytes()).to_hex().as_str());
         let captured=panthesia_core::utils::atomic_file::is_capturing(&target);
         let mut rollback = if captured {None} else {Some(PackageImportRollback::new(&self.data, &[
-            directory.clone(), paper_dir, self.preferences_path.clone(),
+            directory.clone(),target.clone(),panthesia_core::library::metadata_sidecar_path(&target), paper_dir, self.preferences_path.clone(),
             self.data.join("library-workspace.json"),
             self.data.join("web-practice-history.ron"),
         ])?)};
@@ -541,19 +534,8 @@ impl Player {
         let mut loaded = false;
         let result = (|| -> Result<serde_json::Value, String> {
         if !captured {std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;}
-        for (name, data) in &package.files {
-            let path = directory.join(name);
-            if !captured {std::fs::create_dir_all(path.parent().ok_or("曲目包目录无效")?).map_err(|e|e.to_string())?;}
-            if captured {
-                match panthesia_core::utils::atomic_file::read_dependency(&path,512_000_000) {
-                    Ok(existing) if existing.as_slice()!=data.as_slice()=>return Err(format!("已保存的曲目包文件被修改，请先保留或修复该文件：{}",path.display())),
-                    Ok(_)=>{},
-                    Err(error) if error.kind()==std::io::ErrorKind::NotFound=>{},
-                    Err(error)=>return Err(error.to_string()),
-                }
-            }
-            panthesia_core::utils::atomic_file::write(&path, data).map_err(|e| e.to_string())?;
-        }
+        let stored=crate::import_storage::store(&self.data.join("library/assets/midi"),id,id,&package.files[&m.midi.path])?;
+        if stored.path!=target{return Err("曲目副本位置在导入期间改变，请重新导入".into());}
         score_attachments::import_package(
             &self.data,
             id,

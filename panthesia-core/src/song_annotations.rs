@@ -39,7 +39,7 @@ pub fn document_path(midi: &Path) -> Option<PathBuf> {
         return None;
     }
     let directory = midi.parent()?;
-    if directory.file_name()? != "midi" {
+    if !["midi","exercises"].iter().any(|name|directory.file_name().is_some_and(|v|v==*name)) {
         return None;
     }
     let assets = directory.parent()?;

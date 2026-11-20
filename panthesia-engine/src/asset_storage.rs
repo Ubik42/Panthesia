@@ -98,7 +98,12 @@ fn allowed_relative(relative: &str) -> bool {
     if parts.len()==3 && parts[0]=="library" && parts[1]=="annotations" {
         return parts[2].strip_suffix(".json").is_some_and(valid_hash);
     }
-    if parts.len()==4 && parts[..3]==["library","assets","midi"] {
+    if parts.len()==4 && parts[..3]==["library","assets","notation"] {
+        let path=Path::new(parts[3]);let Some(stem)=path.file_stem().and_then(|s|s.to_str()) else{return false;};
+        let (id,index)=stem.split_once("-restored-").map_or((stem,None),|(id,index)|(id,Some(index)));
+        return path.extension().is_some_and(|s|s=="musicxml"||s=="mxl")&&valid_hash(id)&&index.is_none_or(|i|!i.is_empty()&&i.len()<=3&&i.bytes().all(|b|b.is_ascii_digit()));
+    }
+    if parts.len()==4 && parts[..2]==["library","assets"] && ["midi","exercises"].contains(&parts[2]) {
         let Some(stem)=parts[3].strip_suffix(".mid") else{return false;};
         let (id,index)=stem.split_once("-restored-").map_or((stem,None),|(id,index)|(id,Some(index)));
         return valid_hash(id)&&index.is_none_or(|i|!i.is_empty()&&i.len()<=3&&i.bytes().all(|b|b.is_ascii_digit()));

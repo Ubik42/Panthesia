@@ -424,6 +424,10 @@ impl SongRepository {
             initial,
         )
     }
+    pub(crate) fn prepare_generated_annotations(&self,source:&Path,owned:&Path,cid:&str,initial:Option<panthesia_core::library::SongSidecar>)->Result<(),String>{
+        let preferences=crate::preferences::Preferences::load(&self.data.join("web-preferences.json"))?;
+        self.import_annotations(source,owned,cid,preferences.songs.get(cid).map(|s|&s.parts),initial)
+    }
     fn import_annotations(
         &self,
         source: &Path,
