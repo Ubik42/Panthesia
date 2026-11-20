@@ -1,3 +1,4 @@
+import { reportDiagnostic } from "./app/diagnostics";
 import type { MusicKind, MusicReceipt } from "./engine/commands.generated";
 export type { StorageRecovery, StorageOperation } from "./engine/commands.generated";
 import { readDesktopBuildReport, type DesktopBuildReport } from "./engine/buildIdentity";
@@ -9,7 +10,7 @@ import type { HistoryAnnotationRequest, HistoryAnnotationSaved } from "./feature
 import type { ScoreMappingRequest, ScoreMappingResult } from "./features/scores/mappingTypes";
 import type { ScoreSource, ScoreSourcePreview, SourceApplyMode, AppliedSource } from "./features/scores/sourceTypes";
 import type { RoutineState, RoutineList, RoutineSummary, RoutineSourceOptions } from "./features/routines/routineTypes";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { invoke as nativeInvoke, isTauri } from "@tauri-apps/api/core";
 import type { EngineCommand } from "./engine/commands.generated";
 export type { EngineCommand } from "./engine/commands.generated";
 
@@ -17,6 +18,10 @@ export * from "./engine/sessionTypes";
 import type { PracticeEditCommand, HistoryReadScope, HistoryReadCommand, PracticeDemoCommand, PracticeReadCommand, PracticeEditScope, SongRow, LibraryMonitorStatus, Note, CollectionSong, TrackSound, SoundFontStatus, AudiverisProgramStatus, MeterMapSegment, MeterMap, MeterMapPreview, LoadedSong, LiveNoteEvent, LiveNoteReceipt, StorageStatus, Snapshot, EngineSession, Feedback } from "./engine/sessionTypes";
 import { emptyState } from "./engine/sessionTypes";
 
+async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  try { return await nativeInvoke<T>(command, args); }
+  catch(error) { reportDiagnostic(command,error); throw error; }
+}
 const historyReadCommands = new Set<EngineCommand["type"]>([
   "weakPractice", "dueReview", "collection", "history", "historyQuery", "readHistoryPage", "historyDetail", "practiceTime", "practiceCalendar",
   "readHistoryDetail", "readHistoryPerformance", "historyProblemNotes", "historyReplayClips", "readHistoryReplayClips", "historyPerformance", "songLearningEvidence", "readSongExpressionGoal", "readHistoryAnnotation",
@@ -541,6 +546,7 @@ export const api = {
       "import_score_attachments",
       { contentId, append: append ?? null },
     ),
+  openLogs: () => invoke<void>("open_log_folder"),
   revealFile: (path: string) => invoke<void>("reveal_library_file", { path }),
   importFolder: () => invoke<number | null>("import_folder"),
   repairPath: (contentId: string, from: string) =>

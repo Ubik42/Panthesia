@@ -25,14 +25,10 @@ export function usePracticePanels(
   const [focusRequest, requestFocus] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const compactRef = useRef(compact);
-  const inspector = compact ? drawer === "inspector" : display.inspector;
+  const inspector = drawer === "inspector";
   const setInspector = (open: boolean) => {
     if (!open) requestFocus(0);
-    if (compact)
-      setDrawer((old) =>
-        open ? "inspector" : old === "inspector" ? null : old,
-      );
-    else setDisplay((old) => ({ ...old, inspector: open }));
+    setDrawer((old) => (open ? "inspector" : old === "inspector" ? null : old));
   };
   useLayoutEffect(() => {
     if (!focusRequest || !inspector) return;
@@ -71,17 +67,22 @@ export function usePracticePanels(
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!compact || !drawer) return;
+    if (!drawer) return;
     const escape = (event: KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
         isComposingKey(event) ||
         event.defaultPrevented ||
-        event.ctrlKey || event.altKey || event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
         (event.target instanceof HTMLInputElement &&
           event.target.hasAttribute("data-practice-library-search") &&
           !!event.target.value) ||
-        !ownsInputLayer(root.current?.querySelector<HTMLElement>("[data-practice-drawer]") ?? null)
+        !ownsInputLayer(
+          root.current?.querySelector<HTMLElement>("[data-practice-drawer]") ??
+            null,
+        )
       )
         return;
       event.preventDefault();

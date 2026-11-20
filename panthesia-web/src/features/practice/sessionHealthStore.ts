@@ -1,3 +1,4 @@
+import { reportDiagnostic } from "../../app/diagnostics";
 export type SessionIssueKind = "action" | "session" | "library" | "collection";
 export interface SessionIssue {
   kind: SessionIssueKind;
@@ -75,6 +76,7 @@ export function createSessionHealthStore() {
       if (now - notifiedAt >= 5000) publish();
       return;
     }
+    reportDiagnostic(kind,detail);
     issues.set(kind, {
       kind,
       detail,

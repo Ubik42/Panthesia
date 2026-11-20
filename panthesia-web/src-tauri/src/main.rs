@@ -1,4 +1,5 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+mod diagnostics;
 mod score_batch_export;
 mod music_import_bridge;
 mod score_jobs;
@@ -988,21 +989,14 @@ fn startup_failure(error: impl std::fmt::Display) -> ! {
     } else {
         let hint = if reason.to_lowercase().contains("webview") { "\n请安装或修复 Microsoft Edge WebView2 运行时后重新打开。" } else { "" };
         let message = format!("{identity}\n启动失败：{reason}{hint}");
-        let directory = std::env::temp_dir().join("neothesia-startup");
-        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis();
-        let log = directory.join(format!("startup-{stamp}-{}.txt", std::process::id()));
-        let saved = (|| -> std::io::Result<()> {
-            use std::io::Write;
-            std::fs::create_dir_all(&directory)?;
-            let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&log)?;
-            file.write_all(report.as_bytes())
-        })();
-        let detail = match saved { Ok(()) => format!("诊断文件：{}", log.display()), Err(cause) => format!("诊断文件未能写入：{cause}") };
+        let saved=diagnostics::write("启动失败",&report);
+        let detail=match saved {Ok(())=>format!("日志文件夹：{}",diagnostics::root().display()),Err(cause)=>format!("日志未能写入：{cause}")};
         rfd::MessageDialog::new().set_title("Panthesia 启动失败").set_description(format!("{message}\n{detail}")).set_level(rfd::MessageLevel::Error).show();
     }
     std::process::exit(1);
 }
 fn main() {
+    diagnostics::install();
     let context = match startup_checks::configure(tauri::generate_context!()) {
         Ok(context) => context,
         Err(error) => startup_failure(error),
@@ -1041,6 +1035,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             score_batch_export::begin_score_batch_export,score_batch_export::begin_workspace_export,score_batch_export::begin_paper_pdf_export,score_batch_export::begin_paper_png_export,score_batch_export::write_score_batch_export,score_batch_export::finish_score_batch_export,score_batch_export::cancel_score_batch_export,
+            diagnostics::record_diagnostic,diagnostics::open_log_folder,
             reveal_library_file,open_practice_data_folder,
             get_soundfont_status,
             select_soundfont,

@@ -741,3 +741,27 @@
     display: none;
   }
 }
+
+/* Practice options are temporary drawers; the instrument keeps its full width. */
+.workbench > .workspace > .practice-inspector { position:absolute; top:0; bottom:0; right:0; z-index:30; width:min(420px,90%); box-shadow:-12px 0 40px #0005; }
+.workspace > .practice-inspector .panel-resize-handle { display:none; }
+.practice-inspector .song-edition-bar,.practice-inspector .practice-variant-panel { flex-wrap:wrap; }
+.practice-inspector .inspector-section:empty { display:none; }
+.practice-inspector .practice-queue-strip,.practice-inspector .saved-passage-bar { flex-wrap:wrap; }
+.practice-panel > .song-toolbar { min-height:52px; }
+.practice-panel .current-song h1 { font-size:17px; }
+.practice-panel > .practice-view-toolbar { min-height:40px; }
+.practice-view-toolbar > .practice-focus-toggle { margin-left:auto; }
+
+.workbench > .workspace > .practice-inspector { background:#f6f8fb; color:#34445c; }
+.practice-inspector-workbench > .panel-heading { background:#fff; color:#2b3c55; border-color:#dce3eb; }
+.practice-inspector .inspector-section { border-color:#dce3eb; }
+.practice-inspector .inspector-section h2,.practice-inspector .track-control strong { color:#4c5e76; }
+.practice-inspector .parameter-help,.practice-inspector small { color:#7a889b; }
+.practice-inspector button,.practice-inspector select,.practice-inspector input:not([type=checkbox]):not([type=range]) { background:#fff; color:#425b7b; border:1px solid #d7e0eb; }
+.practice-inspector button[aria-pressed=true] { background:#e0eaf7; color:#244f82; border-color:#a9bfdc; }
+.practice-inspector .track-control { background:#eef2f7; border-color:#dce3eb; }
+.practice-inspector .practice-mode-options { display:flex; gap:6px; }
+.practice-inspector .practice-mode-options button { flex:1; }
+.practice-inspector .inspector-section > label { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
+.practice-inspector .inspector-section > label:has(input[type=checkbox]) { justify-content:flex-start; }

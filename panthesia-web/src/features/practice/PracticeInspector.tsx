@@ -1,16 +1,12 @@
-import { useRef, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { X } from "lucide-react";
-import type { CollectionSong, EngineCommand, LoadedSong } from "../../api";
+import type { EngineCommand, LoadedSong } from "../../api";
 import { PanelResizeHandle } from "../../PanelResizeHandle";
 import { TrackAppearanceControl } from "../../TrackAppearanceControl";
 import { TrackSoundControl } from "../../TrackSoundControl";
 import type { ControlSnapshot, PlaybackStore } from "./playbackStore";
-import { PracticeMeter, PracticeResults } from "./PracticeReadouts";
+import { PracticeMeter } from "./PracticeReadouts";
 import { PracticeLoopControls } from "./PracticeLoopControls";
-import {
-  PracticeInspectorTabs,
-  type PracticeInspectorTab,
-} from "./PracticeInspectorTabs";
 import { practiceModes, practiceMode } from "./practicePresentation";
 
 export type PracticeInspectorTool =
@@ -20,46 +16,34 @@ export function PracticeInspector({
   store,
   state,
   song,
-  automaticTranscription,
-  currentRecord,
-  queueLength,
   busy: processing,
   compact,
   width,
   resize,
   close,
-  tab,
-  changeTab,
   command: action,
   openTool,
   start,
   end,
   selectStart,
   selectEnd,
-  expression,
-  feedback,
+  additionalSettings,
 }: {
   store: PlaybackStore;
   state: ControlSnapshot;
   song: LoadedSong | null;
-  automaticTranscription: boolean;
-  currentRecord?: CollectionSong;
-  queueLength: number;
   busy: boolean;
   compact: boolean;
   width: number;
   resize: (width: number) => void;
   close: () => void;
-  tab: PracticeInspectorTab;
-  changeTab: (tab: PracticeInspectorTab) => void;
   command: (command: EngineCommand) => void;
   openTool: (tool: PracticeInspectorTool) => void;
   start: number;
   end: number;
   selectStart: (value: number) => void;
   selectEnd: (value: number) => void;
-  expression: ReactNode;
-  feedback: () => void;
+  additionalSettings: ReactNode;
 }) {
   const busy = processing || state.recording;
   return (
@@ -89,6 +73,7 @@ export function PracticeInspector({
           <X size={16} />
         </button>
       </div>
+      <section className="inspector-section">{additionalSettings}</section>
       <section className="inspector-section">
         <h2>练习方式</h2>
         <div className="practice-mode-options">

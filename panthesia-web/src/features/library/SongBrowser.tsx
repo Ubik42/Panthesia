@@ -7,22 +7,16 @@ import {
   ChevronRight,
   Folder,
   FolderOpen,
-  Headphones,
   Library,
   Layers3,
   Music2,
-  Pause,
   Play,
   Search,
-  Settings2,
-  Star,
 } from "lucide-react";
 import {
   api,
-  clock,
   type SongRow,
   type LoadedSong,
-  type Snapshot,
   type CollectionSong,
 } from "../../api";
 import { libraryPath } from "./ScanFolders";
@@ -34,20 +28,12 @@ import {
   songLocation,
   type BrowserSong,
 } from "./songCatalog";
-import { useSongAudition } from "./useSongAudition";
+import { Dialog } from "../../Dialog";
+import { reportDiagnostic } from "../../app/diagnostics";
 import { useSongCatalog } from "./useSongCatalog";
-import { BrowserPracticeSummary, practiceDate } from "./BrowserPracticeSummary";
-import type { LibraryAttempt } from "../../engine/sessionTypes";
+import { practiceDate } from "./BrowserPracticeSummary";
 import { BrowserSongVersions } from "./BrowserSongVersions";
 
-interface Preview {
-  bpm: number;
-  duration: number;
-  measures: number;
-  tracks: number;
-  notes: number;
-  preview: { pitch: number; start: number; duration: number }[];
-}
 interface FolderNode {
   path: string;
   label: string;
@@ -78,65 +64,13 @@ function titleParts(title: string) {
     ? { title: match[1], version: match[2].replaceAll("_", " · ") }
     : { title, version: "MIDI" };
 }
-function PreviewStaff({ value }: { value: Preview }) {
-  const notes = value.preview,
-    begin = notes[0]?.start ?? 0,
-    end = begin + 8,
-    degree = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-  return (
-    <svg
-      className="browser-score-preview"
-      viewBox="0 0 340 220"
-      role="img"
-      aria-label="所选 MIDI 开头的简单双谱表"
-    >
-      {[48, 57, 66, 75, 84, 135, 144, 153, 162, 171].map((y) => (
-        <line key={y} x1={20} x2={320} y1={y} y2={y} />
-      ))}
-      <text x={23} y={83} className="preview-clef">
-        𝄞
-      </text>
-      <text x={23} y={167} className="preview-clef">
-        𝄢
-      </text>
-      {notes
-        .filter((n) => n.start < end)
-        .slice(0, 64)
-        .map((n, index) => {
-          const low = n.pitch < 60,
-            y =
-              (low ? 171 : 84) -
-              (Math.floor(n.pitch / 12 - 1) * 7 +
-                degree[n.pitch % 12] -
-                (low ? 18 : 30)) *
-                4.5,
-            x = 62 + ((n.start - begin) / 8) * 245;
-          return (
-            <g key={index}>
-              <ellipse
-                cx={x}
-                cy={y}
-                rx={4.4}
-                ry={3.2}
-                transform={`rotate(-16 ${x} ${y})`}
-              />
-              <line x1={x + 4} x2={x + 4} y1={y} y2={y - 23} />
-            </g>
-          );
-        })}
-    </svg>
-  );
-}
 export function SongBrowser({
   rows,
   ready,
   current,
-  state,
   collection,
   open,
   resume,
-  restore,
-  devices,
   manage,
   refresh,
   unavailable,
@@ -145,16 +79,9 @@ export function SongBrowser({
   rows: readonly SongRow[];
   ready: boolean;
   current: LoadedSong | null;
-  state: Pick<Snapshot, "output" | "sound">;
   collection: readonly CollectionSong[];
   open: (row: SongRow) => Promise<boolean>;
   resume: () => void;
-  restore: (
-    row: SongRow,
-    record: CollectionSong,
-    attempt: LibraryAttempt,
-  ) => Promise<boolean>;
-  devices: () => void;
   manage: () => void;
   refresh: () => Promise<unknown>;
   unavailable?: string | null;
@@ -162,7 +89,9 @@ export function SongBrowser({
 }) {
   const [roots, setRoots] = useState<LibraryFolder[]>([]),
     [selectedFolder, setSelectedFolder] = useState(() =>
-      stored("neothesia-browser-folder", ""),
+      stored("neothesia-browser-folder", "") === "builtin"
+        ? ""
+        : stored("neothesia-browser-folder", ""),
     ),
     [expanded, setExpanded] = useState<Set<string>>(expandedFolders),
     [query, setQuery] = useState(""),
@@ -174,17 +103,19 @@ export function SongBrowser({
     [globalSearch, setGlobalSearch] = useState(false),
     [sort, setSort] = useState(() => {
       const value = stored("panthesia-browser-sort", "title");
-      return ["title", "recent"].includes(value)
-        ? value
-        : "title";
+      return ["title", "recent"].includes(value) ? value : "title";
     }),
     [descending, setDescending] = useState(
       () => stored("panthesia-browser-sort-desc", "false") === "true",
     );
-  const [preview, setPreview] = useState<Preview | null>(null),
-    [error, setError] = useState(""),
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [context, setContext] = useState<{ x: number; y: number } | null>(null);
+  const [error, setError] = useState(""),
     [opening, setOpening] = useState(false),
     [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (error) reportDiagnostic("曲库", error);
+  }, [error]);
   const queryValue = useDeferredValue(query.trim().toLocaleLowerCase()),
     list = useRef<HTMLDivElement>(null);
   const grouping = useSongCatalog(rows);
@@ -386,8 +317,6 @@ export function SongBrowser({
       localStorage.setItem("panthesia-browser-sort-desc", String(descending));
     } catch {}
   }, [sort, descending]);
-  const practiced = groups.filter((group) => group.lastPracticed > 0).length;
-  const complete = groups.filter((group) => group.completeVersions > 0).length;
   const requested = rowByPath.get(libraryPath(selectedPath));
   const requestedKey = requested ? songKey(requested, catalogIndex) : null;
   const groupsById = useMemo(
@@ -411,30 +340,11 @@ export function SongBrowser({
   const selected = selectedGroup
     ? songLocation(selectedGroup, selectedPath)
     : undefined;
-  const audition = useSongAudition(selected?.path);
-  const stopPreview = () => {
-    void audition.stop().catch((e) => setError(String(e)));
-  };
   const selectedPerformance = selectedGroup?.performances.find(
     (performance) =>
       performance.id ===
       (selected?.contentId || libraryPath(selected?.path ?? "")),
   );
-  const selectedRecord =
-    selectedPerformance?.record ?? (selected ? recordFor(selected) : undefined);
-  const continuePractice = async (attempt: LibraryAttempt) => {
-    if (!selected || !selectedRecord || opening || unavailable) return;
-    setOpening(true);
-    setError("");
-    try {
-      await audition.stop();
-      await restore(selected, selectedRecord, attempt);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setOpening(false);
-    }
-  };
   const chooseGroup = (group: BrowserSong) => {
     const row =
       group.id === selectedGroup?.id && selected
@@ -458,36 +368,11 @@ export function SongBrowser({
         ?.scrollIntoView({ block: "nearest" }),
     );
   }, [page, selectedGroup?.id, groups]);
-  useEffect(() => {
-    stopPreview();
-    setPreview(null);
-    setError("");
-    if (!selected) return;
-    let live = true;
-    const timer = setTimeout(() => {
-      void api
-        .command<Preview>({ type: "songPreview", path: selected.path })
-        .then((value) => {
-          if (live) setPreview(value);
-        })
-        .catch((e) => {
-          if (live) setError(String(e));
-        });
-    }, 160);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [selected?.path]);
-  const listen = () => {
-    if (audition.active) stopPreview();
-    else void audition.start();
-  };
   const begin = async () => {
     if (!selected || opening || unavailable) return;
     setOpening(true);
+    setError("");
     try {
-      await audition.stop();
       await open(selected);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
@@ -495,12 +380,7 @@ export function SongBrowser({
       setOpening(false);
     }
   };
-  const folderName =
-    selectedFolder === "builtin"
-      ? "内置练习"
-      : selectedFolder
-        ? selectedFolder.split("/").at(-1)
-        : "全部歌曲";
+  const folderName = selectedFolder ? selectedFolder.split("/").at(-1) : "曲库";
   const folderNode = (node: FolderNode, depth = 0): React.ReactNode => (
     <div key={node.path} role="none">
       <div
@@ -564,22 +444,16 @@ export function SongBrowser({
       <aside className="browser-sidebar">
         <div className="browser-sidebar-title">
           <Library size={18} />
-          <strong>我的曲库</strong>
+          <button
+            className="browser-home"
+            onClick={() => {
+              setSelectedFolder("");
+              setQuery("");
+            }}
+          >
+            我的曲库
+          </button>
         </div>
-        <button
-          className={`browser-root ${!selectedFolder ? "selected" : ""}`}
-          onClick={() => setSelectedFolder("")}
-        >
-          <Music2 size={17} />
-          全部歌曲<small>{allGroups.length.toLocaleString()}</small>
-        </button>
-        <button
-          className={`browser-root ${selectedFolder === "builtin" ? "selected" : ""}`}
-          onClick={() => setSelectedFolder("builtin")}
-        >
-          <Star size={17} />
-          入门练习
-        </button>
         <div className="browser-tree-heading">
           文件夹
           <button
@@ -587,6 +461,7 @@ export function SongBrowser({
               setRefreshing(true);
               void refresh()
                 .then(readRoots)
+                .catch((e) => setError(String(e)))
                 .finally(() => setRefreshing(false));
             }}
             disabled={refreshing}
@@ -650,29 +525,19 @@ export function SongBrowser({
         </div>
         <button className="browser-manage" onClick={manage}>
           <FolderOpen size={16} />
-          管理目录与曲目
-        </button>
-        <button className="browser-manage" onClick={devices}>
-          <Settings2 size={16} />
-          设备与声音
+          管理文件夹
         </button>
       </aside>
       <section className="browser-content">
         <header className="browser-heading">
           <div>
-            <p>选择一首，开始练习</p>
-            <h1>曲库</h1>
+            <h1>{folderName}</h1>
           </div>
           {current && (
             <button
               className="browser-resume"
               disabled={!!unavailable}
-              onClick={() => {
-                void audition
-                  .stop()
-                  .then(resume)
-                  .catch((e) => setError(String(e)));
-              }}
+              onClick={resume}
             >
               <span>
                 <small>继续上次演奏</small>
@@ -686,7 +551,7 @@ export function SongBrowser({
           <Search size={18} />
           <input
             aria-label="搜索曲目"
-            placeholder="搜索曲名、作者、标签；可用 composer:肖邦"
+            placeholder="搜索歌曲"
             title={"支持 composer:作者、tags:标签、双引号短语和 -词 排除"}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -748,7 +613,6 @@ export function SongBrowser({
             {folderName} · {groups.length.toLocaleString()} 首 ·{" "}
             {performanceCount.toLocaleString()} 份演奏
           </span>
-
         </div>
         <div
           ref={list}
@@ -798,8 +662,8 @@ export function SongBrowser({
           )}
           {grouping.error && (
             <p role="status" className="browser-list-notice">
-              歌曲关系暂未读到：{grouping.error}{" "}
-              <button onClick={grouping.reload}>重新读取</button>
+              歌曲版本信息暂不可用。
+              <button onClick={grouping.reload}>刷新</button>
             </p>
           )}
           {groups.slice(page * 60, (page + 1) * 60).map((group) => {
@@ -823,10 +687,25 @@ export function SongBrowser({
                 disabled={opening}
                 className={`browser-song ${group.id === selectedGroup?.id ? "selected" : ""}`}
                 onClick={() => chooseGroup(group)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  chooseGroup(group);
+                  setContext({ x: event.clientX, y: event.clientY });
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "ContextMenu" ||
+                    (event.shiftKey && event.key === "F10")
+                  ) {
+                    event.preventDefault();
+                    const box = event.currentTarget.getBoundingClientRect();
+                    chooseGroup(group);
+                    setContext({ x: box.left + 40, y: box.bottom });
+                  }
+                }}
                 onDoubleClick={() => {
                   if (opening || unavailable) return;
                   const row = chooseGroup(group);
-                  stopPreview();
                   setOpening(true);
                   void open(row)
                     .catch((error) => setError(String(error)))
@@ -853,15 +732,35 @@ export function SongBrowser({
                     {group.performances.length} 份演奏
                   </span>
                 )}
-                {group.lastUsed > 0 && <span className="browser-song-study"><small>{practiceDate(group.lastUsed)} 打开</small></span>}
+                {group.lastUsed > 0 && (
+                  <span className="browser-song-study">
+                    <small>{practiceDate(group.lastUsed)} 打开</small>
+                  </span>
+                )}
                 {isCurrent && <span className="browser-current">当前歌曲</span>}
                 <ChevronRight size={15} />
               </button>
             );
           })}
         </div>
+        {error && (
+          <p className="browser-list-notice" role="status">
+            这次操作未能完成，详情已记入日志。
+            <button onClick={() => void api.openLogs().catch(() => {})}>
+              打开日志
+            </button>
+            <button onClick={() => setError("")}>收起</button>
+          </p>
+        )}
         <footer className="browser-pagination">
-          <span>包含子目录中的曲目</span>
+          <button
+            className="browser-begin"
+            disabled={!selected || !!unavailable || opening}
+            onClick={() => void begin()}
+          >
+            <Play size={16} />
+            {opening ? "正在打开…" : "打开演奏"}
+          </button>
           <div>
             <button disabled={!page} onClick={() => setPage((p) => p - 1)}>
               上一页
@@ -879,166 +778,175 @@ export function SongBrowser({
         </footer>
         {preparation}
       </section>
-      <aside className="browser-detail">
-        {selected ? (
-          <>
-            <div className="browser-detail-top">
-              <span>曲目预览</span>
-              <Music2 size={18} />
-            </div>
-            <h2>{titleParts(selectedGroup!.title).title}</h2>
-            <label className="browser-performance-picker">
-              <span>
-                <Layers3 size={15} />
-                演奏版本 · {selectedGroup!.performances.length} 份
-              </span>
-              <select
-                aria-label="选择演奏版本"
-                value={selectedPerformance?.id ?? ""}
-                disabled={opening}
-                onChange={(event) => {
-                  const performance = selectedGroup!.performances.find(
-                    (row) => row.id === event.target.value,
-                  );
-                  if (performance)
-                    setSelectedPath(performance.locations[0].path);
-                }}
-              >
-                {selectedGroup!.performances.map((performance) => (
-                  <option key={performance.id} value={performance.id}>
-                    {performance.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="browser-version">
-              {titleParts(selected.title).version}
-              {selectedPerformance?.notationCount
-                ? ` · ${selectedPerformance.notationCount} 份谱面`
-                : ""}
-            </p>
-            <div className="browser-preview-paper">
-              {preview ? (
-                <PreviewStaff value={preview} />
-              ) : (
-                <div className="browser-preview-loading">正在读取谱面预览…</div>
-              )}
-            </div>
-            <dl className="browser-song-facts">
-              <div>
-                <dt>原速</dt>
-                <dd>{preview ? `${Math.round(preview.bpm)} BPM` : "—"}</dd>
-              </div>
-              <div>
-                <dt>时长</dt>
-                <dd>{preview ? clock(preview.duration) : "—"}</dd>
-              </div>
-              <div>
-                <dt>小节</dt>
-                <dd>{preview?.measures ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>音轨</dt>
-                <dd>{preview?.tracks ?? "—"}</dd>
-              </div>
-            </dl>
-            <div className="browser-song-actions">
+      {context && selected && (
+        <SongContextMenu
+          x={context.x}
+          y={context.y}
+          close={() => setContext(null)}
+          open={() => void begin()}
+          disabled={opening || !!unavailable}
+          view={() => setDetailsOpen(true)}
+          reveal={() =>
+            void api.revealFile(selected.path).catch((e) => setError(String(e)))
+          }
+        />
+      )}
+      {detailsOpen && selected && (
+        <Dialog
+          title={titleParts(selectedGroup!.title).title}
+          close={() => setDetailsOpen(false)}
+        >
+          <div className="song-object-details">
+            <h3>演奏版本</h3>
+            {selectedGroup!.performances.map((performance) => (
               <button
-                className={`browser-audition${audition.active ? " is-playing" : ""}`}
-                aria-pressed={audition.active}
-                disabled={!preview || !!unavailable || opening}
-                onClick={listen}
+                key={performance.id}
+                aria-pressed={performance.id === selectedPerformance?.id}
+                onClick={() => setSelectedPath(performance.locations[0].path)}
               >
-                {audition.active ? (
-                  <Pause size={17} />
-                ) : (
-                  <Headphones size={17} />
-                )}{" "}
-                {audition.phase === "preparing"
-                  ? "取消准备"
-                  : audition.active
-                    ? "停止试听"
-                    : "试听开头 8 秒"}
-                {audition.phase === "playing" && (
-                  <span className="browser-audition-time">
-                    {audition.position.toFixed(1)} /{" "}
-                    {audition.duration.toFixed(1)} 秒
-                  </span>
-                )}
+                {performance.label}
               </button>
-              <button
-                className="browser-begin"
-                disabled={!!unavailable || opening}
-                onClick={() => void begin()}
-              >
-                <Play size={17} fill="currentColor" />
-                {opening ? "正在准备…" : "开始演奏"}
-              </button>
-              {audition.error && (
-                <p className="browser-audition-error" role="alert">
-                  {audition.error}
-                </p>
-              )}
-            </div>
-            <div className="browser-sound-status">
-              <i className={state.sound?.ready ? "ready" : ""} />
-              <span>
-                {state.output}
-                <small>{state.sound?.device ?? "系统默认设备"}</small>
-              </span>
-              <button onClick={devices} aria-label="选择音源">
-                <Settings2 size={16} />
-              </button>
-            </div>
-            <details className="browser-file-location">
-              <summary>文件位置</summary>
-              {selectedPerformance?.locations.map((location) => (
-                <button
-                  key={location.path}
-                  className="browser-location-option"
-                  aria-pressed={
-                    libraryPath(location.path) === libraryPath(selected.path)
-                  }
-                  title={location.path}
-                  onClick={() => setSelectedPath(location.path)}
-                >
-                  {location.path}
-                </button>
-              ))}
-            </details>
+            ))}
             <BrowserSongVersions
-              key={`${selected.contentId ?? ""}:${selected.path}`}
+              key={selected.path}
               row={selected}
               disabled={!!unavailable || opening}
               changed={grouping.reload}
               open={async (path) => {
                 const target = rowByPath.get(libraryPath(path));
-                if (!target)
-                  throw new Error(
-                    "这个文件位置未出现在当前曲库，请重新扫描后打开。",
-                  );
-                stopPreview();
-                setOpening(true);
-                try {
-                  return await open(target);
-                } finally {
-                  setOpening(false);
-                }
+                if (!target) throw new Error("文件暂时不可用");
+                setDetailsOpen(false);
+                return open(target);
               }}
             />
-            {error && (
-              <p role="alert" className="browser-error">
-                {error}
-              </p>
-            )}
-          </>
-        ) : (
-          <div className="browser-detail-empty">
-            <Music2 size={34} />
-            <p>选择曲目，查看谱面和练习信息。</p>
+            <button
+              disabled={opening || !!unavailable}
+              onClick={() => {
+                setDetailsOpen(false);
+                void begin();
+              }}
+            >
+              打开演奏与完整谱面
+            </button>
+            <button
+              onClick={() =>
+                void api
+                  .revealFile(selected.path)
+                  .catch((e) => setError(String(e)))
+              }
+            >
+              在资源管理器中显示
+            </button>
           </div>
-        )}
-      </aside>
+        </Dialog>
+      )}
     </main>
+  );
+}
+
+function SongContextMenu({
+  x,
+  y,
+  close,
+  open,
+  view,
+  reveal,
+  disabled,
+}: {
+  x: number;
+  y: number;
+  close: () => void;
+  open: () => void;
+  view: () => void;
+  reveal: () => void;
+  disabled: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    ref.current
+      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
+      ?.focus();
+    const dismiss = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) close();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        previous?.focus();
+      }
+    };
+    window.addEventListener("pointerdown", dismiss);
+    window.addEventListener("keydown", escape, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("pointerdown", dismiss);
+      window.removeEventListener("keydown", escape, true);
+      window.removeEventListener("resize", close);
+    };
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className="song-context-menu"
+      role="menu"
+      aria-label="歌曲操作"
+      style={{
+        left: Math.max(8, Math.min(x, window.innerWidth - 244)),
+        top: Math.max(8, Math.min(y, window.innerHeight - 160)),
+      }}
+      onKeyDown={(event) => {
+        if (!["ArrowDown", "ArrowUp", "Home", "End", "Tab"].includes(event.key))
+          return;
+        event.preventDefault();
+        const buttons = [
+          ...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+            "button:not(:disabled)",
+          ),
+        ];
+        const index = buttons.indexOf(
+          document.activeElement as HTMLButtonElement,
+        );
+        buttons[
+          event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? buttons.length - 1
+              : (index + (event.key === "ArrowUp" ? -1 : 1) + buttons.length) %
+                buttons.length
+        ]?.focus();
+      }}
+    >
+      <button
+        role="menuitem"
+        disabled={disabled}
+        onClick={() => {
+          close();
+          open();
+        }}
+      >
+        打开演奏
+      </button>
+      <button
+        role="menuitem"
+        onClick={() => {
+          close();
+          view();
+        }}
+      >
+        查看歌曲与版本…
+      </button>
+      <button
+        role="menuitem"
+        onClick={() => {
+          close();
+          reveal();
+        }}
+      >
+        在资源管理器中显示
+      </button>
+    </div>
   );
 }

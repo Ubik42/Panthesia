@@ -1,3 +1,4 @@
+import { installDiagnostics } from "./app/diagnostics";
 import {FolderManager} from "./features/library/FolderManager";
 import { pathKey } from "./engine/pathIdentity";
 import { SongBookmarks, type BookmarkNavigation } from "./features/practice/SongBookmarks";
@@ -8,7 +9,6 @@ import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls
 import { PreviewBarsControl } from "./features/practice/PreviewBarsControl";
 import { resolveKeyboardViewport, viewportRange, zoomKeyboardViewport, panKeyboardViewport, normalizePreviewBars, type KeyboardViewport } from "./features/practice/keyboardViewport";
 import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
-import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
 import { SongCredits } from "./features/practice/SongCredits";
 import { prepareLibraryPractice } from "./features/library/prepareLibraryPractice";
@@ -159,6 +159,7 @@ import { matchesSong } from "./engine/stateOrder";
 const normalize = pathKey;
 
 export default function App() {
+  useEffect(installDiagnostics, []);
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
   const workspaceSessions = useWorkspaceSessions();
@@ -1831,7 +1832,8 @@ export default function App() {
           </>},
           {label:"帮助",content:<>
             <button onClick={()=>{clearLiveNotes();setCommandsOpen(true);}}>查找操作…</button>
-            <button onClick={openRecovery}>恢复与问题…</button>
+            <button onClick={()=>void api.openLogs().catch(e=>setError(String(e)))}>打开日志文件夹</button>
+            <button onClick={openRecovery}>诊断详情…</button>
             <button onClick={()=>{clearLiveNotes();setProgressOpen(true);}}>后台任务…</button>
             <button onClick={()=>setEditDraftsOpen(true)}>编辑中的草稿…</button>
             <button onClick={()=>setAboutOpen(true)}>关于 Panthesia…</button>
@@ -1909,7 +1911,7 @@ export default function App() {
           } as React.CSSProperties
         }
       >
-        {panels.compact && panels.drawer && (
+        {panels.drawer && (
           <button
             className="practice-panel-backdrop"
             aria-label="返回练习画面"
@@ -1932,60 +1934,11 @@ export default function App() {
         <main className="practice-panel">
           <div className="song-toolbar">
             <button className="back-to-library" onClick={()=>void changeWorkspace("library")}><ChevronLeft size={17}/>曲库</button>
-            {!libraryOpen && (
-              <button
-                className="icon-button"
-                aria-label="显示曲库"
-                onClick={() => setLibraryOpen(true)}
-              >
-                <Menu size={18} />
-              </button>
-            )}
             <div className="current-song">
               <h1 title={song?.title}>{song?.title || "选择曲目"}</h1>
               <SongCredits song={song} editing={metadata} fallback={selectedRow?.composer ||
                 (song ? "本地 MIDI" : "打开本地 MIDI 或选择内置练习")} />
             </div>
-            <button
-              disabled={!song || song.generated || busy}
-              className="icon-button metadata-info-button"
-              onClick={() => { setMetadataDraftPath(null); setMetadata(true); }}
-              title="编辑曲目信息"
-              aria-label="编辑曲目信息"
-            >
-              <Info size={16} />信息
-            </button>
-            <button
-              className={`icon-button ${currentRecord?.favorite ? "is-favorite" : ""}`}
-              aria-label={currentRecord?.favorite ? "取消收藏" : "收藏曲目"}
-              aria-pressed={!!currentRecord?.favorite}
-              disabled={!song || busy}
-              onClick={() =>
-                action({ type: "favorite", enabled: !currentRecord?.favorite })
-              }
-            >
-              <Star
-                size={17}
-                fill={currentRecord?.favorite ? "currentColor" : "none"}
-              />
-            </button>
-            <button
-              className={
-                currentRecord?.queuePosition != null ? "is-queued" : ""
-              }
-              aria-pressed={currentRecord?.queuePosition != null}
-              title={currentRecord?.queuePosition != null ? "移出练习队列" : "加入练习队列"}
-              disabled={!song || busy}
-              onClick={() =>
-                action({
-                  type: "queue",
-                  enabled: currentRecord?.queuePosition == null,
-                })
-              }
-            >
-              <ListMusic size={16} />
-              {currentRecord?.queuePosition != null ? "移出队列" : "加入队列"}
-            </button>
             <button
               className="icon-button"
               aria-label="练习设置"
@@ -1996,25 +1949,6 @@ export default function App() {
               <Settings2 size={17} />
             </button>
           </div>
-          <PracticeSetupSummary store={playback} song={song} connected={connected}
-            display={display} showRequired={view === "score" || view === "combined"}
-            open={() => panels.revealInspector("setup")} />
-          <PracticeContextPanel focus={display.practiceFocus} source={`${song?.engineId}:${song?.contentId}`} disabled={navigation.locked || !startupReady}
-            sound={{state:state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline",label:`${state.output} · ${state.sound?.changing?"正在连接":state.sound?.error?"连接异常，请检查音源":state.sound?.ready?"已连接":"未连接"}`}}>
-            {contextVisible => <>
-          {song && <SongEditionBar song={song} active={workspace==="practice" && contextVisible} disabled={busy || openingActive || navigation.locked || !startupReady || !!state.recording}
-            execute={command=>run(command,true)}
-            openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}
-            manage={()=>setScoresDialog(true)}/>}
-          <div className="instrument-controls">
-            <button className="practice-advanced-settings" onClick={()=>panels.revealInspector("setup")}>高级练习设置</button>
-            {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording || routineActive || ladderActive || recital} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
-            <button onClick={()=>{getInterfaceWorkbench().update({section:"appearance"});setDisplayDialog(true);}}>外观与网格</button>
-            <div className="instrument-hands" role="group" aria-label="练习声部">{[["left","左手"],["both","双手"],["right","右手"]].map(([value,label])=><button key={value} aria-pressed={state.hands===value} disabled={busy||!song||routineActive||ladderActive||recital} onClick={()=>action({type:"hands",value})}>{label}</button>)}</div>
-            <button className="instrument-sound" aria-label={`音源设置，当前${state.output}`} data-state={state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline"} onClick={()=>setSettings(true)}><span className={`signal-dot ${state.sound?.ready?"ready":""}`}/><span>{state.output}<small>{state.sound?.changing?"正在连接音源…":state.sound?.error?"连接未完成，查看设置":state.sound?.ready?state.sound.device??"已连接":"未连接，选择音源"}</small></span></button>
-          </div>
-            </>}
-          </PracticeContextPanel>
           <div className="view-toolbar practice-view-toolbar">
             <div className="practice-view-tabs" role="group" aria-label="练习视图">
               <button
@@ -2041,10 +1975,12 @@ export default function App() {
                 谱页
               </button>
             </div>
-            {view === "combined" && <label className="practice-split-arrangement">排列 <select aria-label="谱面与瀑布排列" value={display.practiceSplitAxis} onChange={event => setDisplay(previous => ({...previous, practiceSplitAxis:event.target.value as DisplayPreferences["practiceSplitAxis"]}))}><option value="auto">自动排列</option><option value="rows">上下排列</option><option value="columns">左右并排</option></select></label>}
-            <ScoreWorkspaceButton store={workspaceSessions.scores} song={song} disabled={busy} expanded={scoresDialog} open={() => setScoresDialog(true)} />
-            <FingeringWorkbenchButton store={workspaceSessions.fingeringWorkbench} disabled={busy || state.recording || navigation.locked || !startupReady} open={() => setFingeringWorkbenchOpen(true)} />
-            <ToolbarMore label="谱面与指法" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
+            <ToolbarMore label="演奏设置" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
+              <button onClick={() => panels.revealInspector("setup")}>练习与版本设置…</button>
+              <button onClick={() => setScoresDialog(true)}>谱面管理…</button>
+              <button onClick={() => setSettings(true)}>键盘与音源…</button>
+              <button onClick={() => setDisplayDialog(true)}>外观、网格与按键…</button>
+              <button onClick={() => setFingeringWorkbenchOpen(true)}>指法工作台…</button>
               <button disabled={!song || busy} onClick={() => setHandsDialog(true)}>分手与逐音播放</button>
               <button
                 disabled={!song || busy}
@@ -2114,7 +2050,6 @@ export default function App() {
               </button>
             </ToolbarMore>
             <button className="practice-focus-toggle" aria-pressed={display.practiceFocus} disabled={navigation.locked || !startupReady} onClick={togglePracticeFocus}>{display.practiceFocus ? "退出专注" : "专注演奏"}</button>
-            <PracticeLegend song={song} display={display} />
             <ToolbarMore label="显示选项" scale={display.uiScale / 100} disabled={navigation.locked || !startupReady}>
               <PracticeLegend song={song} display={display} />
               <button
@@ -2124,10 +2059,11 @@ export default function App() {
                 界面与按键
               </button>
               <PreviewBarsControl value={seconds} change={setSeconds} label="前方预览" ariaLabel="预览小节数"/>
-            </ToolbarMore>
-          </div>
           {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}
+
+            </ToolbarMore>
+          </div>
           <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis} ratio={display.practiceSplitRatio}
             changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value}))}>
             <div className="practice-stage-keyboard" hidden={view !== "keyboard" && view !== "combined" && state.mode !== "memory"} role="region" aria-label="瀑布与琴键区域">
@@ -2353,22 +2289,6 @@ export default function App() {
             disabled={!connected || state.recording || recital || ladderActive || routineActive}
             seek={(position) => adjustRealtime({ type: "seek", position })}
           />
-          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
-            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
-            song={song} store={playback} range={practiceRange} visible={workspace === "practice"}
-            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
-            seek={(position)=>adjustRealtime({type:"seek",position})}
-            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
-          {song && !song.generated && <SavedPassageBar key={JSON.stringify([song.engineId,song.contentId])}
-            song={song} store={playback} range={practiceRange} visible={workspace === "practice" && !passageDialog}
-            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
-            changed={async()=>{const session=await api.session();installSession(session);}}
-            manage={()=>launchPracticeTool(()=>setPassageDialog(true))} />}
-          <PracticeQueueStrip store={playback} queue={queue} busy={busy || openingActive} connected={connected}
-            open={openQueuedSong}
-            manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
-            repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
-
           <PracticeTransport
             store={playback}
             available={!!song}
@@ -2395,24 +2315,37 @@ export default function App() {
             store={playback}
             state={state}
             song={song}
-            automaticTranscription={selectedRow?.source === "GiantMIDI-Piano"}
-            currentRecord={currentRecord}
-            queueLength={queue.length}
             busy={busy}
-            compact={panels.compact}
+            compact={true}
             width={display.inspectorWidth}
             resize={(width) => setDisplay((old) => ({ ...old, inspectorWidth: width }))}
             close={() => setInspector(false)}
-            tab={inspectorTab}
-            changeTab={setInspectorTab}
             command={action}
-            feedback={showPracticeFeedback}
             openTool={openInspectorTool}
             start={loopStart}
             end={loopEnd}
             selectStart={setLoopStart}
             selectEnd={setLoopEnd}
-            expression={null}
+            additionalSettings={<>
+              {song && <SongEditionBar song={song} active={workspace==="practice" && inspector} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
+              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
+          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
+            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
+            song={song} store={playback} range={practiceRange} visible={workspace === "practice"}
+            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
+            seek={(position)=>adjustRealtime({type:"seek",position})}
+            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
+          {song && !song.generated && <SavedPassageBar key={JSON.stringify([song.engineId,song.contentId])}
+            song={song} store={playback} range={practiceRange} visible={workspace === "practice" && !passageDialog}
+            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
+            changed={async()=>{const session=await api.session();installSession(session);}}
+            manage={()=>launchPracticeTool(()=>setPassageDialog(true))} />}
+          <PracticeQueueStrip store={playback} queue={queue} busy={busy || openingActive} connected={connected}
+            open={openQueuedSong}
+            manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
+            repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
+
+            </>}
           />
         )}
       </div>
@@ -2558,10 +2491,10 @@ export default function App() {
         />
       )}
       {libraryDialog && startupReady && !libraryAdvanced && libraryLaunch==="normal" && !librarySearch && <SongBrowser
-        rows={allLibraryRows} ready={libraryReady} current={song} state={state} collection={collection}
-        unavailable={workspaceUnavailable} refresh={refreshWithCollection} devices={()=>setSettings(true)}
+        rows={allLibraryRows} ready={libraryReady} current={song} collection={collection}
+        unavailable={workspaceUnavailable} refresh={refreshWithCollection}
         manage={()=>setLibraryAdvanced(true)} resume={()=>void changeWorkspace("practice")}
-        open={row=>load(row,row.contentId??undefined,"selected")} restore={restoreLibraryPractice}
+        open={row=>load(row,row.contentId??undefined,"selected")}
         preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/>} 
       {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
       {libraryScoreRange && (

@@ -1,5 +1,6 @@
+import { reportDiagnostic } from "./diagnostics";
 import { api } from "../api";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { CheckCircle2, LifeBuoy, LoaderCircle, X } from "lucide-react";
 import {
   recoveryActionLabels,
@@ -24,6 +25,12 @@ export function SessionStatus({
     store.getSnapshot,
     store.getSnapshot,
   );
+  useEffect(() => {
+    for (const issue of state.issues) {
+      if (issue.severity !== "info")
+        reportDiagnostic(issue.title, issue.detail);
+    }
+  }, [state.issues]);
   const problems = state.issues.filter((issue) => issue.severity !== "info"),
     primary = problems[0];
   const progress = state.issues.find(
@@ -35,11 +42,6 @@ export function SessionStatus({
     recording = state.issues.find((issue) => issue.id === "recording-saved");
   const startupNotes = state.issues.filter(
     (issue) => issue.severity === "info" && issue.startupWarning,
-  );
-  const primaryAction = primary?.actions.find(
-    (action) =>
-      !["dismissAction", "dismissStartup"].includes(action) &&
-      (action !== "dataFolder" || api.desktop),
   );
   const actionButton = (
     issue: RecoveryIssue,
@@ -104,12 +106,18 @@ export function SessionStatus({
           <LifeBuoy size={17} />
           <div>
             <strong>{primary.title}</strong>
-            <span title={primary.detail}>{primary.detail}</span>
           </div>
-          {primaryAction && actionButton(primary, primaryAction)}
+
+          {api.desktop && (
+            <button
+              type="button"
+              onClick={() => void api.openLogs().catch(() => {})}
+            >
+              打开日志
+            </button>
+          )}
           <button type="button" onClick={openRecovery}>
-            查看原因与恢复
-            {problems.length > 1 ? ` · ${problems.length} 项` : ""}
+            详情
           </button>
           {(primary.actions.includes("dismissAction") ||
             primary.actions.includes("dismissStartup")) && (
