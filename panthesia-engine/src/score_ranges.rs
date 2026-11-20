@@ -300,7 +300,7 @@ impl ScoreRange {
             .iter()
             .any(|v| v.len() != 64 || !v.bytes().all(|b| b.is_ascii_hexdigit()))
             || self.first_visit > self.last_visit
-            || self.last_visit >= panthesia_core::score_playback::PlaybackLimits::default().max_visits
+            || self.last_visit as usize >= panthesia_core::score_playback::PlaybackLimits::default().max_visits
             || self.start_trim>0x0fff_ffff || self.end_trim>0x0fff_ffff
             || self.end_tick <= self.start_tick
             || self.end_tick > 0x0fff_ffff
