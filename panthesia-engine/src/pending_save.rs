@@ -135,11 +135,21 @@ fn merge_writes(
 #[derive(Default)]
 struct Queue {
     revision: u64,
+    preparing: usize,
     pending: Option<Batch>,
     failed: Option<BTreeMap<PathBuf, DeferredWrite>>,
     error: Option<String>,
     draining: bool,
     retrying: bool,
+}
+pub(crate) struct Preparation(Arc<Mutex<Queue>>);
+impl Drop for Preparation {
+    fn drop(&mut self) {
+        if let Ok(mut queue) = self.0.lock() {
+            queue.preparing = queue.preparing.saturating_sub(1);
+            queue.revision = queue.revision.wrapping_add(1);
+        }
+    }
 }
 #[derive(Clone)]
 pub(crate) struct Pipeline {
@@ -193,11 +203,20 @@ impl Pipeline {
     pub fn post_exclusive(
         &self,
         label: &str,
-        work: impl FnOnce(crate::background_tasks::TaskToken) -> Result<serde_json::Value, String>
+        work: impl FnOnce(
+            crate::background_tasks::TaskToken,
+            Preparation,
+        ) -> Result<serde_json::Value, String>
         + Send
         + 'static,
     ) -> Result<(), String> {
-        self.tasks.post(label, work)
+        let guard = Preparation(self.queue.clone());
+        {
+            let mut queue = self.queue.lock().map_err(|_| "保存队列不可用")?;
+            queue.preparing += 1;
+            queue.revision = queue.revision.wrapping_add(1);
+        }
+        self.tasks.post(label, move |token| work(token, guard))
     }
     pub fn new(
         data: PathBuf,
@@ -242,11 +261,12 @@ impl Pipeline {
             Ok(queue) => Status {
                 version: self.version(&queue),
                 operation: None,
-                pending: queue.draining
+                pending: queue.preparing != 0
+                    || queue.draining
                     || queue.pending.is_some()
                     || queue.failed.is_some()
                     || recovery.blocked(),
-                writing: queue.draining || queue.pending.is_some(),
+                writing: queue.preparing != 0 || queue.draining || queue.pending.is_some(),
                 unsaved_changes: queue
                     .failed
                     .as_ref()
@@ -414,7 +434,7 @@ impl Pipeline {
                     .map(DeferredWrite::materialize)
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|e| e.to_string())?;
-                crate::settings_storage::commit(&self.data, &writes)
+                crate::round_storage::commit_queued(&self.data, &writes)
             }))
             .unwrap_or_else(|_| Err("保存未完成，当前修改仍保留在本次运行中，可重试保存".into()));
             self.observe_recovery();

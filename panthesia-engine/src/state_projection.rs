@@ -235,15 +235,16 @@ impl Player {
         check()?;
         let selection = hands::Selection::new(&self.config, &self.note_hands, &self.state.hands);
         let mut count = 0;
-        for (index, note) in self.notes.iter().enumerate() {
+        let notes = self.state.passage.as_ref().map_or(self.notes.as_slice(), |p| {
+            let start = self.notes.partition_point(|n| n.start.as_secs_f64() < p.start);
+            let end = self.notes.partition_point(|n| n.start.as_secs_f64() < p.end);
+            &self.notes[start..end]
+        });
+        for (index, note) in notes.iter().enumerate() {
             if index % 256 == 0 {
                 check()?;
             }
-            if selection.selected_part(note.track_id, note.index).is_some()
-                && self.state.passage.as_ref().is_none_or(|p| {
-                    note.start.as_secs_f64() >= p.start && note.start.as_secs_f64() < p.end
-                })
-            {
+            if selection.selected_part(note.track_id, note.index).is_some() {
                 count += 1;
             }
         }

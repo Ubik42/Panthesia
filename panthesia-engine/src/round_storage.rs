@@ -211,8 +211,53 @@ pub(crate) fn recover(data: &Path) -> Result<(), String> {
     }
     finish(data, load(data)?, |_| Ok(()))
 }
+/// Queued automatic rounds publish immutable archives before their coalesced history.
+/// An interruption before history publication may leave an unreferenced archive;
+/// it cannot publish a history record whose archive has not been written.
+pub(crate) fn commit_queued(
+    data: &Path,
+    writes: &[atomic_file::PendingWrite],
+) -> Result<(), String> {
+    validate(data)?;
+    let archive_root = data.join("performance-history");
+    let mut settings = Vec::new();
+    let mut archives = Vec::new();
+    for write in writes {
+        if write.path == data.join(HISTORY) || write.path == data.join("web-preferences.json") {
+            settings.push(write.clone());
+        } else {
+            let name = write
+                .path
+                .file_name()
+                .and_then(|v| v.to_str())
+                .ok_or("回放保存位置无效")?;
+            if write.path.parent() != Some(archive_root.as_path())
+                || !name.strip_suffix(".json").is_some_and(valid_hash)
+            {
+                return Err("保存包含未知的文件位置".into());
+            }
+            let before = fingerprint(&write.path)?;
+            if before.as_ref().is_some_and(|h| h != &hash(&write.bytes)) {
+                return Err("相同记录已有不同回放，原件已保留".into());
+            }
+            archives.push((write, before.is_none()));
+        }
+    }
+    if !archives.is_empty() && !settings.iter().any(|w| w.path == data.join(HISTORY)) {
+        return Err("回放保存缺少对应的练习历史".into());
+    }
+    for (write, missing) in archives {
+        if missing {
+            atomic_file::write(&write.path, &write.bytes).map_err(|e| e.to_string())?;
+        }
+    }
+    crate::settings_storage::commit(data, &settings)
+}
+
 fn prepare(data: &Path, archive: Option<(&str, &[u8])>, history: &[u8]) -> Result<Intent, String> {
-    if crate::asset_storage::pending(data) || crate::settings_storage::pending(data) { return Err("设置保存尚待恢复，请重新启动后再保存本轮".into()); }
+    if crate::asset_storage::pending(data) || crate::settings_storage::pending(data) {
+        return Err("设置保存尚待恢复，请重新启动后再保存本轮".into());
+    }
     validate(data)?;
     if data
         .join("practice-import-journal.json")
@@ -320,6 +365,45 @@ mod tests {
             serde_json::to_vec(&value).unwrap(),
             candidate.snapshot_bytes().unwrap(),
         )
+    }
+    #[test]
+    fn queued_archives_validate_every_destination_before_writing() {
+        let (player, _, name, a, h) = fixture();
+        let archive = player.data.join("performance-history").join(name);
+        let writes = vec![
+            atomic_file::PendingWrite {
+                path: archive.clone(),
+                bytes: a.into(),
+            },
+            atomic_file::PendingWrite {
+                path: player.data.join(HISTORY),
+                bytes: h.into(),
+            },
+            atomic_file::PendingWrite {
+                path: player.data.join("foreign.json"),
+                bytes: vec![1].into(),
+            },
+        ];
+        assert!(commit_queued(&player.data, &writes).is_err());
+        assert!(!archive.exists());
+        assert!(!player.data.join("foreign.json").exists());
+        let second = player
+            .data
+            .join("performance-history")
+            .join(format!("{}.json", "b".repeat(64)));
+        let mut writes = writes;
+        writes.pop();
+        writes.push(atomic_file::PendingWrite {
+            path: second.clone(),
+            bytes: vec![2].into(),
+        });
+        commit_queued(&player.data, &writes).unwrap();
+        commit_queued(&player.data, &writes).unwrap();
+        assert_eq!(fs::read(&archive).unwrap(), *writes[0].bytes);
+        assert_eq!(fs::read(&second).unwrap(), vec![2]);
+        fs::write(&second, b"foreign archive").unwrap();
+        assert!(commit_queued(&player.data, &writes).is_err());
+        assert_eq!(fs::read(&second).unwrap(), b"foreign archive");
     }
     #[test]
     fn round_commit_publishes_both_files_and_cleans_only_staging() {

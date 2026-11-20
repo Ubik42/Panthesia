@@ -1,7 +1,8 @@
-//! A completed attempt is captured on playback, persisted on storage, then installed on playback.
+//! Freeze and analyze an attempt, then publish it; automatic disk writes use the save queue.
 use crate::*;
 use panthesia_core::practice::{AttemptSummary, PracticeReport};
 use panthesia_core::practice_history::PracticeTimeEntry;
+use panthesia_core::utils::atomic_file;
 
 pub(crate) struct Context {
     data: PathBuf,
@@ -38,6 +39,8 @@ pub(crate) struct Outcome {
     summary: preferences::Shared<AttemptSummary>,
     assessment: round_analysis::SharedAssessment,
     mode: String,
+    writes: Vec<atomic_file::DeferredWrite>,
+    _preparation: Option<pending_save::Preparation>,
 }
 impl Context {
     fn commit(
@@ -45,6 +48,7 @@ impl Context {
         token: &background_tasks::TaskToken,
         pipeline: &pending_save::Pipeline,
         id: &str,
+        deferred: bool,
     ) -> Result<Outcome, String> {
         token.check()?;
         token.stage("analyzingRound")?;
@@ -73,7 +77,9 @@ impl Context {
             Some(conditions.history_context_with_summary(&summary, self.report.results()));
         self.session.scope = Some(conditions.practice_scope_checked(|| token.check())?);
         token.check()?;
-        pipeline.flush()?;
+        if !deferred {
+            pipeline.flush()?;
+        }
         token.stage("serializing")?;
         let history_id = self.session.stable_id();
         let archive = performance_archive::prepare_checked(
@@ -94,24 +100,48 @@ impl Context {
                 self.entry.materialize(),
             )?
             .unwrap_or(self.history);
-        let bytes = history.snapshot_bytes().map_err(|e| e.to_string())?;
-        token.check()?;
-        token.begin_commit()?;
-        settings_storage::recover(&self.data)?;
-        if settings_storage::pending(&self.data) {
-            return Err("设置保存尚待恢复，请重新启动后再保存本轮".into());
-        }
         let path = performance_archive::path(&self.data, &self.content_id, &history_id);
-        let name = path
-            .file_name()
-            .and_then(|v| v.to_str())
-            .ok_or("回放保存位置无效")?;
-        round_storage::commit(
-            &self.data,
-            archive.as_ref().map(|a| (name, a.as_slice())),
-            &bytes,
-        )?;
+        let history_path = self.data.join("web-practice-history.ron");
+        let writes = if deferred {
+            token.check()?;
+            let root = history.clone();
+            let (result, writes) = atomic_file::capture(
+                vec![path.clone(), history_path.clone()].into(),
+                || -> std::io::Result<()> {
+                    if let Some(bytes) = &archive {
+                        atomic_file::write(&path, bytes)?;
+                    }
+                    atomic_file::write_generated(&history_path, move || {
+                        root.snapshot_bytes().map_err(std::io::Error::other)
+                    })
+                },
+            );
+            result.map_err(|e| e.to_string())?;
+            token.begin_commit()?;
+            writes
+        } else {
+            let bytes = history.snapshot_bytes().map_err(|e| e.to_string())?;
+            token.check()?;
+            token.begin_commit()?;
+            settings_storage::recover(&self.data)?;
+            if settings_storage::pending(&self.data) {
+                return Err("设置保存尚待恢复，请重新启动后再保存本轮".into());
+            }
+            let path = performance_archive::path(&self.data, &self.content_id, &history_id);
+            let name = path
+                .file_name()
+                .and_then(|v| v.to_str())
+                .ok_or("回放保存位置无效")?;
+            round_storage::commit(
+                &self.data,
+                archive.as_ref().map(|a| (name, a.as_slice())),
+                &bytes,
+            )?;
+            Vec::new()
+        };
         Ok(Outcome {
+            _preparation: None,
+            writes,
             history,
             history_id,
             summary,
@@ -197,7 +227,7 @@ impl Engine {
         };
         self.storage_tasks.run("保存本轮练习", None, move |token| {
             guard.observing = true;
-            let result = context.commit(&token, &engine.pending_saves, &guard.id);
+            let result = context.commit(&token, &engine.pending_saves, &guard.id, false);
             let (reply, receiver) = mpsc::sync_channel(1);
             guard.finish(result, Some(reply))?;
             receiver.recv().map_err(|_| "音乐引擎已关闭")?
@@ -304,16 +334,23 @@ impl Player {
             finished: false,
         };
         let worker = pipeline.clone();
-        if let Err(error) = pipeline.post_exclusive("保存本轮练习", move |token| {
-            guard.observing = true;
-            let result = context.commit(&token, &worker, &guard.id);
-            let task_result = result
-                .as_ref()
-                .map(|_| serde_json::json!({"ok":true}))
-                .map_err(Clone::clone);
-            guard.finish(result, None)?;
-            task_result
-        }) {
+        if let Err(error) =
+            pipeline.post_exclusive("保存本轮练习", move |token, preparation| {
+                guard.observing = true;
+                let result = context
+                    .commit(&token, &worker, &guard.id, true)
+                    .map(|mut outcome| {
+                        outcome._preparation = Some(preparation);
+                        outcome
+                    });
+                let task_result = result
+                    .as_ref()
+                    .map(|_| serde_json::json!({"ok":true}))
+                    .map_err(Clone::clone);
+                guard.finish(result, None)?;
+                task_result
+            })
+        {
             // The dropped guard also sends a failure; the operation ID makes the second result inert.
             return self.finish_round_save(&id, Err(error), false).map(|_| ());
         }
@@ -353,6 +390,9 @@ impl Player {
                     self.state.error = None;
                 }
                 self.save_error = None;
+                if let Some(pipeline) = &self.pending_saves {
+                    pipeline.enqueue(outcome.writes, Vec::new(), false);
+                }
                 crate::storage_control::unblock(self);
                 // A retry of a failed automatic save must still grade this round.
                 // Only the original automatic operation may resume playback.
@@ -389,5 +429,185 @@ impl Player {
             self.round_continuation_pending = false;
             self.advance_finished_round(resume);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_root_lock::DataRootLock;
+    #[test]
+    fn pending_boundary_attack_keeps_its_late_window_then_finishes_without_fixed_hold() {
+        let (mut player, _, _) = crate::history_loading::tests::seeded(true, false);
+        player
+            .command(Command::Loop {
+                start: 0.,
+                end: 0.2,
+                enabled: true,
+            })
+            .unwrap();
+        player.command(Command::CountIn { bars: 0 }).unwrap();
+        player.command(Command::Speed { value: 1. }).unwrap();
+        player
+            .command(Command::Mode {
+                value: "flow".into(),
+            })
+            .unwrap();
+        player.command(Command::Play).unwrap();
+        player.tick(Duration::from_millis(200));
+        player.tick(Duration::from_millis(100));
+        assert!(player.matcher.has_pending_judgements());
+        assert_eq!(player.state.repetitions, 0);
+        assert_eq!(player.state.status, "playing");
+        for pitch in player.matcher.required_note_pitches() {
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 90,
+                    active: true,
+                })
+                .unwrap();
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 0,
+                    active: false,
+                })
+                .unwrap();
+        }
+        assert!(!player.matcher.has_pending_judgements());
+        player.tick(Duration::from_millis(1));
+        assert_eq!(player.state.repetitions, 1);
+        assert_eq!(player.state.status, "playing");
+    }
+    #[test]
+    fn automatic_round_continues_before_disk_and_failed_writes_remain_retryable() {
+        let (mut player, cid, _) = crate::history_loading::tests::seeded(true, false);
+        player
+            .command(Command::Loop {
+                start: 0.,
+                end: 1.,
+                enabled: true,
+            })
+            .unwrap();
+        player.command(Command::CountIn { bars: 0 }).unwrap();
+        player
+            .command(Command::Mode {
+                value: "flow".into(),
+            })
+            .unwrap();
+        player.command(Command::Play).unwrap();
+        player.tick(Duration::from_millis(10));
+        for pitch in player.matcher.required_note_pitches() {
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 90,
+                    active: true,
+                })
+                .unwrap();
+            player
+                .command(Command::Note {
+                    pitch,
+                    velocity: 0,
+                    active: false,
+                })
+                .unwrap();
+        }
+        assert!(player.matcher.snapshot().matched_notes > 0);
+        player.state.status = "finished".into();
+        let tasks = background_tasks::TaskPool::new(1, 8).unwrap();
+        let (tx, rx) = mpsc::channel();
+        let lock = Arc::new(DataRootLock::acquire(&player.data).unwrap());
+        let pipeline = pending_save::Pipeline::new(
+            player.data.clone(),
+            tasks.clone(),
+            tx,
+            player.storage_busy.clone(),
+            lock,
+            playback_memory::Reclaimer::start().unwrap(),
+        );
+        pipeline.observe_recovery();
+        player.pending_saves = Some(pipeline.clone());
+        let operation = "round-held-disk";
+        let context = player.begin_round_save(operation.into()).unwrap().unwrap();
+        let history_path = player.data.join("web-practice-history.ron");
+        let before = std::fs::read(&history_path).unwrap();
+        let (send, receive) = mpsc::channel();
+        let (release, gate) = mpsc::channel();
+        let worker = pipeline.clone();
+        pipeline
+            .post_exclusive("held round publication", move |token, preparation| {
+                let mut outcome = context.commit(&token, &worker, operation, true)?;
+                outcome._preparation = Some(preparation);
+                send.send(outcome).map_err(|_| "test receiver closed")?;
+                gate.recv().map_err(|_| "test gate closed")?;
+                Ok(serde_json::Value::Null)
+            })
+            .unwrap();
+        let outcome = receive.recv_timeout(Duration::from_secs(5)).unwrap();
+        let archive = performance_archive::path(&player.data, &cid, &outcome.history_id);
+        assert!(pipeline.status().pending);
+        let shared = Arc::new(Mutex::new(player.snapshot()));
+        runtime_request::handle(
+            &mut player,
+            runtime_request::Request::RoundSaveFinish {
+                id: operation.into(),
+                result: Ok(outcome),
+                automatic: true,
+                reply: None,
+            },
+            &shared,
+        );
+        assert_eq!(player.state.status, "playing");
+        assert_eq!(player.state.repetitions, 1);
+        assert_eq!(std::fs::read(&history_path).unwrap(), before);
+        assert!(!archive.exists());
+        assert!(pipeline.status().pending);
+        // The disk lane is still held. Make its upcoming history transaction fail.
+        let retained = player.data.join("history-before-failure.ron");
+        std::fs::rename(&history_path, &retained).unwrap();
+        std::fs::create_dir(&history_path).unwrap();
+        release.send(()).unwrap();
+        tasks
+            .run("wait for queued write", None, |_| {
+                Ok(serde_json::Value::Null)
+            })
+            .unwrap();
+        assert!(pipeline.status().unsaved_changes);
+        assert!(pipeline.status().error.is_some());
+        assert!(archive.exists());
+        assert_eq!(std::fs::read(&retained).unwrap(), before);
+        let archive_bytes = std::fs::read(&archive).unwrap();
+        std::fs::remove_dir(&history_path).unwrap();
+        std::fs::rename(retained, &history_path).unwrap();
+        pipeline.observe_recovery();
+        assert!(pipeline.status().can_retry);
+        let (reply, response) = mpsc::channel();
+        let retry = pipeline.clone();
+        tasks
+            .run("retry queued round", None, move |_| {
+                retry.retry(
+                    None,
+                    Box::new(move |result| {
+                        reply.send(result).unwrap();
+                    }),
+                );
+                Ok(serde_json::Value::Null)
+            })
+            .unwrap();
+        while let Ok(request) = rx.try_recv() {
+            runtime_request::handle(&mut player, request, &shared);
+        }
+        response
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap()
+            .unwrap();
+        assert!(!pipeline.status().pending);
+        assert_eq!(std::fs::read(&archive).unwrap(), archive_bytes);
+        assert_eq!(
+            std::fs::read(&history_path).unwrap(),
+            player.history.snapshot_bytes().unwrap()
+        );
     }
 }

@@ -138,6 +138,7 @@ pub(super) fn unblock(player: &mut Player) {
 pub(crate) struct PendingOperation(std::sync::Arc<std::sync::atomic::AtomicUsize>);
 pub(crate) struct WriterObservation {
     epoch: u64,
+    storage_version: String,
     quiet: bool,
 }
 impl Drop for PendingOperation {
@@ -154,12 +155,14 @@ impl crate::Engine {
         // finish too quickly to appear in both pending-count observations.
         WriterObservation {
             epoch: self.operation_epoch.load(Ordering::Acquire),
+            storage_version: self.pending_saves.status().version,
             quiet: self.writers_quiet(),
         }
     }
     pub(crate) fn writers_settled(&self, observation: &WriterObservation) -> bool {
         observation.quiet
             && self.writers_quiet()
+            && self.pending_saves.status().version == observation.storage_version
             && self.operation_epoch.load(Ordering::Acquire) == observation.epoch
     }
     pub(super) fn pending_operation(&self) -> Result<PendingOperation, String> {

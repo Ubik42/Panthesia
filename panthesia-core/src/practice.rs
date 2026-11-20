@@ -1131,6 +1131,15 @@ impl PracticeMatcher {
 
     pub fn summary(&self) -> AttemptSummary { self.report().summary() }
 
+    /// Remaining attacks may still be matched inside the configured timing window.
+    pub fn has_pending_judgements(&self) -> bool {
+        !self.required_notes.is_empty() || !self.user_pressed_recently.is_empty()
+    }
+
+    pub fn settlement_window(&self) -> Duration {
+        self.windows.early_match.max(self.windows.late_match)
+    }
+
     pub fn are_required_notes_pressed(&self) -> bool {
         self.required_notes.is_empty()
     }

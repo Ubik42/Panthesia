@@ -3031,7 +3031,8 @@ impl Player {
         if self.abort_loop_at_error_limit(){return;}
         if position >= end && is_timed_mode(&self.state.mode) {
             self.end_hold += delta.as_secs_f64();
-            if self.end_hold < 0.5 {
+            if self.matcher.has_pending_judgements()
+                && self.end_hold < self.matcher.settlement_window().as_secs_f64() {
                 return;
             }
         }
