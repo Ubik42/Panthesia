@@ -195,7 +195,7 @@ impl Player {
         }
         let manifest = Manifest {
             format: "neothesia-piece".into(),
-            version: if self.preferences.ladder_presets.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){17}else if self.preferences.passages.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){16}else if metadata_layers.is_some(){15}else if !self.config.note_players.is_empty(){14}else if metadata.has_extended_fields(){13}else if self.meter_map.as_ref().is_some_and(|m| !m.measure_lengths.is_empty()){12}else if papers.iter().any(|p|!p.note_anchors.is_empty()){11}else if self.meter_map.is_some(){10}else if papers.iter().any(|p|p.annotations.iter().any(|n|n.ink.is_some()||n.width.is_some())||p.mapping.as_ref().is_some_and(|m|m.anchors.iter().any(|a|a.region.is_some()))){9}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.as_ref().is_some_and(|r|r.start_trim>0||r.end_trim>0))){8}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.precise_range.is_some())){7}else if !self.saved_actions()?.is_empty(){6}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.is_some())){5}else if papers.iter().any(|p|!p.annotations.is_empty()){4}else if papers.iter().any(|p|p.mapping.is_some()){3}else{2},
+            version: if self.preferences.bookmarks.get(&id).is_some_and(|rows|!rows.is_empty()){18}else if self.preferences.ladder_presets.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){17}else if self.preferences.passages.get(&id).is_some_and(|rows|rows.iter().any(|row|row.practice.is_some())){16}else if metadata_layers.is_some(){15}else if !self.config.note_players.is_empty(){14}else if metadata.has_extended_fields(){13}else if self.meter_map.as_ref().is_some_and(|m| !m.measure_lengths.is_empty()){12}else if papers.iter().any(|p|!p.note_anchors.is_empty()){11}else if self.meter_map.is_some(){10}else if papers.iter().any(|p|p.annotations.iter().any(|n|n.ink.is_some()||n.width.is_some())||p.mapping.as_ref().is_some_and(|m|m.anchors.iter().any(|a|a.region.is_some()))){9}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.as_ref().is_some_and(|r|r.start_trim>0||r.end_trim>0))){8}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.precise_range.is_some())){7}else if !self.saved_actions()?.is_empty(){6}else if self.preferences.passages.get(&id).is_some_and(|p|p.iter().any(|p|p.score_range.is_some())){5}else if papers.iter().any(|p|!p.annotations.is_empty()){4}else if papers.iter().any(|p|p.mapping.is_some()){3}else{2},
             content_id: midi_asset.hash.clone(),
             title: self.title.clone(),
             metadata,
@@ -225,6 +225,7 @@ impl Player {
             track_appearances:self.track_appearances(),
             meter: self.meter_correction,
             meter_map:self.meter_map.clone(),
+            bookmarks: self.preferences.bookmarks.get(&id).cloned().unwrap_or_default(),
             passages: self
                 .preferences
                 .passages
@@ -387,6 +388,7 @@ impl Player {
             preferences.track_sounds.insert(id.clone(),m.track_sounds.clone());
             preferences.track_appearances.insert(id.clone(),m.track_appearances.clone());
             preferences.passages.insert(id.clone(), m.passages.clone());
+            preferences.bookmarks.insert(id.clone(),m.bookmarks.clone());
             preferences
                 .hand_span_profiles
                 .insert(id.clone(), m.hand_profiles.clone());
@@ -396,6 +398,14 @@ impl Player {
         } else if policy == "merge" {
             for (track,a) in &m.track_appearances{preferences.track_appearances.entry(id.clone()).or_default().entry(*track).or_insert_with(||a.clone());}
             for (track,sound) in &m.track_sounds{preferences.track_sounds.entry(id.clone()).or_default().entry(*track).or_insert_with(||sound.clone());}
+            let bookmarks=preferences.bookmarks.entry(id.clone()).or_default();
+            for incoming in &m.bookmarks {
+                if bookmarks.iter().any(|row|row.name==incoming.name&&row.tick==incoming.tick){continue;}
+                if bookmarks.len()>=200{return Err("导入后的书签超过 200 个，请先整理".into());}
+                let mut row=incoming.clone();
+                if bookmarks.iter().any(|old|old.id==row.id){row.id=format!("package-{}-{}",&blake3::hash(&bytes).to_hex().as_str()[..12],bookmarks.len());}
+                bookmarks.push(row);
+            }
             let passages = preferences.passages.entry(id.clone()).or_default();
             for p in &m.passages {
                 if !passages.iter().any(|old| {

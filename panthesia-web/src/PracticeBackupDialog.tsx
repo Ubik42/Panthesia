@@ -629,7 +629,7 @@ export function PracticeBackupDialog({
       (summary.plans.length || summary.days || summary.learning)) ||
       (selection.records && (summary.records || summary.timeLedgerEntries)) ||
       (selection.presets &&
-        summary.passages +
+        (summary.bookmarks ?? 0) + summary.passages +
           summary.ladders +
           summary.exercises +
           (summary.trackSounds ?? 0) +
@@ -1381,9 +1381,9 @@ export function PracticeBackupDialog({
                   <dd>{summary.works ?? 0} / {summary.performanceEditions ?? 0} / {summary.notationEditions ?? 0}</dd>
                 </div>
                 <div>
-                  <dt>片段 / 阶梯 / 技术方案 / 资料模板</dt>
+                  <dt>片段 / 书签 / 阶梯 / 技术方案 / 资料模板</dt>
                   <dd>
-                    {summary.passages} / {summary.ladders} / {summary.exercises}{" "}
+                    {summary.passages} / {summary.bookmarks ?? 0} / {summary.ladders} / {summary.exercises}{" "}
                     / {summary.metadataTemplates ?? 0}
                     {summary.trackAppearances
                       ? ` · ${summary.trackAppearances} 个音轨名称/颜色`

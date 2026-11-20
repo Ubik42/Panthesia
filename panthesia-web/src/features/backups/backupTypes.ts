@@ -42,6 +42,7 @@ export type BackupSummary = {
   songs: number;
   records: number;
   passages: number;
+  bookmarks?:number;
   ladders: number;
   exercises: number;
   trackSounds?: number;

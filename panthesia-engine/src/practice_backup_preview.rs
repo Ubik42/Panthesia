@@ -168,6 +168,9 @@ pub(super) fn inspect_snapshot(
         }
     }
     check()?;
+    for (cid, rows) in &b.bookmarks {
+        for row in rows {if memory.bookmarks.get(cid).is_some_and(|local|local.iter().any(|old|old.id==row.id&&old!=row)){preset_conflicts+=1;}}
+    }
     for (cid, rows) in &b.passages {
         for r in rows {
             if memory.passages.get(cid).is_some_and(|local| {

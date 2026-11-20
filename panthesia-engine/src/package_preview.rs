@@ -56,6 +56,8 @@ pub struct PackagePreview {
     #[serde(default)]
     pub note_playback: usize,
     pub passages: Vec<String>,
+    #[serde(default)]
+    pub bookmarks:Vec<String>,
     pub groups: Vec<Vec<String>>,
     pub rating: u8,
     pub existing: bool,

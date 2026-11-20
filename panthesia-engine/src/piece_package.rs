@@ -66,6 +66,8 @@ pub struct Manifest {
     #[serde(default)]
     pub meter_map:Option<panthesia_core::library::MeterMap>,
     pub passages: Vec<PassagePreset>,
+    #[serde(default,skip_serializing_if="Vec::is_empty")]
+    pub bookmarks:Vec<panthesia_core::song_bookmarks::Bookmark>,
     pub settings: SessionSettings,
     pub speed: f64,
     #[serde(default)]
@@ -252,7 +254,7 @@ impl Package {
                 .as_slice(),
         )
         .map_err(|e| format!("曲目包清单无效：{e}"))?;
-        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].contains(&manifest.version) {
+        if manifest.format != "neothesia-piece" || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].contains(&manifest.version) {
             return Err("曲目包版本暂不支持".into());
         }
         if let Some(layers) = &manifest.metadata_layers {
@@ -427,6 +429,10 @@ impl Package {
                 }
             }
         }
+        if !manifest.bookmarks.is_empty()&&manifest.version<18{return Err("演奏书签需要第 18 版曲目包".into());}
+        panthesia_core::song_bookmarks::validate(&manifest.bookmarks)?;
+        let last_tick=file.tempo_track.seconds_to_pulses(file.duration.as_secs_f64()).round() as u64;
+        if manifest.bookmarks.iter().any(|row|row.tick>last_tick){return Err("曲目包书签超出原演奏范围".into());}
         let mut ladder_ids = BTreeSet::new();
         for l in &manifest.ladders {
             if l.practice.is_some() && manifest.version < 17 {return Err("阶梯练习版本需要第 17 版曲目包".into());}
@@ -469,6 +475,6 @@ impl Package {
         Ok(Self { manifest, files })
     }
     pub fn summary(&self) -> serde_json::Value {
-        serde_json::json!({"title":self.manifest.title,"contentId":self.manifest.content_id,"metadata":self.manifest.metadata,"scores":self.manifest.scores.iter().map(|s|&s.name).collect::<Vec<_>>(),"papers":self.manifest.papers.iter().map(|p|serde_json::json!({"name":p.name,"format":p.format,"pages":p.pages.len(),"annotations":p.annotations.len(),"mappingPoints":p.mapping.as_ref().map_or(0,|m|m.anchors.len()),"autoTurn":p.mapping.as_ref().is_some_and(|m|m.enabled)})).collect::<Vec<_>>(),"ladders":self.manifest.ladders.iter().map(|l|&l.name).collect::<Vec<_>>(),"trackSounds":self.manifest.track_sounds.len(),"trackAppearances":self.manifest.track_appearances.iter().map(|(id,a)|serde_json::json!({"id":id,"name":a.name.clone().unwrap_or_else(||format!("音轨 {}",id+1)),"color":a.color})).collect::<Vec<_>>(),"fingerings":self.manifest.fingerings.len(),"fingerActions":self.manifest.finger_actions.len(),"hands":self.manifest.hands.len(),"notePlayback":self.manifest.note_playback.len(),"passages":self.manifest.passages.iter().map(|p|&p.name).collect::<Vec<_>>(),"groups":self.manifest.groups,"rating":self.manifest.rating,"provenance":self.manifest.provenance})
+        serde_json::json!({"title":self.manifest.title,"contentId":self.manifest.content_id,"metadata":self.manifest.metadata,"scores":self.manifest.scores.iter().map(|s|&s.name).collect::<Vec<_>>(),"papers":self.manifest.papers.iter().map(|p|serde_json::json!({"name":p.name,"format":p.format,"pages":p.pages.len(),"annotations":p.annotations.len(),"mappingPoints":p.mapping.as_ref().map_or(0,|m|m.anchors.len()),"autoTurn":p.mapping.as_ref().is_some_and(|m|m.enabled)})).collect::<Vec<_>>(),"ladders":self.manifest.ladders.iter().map(|l|&l.name).collect::<Vec<_>>(),"trackSounds":self.manifest.track_sounds.len(),"trackAppearances":self.manifest.track_appearances.iter().map(|(id,a)|serde_json::json!({"id":id,"name":a.name.clone().unwrap_or_else(||format!("音轨 {}",id+1)),"color":a.color})).collect::<Vec<_>>(),"fingerings":self.manifest.fingerings.len(),"fingerActions":self.manifest.finger_actions.len(),"hands":self.manifest.hands.len(),"notePlayback":self.manifest.note_playback.len(),"bookmarks":self.manifest.bookmarks.iter().map(|row|&row.name).collect::<Vec<_>>(),"passages":self.manifest.passages.iter().map(|p|&p.name).collect::<Vec<_>>(),"groups":self.manifest.groups,"rating":self.manifest.rating,"provenance":self.manifest.provenance})
     }
 }

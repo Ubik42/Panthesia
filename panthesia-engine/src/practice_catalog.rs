@@ -47,6 +47,7 @@ pub struct FingerProfileCatalog {
 }
 fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result<Value, String> {
     match kind {
+        Kind::Bookmarks => return reader.bookmark_catalog(catalog_revision),
         Kind::Passages => {
             let content = &reader.file.as_ref().ok_or("请先选择曲目")?.content_id;
             serde_json::to_value(PassageCatalog {
@@ -117,6 +118,7 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
 
 #[derive(Clone, Copy)]
 pub(crate) enum Kind {
+    Bookmarks,
     Passages,
     Ladders,
     Exercises,
@@ -125,6 +127,7 @@ pub(crate) enum Kind {
 }
 pub(crate) fn edits(command: &Command) -> Option<Kind> {
     Some(match command {
+        Command::SaveBookmark{..}|Command::RemoveBookmark{..} => Kind::Bookmarks,
         Command::SavePassage { .. }
         | Command::RemovePassage { .. }
         | Command::UpdatePassageDetails { .. }
@@ -146,6 +149,7 @@ pub(crate) fn edits(command: &Command) -> Option<Kind> {
 }
 fn read_kind(command: &Command) -> Option<Kind> {
     match command {
+        Command::Bookmarks => Some(Kind::Bookmarks),
         Command::Passages => Some(Kind::Passages),
         Command::LadderPresets => Some(Kind::Ladders),
         Command::ExercisePresets => Some(Kind::Exercises),
@@ -159,6 +163,7 @@ fn revision(
     kind: Kind,
 ) -> Result<String, String> {
     let bytes = match kind {
+        Kind::Bookmarks => serde_json::to_vec(&(content, content.and_then(|id|preferences.bookmarks.get(id)))),
         Kind::Passages => {
             serde_json::to_vec(&(content, content.and_then(|id| preferences.passages.get(id))))
         }
@@ -206,7 +211,7 @@ pub(super) fn check_open_version(
 pub(crate) fn reads(command: &Command) -> bool {
     matches!(
         command,
-        Command::Passages
+        Command::Bookmarks | Command::Passages
             | Command::FingerProfiles
             | Command::LadderPresets
             | Command::ExercisePresets
@@ -507,6 +512,7 @@ impl Player {
         }
         patch.guard.check(self)?;
         let unchanged = match patch.kind {
+            Kind::Bookmarks => self.preferences.bookmarks.same_snapshot(&patch.before.bookmarks),
             Kind::Passages => self
                 .preferences
                 .passages
@@ -557,6 +563,7 @@ impl Player {
         let old_ladder = self.ladder.clone();
         let old_expression = self.active_expression_goal.clone();
         match patch.kind {
+            Kind::Bookmarks => self.preferences.bookmarks=patch.after.bookmarks.clone(),
             Kind::Passages => self.preferences.passages = patch.after.passages.clone(),
             Kind::Ladders => {
                 self.preferences.ladder_presets = patch.after.ladder_presets.clone();
@@ -620,6 +627,7 @@ impl Engine {
         }
         storage_control::check_command(&self.storage_busy, &command)?;
         let label = match (&command, kind) {
+            (_, Some(Kind::Bookmarks)) => "保存演奏书签",
             (_, Some(Kind::Passages)) => "保存练习段资料",
             (_, Some(Kind::Ladders)) => "保存速度阶梯方案",
             (_, Some(Kind::Exercises)) => "保存技术练习方案",

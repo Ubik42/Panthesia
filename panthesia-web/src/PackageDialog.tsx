@@ -390,7 +390,7 @@ export function PackageDialog({
             <div>
               <strong>{song?.title || "尚未打开曲目"}</strong>
               <p>
-                包含全部谱面版本、元数据、指法、分手、拍号修正、分组评级、手型设置、命名练习段落、速度阶梯及音轨名称、颜色与声音设置。PDF
+                包含全部谱面版本、元数据、指法、分手、拍号修正、分组评级、手型设置、命名练习段落、演奏书签、速度阶梯及音轨名称、颜色与声音设置。PDF
                 与图片包含页序及阅读设置。个人成绩、阶梯进度及设备设置保留在本机。导出成品采用开始制作时的资料快照。
               </p>
             </div>
@@ -523,6 +523,7 @@ export function PackageDialog({
                     )
                     .join("、") || "无"}
                 </dd>
+                <dt>演奏书签</dt><dd>{summary.bookmarks?.join("、") || "无"}</dd>
                 <dt>速度阶梯</dt>
                 <dd>{summary.ladders?.join("、") || "无"}</dd>
                 <dt>指法与分手</dt>

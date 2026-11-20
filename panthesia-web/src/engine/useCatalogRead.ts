@@ -4,6 +4,7 @@ export type CatalogReadCommand = Extract<
   PracticeReadCommand,
   {
     type:
+      | "bookmarks"
       | "passages"
       | "ladderPresets"
       | "exercisePresets"

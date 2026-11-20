@@ -44,3 +44,5 @@ pub type Box2D<T = f32> = euclid::default::Box2D<T>;
 pub type Rect<T = f32> = euclid::default::Rect<T>;
 
 pub mod recorder;
+
+pub mod song_bookmarks;

@@ -109,6 +109,7 @@ pub struct Preferences {
     pub input_configured: bool,
     pub calibrations: Shared<BTreeMap<String, i32>>,
     pub passages: Shared<BTreeMap<String, Vec<PassagePreset>>>,
+    pub bookmarks: Shared<BTreeMap<String,Vec<panthesia_core::song_bookmarks::Bookmark>>>,
     pub exercise_presets: Shared<Vec<ExercisePreset>>,
     pub ladder_presets: Shared<BTreeMap<String,Vec<LadderPreset>>>,
     pub ladder_runs: Shared<BTreeMap<String,LadderRun>>,

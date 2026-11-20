@@ -1,0 +1,93 @@
+.song-bookmarks {
+  flex: none;
+  padding: 6px 16px;
+  border-top: 1px solid var(--instrument-line, #dce2ed);
+  background: var(--instrument-panel, #fff);
+  color: var(--instrument-text, #273147);
+  font-size: 11px;
+}
+.bookmark-actions,
+.bookmark-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bookmark-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+.song-bookmarks :is(button, select, input) {
+  min-height: 27px;
+  border: 1px solid var(--instrument-line, #dce2ed);
+  border-radius: 4px;
+  padding: 3px 7px;
+  background: var(--instrument-surface, #f5f6fa);
+  color: inherit;
+  font: inherit;
+}
+.bookmark-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bookmark-actions select {
+  max-width: 240px;
+}
+.bookmark-actions small {
+  margin-left: auto;
+  color: var(--instrument-muted, #71809a);
+}
+.bookmark-ruler {
+  position: relative;
+  height: 19px;
+  margin: 5px 6px 0;
+  border-bottom: 1px solid var(--instrument-line, #dce2ed);
+}
+.bookmark-ruler button {
+  position: absolute;
+  transform: translateX(-50%);
+  top: 0;
+  min-height: 18px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--instrument-muted, #71809a);
+}
+.bookmark-ruler button.user,
+.bookmark-ruler button.selected {
+  color: var(--accent, #6b71dc);
+}
+.bookmark-ruler button.selected {
+  background: var(--instrument-surface, #f5f6fa);
+}
+.bookmark-editor {
+  padding-top: 8px;
+}
+.bookmark-editor label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.song-bookmarks p {
+  margin: 5px 0 0;
+}
+.song-bookmarks button:disabled {
+  opacity: 0.45;
+}
+.song-bookmarks :is(button, select, input):focus-visible {
+  outline: 2px solid var(--accent, #6b71dc);
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .bookmark-actions small {
+    margin-left: 0;
+  }
+  .bookmark-actions select {
+    max-width: 190px;
+  }
+}
+
+.song-bookmarks .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}

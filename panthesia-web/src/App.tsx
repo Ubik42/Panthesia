@@ -1,3 +1,4 @@
+import { SongBookmarks, type BookmarkNavigation } from "./features/practice/SongBookmarks";
 import { SavedPassageBar } from "./features/practice/SavedPassageBar";
 import type { DisplayPreferences } from "./displayPreferences";
 import { PracticeStage } from "./features/practice/PracticeStage";
@@ -163,6 +164,7 @@ export default function App() {
     rememberReturn: workspaceSessions.browse.rememberReturn,
   });
   const { workspace } = navigation;
+  const bookmarkNavigation = useRef<BookmarkNavigation>(null);
   const [libraryAdvanced,setLibraryAdvanced]=useState(false);
   const libraryDialog = workspace === "library",
     history = workspace === "review";
@@ -818,6 +820,10 @@ export default function App() {
               setError(failure instanceof Error ? failure.message : String(failure));
             });
         };
+        if(shortcut.id.startsWith("bookmark")) {
+          if(!current.routine&&!current.ladder?.active&&!["recital","memory"].includes(current.mode)) bookmarkNavigation.current?.jump(Number(shortcut.id.slice(8))-1);
+          return;
+        }
         switch (shortcut.id) {
           case "playPause":
             execute((c) => ({
@@ -2346,6 +2352,12 @@ export default function App() {
             disabled={!connected || state.recording || recital || ladderActive || routineActive}
             seek={(position) => adjustRealtime({ type: "seek", position })}
           />
+          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
+            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
+            song={song} store={playback} range={practiceRange} visible={workspace === "practice"}
+            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
+            seek={(position)=>adjustRealtime({type:"seek",position})}
+            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
           {song && !song.generated && <SavedPassageBar key={JSON.stringify([song.engineId,song.contentId])}
             song={song} store={playback} range={practiceRange} visible={workspace === "practice" && !passageDialog}
             disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}

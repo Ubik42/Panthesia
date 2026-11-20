@@ -42,6 +42,8 @@ pub struct Backup {
     pub routines: Vec<PracticeRoutine>,
     pub runs: BTreeMap<String, RoutineRun>,
     pub passages: BTreeMap<String, Vec<PassagePreset>>,
+    #[serde(default,skip_serializing_if="BTreeMap::is_empty")]
+    pub bookmarks:BTreeMap<String,Vec<panthesia_core::song_bookmarks::Bookmark>>,
     pub ladders: BTreeMap<String, Vec<LadderPreset>>,
     pub ladder_runs: BTreeMap<String, LadderRun>,
     pub exercises: Vec<ExercisePreset>,
@@ -230,6 +232,7 @@ fn finite_numbers(v: &Value) -> Result<(), String> {
 
 impl Backup {
     pub fn version(&self) -> u8 {
+        if self.bookmarks.values().any(|rows|!rows.is_empty()){return 22;}
         if self.ladders.values().flatten().any(|row|row.practice.is_some())
             || self.ladder_runs.values().any(|run|run.preset.practice.is_some())
             || self.routines.iter().chain(self.runs.values().map(|run|&run.routine)).any(|routine|routine.items.iter().any(|item|item.practice.is_some() || matches!(&item.target,RoutineTarget::Ladder{preset} if preset.practice.is_some()))) { return 21; }
@@ -510,6 +513,8 @@ impl Backup {
                 text(&p.last_result, 8192)?;
             }
         }
+        if self.bookmarks.len()>10000{return Err("备份书签曲目过多".into());}
+        for (cid, rows) in &self.bookmarks {identity(cid)?;panthesia_core::song_bookmarks::validate(rows)?;}
         for (cid, rows) in &self.passages {
             identity(cid)?;
             if rows.len() > 200 {
@@ -711,7 +716,7 @@ impl Backup {
         if header["format"] != "neothesia-practice"
             || !matches!(
                 header["version"].as_u64(),
-                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21)
+                Some(1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22)
             )
             || header["size"].as_u64() != Some(data.len() as u64)
             || header["hash"].as_str() != Some(blake3::hash(data).to_hex().as_str())
@@ -726,7 +731,7 @@ impl Backup {
         Ok(backup)
     }
     pub fn summary(&self) -> Value {
-        let mut value = json!({"timeLedgerEntries":self.time_ledger.values().map(BTreeMap::len).sum::<usize>(),"timeLedgerRunningMs":self.time_ledger.values().flat_map(|rows|rows.values()).flat_map(|e|e.slices.iter()).map(|s|s.running_ms).sum::<u64>(),"timeLedgerUntrackedMs":self.time_ledger.values().flat_map(|rows|rows.values()).map(|e|e.untracked_ms).sum::<u64>(),"replayClips":self.history.values().flat_map(|h|h.sessions.iter()).map(|s|s.replay_clips.len()).sum::<usize>(),"performances":self.performances.values().map(BTreeMap::len).sum::<usize>(),"performanceBytes":self.performances.values().flat_map(|rows|rows.values()).filter_map(|a|a.encoded_len().ok()).sum::<usize>(),"metadataTemplates":self.metadata_templates.len(),"metadataTemplateRows":self.metadata_templates.iter().map(|(name,rules)|json!({"name":name,"rules":rules})).collect::<Vec<_>>(),"learning":self.learning.len(),"createdAt":self.created_at,"plans":self.routines.iter().map(|r|json!({"id":r.id,"name":r.name,"notes":r.notes,"schedule":r.schedule,"items":r.items.len()})).collect::<Vec<_>>(),"days":self.runs.len(),"songs":self.history.len(),"records":self.history.values().map(|h|h.sessions.len()).sum::<usize>(),"passages":self.passages.values().map(Vec::len).sum::<usize>(),"ladders":self.ladders.values().map(Vec::len).sum::<usize>(),"exercises":self.exercises.len(),"trackSounds":self.track_sounds.values().map(BTreeMap::len).sum::<usize>(),"songExpressionGoals":self.song_expression_goals.len(),"trackAppearances":self.track_appearances.values().map(BTreeMap::len).sum::<usize>()});
+        let mut value = json!({"timeLedgerEntries":self.time_ledger.values().map(BTreeMap::len).sum::<usize>(),"timeLedgerRunningMs":self.time_ledger.values().flat_map(|rows|rows.values()).flat_map(|e|e.slices.iter()).map(|s|s.running_ms).sum::<u64>(),"timeLedgerUntrackedMs":self.time_ledger.values().flat_map(|rows|rows.values()).map(|e|e.untracked_ms).sum::<u64>(),"replayClips":self.history.values().flat_map(|h|h.sessions.iter()).map(|s|s.replay_clips.len()).sum::<usize>(),"performances":self.performances.values().map(BTreeMap::len).sum::<usize>(),"performanceBytes":self.performances.values().flat_map(|rows|rows.values()).filter_map(|a|a.encoded_len().ok()).sum::<usize>(),"metadataTemplates":self.metadata_templates.len(),"metadataTemplateRows":self.metadata_templates.iter().map(|(name,rules)|json!({"name":name,"rules":rules})).collect::<Vec<_>>(),"learning":self.learning.len(),"createdAt":self.created_at,"plans":self.routines.iter().map(|r|json!({"id":r.id,"name":r.name,"notes":r.notes,"schedule":r.schedule,"items":r.items.len()})).collect::<Vec<_>>(),"days":self.runs.len(),"songs":self.history.len(),"records":self.history.values().map(|h|h.sessions.len()).sum::<usize>(),"passages":self.passages.values().map(Vec::len).sum::<usize>(),"bookmarks":self.bookmarks.values().map(Vec::len).sum::<usize>(),"ladders":self.ladders.values().map(Vec::len).sum::<usize>(),"exercises":self.exercises.len(),"trackSounds":self.track_sounds.values().map(BTreeMap::len).sum::<usize>(),"songExpressionGoals":self.song_expression_goals.len(),"trackAppearances":self.track_appearances.values().map(BTreeMap::len).sum::<usize>()});
         value["works"] = json!(self.repertoire.as_ref().map_or(0, |r|r.works.len()));
         value["performanceEditions"] = json!(self.repertoire.as_ref().map_or(0, |r|r.performances.len()));
         value["notationEditions"] = json!(self.repertoire.as_ref().map_or(0, |r|r.notations.len()));
@@ -795,6 +800,7 @@ pub(super) fn selected(mut b: Backup, s: &Selection) -> Backup {
         b.metadata_history.clear();
         b.metadata_templates.clear();
         b.passages.clear();
+        b.bookmarks.clear();
         b.ladders.clear();
         b.ladder_runs.clear();
         b.exercises.clear();
@@ -1096,6 +1102,7 @@ impl Seed {
             metadata_templates: BTreeMap::new(),
             routines: s.plans.then(|| self.preferences.routines.materialize()).unwrap_or_default(),
             runs: s.plans.then(|| self.preferences.routine_runs.materialize()).unwrap_or_default(),
+            bookmarks: s.presets.then(|| self.preferences.bookmarks.materialize()).unwrap_or_default(),
             passages: s.presets.then(|| self.preferences.passages.materialize()).unwrap_or_default(),
             ladders: s.presets.then(|| self.preferences.ladder_presets.materialize()).unwrap_or_default(),
             ladder_runs: s.presets.then(|| self.preferences.ladder_runs.materialize()).unwrap_or_default(),

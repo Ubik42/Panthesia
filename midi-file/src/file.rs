@@ -7,12 +7,15 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
+pub struct MidiMarker {pub tick:u64,pub name:String}
+#[derive(Debug, Clone)]
 pub struct MidiFile {
     pub name: String,
     /// Stable content identity; moving or renaming the source file does not
     /// change this value.
     pub content_id: String,
     pub source_path: Option<PathBuf>,
+    pub markers: Arc<[MidiMarker]>,
     pub format: Format,
     pub key_signature: Option<(i8, bool)>,
     pub tracks: Arc<[MidiTrack]>,
@@ -121,10 +124,23 @@ impl MidiFile {
         let beats = musical_time.beat_times(&tempo_track);
         let program_track = ProgramTrack::new(&tracks);
 
+        let mut markers=Vec::new();
+        for track in &smf.tracks {
+            let mut tick=0u64;
+            for event in track {
+                tick+=u64::from(event.delta.as_int());
+                if let midly::TrackEventKind::Meta(midly::MetaMessage::Marker(text)|midly::MetaMessage::CuePoint(text))=event.kind {
+                    let name:String=String::from_utf8_lossy(text).chars().filter(|c|!c.is_control()).take(80).collect();
+                    if !name.trim().is_empty(){markers.push(MidiMarker{tick,name:name.trim().to_owned()});}
+                }
+            }
+        }
+        markers.sort_by(|a,b|(a.tick,&a.name).cmp(&(b.tick,&b.name)));markers.dedup_by(|a,b|a.tick==b.tick&&a.name==b.name);
         Ok(Self {
             name,
             content_id,
             source_path: None,
+            markers: markers.into(),
             format: smf.header.format,
             key_signature: smf.tracks.iter().flatten().find_map(|e| match e.kind { midly::TrackEventKind::Meta(midly::MetaMessage::KeySignature(key,minor)) => Some((key,minor)), _=>None }),
             tracks: tracks.into(),

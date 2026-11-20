@@ -9,6 +9,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
   | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"
+  | "saveBookmark" | "removeBookmark"
   | "savePassage" | "removePassage" | "updatePassageDetails" | "saveScorePassage" | "saveTickPassage"
   | "saveLadder" | "updateLadderName" | "removeLadder" | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
   | "resetMetadataDefaults" | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "setMetadata" | "editMetadata"
@@ -20,7 +21,7 @@ export type HistoryReadCommand = Extract<EngineCommand, {type:
 }>;
 export type PracticeDemoCommand = Extract<EngineCommand, { type: "startFingerDemo" | "startHeldFingerDemo" | "startPairFingerDemo" }>;
 export type PracticeReadCommand = Extract<EngineCommand, { type:
-  | "passages" | "ladderPresets" | "exercisePresets" | "previewTickRange" | "previewScoreRange" | "previewScoreRangeTrim"
+  | "bookmarks" | "passages" | "ladderPresets" | "exercisePresets" | "previewTickRange" | "previewScoreRange" | "previewScoreRangeTrim"
   | "readMetadataDefaults" | "metadata" | "suggestHands" | "previewMeterMap" | "fingerPlanContext" | "reviewFingerAcceptance"
   | "reviewHeldActionEdit" | "fingerProfiles" | "handUndoState"
   | "readHandAssignments" | "readNotePlayback"

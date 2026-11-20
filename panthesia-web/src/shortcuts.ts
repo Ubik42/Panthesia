@@ -1,4 +1,13 @@
 export const shortcutActions = [
+  { id: "bookmark1", label: "定位第 1 个书签", key: "Alt+Digit1" },
+  { id: "bookmark2", label: "定位第 2 个书签", key: "Alt+Digit2" },
+  { id: "bookmark3", label: "定位第 3 个书签", key: "Alt+Digit3" },
+  { id: "bookmark4", label: "定位第 4 个书签", key: "Alt+Digit4" },
+  { id: "bookmark5", label: "定位第 5 个书签", key: "Alt+Digit5" },
+  { id: "bookmark6", label: "定位第 6 个书签", key: "Alt+Digit6" },
+  { id: "bookmark7", label: "定位第 7 个书签", key: "Alt+Digit7" },
+  { id: "bookmark8", label: "定位第 8 个书签", key: "Alt+Digit8" },
+  { id: "bookmark9", label: "定位第 9 个书签", key: "Alt+Digit9" },
   { id: "playPause", label: "播放 / 暂停", key: "Space" },
   { id: "restart", label: "从头开始", key: "Ctrl+Home" },
   { id: "previousMeasure", label: "上一小节", key: "Alt+ArrowLeft" },

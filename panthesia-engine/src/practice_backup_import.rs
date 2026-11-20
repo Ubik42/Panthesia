@@ -376,6 +376,7 @@ impl Context {
                     }
                 }
             }
+            for (cid, rows) in b.bookmarks {merge_rows(prefs.bookmarks.entry(cid).or_default(),&rows,|row|&row.id,replace,200)?;}
             for (cid, mut rows) in b.passages {
                 for p in &mut rows {
                     p.settings.latency = self.latency;
@@ -415,7 +416,7 @@ impl Context {
                 1000,
             )?;
         }
-        if prefs.track_appearances.len() > 10000
+        if prefs.bookmarks.len()>10000 || prefs.track_appearances.len() > 10000
             || prefs.track_sounds.len() > 10000
             || prefs.routine_runs.len() > 10000
             || prefs.passages.len() > 10000

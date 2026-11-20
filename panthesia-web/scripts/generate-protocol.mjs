@@ -104,6 +104,8 @@ const domains = [
   ["../../panthesia-engine/src/song_learning_evidence.rs", ["WeekEvidence", "WholeAttempt", "WholeEvidence", "RoutineItemEvidence", "RoutineEvidence", "HistoricalRef", "Evidence"], "output"],
   ["../../panthesia-engine/src/tick_ranges.rs", ["TickRange", "BeatPoint"], "output"],
   ["../../panthesia-engine/src/score_ranges.rs", ["ScoreRange"], "output"],
+  ["../../panthesia-core/src/song_bookmarks.rs", ["Bookmark"], "output"],
+  ["../../panthesia-engine/src/bookmarks.rs", ["BookmarkEntry", "BookmarkCatalog"], "output"],
   ["../../panthesia-engine/src/preferences.rs", ["SessionSettings", "PassagePreset", "ExercisePreset", "LadderPreset", "LadderRun"], "output"],
   ["../../panthesia-engine/src/practice_catalog.rs", ["PassageCatalog", "LadderCatalog", "ExerciseCatalog", "FingerProfileCatalog"], "output"],
   ["../../panthesia-engine/src/hands.rs", ["HandProposal"], "output"],

@@ -1328,6 +1328,7 @@ export interface PackagePreview {
   "hands": number;
   "notePlayback": number;
   "passages": Array<string>;
+  "bookmarks": Array<string>;
   "groups": Array<Array<string>>;
   "rating": number;
   "existing": boolean;
@@ -2109,6 +2110,27 @@ export interface ScoreRange {
   "description": string;
 }
 
+export interface Bookmark {
+  "id": string;
+  "name": string;
+  "tick": number;
+}
+
+export interface BookmarkEntry {
+  "id": string;
+  "name": string;
+  "tick": number;
+  "seconds": number;
+  "midi": boolean;
+  "available": boolean;
+}
+
+export interface BookmarkCatalog {
+  "contentId": string;
+  "bookmarks": Array<BookmarkEntry>;
+  "catalogRevision": string;
+}
+
 export interface SessionSettings {
   "tracks": Array<PracticeTrackSetup>;
   "parts": Record<number, PracticePart>;
@@ -2690,6 +2712,9 @@ export type EngineCommand =
   | { type: "stopRoutine" }
   | { type: "skipRoutineItem"; "routine_id": string; "day": string; "item_id": string; "reason": string }
   | { type: "resetRoutineItem"; "routine_id": string; "day": string; "item_id": string }
+  | { type: "bookmarks" }
+  | { type: "saveBookmark"; "content_id": string; "id"?: string | null; "name": string; "tick": number }
+  | { type: "removeBookmark"; "content_id": string; "id": string }
   | { type: "ladderPresets" }
   | { type: "saveLadder"; "id"?: string | null; "name": string; "start": number; "end": number; "plan": SpeedLadderPlan; "expression"?: ExpressionGoal | null }
   | { type: "updateLadderName"; "id": string; "name": string }

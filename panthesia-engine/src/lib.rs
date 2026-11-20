@@ -1,3 +1,4 @@
+mod bookmarks;
 pub mod state_order;
 pub mod music_import;
 mod music_import_receipts;
@@ -1242,6 +1243,9 @@ impl Player {
         }
         if self.routine.is_some() && matches!(command,Command::Load{..}|Command::Generate{..}|Command::ImportScore{..}|Command::ImportMidi{..}|Command::ImportPackage{..}|Command::OpenRecent{..}|Command::HistoryOpen{..}|Command::OpenPassage{..}|Command::StartLadder{..}) {self.stop_routine()?;}
         match &command {
+            Command::Bookmarks=>return self.bookmark_catalog(String::new()),
+            Command::SaveBookmark{content_id,id,name,tick}=>return self.save_bookmark(content_id,id.clone(),name.clone(),*tick),
+            Command::RemoveBookmark{content_id,id}=>return self.remove_bookmark(content_id,id),
             Command::Routines{day}=>return self.routines(day),
             Command::SaveRoutine{id,day,name,notes,copy_of,request_id}=>return self.save_routine_with_request(id.clone(),day.clone(),name.clone(),notes.clone(),copy_of.clone(),request_id.clone()),
             Command::SaveRoutineSchedule{id,schedule}=>return self.save_routine_schedule(id,schedule.clone()),
@@ -2660,6 +2664,7 @@ impl Player {
             Command::PrepareMeasurePart { content_id, measure, part, track_id } => {
                 self.prepare_measure_part(&content_id, measure, part, track_id)?;
             }
+            Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
             Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
             Command::PreviewLegacyExerciseTracks { .. } | Command::ApplyLegacyExerciseTracks { .. }
                 | Command::PreviewLegacyExerciseHistory { .. } | Command::ReviewLegacyExerciseHistory { .. } => unreachable!(),
