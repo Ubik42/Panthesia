@@ -108,3 +108,11 @@ db70b6a、f5a4e4c：PlaybackSession 拥有时钟、事件/等待目标游标、�
 Driver 每次 tick 直接推进内存会话，退出旧 pending_save::tick 捕获包装；资料变更仍由命令/后台事务捕获并确认。预备拍、普通节拍器和状态投影共用 musical_position；普通播放按拍边界触发一次，迟到时不补发一串旧拍。预备拍不再每次克隆完整状态。常规播放 MIDI 包使用栈数组。
 
 瀑布延续可见区间索引。高度不超过 512 像素的音符缓存完整形状，每次一张图片；更长音符用固定纹理分段绘制。音符缓存继续限制为 8 MiB / 128 项。琴键静态标签按来源、当前模式/手别、布局与显示偏好失效；动态指法另建当前帧映射。界面结构与配色保持既定规范。
+
+## A17 谱面页面与排版租期
+
+2331d0c、0fe4dc5：页源按内容/布局身份共享，准备前取得租期，当前页通过带请求身份的 worker RPC 加载。SVG 使用 32 MiB / 16 页 LRU；索引读取 MEI，最后一个读者退出时中止并释放排版线程。纸谱仅按需取得页面并保存准备图像；切源/取消拒绝过期结果。WASM 整曲布局及整曲映射仍是 P15 待替换路径。
+
+## A18 实际音高与书写符号
+
+63cd930：源 MusicXML 的 alter 表示实际升降，accidental 表示书写符号；依据 [W3C alter](https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/alter/) 与 [W3C accidental](https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/accidental/)。当前 Verovio 导入的丢音高情况在渲染副本中通过 accid.ges 修正，按稳定渲染 ID 关联，原谱及已写符号不改。当前修正覆盖现有核心支持的整数 -2..2 升降。生成谱 v3 另外按调号、小节和声部维护书写状态，生成必要的还原/升降号。压缩输入通过共享有界解码接口读取。

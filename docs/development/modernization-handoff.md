@@ -4,15 +4,13 @@
 
 ## 当前批次 B05
 
-B00–B04 已收束，当前源码 f5a4e4c（本批 db70b6a、f5a4e4c）。PlaybackSession、playback_adapter 与统一 musical_position 已接入；普通节拍器、模式/手别保留位置、栈 MIDI 包和有界音符/标签缓存已完成。Driver 不再逐 tick 捕获保存，资料变更仍由后台事务确认。来源分类与兼容边界见 A16 及 source-independence.md。
+B00–B04 已收束。当前实现 0fe4dc5，本批 2331d0c、63cd930、c35484a、0fe4dc5；详见 current-plan.md 的 B05/P15 检查点。分页 SVG、32 MiB / 16 页缓存、准备阶段共享租期、无 SVG 的 MEI 索引、压缩谱统一解码与实际升降音修复已接入。最后一个读者退出即释放排版线程，纸谱聚焦等待异步页面后执行。
 
-最终桌面完整播放 19,200 音符的五分钟素材，16894 帧，P95 18.50 ms，P99 18.70 ms，无显示倒退，结束无音源错误。Windows GS 与 Pianoteq 系统回录有实际信号，panic 后近零；内置音源、音量零及模式切换亦已核对。USB 输入已连接，所需和弦用软件键事件验证。播放并按住音符时正常退出，退出码 0；原始 MIDI 与标注完整。此证据限当前主机与该负载，不是实体琴键手感或全部硬件的证明。
+21 页/8,000 音符实际桌面：首屏只渲染一页，全部定位、跳过零，末页可读。缓存淘汰、准备取消/共享/重开和线程释放有原始记录。完整流程对应 c35484a；最终 0fe4dc5 另做压缩谱首屏及离开页面核查，正常关闭退出码 0。原 MIDI、旧指法与未匹配标注完整。证据 evidence/paged-notation-2026-11-20.json；独立资料 work/original-product-reset/p15-window。不要把此负载当作无限长谱证明。
 
-下一轮直接做 B05/P15–P17：notation.rs 的整曲容量拒绝和 Notation/scoreRenderCache 的全页持有需要改为范围/分页准备、映射和缓存；随后沿 duet_score/score_jobs/duet_worker 收束源/版本、取消超时、持久结果及采用。曲中多调号投影同属 P15。扩展仍走歌曲设置和谱面入口，完整录音继续 B06，旧 core/Player 应用实现与正式包继续 B07。不要重跑 B01–B04 已通过的流程。
+下一入口仍为 P15：整曲排版、元数据和映射的范围化，保留源身份与全局时间；4 MiB / 100,000 音符限制及纸谱 80 页限制仍在。随后做曲中调号投影，将常驻谱面诊断移入既有选项，再沿 duet_score/score_jobs/duet_worker 完成结果持久归属、取消/超时、采用与变换一致性。P16/P17 未完成，完整录音 B06，旧实现退役/来源审计/正式包 B07。不重跑 B01–B04 已通过流程。
 
-Debug：target/debug/panthesia-desktop.exe，SHA256 55824DBB774AC6E31F16F535C93438CF71614651278DF1CF6B707C1696A6A375，源码 f5a4e4c 加原有九项目录调整。Web、最终 Debug 构建和四项会话/控制检查通过。旧 Synthesia 导入检查曾读取退役附件，已改读内容标注并单项通过。观察脚本已改用显式 await 主机状态；原异步浏览器谓词会把 Promise 当作成功。绘制计数探针约两秒间隔没有在普通 UI 起播和完整播放重现，原记录保留。摘要 evidence/playback-session-2026-11-20.json；原记录 work/original-product-reset/p12-window。
-
-正式 Release 仍为 a67ea54；B05–B07 整体目标继续。15 个旧未匹配身份保持回执，不按标题绑定。已有原始资料与九项未提交目录修改保持。
+Debug：target/debug/panthesia-desktop.exe，源码 0fe4dc5，加原有九项目录调整，SHA256 243613D49F70DC59DC0C9D6B060C064B3763F9EC6CADA8ED5238BBCF29C153D1。Web、引擎和最终 Debug 构建通过。正式 Release 仍为 a67ea54。15 个旧未匹配身份保留回执，已有九项未提交修改保持。方向检查仍按 current-goal.md 每两小时执行；本批未改 Goal 正文。
 
 ## B01 已闭环的状态
 

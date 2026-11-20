@@ -11,7 +11,7 @@
     "B04"
   ],
   "nextBatch": "B06",
-  "currentTask": "B05/P15–P17：长谱按页/范围准备与映射，接通 DuET 结果归属/采用，收束练习变换与后台任务。",
+  "currentTask": "B05/P15：分页 SVG 与租期回收已接入；继续范围排版/映射和曲中调号投影，然后完成 P16–P17。",
   "directionReviewIntervalSeconds": 7200,
   "lastDirectionReviewAt": "2026-11-20T16:13:51Z",
   "nextDirectionReviewAt": "2026-11-20T18:13:51Z",
@@ -32,7 +32,11 @@
     "driver tick leaves persistence capture; regular MIDI packets use fixed arrays",
     "ordinary metronome now pulses; count-in no longer clones full snapshots",
     "bounded full-note sprites with tall-note fallback; static key labels cached",
-    "Windows GS and Pianoteq WASAPI loopback, complete five-minute playback, input/wait chord and held-key normal close"
+    "Windows GS and Pianoteq WASAPI loopback, complete five-minute playback, input/wait chord and held-key normal close",
+    "SVG pages load on demand with 32 MiB / 16-page LRU; shared initialization leases release WASM workers after last reader",
+    "MEI metadata indexing does not render SVG; current page appears before mapping completes",
+    "MusicXML sounding alterations survive Verovio import; generated notation v3 writes key-aware accidental marks",
+    "Bounded MXL decoder shared by desktop and local service; final desktop opens compressed 21-page score"
   ],
   "remainingCritical": [
     "B05 长谱/后台生成及曲中调号投影",
@@ -41,7 +45,9 @@
   ],
   "nextEntry": [
     "panthesia-engine/src/notation.rs",
+    "panthesia-engine/src/score_mapping.rs",
     "panthesia-engine/src/practice_notation.rs",
+    "panthesia-core/src/practice_engraving.rs",
     "panthesia-web/src/Notation.tsx",
     "panthesia-web/src/features/scores/scoreRenderCache.ts",
     "panthesia-web/src-tauri/src/duet_score.rs",
@@ -54,7 +60,11 @@
     "19200-note full five-minute playback completed; frame statistics in evidence",
     "USB input connected; partial chord waits, full chord advances, continuous resumes",
     "Playing desktop with held note closed normally with exit code 0",
-    "Owned original MIDI/annotations unchanged; original 9 workspace changes preserved"
+    "Owned original MIDI/annotations unchanged; original 9 workspace changes preserved",
+    "P15: Web, engine and final embedded Debug builds passed; one late-page mapping and one key-aware accidental case passed",
+    "Native 21-page / 8000-note compressed score: first SVG only, 8000 located, zero skipped; last page preview works",
+    "Actual worker LRU eviction observed; initializing-reader cancellation, reopen and last-reader release passed",
+    "Current 0fe4dc5 desktop smoke: compressed score ready, worker released, normal exit; MIDI and previous annotations unchanged"
   ],
   "lastDirectionReviewResult": "aligned",
   "baselineUncommitted": [
@@ -68,8 +78,8 @@
     "scripts/prepare-giantmidi-release.py",
     "scripts/sync-practice-library.ps1"
   ],
-  "lastImplementationCheckpointAt": "2026-11-20T16:13:51.267886+00:00",
-  "implementationRevision": "f5a4e4c09cc3307c4032238af0a2bd3cef8b542c",
+  "lastImplementationCheckpointAt": "2026-11-20T16:57:43.780741+00:00",
+  "implementationRevision": "0fe4dc590719e4f28384721f5d1fcf6e6d9e1250",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -86,10 +96,14 @@
     "026001a",
     "6082c0f",
     "db70b6a",
-    "f5a4e4c"
+    "f5a4e4c",
+    "2331d0c",
+    "63cd930",
+    "c35484a",
+    "0fe4dc5"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "55824DBB774AC6E31F16F535C93438CF71614651278DF1CF6B707C1696A6A375",
+  "developmentExecutableSha256": "243613D49F70DC59DC0C9D6B060C064B3763F9EC6CADA8ED5238BBCF29C153D1",
   "developmentIncludesBaselineUncommitted": true,
   "knownMigrationResult": {
     "migrated": 23,

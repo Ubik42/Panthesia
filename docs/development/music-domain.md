@@ -43,3 +43,7 @@ library/annotations/<contentId>.json 第 2 版保存 annotations、noteIdentity 
 PlaybackSession 与 playback_adapter 已接入当前桌面。会话按已排序时间线推进，seek 的起点包含该时刻事件，循环终点排除该时刻事件；等待模式在所需和弦处停住，连续模式独立发声。切换模式/练习手别清除旧等待目标并保持位置与事件进度。暂停和结束沿共同停止代次释放音符、踏板与陈旧输出包。
 
 musical_position 从当前演奏的 tempo/meter map 计算 tick、BPM、小节、拍和每分钟指挥拍数；复合拍按三组八分音符计拍。预备拍、普通节拍器和状态读数共用这份结果。纯内存会话不读取资料或执行保存，后台资料服务仍负责提交与回执。具体实现边界见 architecture-decisions.md 的 A16。
+
+## P15 谱面投影
+
+63cd930：生成谱 v3 按调号、小节内状态及延音续接生成必要变音记号。外部 MusicXML/MXL 只在渲染副本补入稳定渲染 ID 与实际音高修正；这些 ID 只服务排版关联，不替代持久源 NoteId。MusicXML alter 的实际音高与 accidental 的书写含义分别处理；源字节保持。分页 SVG 已接入，整曲映射与生成仍待 P15 范围化。

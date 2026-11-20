@@ -68,3 +68,7 @@ fb37bd7：features/screens 页面、图形分手与状态控制器由本次 Code
 db70b6a、f5a4e4c：PlaybackSession 的通用游标/等待/节拍接口由本次 Codex 按当前两种练习模式及时间边界编写；角色/MIDI 输出适配和音乐位置投影由现有实现重构接入，未据此宣称整个 Player 已从零原创。删除旧 Driver 的 pending_save::tick 包装与 Player 内重复的推进、游标、时钟和节拍状态；保留资料事务确认。原有音源 owner/CPAL/oxisynth/midir/VST3 和设备适配继续使用，来源及许可按 P20/P21 收束。
 
 WaterfallSprites 的有界完整音符纹理、长音符分段回退和静态琴键标签缓存为本次性能改造；沿用现有自绘素材，不增加官方参考图片。当前产品依赖中的其他旧 core/Player 配置和历史功能仍需 P20 物理退役，不能以会话拆分替代整体来源结论。
+
+## B05/P15 谱面封装记录
+
+2331d0c、63cd930、c35484a、0fe4dc5：本次 Codex 按页面需求重构自有 worker 协议、页源缓存及租期封装，新增渲染输入准备、有界解码服务接口，并修正现有生成谱的变音记号。Verovio toolkit/WASM 继续使用既有第三方版本，未修改其实现；MEI 仍由它生成。此记录不代表第三方排版器或现有旧 core 已被原创替换。P20/P21 的物理退役与来源审计继续。
