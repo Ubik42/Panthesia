@@ -448,12 +448,12 @@ impl Prepared {
                 Self {data,song,song_error:None}
             },
             Err(_) if control.skip.load(Ordering::Acquire) => Self {
-                data,
+                data:Data{preferences:original_preferences,..data},
                 song: None,
                 song_error: None,
             },
             Err(error) => Self {
-                data,
+                data:Data{preferences:original_preferences,..data},
                 song: None,
                 song_error: Some(format!("上次曲目无法恢复，历史与设置已保留：{error}")),
             },

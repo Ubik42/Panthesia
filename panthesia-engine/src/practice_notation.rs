@@ -196,7 +196,7 @@ impl Player {
 /// Key estimation belongs to detached score preparation, never the driver capture.
 pub(super) fn key_for(file: &MidiFile, variant: &crate::practice_variant::Variant) -> (i8, bool) {
     let signature = file.key_signature;
-    let estimated = if signature.is_none() && variant.tonic.is_none() {
+    let estimated = if signature.is_none() && (variant.tonic.is_none() || variant.minor.is_none()) {
         crate::practice_variant::key_estimate(file)
     } else {
         (0, false)
