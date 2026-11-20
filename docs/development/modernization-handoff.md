@@ -1,3 +1,9 @@
+> 2026-11-20 更新：用户要求逐屏照 Synthesia 官方截图重排，源码提交 `a67ea54`。选曲页采用通栏目录 / 歌曲列表与路径搜索，歌曲设置页独立，演奏使用顶部控制条 → 时间线 → 主体瀑布 / 谱面 → 底部琴键。应用菜单、显示、练习方式和音量按需打开。详细来源及边界见 [interaction-model.md](interaction-model.md)。
+>
+> 最新正式运行包：`outputs/releases/Panthesia-20261120-synthesia-layout/Panthesia.exe`，Release 优化构建，指纹 `73D7A4E9CB84481A33E1EB8BB03B6E45373E0A82250478F9F9BE36A78ACD3CA0`。29 个打包文件哈希一致，独立 `--window-check` 通过，前端、IPC、音频、制谱与 PDF 均就绪。实际交互证据：`work/ui-simplification/runtime/synthesia-evidence.json`；目录逐级进入与返回证据：同目录 `folder-evidence.json`；运行包证据：`work/ui-simplification/package-evidence.json`。
+>
+> 本轮完成主界面布局和统一应用日志。歌曲移动后的自动关联、旧位置归并、标注长期归属和复杂长曲完整谱面仍未完成。此前“主线收束”不代表这些问题已经解决。
+
 # Panthesia 主线交接
 
 更新：2026-11-19。当前分支 main。原长期 Goal 已清除；本次为用户明确授权的评分分支隔离和主线收束。

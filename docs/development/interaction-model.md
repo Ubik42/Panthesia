@@ -51,3 +51,10 @@
 | 显示设置 | https://cdn.synthesia.app/images/guides/6c4d930b-be08-4170-8700-f77b25411ed2.png | 顶部齿轮弹出显示选项 |
 
 已下载并实际查看原始截图，保存在 work/ui-simplification/references。使用 Panthesia 名称与现有资产，继续遵守用户明确的例外：删除上述分类、评分及八秒试听；速度直接按 BPM 显示。产品菜单按需打开，不常驻占据演奏区。整体演奏设置与声部编辑内部仍使用已有控件，本轮未复刻官方每个子窗口。
+
+
+截图布局实际验收：`work/ui-simplification/runtime/synthesia-evidence.json`。1360×950 窗口中，控制条 y=0–58，时间线 y=58–100，舞台 y=100–950；组合视图的谱面位于瀑布上方。BPM 按钮由 100 调到 105，练习方式可实时切换，连续播放有位置推进和音频输出，返回歌曲设置会暂停播放。800 像素宽窗口的页面和顶部控制条均无横向溢出，未捕获前端异常为零。
+
+对应成品截图：同目录的 synth-library-final.png、synth-setup-final.png、synth-playing-final.png、synth-score-final.png 与 synth-narrow-final.png。正式运行包登记在 `work/ui-simplification/package-evidence.json`。
+
+正式包：`outputs/releases/Panthesia-20261120-synthesia-layout/Panthesia.exe`。Release 构建提交 a67ea54，29 文件内容一致，独立启动通过；界面、IPC、音频、制谱与 PDF 就绪。目录逐级进入及路径返回也已用独立自有练习文件检查，通过。上述界面和启动结果不能替代尚未完成的数据迁移结论。
