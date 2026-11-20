@@ -79,6 +79,7 @@ mod hand_annotations;
 mod note_playback;
 mod demo_loading;
 mod score_mapping;
+mod source_notation;
 mod history_reader;
 mod history_calendar;
 mod history_list;
@@ -1823,7 +1824,7 @@ impl Player {
                 if !panthesia_core::library::verify_score_association(&midi,&assoc).map_err(|e|e.to_string())?{
                     return Err("谱面文件已经改变，请重新导入并检查顺序".into());
                 }
-                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read_dependency(&version.path,4_000_000).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
+                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read_dependency(&version.path,panthesia_core::source_score_window::ASSET_LIMIT).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
                 if asset.source_fingerprint != version.content_id { return Err("谱面文件在读取期间已改变，请重新预览".into()); }
                 let mut result=asset.route_payload(Some(file));
                 result["review"]=serde_json::to_value(self.score_review(&asset)).map_err(|error|error.to_string())?;

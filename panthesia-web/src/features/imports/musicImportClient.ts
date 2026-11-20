@@ -304,7 +304,7 @@ export async function importMusicFile(
       ? "midi"
       : null;
   if (!kind) throw new Error("请选择 MIDI、MusicXML 或 MXL 文件");
-  const limit = kind === "score" ? 4_000_000 : 32_000_000;
+  const limit = kind === "score" ? 64 * 1024 * 1024 : 32_000_000;
   if (!file.size || file.size > limit)
     throw new Error(`文件为空或超过 ${limit / 1_000_000} MB`);
   if (

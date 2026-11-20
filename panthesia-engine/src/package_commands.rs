@@ -54,7 +54,7 @@ impl Player {
             .flatten()
         {
             check()?;
-            let bytes = panthesia_core::utils::atomic_file::read_dependency(&version.path,4_000_000).map_err(|e| {
+            let bytes = panthesia_core::utils::atomic_file::read_dependency(&version.path,panthesia_core::source_score_window::ASSET_LIMIT).map_err(|e| {
                 format!("谱面 {} 无法打包：{e}，请先修复或移除该版本", version.name)
             })?;
             if blake3::hash(&bytes).to_hex().as_str() != version.content_id {

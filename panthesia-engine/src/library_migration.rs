@@ -456,7 +456,7 @@ pub fn run(profile: &Path, output: &Path, apply: bool) -> Result<Value, String> 
             .into_iter()
             .flatten()
         {
-            if let Ok(bytes) = atomic_file::read_limited(&score.path, 4_000_000) {
+            if let Ok(bytes) = atomic_file::read_limited(&score.path, panthesia_core::source_score_window::ASSET_LIMIT) {
                 originals.insert(score.path.clone(), digest(&bytes));
             }
         }

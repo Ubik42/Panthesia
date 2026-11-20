@@ -170,8 +170,8 @@ pub(crate) fn prepare_checked(
         .to_string_lossy()
         .to_string();
     let mut prepared = if let Some(bpm) = bpm {
-        if bytes.is_empty() || bytes.len() > 4_000_000 {
-            return Err("乐谱文件为空或超过 4 MB".into());
+        if bytes.is_empty() || bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+            return Err("乐谱文件为空或超过 64 MiB".into());
         }
         let score = panthesia_core::musicxml::import_musicxml_document(&bytes)
             .map_err(|e| format!("乐谱无法读取，请检查 MusicXML 或 MXL 文件：{e}"))?;

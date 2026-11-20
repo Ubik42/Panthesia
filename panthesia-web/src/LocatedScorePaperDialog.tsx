@@ -8,18 +8,19 @@ import { buildLocatedPaperPlanAsync, svgPagePng, type LocatedPaperPlan } from ".
 import "./located-score-paper.css";
 
 export function LocatedScorePaperDialog({
-  song, pages, mapping, sourceFingerprint, mappingToken, close,
+  song, pages, mapping, sourceFingerprint, mappingToken, sourceRangeLabel, close,
 }: {
   song: LoadedSong;
   pages: ScorePages;
   mapping: ScoreMapping[];
   sourceFingerprint: string;
   mappingToken: string;
+  sourceRangeLabel?:string;
   close: () => void;
 }) {
   const [plan, setPlan] = useState<LocatedPaperPlan | null>(null);
   const sourceKey = JSON.stringify([song.engineId, song.contentId, song.scoreRevision, sourceFingerprint, mappingToken]);
-  const { name, excluded, busy, committing, saved, progress, error, storageError, preparedPages, session } = useLocatedPaperSession(song.contentId, sourceFingerprint, `${song.title} · 可定位谱`, sourceKey, { title: song.title, path: song.sourcePath, engineId: song.engineId });
+  const { name, excluded, busy, committing, saved, progress, error, storageError, preparedPages, session } = useLocatedPaperSession(song.contentId, sourceFingerprint, `${song.title} · ${sourceRangeLabel??"可定位谱"}`, sourceKey, { title: song.title, path: song.sourcePath, engineId: song.engineId });
   const setName = session.setName, setExcluded = session.setExcluded;
   const setProgress = (progress: string) => session.update({ progress });
   const setError = (error: string) => session.update({ error });
@@ -129,6 +130,7 @@ export function LocatedScorePaperDialog({
           <h2 id="located-paper-title">生成可定位纸谱</h2>
           <button aria-label="关闭可定位纸谱" disabled={busy} onClick={close}>关闭</button>
         </header>
+        {sourceRangeLabel&&<p>制作范围：{sourceRangeLabel}。</p>}
         <p>软件会用当前已核对的关联乐谱生成本机谱页。请逐页查看音符位置；您可以在保存前跳过需要重新核对的音符。原有 PDF、图片和手工标记会保留。</p>
         <label>谱面名称 <input aria-label="可定位谱面名称" value={name} maxLength={80} disabled={busy || !!saved} onChange={(event) => setName(event.target.value)} /></label>
         {plan && (

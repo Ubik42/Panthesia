@@ -383,8 +383,8 @@ async fn import_library_scores(
                 "name": name, "results": results
             }));
             let result = (|| -> Result<(String, &'static str, Option<String>), String> {
-                let limit = if kind == "notation" { 4_000_000 } else { 48_000_000 };
-                if std::fs::metadata(&file).map_err(|e|e.to_string())?.len() > limit {
+                let limit = if kind == "notation" { panthesia_core::source_score_window::ASSET_LIMIT } else { 48_000_000 };
+                if std::fs::metadata(&file).map_err(|e|e.to_string())?.len() > limit as u64 {
                     return Err("文件超过当前谱面格式容量上限".into());
                 }
                 let bytes = std::fs::read(&file).map_err(|e|e.to_string())?;
@@ -668,8 +668,8 @@ async fn import_midi(state: tauri::State<'_, State>, choose_only: Option<bool>) 
             .to_ascii_lowercase();
         if ["xml", "musicxml", "mxl"].contains(&extension.as_str()) {
             let size = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
-            if size > 4_000_000 {
-                return Err("乐谱超过 4 MB".into());
+            if size > panthesia_core::source_score_window::ASSET_LIMIT as u64 {
+                return Err("原谱资产超过 64 MiB".into());
             }
             engine.command(Command::ImportScoreOriginal {path,default_bpm:120})
         } else {

@@ -27,8 +27,8 @@ export function useScorePairing({
     scorePairTarget.current = null;
     e.target.value = "";
     if (!file || !target) return;
-    if (file.size > 4_000_000) {
-      setError("乐谱超过 4 MB");
+    if (file.size > 64 * 1024 * 1024) {
+      setError("乐谱超过 64 MiB");
       return;
     }
     try {

@@ -265,7 +265,7 @@ export const api = {
     kind: string,
     target?: string,
   ) => {
-    if (file.size > (kind === "notation" ? 4_000_000 : 48_000_000))
+    if (file.size > (kind === "notation" ? 64 * 1024 * 1024 : 48_000_000))
       throw new Error("文件超过谱面容量上限");
     type Result = {
       matches: { id: string; name: string; kind: string; page: number }[];
@@ -447,7 +447,7 @@ export const api = {
     target?: string,
     page = 0,
   ) => {
-    if (file.size > (kind === "notation" ? 4_000_000 : 48_000_000))
+    if (file.size > (kind === "notation" ? 64 * 1024 * 1024 : 48_000_000))
       throw new Error("文件超过当前谱面格式容量上限");
     if (isTauri())
       return invoke<{ active?: string }>("engine_command", {

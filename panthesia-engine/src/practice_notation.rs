@@ -15,7 +15,9 @@ impl Player {
     ) -> Result<serde_json::Value, String> {
         let variant = self.variant();
         if source || (variant.quantize == 0 && self.notation.is_some()) {
-            return self.score_payload(!source);
+            let Some(asset)=self.notation.as_ref() else {return Ok(serde_json::Value::Null);};
+            let file=self.file.as_ref().ok_or("请先选择曲目")?;
+            return asset.source_view.payload(asset,file,self.score_revision,variant.transpose,first,position);
         }
         let file = self.file.as_ref().ok_or("请先选择曲目")?;
         let total = file.musical_time.measures.len();

@@ -10,6 +10,7 @@ pub mod config;
 pub mod product;
 pub mod practice_transform;
 pub mod practice_score;
+pub mod source_score_window;
 mod practice_transpose;
 pub mod practice_engraving;
 pub mod song_project;

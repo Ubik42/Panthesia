@@ -244,8 +244,8 @@ export function ScoresDialog({
     if (!ticket) return;
     setError("");
     try {
-      if (!file.size || file.size > 4_000_000)
-        throw new Error("乐谱为空或超过 4 MB");
+      if (!file.size || file.size > 64 * 1024 * 1024)
+        throw new Error("乐谱为空或超过 64 MiB");
       const bytes = new Uint8Array(await file.arrayBuffer());
       draftSession.browse({ section: "import" });
       let draft: import("./features/scores/scoreWorkspaceStore").RetainedScoreDraft =

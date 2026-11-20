@@ -229,6 +229,8 @@ impl Package {
                 32_000_000
             } else if path.starts_with("papers/") {
                 48_000_000
+            } else if path.starts_with("scores/") {
+                panthesia_core::source_score_window::ASSET_LIMIT as u64
             } else {
                 4_000_000
             };

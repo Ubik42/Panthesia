@@ -86,7 +86,8 @@ pub fn normalized_checked(
         .map(|p| p.measures.len())
         .max()
         .unwrap_or(0);
-    if count > 20_000 {
+    // Rendering is range-bound; this guard bounds the semantic source model only.
+    if count > 1_000_000 {
         return Err("谱面小节过多".into());
     }
     let mut position = ScoreTime::default();

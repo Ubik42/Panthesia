@@ -3,9 +3,9 @@ use panthesia_core::library::{self as metadata, SongSidecar};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 fn read_score(path: &Path) -> Result<Vec<u8>, String> {
-    let bytes=panthesia_core::utils::atomic_file::read_dependency(path,4_000_000).map_err(|e|e.to_string())?;
-    if bytes.len() > 4_000_000 {
-        return Err("谱面超过 4 MB，请整理或重新导入".into());
+    let bytes=panthesia_core::utils::atomic_file::read_dependency(path,panthesia_core::source_score_window::ASSET_LIMIT).map_err(|e|e.to_string())?;
+    if bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+        return Err("谱面超过 64 MiB，请整理或重新导入".into());
     }
     Ok(bytes)
 }
@@ -125,7 +125,7 @@ pub fn preview_route(data: &Path, path: &Path, cid: &str, id: &str) -> Result<Va
     Ok(result)
 }
 pub fn check_import(data:&Path,path:&Path,cid:&str,bytes:&[u8],kind:&str,target:Option<&str>)->Result<Value,String>{
-    if bytes.is_empty() || bytes.len()>if kind=="notation"{4_000_000}else{48_000_000} {return Err("待核对文件为空或超过谱面容量上限".into());}
+    if bytes.is_empty() || bytes.len()>if kind=="notation"{panthesia_core::source_score_window::ASSET_LIMIT}else{48_000_000} {return Err("待核对文件为空或超过谱面容量上限".into());}
     if !["notation","pdf","image"].contains(&kind){return Err("谱面核对类型无效".into());}
     let (path,file)=location(data,path,cid)?;
     if file.is_none(){return Err("演奏文件不可用，请先修复位置后核对".into());}
@@ -272,7 +272,7 @@ impl Player {
     pub(super) fn add_library_notation(&mut self,path:PathBuf,cid:String,name:String,bytes:Vec<u8>,repair:Option<String>)->Result<Value,String>{
        let (path,_)=location(&self.data,&path,&cid)?;
        let name=name.trim();if name.is_empty()||name.chars().count()>120{return Err("谱面名称需为 1 至 120 字".into());}
-       if bytes.len()>4_000_000{return Err("演奏乐谱超过 4 MB".into());}
+       if bytes.len()>panthesia_core::source_score_window::ASSET_LIMIT{return Err("演奏乐谱超过 64 MiB".into());}
        let hash=blake3::hash(&bytes).to_hex().to_string();let (mut rows,active)=versions(&self.preferences,&path,&cid)?;
        let mut old_path=None;
        let (name,existing)=if let Some(id)=repair {let v=rows.iter().find(|v|v.id==id).ok_or("待修复版本不存在")?;if v.content_id!=hash{return Err("文件内容与原版本不符；请选择原文件修复，或添加为新版本".into());}old_path=Some(v.path.clone());(v.name.clone(),Some(v.id.clone()))}else{(name.to_owned(),rows.iter().find(|v|v.name==name&&v.content_id==hash).map(|v|v.id.clone()))};

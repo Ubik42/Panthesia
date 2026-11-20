@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
-const LIMIT: usize = 4_000_000;
+const LIMIT: usize = panthesia_core::source_score_window::ASSET_LIMIT;
 pub(crate) fn display_name(path: &Path) -> String {
     let directory = path.parent();
     if directory.is_some_and(|p| p.ends_with("library/assets/notation")) {
@@ -69,7 +69,7 @@ pub(crate) fn resolve(data: &Path, hash: &str) -> Option<PathBuf> {
 }
 pub(crate) fn retain(data: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
     if bytes.is_empty() || bytes.len() > LIMIT {
-        return Err("演奏谱面为空或超过 4 MB".into());
+        return Err("演奏谱面为空或超过 64 MiB".into());
     }
     let hash = blake3::hash(bytes).to_hex().to_string();
     if let Some(path) = resolve(data, &hash) {

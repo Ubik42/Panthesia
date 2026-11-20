@@ -29,7 +29,7 @@ import { LocatedScorePaperDialog } from "./LocatedScorePaperDialog";
 import { actionsForNote, actionUsable, fingerSequence } from "./fingerActions";
 interface Asset {
   contentId: string;
-  window?:{first:number;count:number;total:number;start:number;end:number;firstNumber:number;lastNumber:number};
+  window?:{first:number;count:number;total:number;start:number;end:number;firstNumber:number|string;lastNumber:number|string;previous?:number|null;intervals?:{start:number;end:number}[]};
   displayFingerprint?:string;
   sourceFingerprint: string;
   bytes: number[];
@@ -267,11 +267,11 @@ export function Notation({
   const [rangeAnchor,setRangeAnchor]=useState<{first?:number;position?:number;last?:boolean}>({});
   const desiredFollow=useRef(true),pendingRange=useRef(false),currentPosition=useRef(state.position);
   currentPosition.current=state.position;
-  const rangeSong=useRef(`${song.engineId}:${song.contentId}`);
+  const rangeSong=useRef(`${song.engineId}:${song.contentId}:${song.scoreRevision}`);
   useEffect(()=>{
-    const identity=`${song.engineId}:${song.contentId}`;
+    const identity=`${song.engineId}:${song.contentId}:${song.scoreRevision}`;
     if(rangeSong.current!==identity){rangeSong.current=identity;setRangeAnchor({});desiredFollow.current=true;pendingRange.current=false;}
-  },[song.engineId,song.contentId]);
+  },[song.engineId,song.contentId,song.scoreRevision]);
   useEffect(()=>setSourceRhythm(false),[song.contentId]);
   const renderedMapping = useRef<ScoreMappingRequest | null>(null);
   const mappingSequence = useRef(0), mappingWorking = useRef(false);
@@ -379,11 +379,12 @@ export function Notation({
   useEffect(()=>{
     const window=asset?.window;
     if(!window||!follow||loading||pendingRange.current)return;
-    if(state.position<window.start || (state.position>=window.end&&window.first+window.count<window.total)) {
+    const inside=window.intervals ? window.intervals.some(interval=>state.position>=interval.start&&state.position<interval.end) : state.position>=window.start&&(state.position<window.end||window.first+window.count>=window.total);
+    if(!inside && !(window.intervals && state.position>=song.duration && window.intervals.some(interval=>interval.end>=song.duration))) {
       pendingRange.current=true;desiredFollow.current=true;
       setRangeAnchor({position:state.position});
     }
-  },[asset,follow,loading,state.position]);
+  },[asset,follow,loading,state.position,song.duration]);
   useEffect(() => {
     if (historyFocus && ["playing", "countIn"].includes(state.status))
       setFollow(true);
@@ -695,7 +696,7 @@ export function Notation({
           onClick={() => {
             desiredFollow.current=false;setFollow(false);
             if(page>0)setPage(page-1);
-            else if(asset?.window)setRangeAnchor({first:Math.max(0,asset.window.first-32),last:true});
+            else if(asset?.window)setRangeAnchor({first:asset.window.previous??Math.max(0,asset.window.first-32),last:true});
           }}
         >
           上一页
@@ -774,9 +775,9 @@ export function Notation({
           onClick={() => setLocatingPaper(true)}
           title="根据已核对的 MusicXML 谱页，生成可从练习历史逐音定位的纸谱"
         >
-          生成可定位纸谱
+          {asset?.window&&asset.window.count<asset.window.total?"生成当前范围纸谱":"生成可定位纸谱"}
         </button>}
-        {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>setSourceRhythm(event.target.value==="source")}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
+        {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>{setRangeAnchor({position:currentPosition.current});setSourceRhythm(event.target.value==="source");}}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
         <span className="notation-alignment-status" title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
             ? `${asset.practiceNotation ? (asset.practiceNotationKind === "simplified" ? "MIDI 简化谱" : "量化练习谱") : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
@@ -875,6 +876,7 @@ export function Notation({
           mapping={mapping}
           sourceFingerprint={asset.sourceFingerprint}
           mappingToken={mappingToken}
+          sourceRangeLabel={asset.window&&asset.window.count<asset.window.total?`原谱第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节`:undefined}
           close={() => setLocatingPaper(false)}
         />
       )}

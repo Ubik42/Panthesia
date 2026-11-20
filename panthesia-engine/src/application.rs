@@ -851,8 +851,8 @@ impl Engine {
         {
             library_scores::location(&self.data, path, content_id)?;
             if kind == "notation" {
-                if bytes.len() > 4_000_000 {
-                    return Err("演奏乐谱超过 4 MB".into());
+                if bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+                    return Err("演奏乐谱超过 64 MiB".into());
                 }
                 let score = panthesia_core::musicxml::import_musicxml_document(bytes)
                     .map_err(|e| e.to_string())?;

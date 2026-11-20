@@ -23,11 +23,7 @@ pub struct Input {
 impl Input {
     fn validate(&self) -> Result<(), String> {
         if self.measure_range.is_some()
-            && (!self.practice_notation
-                || self
-                    .display_fingerprint
-                    .as_ref()
-                    .is_none_or(|s| s.len() != 64))
+            && self.display_fingerprint.as_ref().is_none_or(|s|s.len()!=64)
         {
             return Err("谱面范围缺少当前显示身份".into());
         }
@@ -195,6 +191,11 @@ impl Context {
                 input.display_fingerprint.as_deref(),
                 &check,
             )?
+        } else if let Some(range)=input.measure_range {
+            let asset=self.asset.as_ref().ok_or("当前没有所选原谱")?;
+            let window=asset.source_view.prepared(range,self.transpose,&check)?;
+            if input.display_fingerprint.as_deref()!=Some(blake3::hash(&window.bytes).to_hex().as_str()) {return Err("原谱范围或显示条件已改变，请重新读取".into());}
+            asset.source_view.map(&self.file,&window,input.notes,input.page_count.unwrap_or(300),&check)?
         } else {
             self.asset
                 .as_ref()

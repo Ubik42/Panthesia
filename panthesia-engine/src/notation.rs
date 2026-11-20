@@ -25,6 +25,7 @@ pub struct ScoreAsset {
     pub content_id: String,
     pub source_fingerprint: String,
     pub uses_source_identity:bool,
+    pub(crate) source_view:std::sync::Arc<crate::source_notation::SourceView>,
     source_render_ids:HashMap<String,panthesia_core::musicxml::ScoreEventId>,
 }
 #[derive(serde::Serialize)]
@@ -60,8 +61,8 @@ impl ScoreAsset {
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
         check()?;
-        if bytes.len() > 4_000_000 {
-            return Err("乐谱超过 4 MB".into());
+        if bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+            return Err("原谱资产超过 64 MiB".into());
         }
         let score = import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
         check()?;
@@ -90,7 +91,9 @@ impl ScoreAsset {
         let direct=crate::duet_alignment::align(&bytes,&score,file,check)?;
         let uses_source_identity=direct.is_some();
         let (alignment,source_render_ids)=match direct {Some(value)=>(value.alignment,value.render_ids),None=>(panthesia_core::score_alignment::align_score_to_midi_checked(&score,file,check)?,HashMap::new())};
+        let source_view=std::sync::Arc::new(crate::source_notation::SourceView::new(&bytes,&score,&alignment,check)?);
         Ok(Self {
+            source_view,
             content_id: file.content_id.clone(),
             source_fingerprint: blake3::hash(&bytes).to_hex().to_string(),
             bytes,

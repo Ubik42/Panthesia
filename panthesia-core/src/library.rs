@@ -501,7 +501,7 @@ pub fn save_score_association(
     content_id: &str,
     score_path: &Path,
 ) -> Result<PathBuf, MetadataError> {
-    let source = crate::utils::atomic_file::read_limited(score_path,4_000_000)
+    let source = crate::utils::atomic_file::read_limited(score_path,crate::source_score_window::ASSET_LIMIT)
         .map_err(|error| MetadataError::InvalidScore(crate::musicxml::ImportError::Io(error)))?;
     crate::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
     let mut sidecar = existing_sidecar_or_default(midi_path, content_id)?;
@@ -548,7 +548,7 @@ pub fn verify_score_association(
     midi_path: &Path,
     association: &ScoreAssociation,
 ) -> Result<bool, MetadataError> {
-    let source = crate::utils::atomic_file::read_dependency(&resolve_score_path(midi_path, association),4_000_000)
+    let source = crate::utils::atomic_file::read_dependency(&resolve_score_path(midi_path, association),crate::source_score_window::ASSET_LIMIT)
         .map_err(|error| MetadataError::InvalidScore(crate::musicxml::ImportError::Io(error)))?;
     crate::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
     Ok(blake3::hash(&source).to_hex().as_str() == association.content_id)

@@ -124,7 +124,7 @@ impl Assets {
                     // Read once: hash, parse and align the same owned bytes.
                     match panthesia_core::utils::atomic_file::read_dependency(
                         &score_path,
-                        4_000_000,
+                        panthesia_core::source_score_window::ASSET_LIMIT,
                     )
                     .map_err(|e| format!("乐谱已更改或丢失：{e}"))
                     .and_then(|bytes| {

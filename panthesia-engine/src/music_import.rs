@@ -376,7 +376,7 @@ impl Engine {
         }
         let limit = match meta.kind {
             MusicKind::Midi => 32_000_000,
-            MusicKind::Score => 4_000_000,
+            MusicKind::Score => panthesia_core::source_score_window::ASSET_LIMIT,
             MusicKind::Exercise | MusicKind::Package => 0,
         };
         if meta.catalog_only && (state.storage.operation.is_some() || state.storage.error.is_some())
@@ -706,7 +706,7 @@ impl Engine {
                     if let Some(version) = &published.score {
                         let bytes = panthesia_core::utils::atomic_file::read_dependency(
                             &version.path,
-                            4_000_000,
+                            panthesia_core::source_score_window::ASSET_LIMIT,
                         )
                         .map_err(|error| error.to_string())?;
                         if blake3::hash(&bytes).to_hex().as_str() != version.content_id {
