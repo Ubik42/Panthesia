@@ -67,7 +67,6 @@ class Layout {
   private inFlight = new Map<number, Promise<string>>();
   private serial = 0;
   private ended = false;
-  leases = 0;
   readonly ready: Promise<number>;
   private indexed?: ReturnType<RenderedScore["evidence"]>;
   constructor(
@@ -104,6 +103,7 @@ class Layout {
       progress,
       [bytes.buffer],
     ).then((r) => r.count!);
+    void this.ready.catch(() => {});
   }
   private request(
     message: object,
@@ -127,7 +127,7 @@ class Layout {
     for (const request of this.pending.values()) request.reject(reason);
     this.pending.clear();
     this.inFlight.clear();
-    if (layouts.get(this.key) === this) layouts.delete(this.key);
+    if (layouts.get(this.key)?.layout === this) layouts.delete(this.key);
   }
   async page(index: number, signal?: AbortSignal): Promise<string> {
     if (this.ended) throw new DOMException("谱面已关闭", "AbortError");
@@ -167,8 +167,12 @@ class Layout {
     ));
   }
 }
-const layouts = new Map<string, Layout>();
-const preparing = new Map<string, Promise<Layout>>();
+type LayoutLease = {
+  ready: Promise<Layout>;
+  layout?: Layout;
+  references: number;
+};
+const layouts = new Map<string, LayoutLease>();
 export async function renderScore(
   asset: { bytes: number[]; compressed: boolean },
   signal: AbortSignal,
@@ -181,34 +185,44 @@ export async function renderScore(
   );
   signal.throwIfAborted();
   const key = `a4-pages-v3:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
-  let layout = layouts.get(key);
-  if (!layout) {
-    let work = preparing.get(key);
-    if (!work) {
-      work = rendererInput(asset)
-        .then((input) => {
-          const created = new Layout(key, input, progress);
-          layouts.set(key, created);
-          return created;
-        })
-        .finally(() => preparing.delete(key));
-      preparing.set(key, work);
-    }
-    layout = await work;
+  let lease = layouts.get(key);
+  if (!lease) {
+    const created = { references: 0 } as LayoutLease;
+    created.ready = rendererInput(asset)
+      .then((input) => {
+        if (!created.references)
+          throw new DOMException("谱面已关闭", "AbortError");
+        const layout = new Layout(key, input, progress);
+        created.layout = layout;
+        return layout;
+      })
+      .catch((error) => {
+        if (layouts.get(key) === created) layouts.delete(key);
+        throw error;
+      });
+    layouts.set(key, created);
+    lease = created;
   }
-  const owned = layout;
-  owned.leases++;
+  const ownedLease = lease;
+  ownedLease.references++;
   let released = false;
   const release = () => {
     if (!released) {
       released = true;
-      if (--owned.leases === 0) owned.close();
+      if (--ownedLease.references === 0) {
+        if (layouts.get(key) === ownedLease) layouts.delete(key);
+        void ownedLease.ready.then(
+          (layout) => layout.close(),
+          () => {},
+        );
+      }
     }
     signal.removeEventListener("abort", release);
   };
   signal.addEventListener("abort", release, { once: true });
   if (signal.aborted) release();
   try {
+    const owned = await ownedLease.ready;
     const count = await owned.ready;
     signal.throwIfAborted();
     // Make the initial reading page available before mapping preparation starts.

@@ -68,7 +68,7 @@ export function LocatedScorePaperDialog({
       left: viewport.scrollLeft + svgRect.left - viewportRect.left + selected.region.x * svgRect.width - viewport.clientWidth / 2,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
-  }, [focused, previewPage, selected]);
+  }, [focused, previewPage, selected, pageView.markup]);
   const setListedNotes = (keep: boolean) => {
     setExcluded(current => {
       const next = new Set(current);
