@@ -123,7 +123,7 @@ IntervalTimeline 提供与坐标单位无关的静态区间查询。瀑布按 ti
 
 ## A11 已保存段落复用歌曲核心的 PracticeEdition
 
-PassagePreset.practice 保存 core::song_project::PracticeEdition，包含源演奏身份、完整 Variant 和确定性练习身份，使用歌曲管理和演奏页同一计算规则。普通、精确、谱面、指法和纸谱保存入口都记录快照。旧记录通过已有 grid 中的 practice-v1 签名恢复转调 / 量化 / 时值，读取目录只提供投影，成功打开时补齐持久化快照；原字段与源文件继续保留。
+PassagePreset.practice 保存 core::song_project::PracticeEdition，包含源演奏身份、完整 Variant 和确定性练习身份，使用歌曲管理和演奏页同一计算规则。普通、精确、谱面、指法和纸谱保存入口都记录快照。旧记录通过已有 grid 中的 practice-v1 签名恢复转调 / 量化 / 时值，读取目录只提供投影，成功打开时补齐持久化快照；原字段与源文件继续保留。旧 / 新快照先归一为同一 PracticeEdition 再比较，保持指法和纸谱重复生成的内容判定。
 
 打开在既有 song-switch 后台事务中准备隔离 Player，恢复有效演奏后再验证网格、谱面对应和范围。范围无效时保留当前音乐状态，成功时一起提交偏好和 Playback。读取及失败准备不改写旧段落。手工调号只在新快照中完整记录，旧签名缺失的信息采用原默认值。
 

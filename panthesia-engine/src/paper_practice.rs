@@ -171,9 +171,7 @@ impl Player {
             precise_range: None,
         };
         if let Some(old) = rows.iter().find(|p| p.id == id) {
-            if serde_json::to_value(old).map_err(|e| e.to_string())?
-                != serde_json::to_value(&preset).map_err(|e| e.to_string())?
-            {
+            if !crate::finger_practice::same_passage_content(old, &preset)? {
                 return Err("同一纸谱练习段已修改，请保留现有内容或改变新段名称".into());
             }
             return Ok(json!({"saved":false,"existing":true,"id":id}));

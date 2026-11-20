@@ -3255,6 +3255,9 @@ mod tests {
         let transformed=saved["passage"]["id"].as_str().unwrap().to_owned();
         // Simulate the old persisted shape, whose transform was encoded in its grid.
         p.preferences.passages.get_mut(&cid).unwrap().iter_mut().find(|r|r.id==transformed).unwrap().practice=None;
+        let legacy=p.preferences.passages[&cid].iter().find(|row|row.id==transformed).unwrap();
+        let modern:preferences::PassagePreset=serde_json::from_value(saved["passage"].clone()).unwrap();
+        assert!(finger_practice::same_passage_content(legacy,&modern).unwrap());
         p.command(Command::OpenPassage{id:original}).unwrap(); assert!(!p.variant().active());
         p.command(Command::OpenPassage{id:transformed.clone()}).unwrap(); assert_eq!(p.variant().transpose,2); assert_eq!(p.variant().quantize,16);
         assert!(p.preferences.passages[&cid].iter().find(|r|r.id==transformed).unwrap().practice.is_some());

@@ -3,8 +3,13 @@ use panthesia_core::practice_history::PracticeTrackMode;
 use serde::Deserialize;
 
 pub(crate) fn same_passage_content(saved: &preferences::PassagePreset, candidate: &preferences::PassagePreset) -> Result<bool,String> {
+    let mut saved=saved.clone();
     let mut candidate=candidate.clone();
     candidate.id=saved.id.clone();
+    if let Some(content)=candidate.practice.as_ref().or(saved.practice.as_ref()).map(|edition|edition.performance_id.clone()) {
+        saved.practice=Some(saved.practice_edition(&content)?);
+        candidate.practice=Some(candidate.practice_edition(&content)?);
+    }
     Ok(serde_json::to_value(saved).map_err(|e|e.to_string())? == serde_json::to_value(candidate).map_err(|e|e.to_string())?)
 }
 
