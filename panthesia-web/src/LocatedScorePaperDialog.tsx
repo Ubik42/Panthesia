@@ -8,7 +8,7 @@ import { buildLocatedPaperPlanAsync, svgPagePng, type LocatedPaperPlan } from ".
 import "./located-score-paper.css";
 
 export function LocatedScorePaperDialog({
-  song, pages, mapping, sourceFingerprint, mappingToken, sourceRangeLabel, close,
+  song, pages, mapping, sourceFingerprint, mappingToken, sourceRangeLabel, performanceIntervals, close,
 }: {
   song: LoadedSong;
   pages: ScorePages;
@@ -16,6 +16,7 @@ export function LocatedScorePaperDialog({
   sourceFingerprint: string;
   mappingToken: string;
   sourceRangeLabel?:string;
+  performanceIntervals?:{start:number;end:number}[];
   close: () => void;
 }) {
   const [plan, setPlan] = useState<LocatedPaperPlan | null>(null);
@@ -34,17 +35,22 @@ export function LocatedScorePaperDialog({
   const [focused, setFocused] = useState("");
   const previewRef = useRef<HTMLDivElement>(null);
   const identity = (note: LocatedPaperPlan["notes"][number]) => `${note.track}:${note.index}`;
+  const planningSong=useMemo(()=>{
+    if(!sourceRangeLabel||!performanceIntervals)return song;
+    const mapped=new Set(mapping.map(note=>`${note.track}:${note.index}`));
+    return {...song,notes:song.notes.filter(note=>mapped.has(`${note.track}:${note.index}`)||performanceIntervals.some(interval=>note.start>=interval.start&&note.start<interval.end))};
+  },[song,mapping,sourceRangeLabel,performanceIntervals]);
   useEffect(() => {
     const controller = new AbortController();
     setPlan(null); setPlanning(true); setPlanningProgress("正在核对谱页音符位置…");
-    void buildLocatedPaperPlanAsync(pages, mapping, latestSong.current, {
+    void buildLocatedPaperPlanAsync(pages, mapping, planningSong, {
       signal: controller.signal,
       progress: (page, total) => { if (!controller.signal.aborted) setPlanningProgress(`正在核对第 ${page} / ${total} 页的音符位置…`); },
     }).then((result) => { if (!controller.signal.aborted) setPlan(result); })
       .catch((cause) => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); })
       .finally(() => { if (!controller.signal.aborted) setPlanning(false); });
     return () => controller.abort();
-  }, [pages, mapping, sourceKey]);
+  }, [pages, mapping, sourceKey,planningSong]);
   useEffect(() => { setPreviewPage(0); setSelectedMeasure(0); setFocused(""); setNotePage(0); }, [sourceKey]);
   const accepted = useMemo(() => plan?.notes.filter(note => !excluded.has(identity(note))) ?? [], [plan, excluded]);
   const pageNotes = useMemo(() => plan?.notes.filter(note => note.page === previewPage + 1) ?? [], [plan, previewPage]);

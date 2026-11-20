@@ -877,6 +877,7 @@ export function Notation({
           sourceFingerprint={asset.sourceFingerprint}
           mappingToken={mappingToken}
           sourceRangeLabel={asset.window&&asset.window.count<asset.window.total?`原谱第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节`:undefined}
+          performanceIntervals={asset.window?.intervals}
           close={() => setLocatingPaper(false)}
         />
       )}
