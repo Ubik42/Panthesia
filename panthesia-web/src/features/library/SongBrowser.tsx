@@ -1,18 +1,7 @@
 import { portablePath } from "../../engine/pathIdentity";
 import { parseSongSearch, matchesSongSearch } from "./songSearch";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  Library,
-  Layers3,
-  Music2,
-  Play,
-  Search,
-} from "lucide-react";
+import { ChevronRight, Folder, Layers3, Music2, Search } from "lucide-react";
 import {
   api,
   type SongRow,
@@ -41,16 +30,6 @@ interface FolderNode {
   children: Map<string, FolderNode>;
   available: boolean;
 }
-const expandedFolders = () => {
-  try {
-    const value = JSON.parse(stored("neothesia-browser-expanded", "[]"));
-    return new Set<string>(
-      Array.isArray(value) ? value.filter((v) => typeof v === "string") : [],
-    );
-  } catch {
-    return new Set<string>();
-  }
-};
 const stored = (key: string, fallback: string) => {
   try {
     return localStorage.getItem(key) ?? fallback;
@@ -70,22 +49,20 @@ export function SongBrowser({
   current,
   collection,
   open,
-  resume,
   manage,
-  refresh,
   unavailable,
   preparation,
+  menu,
 }: {
   rows: readonly SongRow[];
   ready: boolean;
   current: LoadedSong | null;
   collection: readonly CollectionSong[];
   open: (row: SongRow) => Promise<boolean>;
-  resume: () => void;
   manage: () => void;
-  refresh: () => Promise<unknown>;
   unavailable?: string | null;
   preparation?: React.ReactNode;
+  menu: () => void;
 }) {
   const [roots, setRoots] = useState<LibraryFolder[]>([]),
     [selectedFolder, setSelectedFolder] = useState(() =>
@@ -93,7 +70,6 @@ export function SongBrowser({
         ? ""
         : stored("neothesia-browser-folder", ""),
     ),
-    [expanded, setExpanded] = useState<Set<string>>(expandedFolders),
     [query, setQuery] = useState(""),
     [selectedPath, setSelectedPath] = useState(() =>
       stored("neothesia-browser-song", ""),
@@ -111,8 +87,7 @@ export function SongBrowser({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [context, setContext] = useState<{ x: number; y: number } | null>(null);
   const [error, setError] = useState(""),
-    [opening, setOpening] = useState(false),
-    [refreshing, setRefreshing] = useState(false);
+    [opening, setOpening] = useState(false);
   useEffect(() => {
     if (error) reportDiagnostic("曲库", error);
   }, [error]);
@@ -136,15 +111,15 @@ export function SongBrowser({
         type: "libraryFolders",
       });
       setRoots(value.folders);
-      if (!selectedFolder) {
-        const output = value.folders.find(
-          (f) => f.kind === "folder" && f.automatic && f.available,
-        );
-        if (output) {
-          setSelectedFolder(libraryPath(output.path));
-          setExpanded((old) => new Set([...old, libraryPath(output.path)]));
-        }
-      }
+      if (
+        selectedFolder &&
+        !value.folders.some(
+          (folder) =>
+            selectedFolder === libraryPath(folder.path) ||
+            selectedFolder.startsWith(libraryPath(folder.path) + "/"),
+        )
+      )
+        setSelectedFolder("");
     } catch (e) {
       setError(String(e));
     }
@@ -155,13 +130,9 @@ export function SongBrowser({
   useEffect(() => {
     try {
       localStorage.setItem("neothesia-browser-folder", selectedFolder);
-      localStorage.setItem(
-        "neothesia-browser-expanded",
-        JSON.stringify([...expanded]),
-      );
       localStorage.setItem("neothesia-browser-song", selectedPath);
     } catch {}
-  }, [selectedFolder, expanded, selectedPath]);
+  }, [selectedFolder, selectedPath]);
   const forest = useMemo(() => {
     const nodes = roots.map((root) => ({
       path: libraryPath(root.path),
@@ -209,6 +180,29 @@ export function SongBrowser({
     }
     return nodes;
   }, [rows, roots]);
+  const folderTrail = useMemo(() => {
+    const result: FolderNode[] = [];
+    const visit = (nodes: FolderNode[]): boolean => {
+      for (const node of nodes) {
+        if (
+          selectedFolder === node.path ||
+          selectedFolder.startsWith(node.path + "/")
+        ) {
+          result.push(node);
+          if (selectedFolder !== node.path) visit([...node.children.values()]);
+          return true;
+        }
+      }
+      return false;
+    };
+    visit(forest);
+    return result;
+  }, [forest, selectedFolder]);
+  const visibleFolders = query.trim()
+    ? []
+    : folderTrail.length
+      ? [...folderTrail.at(-1)!.children.values()]
+      : forest;
   const searchTerms = useMemo(() => parseSongSearch(queryValue), [queryValue]);
   const records = useMemo(
     () => new Map(collection.map((r) => [libraryPath(r.path ?? ""), r])),
@@ -232,14 +226,22 @@ export function SongBrowser({
           record = recordFor(row);
         if (tab === "favorites" && !record?.favorite) return false;
         if (tab === "recent" && !record?.lastUsed) return false;
-        if (
-          !(globalSearch && queryValue) &&
+        if (!queryValue) {
+          if (
+            selectedFolder &&
+            path.slice(0, path.lastIndexOf("/")) !== selectedFolder
+          )
+            return false;
+          if (
+            !selectedFolder &&
+            forest.some((root) => path.startsWith(root.path + "/"))
+          )
+            return false;
+        } else if (
           selectedFolder &&
-          selectedFolder !== "builtin" &&
+          !globalSearch &&
           !path.startsWith(selectedFolder + "/")
         )
-          return false;
-        if (selectedFolder === "builtin" && !row.id.startsWith("builtin/"))
           return false;
         return matchesSongSearch(
           {
@@ -260,6 +262,7 @@ export function SongBrowser({
       }),
     [
       rows,
+      forest,
       recordFor,
       catalogIndex,
       tab,
@@ -268,12 +271,6 @@ export function SongBrowser({
       queryValue,
       searchTerms,
     ],
-  );
-  const performanceCount = useMemo(
-    () =>
-      new Set(filtered.map((row) => row.contentId || libraryPath(row.path)))
-        .size,
-    [filtered],
   );
   const allGroups = useMemo(
     () => groupSongs(rows, catalogIndex, recordFor),
@@ -380,239 +377,74 @@ export function SongBrowser({
       setOpening(false);
     }
   };
-  const folderName = selectedFolder ? selectedFolder.split("/").at(-1) : "曲库";
-  const folderNode = (node: FolderNode, depth = 0): React.ReactNode => (
-    <div key={node.path} role="none">
-      <div
-        role="treeitem"
-        aria-level={depth + 1}
-        aria-selected={selectedFolder === node.path}
-        aria-expanded={node.children.size ? expanded.has(node.path) : undefined}
-        className={`browser-tree-row ${selectedFolder === node.path ? "selected" : ""}`}
-        style={{ paddingLeft: 12 + depth * 16 }}
-      >
+  return (
+    <main className="song-browser">
+      <header className="synthesia-library-header">
         <button
-          aria-label={`${expanded.has(node.path) ? "折叠" : "展开"}${node.label}`}
-          disabled={!node.children.size}
-          onClick={() =>
-            setExpanded((previous) => {
-              const next = new Set(previous);
-              next.has(node.path)
-                ? next.delete(node.path)
-                : next.add(node.path);
-              return next;
-            })
-          }
-        >
-          {node.children.size ? (
-            expanded.has(node.path) ? (
-              <ChevronDown size={13} />
-            ) : (
-              <ChevronRight size={13} />
-            )
-          ) : (
-            <span />
-          )}
-        </button>
-        <button
-          title={node.path}
+          className="synthesia-back"
           onClick={() => {
-            setSelectedFolder(node.path);
+            setSelectedFolder(folderTrail.at(-2)?.path ?? "");
             setQuery("");
           }}
         >
-          <Folder size={16} />
-          <span>{node.label}</span>
-          <small>
-            {node.available ? node.count.toLocaleString() : "未连接"}
-          </small>
+          <ChevronRight size={20} style={{ transform: "rotate(180deg)" }} />
+          Panthesia
         </button>
-      </div>
-      {expanded.has(node.path) && (
-        <div role="group">
-          {[...node.children.values()]
-            .sort((a, b) =>
-              a.label.localeCompare(b.label, "zh-CN", { numeric: true }),
-            )
-            .map((n) => folderNode(n, depth + 1))}
-        </div>
-      )}
-    </div>
-  );
-  return (
-    <main className="song-browser">
-      <aside className="browser-sidebar">
-        <div className="browser-sidebar-title">
-          <Library size={18} />
-          <button
-            className="browser-home"
-            onClick={() => {
-              setSelectedFolder("");
-              setQuery("");
-            }}
-          >
-            我的曲库
-          </button>
-        </div>
-        <div className="browser-tree-heading">
-          文件夹
-          <button
-            onClick={() => {
-              setRefreshing(true);
-              void refresh()
-                .then(readRoots)
-                .catch((e) => setError(String(e)))
-                .finally(() => setRefreshing(false));
-            }}
-            disabled={refreshing}
-            title="重新扫描目录"
-          >
-            {refreshing ? "扫描中" : "刷新"}
-          </button>
-        </div>
-        <div
-          className="browser-folder-tree"
-          role="tree"
-          aria-label="音乐文件夹"
-          onKeyDown={(event) => {
-            if (
-              ![
-                "ArrowUp",
-                "ArrowDown",
-                "ArrowLeft",
-                "ArrowRight",
-                "Home",
-                "End",
-              ].includes(event.key)
-            )
-              return;
-            const row = (event.target as HTMLElement).closest<HTMLElement>(
-              '[role="treeitem"]',
-            );
-            if (!row) return;
-            event.preventDefault();
-            const rows = [
-                ...event.currentTarget.querySelectorAll<HTMLElement>(
-                  '[role="treeitem"]',
-                ),
-              ],
-              index = rows.indexOf(row);
-            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-              const open = row.getAttribute("aria-expanded") === "true";
-              if (
-                (event.key === "ArrowRight" && !open) ||
-                (event.key === "ArrowLeft" && open)
-              ) {
-                row
-                  .querySelector<HTMLButtonElement>("button:not(:disabled)")
-                  ?.click();
-                return;
-              }
-            }
-            const next =
-              event.key === "Home"
-                ? 0
-                : event.key === "End"
-                  ? rows.length - 1
-                  : index +
-                    (["ArrowUp", "ArrowLeft"].includes(event.key) ? -1 : 1);
-            rows[Math.max(0, Math.min(rows.length - 1, next))]
-              ?.querySelector<HTMLButtonElement>("button:last-child")
-              ?.focus();
-          }}
+        <span className="synthesia-selected-song">
+          {selected ? titleParts(selectedGroup!.title).title : "选择歌曲"}
+        </span>
+        <button
+          className="synthesia-menu-button"
+          aria-label="应用菜单"
+          onClick={menu}
         >
-          {forest.map((node) => folderNode(node))}
-        </div>
-        <button className="browser-manage" onClick={manage}>
-          <FolderOpen size={16} />
-          管理文件夹
+          菜单
         </button>
-      </aside>
+        <button
+          className="synthesia-continue"
+          disabled={!selected || !!unavailable || opening}
+          onClick={() => void begin()}
+        >
+          {opening ? "正在打开…" : "继续"}
+          <ChevronRight size={20} />
+        </button>
+      </header>
       <section className="browser-content">
-        <header className="browser-heading">
-          <div>
-            <h1>{folderName}</h1>
-          </div>
-          {current && (
+        <div className="synthesia-library-navigation">
+          <nav className="synthesia-breadcrumbs" aria-label="曲库路径">
             <button
-              className="browser-resume"
-              disabled={!!unavailable}
-              onClick={resume}
+              onClick={() => {
+                setSelectedFolder("");
+                setQuery("");
+              }}
             >
-              <span>
-                <small>继续上次演奏</small>
-                <strong>{titleParts(current.title).title}</strong>
-              </span>
-              <ArrowRight size={19} />
+              歌曲
             </button>
-          )}
-        </header>
-        <div className="browser-search">
-          <Search size={18} />
-          <input
-            aria-label="搜索曲目"
-            placeholder="搜索歌曲"
-            title={"支持 composer:作者、tags:标签、双引号短语和 -词 排除"}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <label>
-            <input
-              type="checkbox"
-              checked={globalSearch}
-              onChange={(e) => setGlobalSearch(e.target.checked)}
-            />
-            搜索全部目录
-          </label>
-        </div>
-        <div className="browser-list-toolbar">
-          <div role="tablist" aria-label="曲目分类">
-            {[
-              ["all", "全部"],
-              ["favorites", "收藏"],
-              ["recent", "最近打开"],
-            ].map(([id, label]) => (
+            {folderTrail.map((node) => (
               <button
-                key={id}
-                role="tab"
-                aria-selected={tab === id}
+                key={node.path}
                 onClick={() => {
-                  setTab(id);
-                  if (id === "recent") {
-                    setSort("recent");
-                    setDescending(true);
-                  }
+                  setSelectedFolder(node.path);
+                  setQuery("");
                 }}
               >
-                {label}
+                <ChevronRight size={16} />
+                {node.label}
               </button>
             ))}
+          </nav>
+          <div className="browser-search">
+            <Search size={20} />
+            <input
+              aria-label="搜索曲目"
+              placeholder="搜索…"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setGlobalSearch(true);
+              }}
+            />
           </div>
-          <div className="browser-sort">
-            <select
-              aria-label="曲库排序"
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-            >
-              <option value="title">按曲名</option>
-              <option value="recent">按最近打开</option>
-            </select>
-            <button
-              aria-label={descending ? "切换为升序" : "切换为降序"}
-              onClick={() => setDescending((value) => !value)}
-            >
-              {descending ? "↓ 降序" : "↑ 升序"}
-            </button>
-          </div>
-        </div>
-        <div
-          className="browser-library-progress"
-          aria-label="当前曲库的练习概况"
-        >
-          <span>
-            {folderName} · {groups.length.toLocaleString()} 首 ·{" "}
-            {performanceCount.toLocaleString()} 份演奏
-          </span>
         </div>
         <div
           ref={list}
@@ -623,33 +455,72 @@ export function SongBrowser({
             if (opening || !["ArrowDown", "ArrowUp", "Enter"].includes(e.key))
               return;
             e.preventDefault();
+            const candidates = [
+              ...e.currentTarget.querySelectorAll<HTMLButtonElement>(
+                ".browser-directory,.browser-song",
+              ),
+            ];
             if (e.key === "Enter") {
-              void begin();
+              const active = document.activeElement as HTMLButtonElement;
+              if (active?.classList.contains("browser-directory"))
+                active.click();
+              else void begin();
               return;
             }
-            const index = groups.findIndex(
-                (group) => group.id === selectedGroup?.id,
-              ),
-              next = Math.max(
-                0,
-                Math.min(
-                  groups.length - 1,
-                  index + (e.key === "ArrowDown" ? 1 : -1),
-                ),
+            let index = candidates.indexOf(
+              document.activeElement as HTMLButtonElement,
+            );
+            if (index < 0)
+              index = candidates.findIndex(
+                (row) => row.getAttribute("aria-selected") === "true",
               );
-            if (groups[next]) {
-              chooseGroup(groups[next]);
-              setPage(Math.floor(next / 60));
-            }
+            const next =
+              candidates[
+                Math.max(
+                  0,
+                  Math.min(
+                    candidates.length - 1,
+                    index + (e.key === "ArrowDown" ? 1 : -1),
+                  ),
+                )
+              ];
+            next?.focus();
+            if (next?.classList.contains("browser-song")) next.click();
           }}
           tabIndex={0}
         >
+          {visibleFolders
+            .sort((a, b) =>
+              a.label.localeCompare(b.label, "zh-CN", { numeric: true }),
+            )
+            .map((node) => (
+              <button
+                key={node.path}
+                role="option"
+                aria-selected={false}
+                className="browser-directory"
+                onClick={() => {
+                  setSelectedFolder(node.path);
+                  setQuery("");
+                  setPage(0);
+                }}
+              >
+                <Folder size={24} />
+                <strong>{node.label}</strong>
+                <span>
+                  {node.available
+                    ? `${node.count.toLocaleString()} 首`
+                    : "未连接"}
+                </span>
+                <ChevronRight size={22} />
+              </button>
+            ))}
           {!ready && (
             <p className="browser-list-notice">
               正在读取曲库，已有目录会陆续显示…
             </p>
           )}
-          {ready && !groups.length && (
+          {ready && !groups.length && !visibleFolders.length && (
             <div className="browser-empty">
               <Music2 size={35} />
               <h2>{query ? "没有匹配曲目" : "这个目录还没有曲目"}</h2>
@@ -753,27 +624,59 @@ export function SongBrowser({
           </p>
         )}
         <footer className="browser-pagination">
-          <button
-            className="browser-begin"
-            disabled={!selected || !!unavailable || opening}
-            onClick={() => void begin()}
-          >
-            <Play size={16} />
-            {opening ? "正在打开…" : "打开演奏"}
-          </button>
-          <div>
-            <button disabled={!page} onClick={() => setPage((p) => p - 1)}>
-              上一页
-            </button>
-            <span>
-              {page + 1} / {Math.max(1, Math.ceil(groups.length / 60))}
-            </span>
+          <button onClick={manage}>添加 / 管理文件夹</button>
+          <div className="synthesia-sort" role="group" aria-label="歌曲排序">
             <button
-              disabled={(page + 1) * 60 >= groups.length}
-              onClick={() => setPage((p) => p + 1)}
+              aria-pressed={sort === "title"}
+              onClick={() => {
+                if (sort === "title") setDescending((v) => !v);
+                else {
+                  setSort("title");
+                  setDescending(false);
+                }
+              }}
             >
-              下一页
+              曲名 {sort === "title" ? (descending ? "↓" : "↑") : ""}
             </button>
+            <button
+              aria-pressed={sort === "recent"}
+              onClick={() => {
+                if (sort === "recent") setDescending((v) => !v);
+                else {
+                  setSort("recent");
+                  setDescending(true);
+                }
+              }}
+            >
+              最近打开
+            </button>
+            <button
+              aria-pressed={tab === "favorites"}
+              onClick={() =>
+                setTab((v) => (v === "favorites" ? "all" : "favorites"))
+              }
+            >
+              收藏
+            </button>
+          </div>
+          <div className="synthesia-song-count">
+            <span>{groups.length.toLocaleString()} 首</span>
+            {groups.length > 60 && (
+              <>
+                <button disabled={!page} onClick={() => setPage((v) => v - 1)}>
+                  ‹
+                </button>
+                <span>
+                  {page + 1} / {Math.ceil(groups.length / 60)}
+                </span>
+                <button
+                  disabled={(page + 1) * 60 >= groups.length}
+                  onClick={() => setPage((v) => v + 1)}
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
         </footer>
         {preparation}

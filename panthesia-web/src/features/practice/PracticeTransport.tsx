@@ -1,14 +1,20 @@
+import { ToolbarMore } from "../../app/ToolbarMore";
 import {
   ChevronRight,
+  ChevronLeft,
+  Minus,
+  Plus,
+  Hand,
+  Menu,
   LoaderCircle,
   Pause,
   Play,
-  RotateCcw,
+  SkipBack,
   Volume2,
   VolumeX,
 } from "lucide-react";
 import type { EngineCommand } from "../../api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePlaybackFields } from "./PlaybackView";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
@@ -16,6 +22,7 @@ import { usePlaybackSlider } from "./usePlaybackSlider";
 const transportFields = [
   "status",
   "mode",
+  "hands",
   "speed",
   "bpm",
   "volume",
@@ -34,11 +41,15 @@ export function PracticeTransport({
   nextDisabledReason,
   openingTitle,
   next,
+  previous,
   command,
   adjust,
   stopRecording,
   playShortcut,
   restartShortcut,
+  back,
+  menu,
+  tools,
 }: {
   store: PlaybackStore;
   available: boolean;
@@ -49,6 +60,7 @@ export function PracticeTransport({
   nextDisabledReason?: string;
   openingTitle?: string;
   next: () => void;
+  previous?: () => void;
   command: (command: EngineCommand) => void;
   adjust: (command: {
     type: "speed" | "volume";
@@ -57,6 +69,9 @@ export function PracticeTransport({
   stopRecording: () => void;
   playShortcut: string;
   restartShortcut: string;
+  back: () => void;
+  menu: () => void;
+  tools: ReactNode;
 }) {
   const state = usePlaybackFields(store, transportFields);
   const [bpmText, setBpmText] = useState<string | null>(null);
@@ -94,7 +109,9 @@ export function PracticeTransport({
               ? "请等待当前操作完成"
               : undefined;
   const lastVolume = useRef(state.volume > 0 ? state.volume : 0.8);
-  useEffect(()=>{if(state.volume>0)lastVolume.current=state.volume;},[state.volume]);
+  useEffect(() => {
+    if (state.volume > 0) lastVolume.current = state.volume;
+  }, [state.volume]);
   const speed = usePlaybackSlider({
     store,
     value: state.speed * state.bpm,
@@ -115,19 +132,32 @@ export function PracticeTransport({
     commit: (value) => adjust({ type: "volume", value }),
   });
   return (
-    <div className="practice-transport" role="group" aria-label="播放控制">
+    <div
+      className="practice-transport synthesia-transport"
+      role="group"
+      aria-label="播放控制"
+    >
+      <button
+        className="synthesia-back"
+        aria-label="返回歌曲设置"
+        onClick={back}
+      >
+        <ChevronLeft size={23} />
+        返回
+      </button>
       <div className="practice-transport-main">
         <button
           className="icon-button"
-          title={`从头开始${restartShortcut ? ` · ${restartShortcut}` : ""}`}
-          aria-label="从头开始"
+          title="上一小节"
+          aria-label="上一小节"
           disabled={!available || busy || !connected || state.recording}
-          onClick={() => command({ type: "restart" })}
+          onClick={previous ?? (() => command({ type: "restart" }))}
         >
-          <RotateCcw size={18} />
+          <SkipBack size={22} />
         </button>
         <button
           className="play-button"
+          aria-label={playLabel}
           aria-busy={!!openingTitle || undefined}
           disabled={!!unavailable}
           title={
@@ -149,43 +179,9 @@ export function PracticeTransport({
           ) : (
             <Play size={17} fill="currentColor" />
           )}
-          {playLabel}
+          <span className="synthesia-play-label">{playLabel}</span>
           {playShortcut && <kbd aria-hidden="true">{playShortcut}</kbd>}
         </button>
-        <div
-          className="transport-mode-switch"
-          role="group"
-          aria-label="即时练习方式"
-        >
-          <button
-            aria-pressed={state.mode === "wait"}
-            title={nextDisabledReason}
-            disabled={
-              !available ||
-              !connected ||
-              !!openingTitle ||
-              state.recording ||
-              !!nextDisabledReason
-            }
-            onClick={() => command({ type: "mode", value: "wait" })}
-          >
-            弹对后继续
-          </button>
-          <button
-            aria-pressed={state.mode === "listen"}
-            title={nextDisabledReason}
-            disabled={
-              !available ||
-              !connected ||
-              !!openingTitle ||
-              state.recording ||
-              !!nextDisabledReason
-            }
-            onClick={() => command({ type: "mode", value: "listen" })}
-          >
-            连续播放
-          </button>
-        </div>
         <button
           className="icon-button"
           aria-label={
@@ -219,6 +215,19 @@ export function PracticeTransport({
         </button>
       )}
       <div className="practice-speed">
+        <button
+          className="synthesia-tempo-step"
+          aria-label="减慢 5 BPM"
+          disabled={speedLocked}
+          onClick={() =>
+            void adjust({
+              type: "speed",
+              value: Math.max(0.25, (speed.value - 5) / Math.max(1, state.bpm)),
+            })
+          }
+        >
+          <Minus size={26} />
+        </button>
         <label>
           <span>
             速度 <small>BPM</small>
@@ -299,45 +308,137 @@ export function PracticeTransport({
         >
           原速
         </button>
+        <span className="synthesia-bpm-unit">BPM</span>
+        <button
+          className="synthesia-tempo-step"
+          aria-label="加快 5 BPM"
+          disabled={speedLocked}
+          onClick={() =>
+            void adjust({
+              type: "speed",
+              value: Math.min(2, (speed.value + 5) / Math.max(1, state.bpm)),
+            })
+          }
+        >
+          <Plus size={26} />
+        </button>
         {bpmError && (
           <span className="practice-bpm-error" role="status">
             {bpmError}
           </span>
         )}
       </div>
-      <div
-        className="practice-volume"
-        role="group" aria-label="演奏主音量"
-        title={`主音量 · ${state.output}`}
-      >
-        <button type="button" className="volume-mute" aria-label={volume.value===0?"取消静音":"静音"} aria-pressed={volume.value===0}
-          disabled={!connected||volume.pending} onClick={()=>{if(volume.value>0)lastVolume.current=volume.value;volume.begin();volume.stage(volume.value===0?lastVolume.current:0);volume.apply();}}>
-        {volume.value === 0 ? (
-          <VolumeX size={17} aria-hidden="true" />
-        ) : (
-          <Volume2 size={17} aria-hidden="true" />
-        )}
-        </button>
-        <input
-          aria-label="主音量"
-          aria-valuetext={`${Math.round(volume.value * 100)}%`}
-          type="range"
-          min="0"
-          max="100"
-          value={volume.value * 100}
+      <div className="synthesia-tool-cluster">
+        {tools}
+        <ToolbarMore
+          label="练习方式"
+          icon={<Hand size={27} />}
+          disabled={!connected || !available}
+        >
+          <button
+            aria-pressed={state.mode === "wait"}
+            title={nextDisabledReason}
+            disabled={
+              !available ||
+              !connected ||
+              !!openingTitle ||
+              state.recording ||
+              !!nextDisabledReason
+            }
+            onClick={() => command({ type: "mode", value: "wait" })}
+          >
+            弹对后继续
+          </button>
+          <button
+            aria-pressed={state.mode === "listen"}
+            title={nextDisabledReason}
+            disabled={
+              !available ||
+              !connected ||
+              !!openingTitle ||
+              state.recording ||
+              !!nextDisabledReason
+            }
+            onClick={() => command({ type: "mode", value: "listen" })}
+          >
+            连续播放
+          </button>
+          <hr />
+          {[
+            ["left", "左手"],
+            ["both", "双手"],
+            ["right", "右手"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              aria-pressed={state.hands === value}
+              disabled={busy || state.recording}
+              onClick={() => command({ type: "hands", value })}
+            >
+              {label}
+            </button>
+          ))}
+        </ToolbarMore>
+        <ToolbarMore
+          label="音量"
+          icon={<Volume2 size={27} />}
           disabled={!connected}
-          aria-busy={volume.pending || undefined}
-          onChange={(event) => volume.stage(Number(event.target.value) / 100)}
-          onPointerDown={volume.begin}
-          onKeyDown={(event) => volume.keyDown(event.key, event.repeat)}
-          onPointerUp={volume.apply}
-          onPointerCancel={volume.cancel}
-          onBlur={volume.apply}
-          onKeyUp={(event) => volume.keyUp(event.key)}
-        />
-        <output>
-          {`${Math.round(volume.value * 100)}%`}
-        </output>
+        >
+          {" "}
+          <div
+            className="practice-volume"
+            role="group"
+            aria-label="演奏主音量"
+            title={`主音量 · ${state.output}`}
+          >
+            <button
+              type="button"
+              className="volume-mute"
+              aria-label={volume.value === 0 ? "取消静音" : "静音"}
+              aria-pressed={volume.value === 0}
+              disabled={!connected || volume.pending}
+              onClick={() => {
+                if (volume.value > 0) lastVolume.current = volume.value;
+                volume.begin();
+                volume.stage(volume.value === 0 ? lastVolume.current : 0);
+                volume.apply();
+              }}
+            >
+              {volume.value === 0 ? (
+                <VolumeX size={17} aria-hidden="true" />
+              ) : (
+                <Volume2 size={17} aria-hidden="true" />
+              )}
+            </button>
+            <input
+              aria-label="主音量"
+              aria-valuetext={`${Math.round(volume.value * 100)}%`}
+              type="range"
+              min="0"
+              max="100"
+              value={volume.value * 100}
+              disabled={!connected}
+              aria-busy={volume.pending || undefined}
+              onChange={(event) =>
+                volume.stage(Number(event.target.value) / 100)
+              }
+              onPointerDown={volume.begin}
+              onKeyDown={(event) => volume.keyDown(event.key, event.repeat)}
+              onPointerUp={volume.apply}
+              onPointerCancel={volume.cancel}
+              onBlur={volume.apply}
+              onKeyUp={(event) => volume.keyUp(event.key)}
+            />
+            <output>{`${Math.round(volume.value * 100)}%`}</output>
+          </div>
+        </ToolbarMore>
+        <button
+          className="synthesia-app-menu"
+          aria-label="应用菜单"
+          onClick={menu}
+        >
+          <Menu size={25} />
+        </button>
       </div>
     </div>
   );

@@ -1,0 +1,717 @@
+/* Layout copied from Synthesia's official song-list and playing screenshots.
+   Panthesia keeps its own name and the user's practice and data rules. */
+.synthesia-layout {
+  --synth-blue: #147eae;
+  --synth-blue-deep: #116d96;
+  --synth-line: #9da7aa;
+}
+.synthesia-layout .workspace-topbar[hidden],
+.synthesia-layout .workspace[hidden] {
+  display: none !important;
+}
+.synthesia-layout .workspace-topbar:not([hidden]) {
+  position: fixed;
+  z-index: 1900;
+  left: 8px;
+  right: 8px;
+  top: 62px;
+  border: 1px solid #8aa6b4;
+  border-radius: 5px;
+  box-shadow: 0 10px 25px #0005;
+  background: #f3f5f6;
+  color: #273542;
+}
+.synthesia-layout .workspace-topbar .engine-indicator,
+.synthesia-layout .workspace-topbar .workspace-navigation {
+  display: none;
+}
+.synthesia-layout .synthesia-library-header {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--synth-blue);
+  color: white;
+  border-bottom: 1px solid #08618a;
+}
+.synthesia-layout .synthesia-library-header button,
+.synthesia-layout .synthesia-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: white;
+  background: #11729d;
+  border: 1px solid #4e9cbe;
+  border-radius: 5px;
+  box-shadow: inset 0 1px #ffffff18;
+  min-height: 38px;
+  padding: 5px 15px;
+  font-size: 17px;
+}
+.synthesia-layout .synthesia-library-header button:hover {
+  background: #238bb7;
+}
+.synthesia-selected-song {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 18px;
+}
+.synthesia-layout .synthesia-menu-button {
+  font-size: 15px;
+}
+.synthesia-layout .song-browser {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 58px minmax(0, 1fr);
+  background: #efefef;
+}
+.synthesia-layout .browser-content {
+  padding: 0;
+  background: #eee;
+}
+.synthesia-library-navigation {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #b5cfdb;
+  min-height: 64px;
+  border-bottom: 1px solid #90a4ad;
+}
+.synthesia-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  background: #f0f0f0;
+  border: 1px solid #a7a9aa;
+  border-radius: 9px;
+  padding: 4px 8px;
+}
+.synthesia-breadcrumbs button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  background: transparent;
+  color: #37474f;
+  border: 0;
+  font-size: 18px;
+  padding: 6px 8px;
+}
+.synthesia-layout .browser-search {
+  flex: 0 0 28%;
+  min-width: 180px;
+  padding: 0 12px;
+  margin: 0;
+  background: #f0f0f0;
+  border: 1px solid #a7a9aa;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.synthesia-layout .browser-search input {
+  color: #40484d;
+  font-size: 19px;
+}
+.synthesia-layout .browser-song-list {
+  padding: 0;
+  margin: 0;
+  gap: 0;
+  background: #eee;
+  overflow: auto;
+}
+.synthesia-layout .browser-song,
+.synthesia-layout .browser-directory {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  flex: none;
+  min-height: 62px;
+  padding: 8px 22px;
+  margin: 0;
+  color: #303a40;
+  border: 0;
+  border-bottom: 1px solid #aeb2b5;
+  border-radius: 0;
+  background: #eee;
+  box-shadow: none;
+  text-align: left;
+}
+.synthesia-layout .browser-song:hover,
+.synthesia-layout .browser-directory:hover {
+  background: #dde9ef;
+}
+.synthesia-layout .browser-song.selected {
+  background: #94d2eb;
+  box-shadow: none;
+}
+.synthesia-layout .browser-song-icon {
+  width: 28px;
+  background: none;
+  color: #68767e;
+}
+.synthesia-layout .browser-song-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+.synthesia-layout .browser-song-title strong,
+.synthesia-layout .browser-directory strong {
+  color: inherit;
+  font-size: 20px;
+  font-weight: 400;
+}
+.synthesia-layout .browser-song-title small,
+.synthesia-layout .browser-directory > span {
+  color: #81888c;
+  font-size: 15px;
+}
+.synthesia-layout .browser-directory {
+  color: #2b93bb;
+}
+.synthesia-layout .browser-directory strong {
+  flex: 1;
+}
+.synthesia-layout .browser-current {
+  color: #24708c;
+  background: transparent;
+}
+.synthesia-layout .browser-song-study {
+  font-size: 12px;
+}
+.synthesia-layout .browser-pagination {
+  flex: none;
+  min-height: 58px;
+  padding: 8px 12px;
+  background: #b5cfdb;
+  border: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 15px;
+  align-items: center;
+}
+.synthesia-layout .browser-pagination > button {
+  justify-self: start;
+  background: #147eae;
+  color: white;
+  border: 1px solid #16779c;
+  min-height: 36px;
+  padding: 5px 12px;
+}
+.synthesia-sort {
+  display: flex;
+  gap: 0 !important;
+  border: 1px solid #9aa8af;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.synthesia-layout .synthesia-sort button {
+  border: 0;
+  border-right: 1px solid #aab0b2;
+  border-radius: 0;
+  background: linear-gradient(#eee, #c2c5c6);
+  color: #41484b;
+  min-height: 38px;
+  padding: 6px 18px;
+}
+.synthesia-layout .synthesia-sort button:last-child {
+  border-right: 0;
+}
+.synthesia-layout .synthesia-sort button[aria-pressed="true"] {
+  background: linear-gradient(#acb1b3, #d6d9da);
+  color: #24343c;
+}
+.synthesia-song-count {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #677c87;
+  font-size: 18px;
+}
+/* One control bar, then the timeline, then score / falling notes / keyboard. */
+.synthesia-layout > .workspace {
+  flex: 1;
+  min-height: 0;
+}
+.synthesia-layout .practice-panel {
+  border: 0;
+  border-radius: 0;
+}
+.synthesia-layout .practice-panel > .synthesia-transport {
+  display: flex;
+  flex-wrap: nowrap;
+  flex: none;
+  min-height: 58px;
+  height: 58px;
+  gap: 0;
+  padding: 0 10px;
+  background: var(--synth-blue);
+  border: 0;
+  border-bottom: 1px solid #096792;
+  border-radius: 0;
+  color: white;
+  overflow: visible;
+}
+.synthesia-layout .synthesia-transport .practice-transport-main {
+  display: flex;
+  gap: 0;
+  flex: none;
+}
+.synthesia-layout .synthesia-transport button {
+  color: white;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 0;
+}
+.synthesia-layout .synthesia-transport button:hover:not(:disabled) {
+  background: #ffffff20;
+}
+.synthesia-layout .synthesia-transport button:disabled {
+  opacity: 0.35;
+}
+.synthesia-layout .synthesia-transport .synthesia-back {
+  margin-right: 20px;
+  padding: 5px 12px;
+  min-height: 36px;
+  border: 1px solid #4e9cbe;
+  border-radius: 5px;
+  font-size: 17px;
+}
+.synthesia-layout .synthesia-transport .play-button {
+  order: -1;
+  min-width: 46px;
+  padding: 8px 13px;
+  border-left: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+.synthesia-transport .play-button svg,
+.synthesia-transport .practice-transport-main > button svg {
+  width: 26px;
+  height: 26px;
+}
+.synthesia-play-label,
+.synthesia-transport .play-button kbd {
+  display: none;
+}
+.synthesia-layout .synthesia-transport .practice-speed {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex: none;
+  margin: 0;
+  position: relative;
+  padding: 0 4px;
+  border-left: 1px solid #ffffff20;
+  border-right: 1px solid #ffffff20;
+}
+.synthesia-layout .synthesia-transport .practice-speed > label,
+.synthesia-layout .synthesia-transport .practice-speed-reset {
+  display: none;
+}
+.synthesia-layout .synthesia-transport .practice-speed .bpm-number {
+  width: 70px !important;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 2px 14px;
+  text-align: center;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+  color: white;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  appearance: textfield;
+}
+.synthesia-transport .bpm-number::-webkit-inner-spin-button,
+.synthesia-transport .bpm-number::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.synthesia-bpm-unit {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  pointer-events: none;
+}
+.synthesia-tool-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
+.synthesia-play-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more {
+  flex: none;
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 48px;
+  padding: 5px;
+  background: none;
+  color: white;
+  border: 0;
+  border-radius: 0;
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary > span,
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more
+  > summary
+  > svg:last-child {
+  display: none;
+}
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more
+  > summary
+  > svg:first-child {
+  display: block;
+  width: 27px;
+  height: 27px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions {
+  color: #304750;
+  background: #e7edf0;
+  border: 6px solid #147eae;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px #0005;
+  padding: 9px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions button {
+  color: #304750;
+  background: #f5f5f5;
+  border: 1px solid #aebac0;
+  border-radius: 5px;
+  min-height: 38px;
+  text-align: left;
+  padding: 8px 12px;
+}
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more-actions
+  button[aria-pressed="true"] {
+  background: #b8e0ed;
+  color: #174960;
+}
+.synthesia-layout .synthesia-transport .practice-volume {
+  color: #304750;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+}
+.synthesia-layout .synthesia-transport .practice-volume input {
+  min-width: 150px;
+  flex: 1;
+}
+.synthesia-layout .synthesia-transport .practice-timeline {
+  order: initial;
+}
+.synthesia-layout .practice-panel > .practice-timeline {
+  flex: none;
+  min-height: 42px;
+  height: 42px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(#626262, #353535 52%, #222);
+  color: #e4e4e4;
+}
+.synthesia-layout .practice-timeline .time-ruler-labels {
+  position: absolute;
+  inset: 0;
+  padding: 0 12px;
+  z-index: 3;
+  font-size: 12px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+}
+.synthesia-layout .practice-timeline .time-ruler-labels > span:last-child {
+  display: none;
+}
+.synthesia-layout .practice-timeline .time-ruler-labels strong {
+  font-size: 13px;
+  color: #ddd;
+}
+.synthesia-layout .practice-timeline .time-ruler-labels small {
+  color: #bbb;
+}
+.synthesia-layout .practice-timeline .time-ruler-track {
+  position: absolute;
+  inset: 0;
+  height: 42px;
+  margin: 0;
+}
+.synthesia-layout .practice-timeline .time-ruler-track svg {
+  height: 42px;
+  opacity: 0.4;
+}
+.synthesia-layout .practice-timeline .time-ruler-track input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 42px;
+  margin: 0;
+  opacity: 0.25;
+  cursor: pointer;
+}
+.synthesia-layout .practice-timeline .time-ruler-seconds,
+.synthesia-layout .practice-timeline .practice-range-toolbar {
+  display: none;
+}
+.synthesia-layout .practice-panel > .practice-stage {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+.synthesia-layout .practice-stage .practice-stage-readout {
+  display: none;
+}
+.synthesia-layout .practice-stage .practice-status-readout {
+  display: none;
+}
+.synthesia-layout
+  .synthesia-transport
+  .synthesia-metronome[aria-pressed="true"] {
+  background: #ffffff35;
+}
+/* Song setup follows the official two-column listen / hands layout. */
+.synthesia-song-setup {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: #eee;
+  color: #30383d;
+}
+.synthesia-song-setup .synthesia-library-header h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.synthesia-setup-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  align-content: center;
+  gap: 9%;
+  padding: 35px max(6%, 20px);
+  max-width: 1400px;
+  width: 100%;
+  margin: auto;
+}
+.synthesia-listen-options {
+  display: grid;
+  gap: 18px;
+  align-content: center;
+}
+.synthesia-layout .synthesia-setup-body button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 150px;
+  border: 1px solid #a8a8a8;
+  border-radius: 7px;
+  background: linear-gradient(#dedede, #c5c5c5);
+  box-shadow: inset 0 1px #fff;
+  color: #3e4548;
+}
+.synthesia-layout .synthesia-setup-body button:hover:not(:disabled) {
+  background: linear-gradient(#d1e7ef, #b5d9e8);
+  border-color: #5597b3;
+}
+.synthesia-layout .synthesia-setup-body button strong {
+  font-size: 23px;
+  font-weight: 400;
+}
+.synthesia-layout .synthesia-setup-body button span {
+  font-size: 14px;
+  color: #757e83;
+}
+.synthesia-layout .synthesia-setup-body .synthesia-listen-card {
+  min-height: 180px;
+  border: 2px dotted #7898a6;
+}
+.synthesia-wait-options h2 {
+  font-size: 29px;
+  font-weight: 400;
+  text-align: center;
+  margin: 0 0 5px;
+}
+.synthesia-wait-options > p {
+  color: #8a8f92;
+  font-size: 19px;
+  text-align: center;
+  margin: 0 0 20px;
+}
+.synthesia-hand-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.synthesia-hand-card.both {
+  grid-column: 1/-1;
+  min-height: 130px !important;
+}
+.synthesia-hand-card.left svg {
+  transform: scaleX(-1);
+}
+.synthesia-setup-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  padding: 18px;
+  background: #b5cfdb;
+  border-top: 1px solid #9aafb9;
+}
+.synthesia-layout .synthesia-setup-footer button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 17px;
+  font-size: 15px;
+  color: #3a5360;
+  background: #e8eef1;
+  border: 1px solid #9eafb7;
+}
+.synthesia-setup-error {
+  padding: 10px;
+  text-align: center;
+}
+@media (max-width: 1000px) {
+  .synthesia-layout .synthesia-transport .synthesia-back {
+    margin-right: 8px;
+  }
+  .synthesia-layout .synthesia-transport button {
+    padding: 7px 8px;
+  }
+  .synthesia-layout .synthesia-transport .toolbar-more > summary {
+    width: 38px;
+  }
+  .synthesia-setup-body {
+    gap: 5%;
+    padding: 25px 5%;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport {
+    padding: 0 3px;
+  }
+  .synthesia-layout .synthesia-transport .synthesia-back {
+    font-size: 0;
+    padding: 5px;
+    margin-right: 2px;
+  }
+  .synthesia-layout .synthesia-transport .practice-transport-main > button {
+    padding: 6px;
+  }
+  .synthesia-layout .synthesia-transport .practice-speed .bpm-number {
+    width: 54px !important;
+    font-size: 22px;
+  }
+  .synthesia-layout .synthesia-transport .toolbar-more > summary {
+    width: 32px;
+  }
+  .synthesia-play-tools > .synthesia-loop,
+  .synthesia-play-tools > .synthesia-metronome {
+    display: none;
+  }
+  .synthesia-library-navigation {
+    gap: 6px;
+    padding: 8px;
+  }
+  .synthesia-layout .browser-search {
+    flex-basis: 34%;
+    min-width: 130px;
+  }
+  .synthesia-layout .browser-song-title strong,
+  .synthesia-layout .browser-directory strong {
+    font-size: 17px;
+  }
+  .synthesia-layout .browser-pagination {
+    gap: 5px;
+  }
+  .synthesia-layout .synthesia-sort button {
+    padding: 5px 8px;
+  }
+  .synthesia-song-count {
+    font-size: 13px;
+  }
+  .synthesia-setup-body {
+    gap: 25px;
+    grid-template-columns: 1fr 1fr;
+    padding: 20px;
+  }
+  .synthesia-layout .synthesia-setup-body button strong {
+    font-size: 18px;
+  }
+  .synthesia-wait-options h2 {
+    font-size: 23px;
+  }
+  .synthesia-wait-options > p {
+    font-size: 14px;
+  }
+}
+.synthesia-layout .song-browser .browser-song,
+.synthesia-layout .song-browser .browser-directory {
+  border-bottom: 1px solid #b6b6b6;
+}
+.synthesia-layout .song-browser .browser-song.selected {
+  background: #96d4ec;
+  box-shadow: none;
+}
+.synthesia-layout .song-browser .browser-song-icon {
+  background: transparent;
+}
+.synthesia-layout .browser-pagination > button,
+.synthesia-layout .synthesia-sort button {
+  font-size: 14px;
+}
+.synthesia-layout .practice-stage .practice-stage-readouts {
+  display: none;
+}
+.synthesia-layout .practice-transport .play-button {
+  background: transparent;
+  border-radius: 0;
+}

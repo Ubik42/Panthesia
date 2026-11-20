@@ -11,6 +11,7 @@ export function ToolbarMore({
   status,
   attention = false,
   children,
+  icon,
 }: {
   label?: string;
   disabled: boolean;
@@ -18,6 +19,7 @@ export function ToolbarMore({
   status?: string;
   attention?: boolean;
   children: ReactNode;
+  icon?: ReactNode;
 }) {
   const id = useId();
   const root = useRef<HTMLDetailsElement>(null);
@@ -171,7 +173,7 @@ export function ToolbarMore({
           else if (!root.current?.open) place();
         }}
       >
-        <MoreHorizontal size={17} />
+        {icon ?? <MoreHorizontal size={17} />}
         <span>{label}</span>
         {status && (
           <small

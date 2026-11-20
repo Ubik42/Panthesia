@@ -1,3 +1,6 @@
+import { MetronomeIcon } from "./features/practice/SynthesiaToolbarIcons";
+import { Settings as DisplayGear, Search as ZoomIcon, Music2 as ScoreIcon, Repeat2 as LoopIcon } from "lucide-react";
+import { SongSetupScreen } from "./features/practice/SongSetupScreen";
 import { installDiagnostics } from "./app/diagnostics";
 import {FolderManager} from "./features/library/FolderManager";
 import { pathKey } from "./engine/pathIdentity";
@@ -160,6 +163,10 @@ const normalize = pathKey;
 
 export default function App() {
   useEffect(installDiagnostics, []);
+  const [appMenuOpen,setAppMenuOpen]=useState(false);
+  const [songSetup,setSongSetup]=useState(false);
+  useEffect(()=>{if(!appMenuOpen)return;const pointer=(event:MouseEvent)=>{const target=event.target as Element;if(!target.closest('[aria-label="应用菜单"]') && (!target.closest('.workspace-topbar') || target.closest('.workspace-topbar button')))setAppMenuOpen(false);};const key=(event:KeyboardEvent)=>{if(event.key==="Escape")setAppMenuOpen(false);};window.addEventListener("click",pointer);window.addEventListener("keydown",key);return()=>{window.removeEventListener("click",pointer);window.removeEventListener("keydown",key);};},[appMenuOpen]);
+
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
   const workspaceSessions = useWorkspaceSessions();
@@ -1741,7 +1748,7 @@ export default function App() {
   return (
     <div
       data-skin={display.skin}
-      className={`workbench daily-workbench page-${workspace} ${display.practiceFocus ? "practice-focus" : ""} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
+      className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
       onDragOver={(e) => {
@@ -1777,7 +1784,7 @@ export default function App() {
         setImportDialog(true);
       }}
     >
-      <header className="workspace-topbar">
+      <header className="workspace-topbar" hidden={!appMenuOpen} role={appMenuOpen?"dialog":undefined} aria-modal={appMenuOpen||undefined} aria-label="应用菜单">
         <button
           className="app-name"
           onClick={() => {
@@ -1895,13 +1902,14 @@ export default function App() {
       {!importDialog && <ImportQueueNotice queue={workspaceSessions.imports} open={() => setImportDialog(true)} />}
       {workspace !== "library" && startupReady && <LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus} />}
       {busy && !importDialog && !fingeringDialog && !exerciseDialog && <TaskActivity />}
+      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{setSongSetup(false);void changeWorkspace("library");}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>setHandsDialog(true)} sound={()=>setSettings(true)} scores={()=>setScoresDialog(true)} settings={()=>{setSongSetup(false);panels.revealInspector("setup");}} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode})){setSongSetup(false);await run({type:"play"});}}} />}
       <div
         className="workspace"
         ref={panels.root}
         data-practice-compact={panels.compact ? "" : undefined}
         data-practice-short={panels.short ? "" : undefined}
-        hidden={workspace !== "practice" || !startupReady}
-        inert={workspace !== "practice" || !startupReady}
+        hidden={workspace !== "practice" || !startupReady || songSetup}
+        inert={workspace !== "practice" || !startupReady || songSetup}
         style={
           {
             "--library-width": `${display.libraryWidth}px`,
@@ -1932,50 +1940,11 @@ export default function App() {
             return load(item.row, item.contentId, item.location);
           }} />}
         <main className="practice-panel">
-          <div className="song-toolbar">
-            <button className="back-to-library" onClick={()=>void changeWorkspace("library")}><ChevronLeft size={17}/>曲库</button>
-            <div className="current-song">
-              <h1 title={song?.title}>{song?.title || "选择曲目"}</h1>
-              <SongCredits song={song} editing={metadata} fallback={selectedRow?.composer ||
-                (song ? "本地 MIDI" : "打开本地 MIDI 或选择内置练习")} />
-            </div>
-            <button
-              className="icon-button"
-              aria-label="练习设置"
-              aria-expanded={inspector}
-              aria-controls="practice-inspector"
-              onClick={() => setInspector(!inspector)}
-            >
-              <Settings2 size={17} />
-            </button>
-          </div>
-          <div className="view-toolbar practice-view-toolbar">
-            <div className="practice-view-tabs" role="group" aria-label="练习视图">
-              <button
-                className={view === "keyboard" ? "selected" : ""}
-                aria-pressed={view === "keyboard"}
-                onClick={() => setView("keyboard")}
-              >
-                瀑布与琴键
-              </button>
-              <button
-                className={view === "score" ? "selected" : ""}
-                aria-pressed={view === "score"}
-                onClick={() => setView("score")}
-              >
-                五线谱
-              </button>
-              <button className={view === "combined" ? "selected" : ""} aria-pressed={view === "combined"} disabled={!song} onClick={() => setView("combined")}>谱面与瀑布</button>
-              <button
-                className={view === "paper" ? "selected" : ""}
-                aria-pressed={view === "paper"}
-                disabled={!song}
-                onClick={() => setView("paper")}
-              >
-                谱页
-              </button>
-            </div>
-            <ToolbarMore label="演奏设置" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
+          <PracticeTransport
+            store={playback}
+            back={() => {void run({type:"pause"});setSongSetup(true);panels.closeDrawer();}}
+            tools={          <div className="synthesia-play-tools">
+            <ToolbarMore icon={<ScoreIcon size={27}/>} label="歌曲设置" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
               <button onClick={() => panels.revealInspector("setup")}>练习与版本设置…</button>
               <button onClick={() => setScoresDialog(true)}>谱面管理…</button>
               <button onClick={() => setSettings(true)}>键盘与音源…</button>
@@ -2049,8 +2018,33 @@ export default function App() {
                 指法建议
               </button>
             </ToolbarMore>
-            <button className="practice-focus-toggle" aria-pressed={display.practiceFocus} disabled={navigation.locked || !startupReady} onClick={togglePracticeFocus}>{display.practiceFocus ? "退出专注" : "专注演奏"}</button>
-            <ToolbarMore label="显示选项" scale={display.uiScale / 100} disabled={navigation.locked || !startupReady}>
+
+            <ToolbarMore icon={<DisplayGear size={27}/>} label="显示设置" scale={display.uiScale / 100} disabled={navigation.locked || !startupReady}>
+            <div className="practice-view-tabs" role="group" aria-label="练习视图">
+              <button
+                className={view === "keyboard" ? "selected" : ""}
+                aria-pressed={view === "keyboard"}
+                onClick={() => setView("keyboard")}
+              >
+                瀑布与琴键
+              </button>
+              <button
+                className={view === "score" ? "selected" : ""}
+                aria-pressed={view === "score"}
+                onClick={() => setView("score")}
+              >
+                五线谱
+              </button>
+              <button className={view === "combined" ? "selected" : ""} aria-pressed={view === "combined"} disabled={!song} onClick={() => setView("combined")}>谱面与瀑布</button>
+              <button
+                className={view === "paper" ? "selected" : ""}
+                aria-pressed={view === "paper"}
+                disabled={!song}
+                onClick={() => setView("paper")}
+              >
+                谱页
+              </button>
+            </div>
               <PracticeLegend song={song} display={display} />
               <button
                 aria-label="界面与按键设置"
@@ -2059,13 +2053,43 @@ export default function App() {
                 界面与按键
               </button>
               <PreviewBarsControl value={seconds} change={setSeconds} label="前方预览" ariaLabel="预览小节数"/>
-          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
-            change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}
+
 
             </ToolbarMore>
+            <button className="synthesia-metronome" title="节拍器" aria-label="节拍器" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}><MetronomeIcon size={27}/></button>
+            <ToolbarMore label="键盘缩放" icon={<ZoomIcon size={27}/>} disabled={!song}>          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
+            change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}</ToolbarMore>
+            <button className="synthesia-loop" title="循环与小节" aria-label="循环与小节" onClick={()=>panels.revealInspector("setup")}><LoopIcon size={27}/></button>
           </div>
-          <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis} ratio={display.practiceSplitRatio}
-            changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value}))}>
+}
+            menu={() => setAppMenuOpen(v=>!v)}
+            available={!!song}
+            busy={busy || openingActive}
+            openingTitle={openingActive ? importingName || openingIntent?.title || "所选曲目" : undefined}
+            connected={connected}
+            nextTitle="下一小节"
+            previous={()=>{const position=playback.getSnapshot().position;const previous=[...(song?.measures??[])].reverse().find(bar=>bar.start<position-.1);void adjustRealtime({type:"seek",position:previous?.start??0});}}
+            next={()=>{const position=playback.getSnapshot().position;const upcoming=song?.measures.find(bar=>bar.start>position+.1);if(upcoming)void adjustRealtime({type:"seek",position:upcoming.start});}}
+            command={action}
+            adjust={adjustRealtime}
+            stopRecording={() => { void run({ type: "recording", active: false }, true); }}
+            playShortcut={display.shortcuts.playPause ? shortcutLabel(display.shortcuts.playPause) : ""}
+            restartShortcut={display.shortcuts.restart ? shortcutLabel(display.shortcuts.restart) : ""}
+          />
+          <PracticeTimeline
+            loopPreview={display.loopPreview}
+            changeLoopPreview={enabled=>setDisplay(previous=>({...previous,loopPreview:enabled}))}
+            range={practiceRange}
+            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})}
+            togglePicking={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}
+            store={playback}
+            song={song}
+            busy={busy || openingActive}
+            disabled={!connected || state.recording || recital || ladderActive || routineActive}
+            seek={(position) => adjustRealtime({ type: "seek", position })}
+          />
+          <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis === "auto" ? "rows" : display.practiceSplitAxis} ratio={display.practiceSplitAxis === "auto" ? 25 : display.practiceSplitRatio}
+            changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value,practiceSplitAxis:previous.practiceSplitAxis==="auto"?"rows":previous.practiceSplitAxis}))}>
             <div className="practice-stage-keyboard" hidden={view !== "keyboard" && view !== "combined" && state.mode !== "memory"} role="region" aria-label="瀑布与琴键区域">
             {(view === "keyboard" || view === "combined" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
@@ -2262,53 +2286,9 @@ export default function App() {
               generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => setSettings(true)} />}
 
           </PracticeStage>
-          <details className="practice-passage-details"><summary>小节与分段</summary>
-          {song && (
-            <LiveBarNavigator
-              store={playback}
-              song={song}
-              condensed={panels.compact || panels.short}
-              start={loopStart}
-              end={loopEnd}
-              disabled={busy || state.recording || ladderActive || routineActive}
-              recital={recital}
-              select={(first, last) => { setLoopStart(first); setLoopEnd(last); }}
-              command={action}
-            />
-          )}
-          </details>
-          <PracticeTimeline
-            loopPreview={display.loopPreview}
-            changeLoopPreview={enabled=>setDisplay(previous=>({...previous,loopPreview:enabled}))}
-            range={practiceRange}
-            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})}
-            togglePicking={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}
-            store={playback}
-            song={song}
-            busy={busy || openingActive}
-            disabled={!connected || state.recording || recital || ladderActive || routineActive}
-            seek={(position) => adjustRealtime({ type: "seek", position })}
-          />
-          <PracticeTransport
-            store={playback}
-            available={!!song}
-            busy={busy || openingActive}
-            openingTitle={openingActive ? importingName || openingIntent?.title || "所选曲目" : undefined}
-            connected={connected}
-            nextTitle={next?.title}
-            nextDisabledReason={routineActive || ladderActive ? "请先结束当前计划项目或速度阶梯。" : recital && ["playing", "paused", "countIn"].includes(state.status) ? "完整演奏结束后可继续下一首。" : undefined}
-            next={() => { if (next) void openQueuedSong(next); }}
-            nextHint={followingQueue.skipped
-              ? next
-                ? `下一首：${next.title}，已跳过 ${followingQueue.skipped} 首文件不可用的曲目`
-                : `后续 ${followingQueue.skipped} 首文件不可用，可在曲库中修复文件位置`
-              : undefined}
-            command={action}
-            adjust={adjustRealtime}
-            stopRecording={() => { void run({ type: "recording", active: false }, true); }}
-            playShortcut={display.shortcuts.playPause ? shortcutLabel(display.shortcuts.playPause) : ""}
-            restartShortcut={display.shortcuts.restart ? shortcutLabel(display.shortcuts.restart) : ""}
-          />
+
+
+
         </main>
         {inspector && (
           <PracticeInspector
@@ -2327,6 +2307,21 @@ export default function App() {
             selectStart={setLoopStart}
             selectEnd={setLoopEnd}
             additionalSettings={<>
+          <details className="practice-passage-details"><summary>小节与分段</summary>
+          {song && (
+            <LiveBarNavigator
+              store={playback}
+              song={song}
+              condensed={panels.compact || panels.short}
+              start={loopStart}
+              end={loopEnd}
+              disabled={busy || state.recording || ladderActive || routineActive}
+              recital={recital}
+              select={(first, last) => { setLoopStart(first); setLoopEnd(last); }}
+              command={action}
+            />
+          )}
+          </details>
               {song && <SongEditionBar song={song} active={workspace==="practice" && inspector} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
               {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
           {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
@@ -2349,7 +2344,7 @@ export default function App() {
           />
         )}
       </div>
-      <footer hidden={workspace !== "practice" || !startupReady} className="statusbar">
+      <footer hidden={true} className="statusbar">
         <span>
           <KeyboardMusic size={13} />
           {state.input
@@ -2492,9 +2487,9 @@ export default function App() {
       )}
       {libraryDialog && startupReady && !libraryAdvanced && libraryLaunch==="normal" && !librarySearch && <SongBrowser
         rows={allLibraryRows} ready={libraryReady} current={song} collection={collection}
-        unavailable={workspaceUnavailable} refresh={refreshWithCollection}
-        manage={()=>setLibraryAdvanced(true)} resume={()=>void changeWorkspace("practice")}
-        open={row=>load(row,row.contentId??undefined,"selected")}
+        unavailable={workspaceUnavailable}
+        menu={()=>setAppMenuOpen(v=>!v)} manage={()=>setLibraryAdvanced(true)}
+        open={async row=>{const ok=await load(row,row.contentId??undefined,"selected");if(ok){setView("keyboard");setSongSetup(true);setAppMenuOpen(false);}return ok;}}
         preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/>} 
       {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
       {libraryScoreRange && (
