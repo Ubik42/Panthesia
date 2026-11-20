@@ -2,11 +2,13 @@
 
 更新：2026-11-20。目标仍为原创 Panthesia 应用实现、Synthesia 全套交互复刻、扩展后台化。执行协议 [current-goal.md](current-goal.md)，唯一队列 [current-plan.md](current-plan.md)，持久状态 [goal-state.json](goal-state.json)。
 
-## 用户暂停断点：2026-11-20 18:11 UTC
+## 最新批次：MIDIVisualizer 实时特效已接入
 
-Goal 已由用户暂停，恢复须用户明确指令。本轮源码尚未提交：只读谱面独立分块读取/范围排版，两个预览消费者接入；曲中调号、反复恢复、转调标签/练习谱/导出及可信旧原谱回补已实现。Web 与嵌入 Debug 编译通过，两项定向后端核对通过。桌面只读查看流程因暂停中断，不能记作通过；本轮启动的独立窗口已请求正常关闭。运行日志 work/original-product-reset/p18-native-run.log，原始证据 p18-window；Debug SHA256 87613DF2E439B7580AF26542EF7B5D72F02370B872682EF8D65022F1A1F5380B，正式 Release 未更新。
+2026-11-20 用户授权恢复并追加实时特效。实现提交 6b2a207。PianoEffects 以 WebGL2 实例图层绘制瞬态光晕/光束/涟漪/星屑，外观预览共用；播放、输入和声音仍由 Rust 负责。Snapshot 新增 pressedKeys 力度/击键序号，前端实时通道接入。上游 MIT 公式来源、固定提交、原许可及随包拷贝已登记，详情 visual-renderer.md。
 
-恢复后先看本断点与 p18 日志，完成实际流程后再整理提交、同步下方旧状态及 current-plan；原有九项未提交修改继续保护。两小时方向审核下一次 18:13:51 UTC，暂停期间不轮询；恢复到期后审核一次。以下“当前批次”是此前已提交状态。
+Web 与嵌入 Debug 编译、实际自由演奏/连续播放、重弹、减少动画、关闭/暂停/定位清理、显卡丢失回退/恢复、窄屏通过；正常退出码 0。证据 evidence/midivisualizer-2026-11-20.json，原记录 work/midivisualizer/runtime。Debug SHA256 257C3173B1FD74A2D65E3EA55E3648CB3DAB6E9F46EF2E46DE025E24D198B72D。正式 Release 未更新；离线视频、3D 未实现。
+
+工具长期 Goal 已清除，本批按用户直接指令执行，未自动重建。执行文件 v7，方向检查已记录。上批暂停源码及原九项路径改动已并入 c7ecdee 并上传；只读谱面实际流程仍未补完。下方 B05 是其已提交基线；下一入口继续 P15 收束，随后 P16/P17、B06/B07。不要重跑已通过的本批实时光效或此前音源负载检查。
 
 ## 当前批次 B05
 

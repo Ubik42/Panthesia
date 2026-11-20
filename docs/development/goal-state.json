@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "paused",
-  "objectiveVersion": "2026-11-20/6",
+  "status": "active",
+  "objectiveVersion": "2026-11-20/7",
   "currentBatch": "B05",
   "completedBatches": [
     "B00",
@@ -11,11 +11,11 @@
     "B04"
   ],
   "nextBatch": "B06",
-  "currentTask": "B05/P15：MIDI 与外部原谱的演奏范围链已接入；继续只读谱面查看范围化与曲中调号投影，然后完成 DuET/变换/ABC。",
+  "currentTask": "P14 实时 MIDIVisualizer 光效已完成本批；下一入口 B05/P15 未完成只读查看流程、纸谱边界，然后 P16/P17。",
   "directionReviewIntervalSeconds": 7200,
-  "lastDirectionReviewAt": "2026-11-20T16:13:51Z",
-  "nextDirectionReviewAt": "2026-11-20T18:13:51Z",
-  "goalPromptSha256": "d51c8b94cabeac8bebfb065c5c8394e74a5f2b5f88fa75b48affbaf10e207d4a",
+  "lastDirectionReviewAt": "2026-11-20T22:53:08Z",
+  "nextDirectionReviewAt": "2026-11-21T00:53:08Z",
+  "goalPromptSha256": "df1fe655837adf75adb96293a2da85b9698cc9a7fcf915756f659d796955922e",
   "scopeFiles": [
     "docs/development/current-plan.md",
     "docs/development/current-goal.md",
@@ -27,52 +27,32 @@
   "baselineCodeRevision": "a67ea542a66f0aac61a7c0adcfc5603bc0fe7a90",
   "latestRunnablePackage": "outputs/releases/Panthesia-20261120-synthesia-layout",
   "lastCompletedWork": [
-    "SourceDocument indexes original partwise/timewise XML; display windows retain authored marks and recover prior attributes and active direction spans",
-    "SourceView uses complete performed visits and native source-event alignment; repeated written notes follow distinct MIDI occurrences",
-    "Asset/import/retention/package readers share 64 MiB admission; display requests stay within 4 MB and normally 32 measures",
-    "Original source performance and score ranges share the existing 100000-visit planner budget, retiring inconsistent 20000-visit rejects",
-    "Located paper names the displayed source range and counts omissions inside its performance intervals",
-    "Historical B05 checkpoints consolidated; current plan, handoff, architecture and source records updated"
+    "MIDIVisualizer MIT halo/fade adapted into bounded WebGL2 instanced overlay",
+    "Rust pressedKeys carries velocity and re-strike serial without changing audio scheduling",
+    "Piano/appearance preview share GPU renderer and current frame clock; Canvas2D fallback restores after context loss",
+    "Actual native keyboard/autoplay, reduced motion, disable, pause/seek clear, narrow layout and exit passed"
   ],
   "remainingCritical": [
-    "B05 只读谱面查看仍整曲/旧容量边界，曲中调号投影，DuET 实际生成采用及变换/ABC 衔接",
-    "B06 完整录音与整体整合",
-    "B07 旧应用实现退役、来源审核、正式包和实际使用交付"
+    "B05 prior read-only score range flow still needs actual native completion; whole paper/80-page limit; DuET real generation/adoption; transform/ABC",
+    "B06 complete recording/integration",
+    "B07 retire old implementation, audit sources and deliver matching formal Release",
+    "Offline effects video/audio export and 3D remain later visual scope"
   ],
   "nextEntry": [
     "panthesia-web/src/ScoreFilePreview.tsx",
     "panthesia-web/src/features/scores/ScoreDocumentPreview.tsx",
-    "panthesia-engine/src/notation_source.rs",
-    "panthesia-engine/src/source_notation.rs",
-    "panthesia-music/src/decode.rs",
-    "panthesia-engine/src/practice_variant.rs",
-    "panthesia-web/src/Piano.tsx",
-    "panthesia-web/src-tauri/src/duet_score.rs",
-    "panthesia-web/src-tauri/src/score_jobs.rs"
+    "panthesia-web/src-tauri/src/duet_score.rs"
   ],
   "validation": [
-    "2 source-index cases passed: authored context/marks and timewise duplicate/anonymous IDs",
-    "1 engine case passed for repeat and D.C. occurrence mapping, including rejecting out-of-range renderer IDs",
-    "Web/protocol and embedded Debug builds passed; 35 existing engine warnings and Vite chunk warning remain",
-    "Native 12.728710 MB / 25001-measure / 100004-note authored source imported; first range 16261 bytes, final range 5006 bytes; note long-n100002 highlighted",
-    "Native continuous playback passed backward repeat from written measure 64 to 1 at global time 128.4 seconds",
-    "Large-song archive exported and inspected; original XML found byte-for-byte inside nested performance package",
-    "Final 5453e81 native paper scope contains 36 located notes, skips 0, releases worker and exits 0; original sources/previous annotations unchanged"
+    "Web/protocol and embedded Debug build passed",
+    "Native software MIDI velocity/re-strike and autoplay effects, GL loss fallback/restore, reduced motion, disable and pause/seek cleanup passed",
+    "760x620 appearance layout has no horizontal overflow; owned window exit code 0",
+    "180-frame sparse-song observation: median 6.9 ms, P95 7.0 ms; not a dense-load or 144fps guarantee"
   ],
   "lastDirectionReviewResult": "aligned",
-  "baselineUncommitted": [
-    "docs/pages/practice-library.md",
-    "panthesia-engine/src/library.rs",
-    "panthesia-engine/src/main.rs",
-    "panthesia-engine/src/package_commands.rs",
-    "panthesia-web/README.md",
-    "panthesia-web/src-tauri/src/main.rs",
-    "scripts/import-giantmidi-library.ps1",
-    "scripts/prepare-giantmidi-release.py",
-    "scripts/sync-practice-library.ps1"
-  ],
+  "baselineUncommitted": [],
   "lastImplementationCheckpointAt": "2026-11-20T17:48:00.602498+00:00",
-  "implementationRevision": "5453e816072dadb2d13af766ddc8e14ba194c7ba",
+  "implementationRevision": "6b2a207ac9cf042fcbadde88735137c1ac7403d6",
   "implementationCommits": [
     "1dfa556",
     "43bd4ee",
@@ -102,11 +82,12 @@
     "3a91b42",
     "6d58014",
     "614e10e",
-    "5453e81"
+    "5453e81",
+    "6b2a207"
   ],
   "latestDevelopmentExecutable": "target/debug/panthesia-desktop.exe",
-  "developmentExecutableSha256": "F78A96EA06F8E26D15EB80431221F4C7C8A49BC35CC5F6B42AD69EB3C743F5F6",
-  "developmentIncludesBaselineUncommitted": true,
+  "developmentExecutableSha256": "257C3173B1FD74A2D65E3EA55E3648CB3DAB6E9F46EF2E46DE025E24D198B72D",
+  "developmentIncludesBaselineUncommitted": false,
   "knownMigrationResult": {
     "migrated": 23,
     "unmatched": 15,
@@ -114,12 +95,15 @@
     "report": "work/original-product-reset/saved-library-migration-final-20261120.json",
     "snapshot": "work/original-product-reset/saved-library-migration-final-20261120.snapshot"
   },
-  "pausedAt": "2026-11-20T18:11:32Z",
   "pauseCheckpoint": {
-    "codeCommitted": false,
+    "codeCommitted": true,
     "debugSha256": "87613DF2E439B7580AF26542EF7B5D72F02370B872682EF8D65022F1A1F5380B",
     "implementation": "Independent chunked read-only notation sessions; shared range preview consumers; performed key signatures and projection for labels/engraving/export, including verified legacy source fallback.",
     "validation": "Web build and embedded Debug build passed; reader lifecycle and repeat/key/legacy fallback targeted cases passed. Native reader flow interrupted by explicit user pause; do not report passed.",
-    "next": "Inspect p18-window/reader-native-evidence.json and p18-native-run.log; resume unfinished native flow, then stage owned changes without original nine, update current plan/handoff, commit. No Release update."
-  }
+    "next": "Inspect p18-window/reader-native-evidence.json and p18-native-run.log; resume unfinished native flow, then stage owned changes without original nine, update current plan/handoff, commit. No Release update.",
+    "commit": "c7ecdee"
+  },
+  "executionMode": "user-requested batch; persistent tool goal cleared",
+  "baselineChangesCommittedAt": "c7ecdee",
+  "lastBatchCompletedAt": "2026-11-20T22:52:55Z"
 }

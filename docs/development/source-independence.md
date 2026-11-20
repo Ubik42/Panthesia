@@ -80,3 +80,7 @@ WaterfallSprites 的有界完整音符纹理、长音符分段回退和静态琴
 ## B05/P15 原谱范围实现记录
 
 3a91b42、6d58014、614e10e、5453e81：本次 Codex 编写 source_score_window 与 source_notation，按既有音乐模型、XML 字段和演奏路线接口建立书面索引、显示副本、范围导航与源身份映射；既有导入、持有、归档、选段和纸谱界面作相应重构。MusicXML 解析/语义、路线规划及原有界面消费者继续使用现有模块，不能把两个新增模块当作整套旧应用已原创替换的证明。Verovio toolkit/WASM 未修改，通用 XML/ZIP 依赖与来源记录保持；整体退役/来源审计继续 P20/P21。
+
+## MIDIVisualizer 特效来源
+
+2026-11-20：从 Simon Rodriguez 的 MIT 项目 MIDIVisualizer（固定提交 1c942137679bc1846fd278d1e57ff91c71e94b72）改编光晕和粒子衰减公式；WebGL ES 着色器、实例批次、资源生命周期及前端接入由本次实现。NOTICE 和 third-party/MIDIVisualizer/LICENSE 保存归属。此项不关闭 P20/P21 整体来源审核，第三方公式按许可使用，未宣称全自有着色器算法。

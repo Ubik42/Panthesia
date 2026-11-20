@@ -1,0 +1,155 @@
+{
+  "at": "2026-11-20T22:52:55Z",
+  "task": "P14 MIDIVisualizer real-time effects",
+  "sourceBase": "c7ecdee",
+  "upstream": {
+    "repository": "https://github.com/kosua20/MIDIVisualizer",
+    "commit": "1c942137679bc1846fd278d1e57ff91c71e94b72",
+    "license": "MIT",
+    "adapted": [
+      "flashes.frag halo and premultiplication",
+      "particles.vert quadratic fade"
+    ]
+  },
+  "implementation": "Transparent WebGL2 instanced overlay; CPU bounded transient simulation and existing Canvas2D notes/keys. No upstream executable or native window.",
+  "validation": {
+    "webBuild": "passed",
+    "desktopBuild": "passed; 35 existing engine warnings and existing Vite chunk warning",
+    "native": {
+      "startedAt": "2026-11-20T22:49:52.634Z",
+      "errors": [],
+      "soft": {
+        "renderer": "midivisualizer-webgl2",
+        "particles": 13,
+        "gpu": {
+          "effectRenderer": "midivisualizer-webgl2",
+          "effectInstances": "16",
+          "effectDrawCalls": "1"
+        },
+        "bounds": {
+          "width": 1440,
+          "height": 902
+        }
+      },
+      "chord": {
+        "renderer": "midivisualizer-webgl2",
+        "particles": 67,
+        "gpu": {
+          "effectRenderer": "midivisualizer-webgl2",
+          "effectInstances": "76",
+          "effectDrawCalls": "1"
+        },
+        "bounds": {
+          "width": 1440,
+          "height": 902
+        }
+      },
+      "gpu": {
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "error": 0,
+        "width": 2160,
+        "height": 1353
+      },
+      "released": {
+        "renderer": "midivisualizer-webgl2",
+        "particles": 0,
+        "gpu": {
+          "effectRenderer": "midivisualizer-webgl2",
+          "effectInstances": "0",
+          "effectDrawCalls": "0"
+        },
+        "bounds": {
+          "width": 1440,
+          "height": 902
+        }
+      },
+      "contextLossSupported": true,
+      "fallback": {
+        "renderer": "canvas2d",
+        "particles": 25,
+        "gpu": {
+          "effectRenderer": "midivisualizer-webgl2",
+          "effectInstances": "0",
+          "effectDrawCalls": "0"
+        },
+        "bounds": {
+          "width": 1440,
+          "height": 902
+        }
+      },
+      "restored": {
+        "renderer": "midivisualizer-webgl2",
+        "particles": 25,
+        "gpu": {
+          "effectRenderer": "midivisualizer-webgl2",
+          "effectInstances": "28",
+          "effectDrawCalls": "1"
+        },
+        "bounds": {
+          "width": 1440,
+          "height": 902
+        }
+      },
+      "finishedAt": "2026-11-20T22:52:09.884Z",
+      "preview": true,
+      "reduced": {
+        "effectRenderer": "midivisualizer-webgl2",
+        "effectInstances": "1",
+        "effectDrawCalls": "1"
+      },
+      "disabled": true,
+      "narrow": {
+        "width": 760,
+        "scroll": 760
+      },
+      "autoSong": {
+        "contentId": "0850ea328af2d9a64e6932cf706bdf7905ea69ef46114036de7a2df1ab62c0dd",
+        "title": "反复练习"
+      },
+      "autoPlay": {
+        "keyLow": "53",
+        "keyHigh": "77",
+        "viewportStart": "31",
+        "viewportSpan": "15",
+        "previewBars": "4",
+        "renderGeneration": "1",
+        "effectParticles": "22",
+        "effectRenderer": "midivisualizer-webgl2"
+      },
+      "frameIntervals": {
+        "frames": 180,
+        "median": 6.900000000008731,
+        "p95": 7,
+        "max": 7.100000000005821
+      },
+      "paused": true,
+      "seekCleared": true,
+      "selectorObservation": "TimeoutError: page.waitForFunction: Timeout 15000ms exceeded.",
+      "passed": true
+    },
+    "close": {
+      "pid": 23644,
+      "exited": true,
+      "exitCode": 0,
+      "signal": null,
+      "at": "2026-11-20T22:52:54.881Z"
+    }
+  },
+  "binary": {
+    "pid": 23644,
+    "executable": "D:\\Music\\_tools\\Panthesia\\target\\debug\\panthesia-desktop.exe",
+    "profile": "D:\\Music\\_tools\\Panthesia\\work\\midivisualizer\\runtime\\profile",
+    "revision": "c7ecdeed3e789a208044cbaa00aa457092df5cdb",
+    "binarySha256": "257c3173b1fd74a2d65e3ea55e3648cb3dab6e9f46ef2e46de025e24d198b72d",
+    "startedAt": "2026-11-20T22:49:45.450Z"
+  },
+  "rawEvidence": "work/midivisualizer/runtime",
+  "limitations": [
+    "Short native run using software-injected MIDI input and sparse authored repeat song; no physical MIDI or dense sustained performance benchmark this batch.",
+    "Observed 180 rAF intervals do not prove universal 144fps or encode throughput.",
+    "No offline audio/video export, 3D camera/reflections, or formal Release update.",
+    "Initial script selectors needed whitespace/disambiguation fixes; automatic play probe retried after setup mode initialization settled. No page errors observed."
+  ],
+  "implementationRevision": "6b2a207ac9cf042fcbadde88735137c1ac7403d6",
+  "sourceMatchesNativeBinary": "Recorded before commit, with the subsequently committed application changes; only documentation changed after the final build."
+}
