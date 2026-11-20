@@ -378,7 +378,6 @@ struct Player {
     routine:Option<ActivePlan>,
     active_expression_goal:Option<expression_goal::ExpressionGoal>,
     expression_attempt_started:bool,
-    last_click: Option<(usize, usize)>,
     finger_demo: Option<finger_demo::Demo>,
     song_audition: Option<song_audition::Playback>,
     song_audition_pending: Option<String>,
@@ -492,7 +491,6 @@ impl Player {
             routine:None,
             active_expression_goal:None,
             expression_attempt_started:false,
-            last_click: None,
             finger_demo: None,
             song_audition: None,
             song_audition_pending: None,
@@ -1144,14 +1142,6 @@ impl Player {
         self.playback.clock = Duration::ZERO;
         self.pending_time.clear();self.pending_untracked=0;self.time_fraction=Duration::ZERO;self.time_connected=false;self.time_last_end=None;
         self.state.position = position;
-        if self.state.metronome {
-            let snap = self.snapshot();
-            let click = (snap.measure, snap.beat.floor() as usize);
-            if self.last_click != Some(click) {
-                self.sound_click(click.1 == 1);
-                self.last_click = Some(click);
-            }
-        }
         self.state.saved = true;
         self.state.current_history_id = None;
         self.playback.seek(position, &self.notes, &self.events,
@@ -1159,7 +1149,7 @@ impl Player {
         if let Some(prepared)=prepared {self.restore_prepared_track_sound(prepared);} else {self.restore_track_sound();}
         self.state.status = "ready".into();
         self.state.count_remaining = 0.;
-        self.last_click = None;
+        self.playback.last_beat = None;
         self.end_hold = 0.;
     }
     fn command(&mut self, command: Command) -> Result<serde_json::Value, String> {
@@ -2328,7 +2318,7 @@ impl Player {
                 }
                 self.state.count_in = bars;
             }
-            Command::Metronome { enabled } => self.state.metronome = enabled,
+            Command::Metronome { enabled } => {self.state.metronome = enabled;self.playback.last_beat=None;},
             Command::Latency { milliseconds } => {
                 if !(-250..=250).contains(&milliseconds) {
                     return Err("延迟补偿应为 -250 到 250 毫秒".into());
@@ -2785,20 +2775,8 @@ impl Player {
         }
         if self.state.status!="playing"||self.state.mode=="listen"||self.state.recording{self.time_connected=false;}
         if self.state.status == "countIn" {
-            let snap = self.snapshot();
-            let denominator = self
-                .file
-                .as_ref()
-                .and_then(|f| f.musical_time.measure_at(snap.tick))
-                .map_or(4, |m| m.denominator);
-            let compound = self
-                .file
-                .as_ref()
-                .and_then(|f| f.musical_time.measure_at(snap.tick))
-                .is_some_and(|m| m.denominator == 8 && m.numerator >= 6 && m.numerator % 3 == 0);
-            let bpm = snap.bpm * self.state.speed * f64::from(denominator)
-                / 4.
-                / if compound { 3. } else { 1. };
+            let bpm=self.file.as_ref().map_or(120.*self.state.speed,|file|
+                playback_adapter::musical_position(file,self.state.position,self.state.duration,self.state.speed).beat_rate);
             let old = self.state.count_remaining.ceil() as usize;
             self.state.count_remaining =
                 (self.state.count_remaining - delta.as_secs_f64() * bpm / 60.).max(0.);
@@ -2807,7 +2785,7 @@ impl Player {
             }
             if self.state.count_remaining == 0. {
                 self.state.status = "playing".into();
-                self.last_click = None;
+                self.playback.last_beat = None;
             }
             return;
         }
@@ -2867,24 +2845,8 @@ impl Player {
         state.recording = self.recorder.is_recording();
         state.record_duration = self.recorder.duration().as_secs_f64();
         if let Some(f) = &self.file {
-            state.tick = f.tempo_track.seconds_to_pulses(state.position);
-            state.bpm = f.tempo_track.bpm_at_seconds(state.position);
-            let display_tick = if state.position >= state.duration {
-                (state.tick - 0.000001).max(0.)
-            } else {
-                state.tick
-            };
-            if let Some(m) = f.musical_time.measure_at(display_tick) {
-                state.measure = m.number;
-                state.beat = 1.
-                    + (display_tick - m.start_tick as f64)
-                        / (f64::from(f.musical_time.ppq) * 4. / f64::from(m.denominator)
-                            * if m.denominator == 8 && m.numerator >= 6 && m.numerator % 3 == 0 {
-                                3.
-                            } else {
-                                1.
-                            });
-            }
+            let at=playback_adapter::musical_position(f,state.position,state.duration,state.speed);
+            state.tick=at.tick;state.bpm=at.bpm;state.measure=at.measure;state.beat=at.beat;
         }
         state
     }

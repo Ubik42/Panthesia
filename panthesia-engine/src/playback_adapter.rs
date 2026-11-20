@@ -24,6 +24,49 @@ pub(super) fn note_player(
         base
     }
 }
+pub(super) struct MusicalPosition {
+    pub tick: f64,
+    pub bpm: f64,
+    pub measure: usize,
+    pub beat: f64,
+    pub beat_rate: f64,
+}
+pub(super) fn musical_position(
+    file: &midi_file::MidiFile,
+    position: f64,
+    duration: f64,
+    speed: f64,
+) -> MusicalPosition {
+    let tick = file.tempo_track.seconds_to_pulses(position);
+    let bpm = file.tempo_track.bpm_at_seconds(position);
+    let display_tick = if position >= duration {
+        (tick - 0.000001).max(0.)
+    } else {
+        tick
+    };
+    let measure = file.musical_time.measure_at(display_tick);
+    let (number, beat, rate) = measure.map_or((1, 1., bpm * speed), |m| {
+        let group = if m.denominator == 8 && m.numerator >= 6 && m.numerator % 3 == 0 {
+            3.
+        } else {
+            1.
+        };
+        let ticks_per_beat =
+            f64::from(file.musical_time.ppq) * 4. / f64::from(m.denominator) * group;
+        (
+            m.number,
+            1. + (display_tick - m.start_tick as f64) / ticks_per_beat,
+            bpm * speed * f64::from(m.denominator) / 4. / group,
+        )
+    });
+    MusicalPosition {
+        tick,
+        bpm,
+        measure: number,
+        beat,
+        beat_rate: rate,
+    }
+}
 impl Player {
     pub(super) fn tick_transport(&mut self, delta: Duration) {
         let end = self
@@ -51,6 +94,15 @@ impl Player {
             return;
         };
         self.state.position = position;
+        if self.state.metronome {
+            if let Some(file) = &self.file {
+                let at = musical_position(file, position, self.state.duration, self.state.speed);
+                if let Some(accent) = self.playback.beat(at.measure, at.beat.floor() as usize) {
+                    self.sound_click(accent);
+                }
+            }
+        }
+
         while let Some(event) = self
             .playback
             .next_event(
@@ -150,6 +202,11 @@ mod tests {
         .unwrap();
         p.command(Command::Play).unwrap();
         p.tick(Duration::from_millis(250));
+        p.command(Command::Metronome { enabled: true }).unwrap();
+        p.tick(Duration::from_millis(1));
+        let initial = p.playback.last_beat;
+        p.tick(Duration::from_millis(500));
+        assert_ne!(p.playback.last_beat, initial);
         let position = p.state.position;
         let clock = p.playback.clock;
         let cursor = p.playback.event_cursor;

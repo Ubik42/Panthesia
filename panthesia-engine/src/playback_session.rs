@@ -7,6 +7,7 @@ use std::time::Duration;
 #[derive(Default)]
 pub(crate) struct PlaybackSession {
     pub(crate) clock: Duration,
+    pub(crate) last_beat: Option<(usize, usize)>,
     pub(crate) guidance: Guidance,
     pub(crate) note_cursor: usize,
     pub(crate) event_cursor: usize,
@@ -29,6 +30,7 @@ impl PlaybackSession {
         event_time: impl Fn(&E) -> f64,
     ) {
         self.clock = Duration::ZERO;
+        self.last_beat = None;
         self.guidance.clear();
         self.note_cursor = notes.partition_point(|n| note_time(n) < position);
         self.event_cursor = events.partition_point(|e| event_time(e) < position);
@@ -87,6 +89,15 @@ impl PlaybackSession {
         self.event_cursor += 1;
         Some(event)
     }
+    /// One pulse per entered beat; delayed ticks never replay a burst of old clicks.
+    pub fn beat(&mut self, measure: usize, beat: usize) -> Option<bool> {
+        let at = (measure, beat);
+        if self.last_beat == Some(at) {
+            return None;
+        }
+        self.last_beat = Some(at);
+        Some(beat == 1)
+    }
     pub fn completed(&self, position: f64, end: f64, waiting: bool) -> bool {
         position >= end && (!waiting || self.guidance.ready())
     }
@@ -95,6 +106,16 @@ impl PlaybackSession {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn metronome_enters_each_beat_once_and_rearms_on_seek() {
+        let mut s = PlaybackSession::default();
+        assert_eq!(s.beat(1, 1), Some(true));
+        assert_eq!(s.beat(1, 1), None);
+        assert_eq!(s.beat(1, 2), Some(false));
+        assert_eq!(s.beat(2, 1), Some(true));
+        s.seek(0., &[0.], &[0.], |n| *n, |n| *n);
+        assert_eq!(s.beat(1, 1), Some(true));
+    }
     #[test]
     fn continuous_wait_and_reselection_keep_transport_position() {
         let notes = [
