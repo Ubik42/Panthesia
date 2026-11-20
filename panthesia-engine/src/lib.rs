@@ -144,6 +144,7 @@ mod tick_ranges;
 pub mod score_export;
 pub mod score_sources;
 mod practice_notation;
+mod practice_keys;
 mod midi_master_volume;
 mod finger_demo;
 mod demo_protocol;
@@ -219,6 +220,7 @@ pub use practice_edit::Request as PracticeRequest;
 
 #[derive(Clone)]
 pub struct Engine {
+    notation_readers: notation_reader::Store,
     catalog_rows: Arc<Mutex<Option<std::sync::Weak<Mutex<Vec<library::SongRow>>>>>>,
     paper_navigation: Arc<std::sync::atomic::AtomicU64>,
     music_imports: music_import::Store,
@@ -4427,4 +4429,6 @@ mod tests {
 }
 
 mod notation_source;
+mod notation_reader;
+pub use notation_reader::Request as NotationReadRequest;
 pub use notation_source::{decode as notation_document,Request as NotationDocumentRequest};

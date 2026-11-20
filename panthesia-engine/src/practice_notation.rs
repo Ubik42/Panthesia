@@ -5,7 +5,8 @@ impl Player {
         let Some(file) = self.source_file.as_ref().or(self.file.as_ref()) else {
             return (0, false);
         };
-        key_for(file, &self.variant())
+        let source=crate::practice_keys::source(file,self.notation.as_deref());
+        key_for(&source, &self.variant())
     }
     pub(super) fn score_view_payload(
         &self,
@@ -60,7 +61,9 @@ impl Player {
                 }
             }
         };
-        let engraving = panthesia_core::practice_engraving::engrave_range(
+        let key_source=crate::practice_keys::source(self.source_file.as_ref().unwrap_or(file),self.notation.as_deref());
+        let keys=crate::practice_keys::engraving(&key_source,&variant,fifths,minor);
+        let engraving = panthesia_core::practice_engraving::engrave_range_with_keys(
             file,
             &self.title,
             fifths,
@@ -68,6 +71,7 @@ impl Player {
             variant.quantize == 0,
             range,
             &staff,
+            &keys,
             &|| Ok(()),
         )?;
         let start = &file.musical_time.measures[range.first];
@@ -214,9 +218,6 @@ pub(super) fn key_for(file: &MidiFile, variant: &crate::practice_variant::Varian
         }))
         .unwrap_or(estimated.0);
     let tonic = (i16::from(tonic) + i16::from(variant.transpose)).rem_euclid(12);
-    let fifths = (-7i8..=7)
-        .filter(|f| (i16::from(*f) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
-        .min_by_key(|f| f.abs())
-        .unwrap_or(0);
+    let fifths=signature.filter(|(_,m)|*m==minor).map(|(f,_)|f).filter(|f|(i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)==tonic).unwrap_or_else(||(-7i8..=7).filter(|f|(i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)==tonic).min_by_key(|f|f.abs()).unwrap_or(0));
     (fifths, minor)
 }

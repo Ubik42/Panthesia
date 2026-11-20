@@ -5,6 +5,7 @@ pub mod musical_time;
 pub mod playback;
 pub mod program_track;
 pub mod tempo_track;
+pub mod key_signature;
 use midly::{Format, MidiMessage, Smf};
 pub use playback::PlaybackState;
 use std::{
@@ -147,6 +148,7 @@ pub struct MidiFile {
     pub markers: Arc<[MidiMarker]>,
     pub format: Format,
     pub key_signature: Option<(i8, bool)>,
+    pub key_signatures:Arc<[key_signature::KeySignatureEvent]>,
     pub tracks: Arc<[MidiTrack]>,
     pub program_track: program_track::ProgramTrack,
     pub tempo_track: tempo_track::TempoTrack,

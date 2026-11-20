@@ -105,6 +105,7 @@ impl Engine {
             .run(player);
         });
         let engine = Self {
+            notation_readers: crate::notation_reader::Store::default(),
             catalog_rows:Arc::new(Mutex::new(None)),
             paper_navigation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             music_imports: music_import::Store::new(engine_data.clone()),

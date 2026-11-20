@@ -1,3 +1,4 @@
+import {practiceKeyAt} from "./features/practice/practiceKey";
 import { tickAtSeconds } from "./features/practice/practicePresentation";
 import {
   isBlackKey,
@@ -255,6 +256,7 @@ export function Piano({
       effectPalettes[display.effectsPalette].right,
     );
     let frame = 0;
+    let keyLabelKey="";
     let keyLabelSource: typeof latest.current | undefined;
     let keyLabelDisplay: DisplayPreferences | undefined;
     let keyLabelLayout: typeof keyLayout | undefined;
@@ -575,7 +577,7 @@ export function Piano({
             required ? 1 : inRange ? 0.88 : 0.24,
           );
           const action = actions.current(note, position, state.speed);
-          const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.effectiveTonic??song.practiceVariant?.tonic, fifths: song.practiceVariant?.effectiveFifths, minor: song.practiceVariant?.minor});
+          const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), ...practiceKeyAt(song.practiceVariant,note.start)});
           if (label && w > 10 && h > 16) {
             sprites.paintLabel(
               ctx,
@@ -618,7 +620,7 @@ export function Piano({
             dpr,
             0.34,
           );
-          const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), tonic: song.practiceVariant?.effectiveTonic??song.practiceVariant?.tonic, fifths: song.practiceVariant?.effectiveFifths, minor: song.practiceVariant?.minor});
+          const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), ...practiceKeyAt(song.practiceVariant,note.start)});
           if (label && w > 10 && h > 16)
             sprites.paintLabel(
               ctx,
@@ -685,15 +687,17 @@ export function Piano({
         );
       } else effects.clear();
       const source = latest.current;
-      if (keyLabelDisplay !== display || keyLabelLayout !== keyLayout ||
+      const activeKey=practiceKeyAt(song?.practiceVariant,position),keyStamp=`${activeKey.tonic}:${activeKey.fifths}:${activeKey.minor}`;
+      if (keyLabelKey!==keyStamp || keyLabelDisplay !== display || keyLabelLayout !== keyLayout ||
           keyLabelSource?.song !== song || keyLabelSource?.state.mode !== state.mode ||
           keyLabelSource?.state.hands !== state.hands) {
         staticKeyLabels = new Map();
         for (const pitch of [...white, ...black]) {
           const candidates = labelSources.get(pitch) ?? [];
           const own = !song || state.mode !== "listen" && candidates.some(n=>ownsPracticeNote(n.part,n.playbackMode,state.hands));
-          staticKeyLabels.set(pitch, productLabel(pitch,"key",display,{own,tonic:song?.practiceVariant?.effectiveTonic??song?.practiceVariant?.tonic,fifths:song?.practiceVariant?.effectiveFifths,minor:song?.practiceVariant?.minor}));
+          staticKeyLabels.set(pitch, productLabel(pitch,"key",display,{own,...activeKey}));
         }
+        keyLabelKey=keyStamp;
         keyLabelSource = source; keyLabelDisplay = display; keyLabelLayout = keyLayout;
       }
       // Finger labels depend on the current passage; never mutate the static map.

@@ -108,7 +108,7 @@ impl Player {
         }
         let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
             .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("D:/Music/MIDI/PracticeLibrary"));
+            .unwrap_or_else(|| PathBuf::from("D:/Music/MIDI/Datasets"));
         let origin = library::read(&root)
             .unwrap_or_default()
             .into_iter()

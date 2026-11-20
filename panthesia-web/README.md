@@ -40,7 +40,7 @@ Cycle 112：逐音分手审阅/保存/撤销、按手生成指法、每手默认
 浏览器开发服务只监听回环地址，桌面版使用 Tauri 命令通信。
 
 内置“从中央 C 开始”的九音五指热身，因此没有外部曲库也可以练习。
-外部曲库默认读取 `D:\Music\MIDI\PracticeLibrary\catalog.csv`，
+外部曲库默认读取 `D:\Music\MIDI\Datasets\catalog.csv`，
 可用 `PANTHESIA_LIBRARY_ROOT` 环境变量指定其他目录。
 列表直接读取目录清单；只有选中的曲目才解析 MIDI。
 

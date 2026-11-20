@@ -31,7 +31,7 @@ export function PracticeVariantPanel({song, disabled, apply}: {song: LoadedSong;
           <label>半音 <input aria-label="转调半音" type="number" min={-24} max={24} value={v.transpose} onChange={e=>{const value=Number(e.target.value);if(Number.isInteger(value)&&value>=-24&&value<=24)change({transpose:value});}} /></label>
           <button aria-label="升高一个半音" disabled={v.transpose>=24} onClick={()=>change({transpose:v.transpose+1})}>+</button><button aria-label="升高一个八度" disabled={v.transpose>12} onClick={()=>change({transpose:v.transpose+12})}>+12</button>
           <button onClick={()=>change({transpose:cShift})}>移到 C{info.minor ? "小调" : "大调"}</button></div>
-        <div className="variant-key"><span>原曲调性{info.keySource==="estimate"?"（估计，可修改）":info.keySource==="midi"?"（MIDI 标记，可修改）":"（手动）"}</span>
+        <div className="variant-key"><span>原曲调性{info.keySource==="estimate"?"（估计，可修改）":info.keySource==="midi"?"（MIDI 标记，可修改）":info.keySource==="score"?"（原谱标记，可修改）":"（手动）"}</span>
           <select aria-label="原曲主音" value={info.tonic} onChange={e=>change({tonic:Number(e.target.value)})}>{names.map((n,i)=><option key={i} value={i}>{n}</option>)}</select>
           <select aria-label="原曲调式" value={info.minor?"minor":"major"} onChange={e=>change({minor:e.target.value==="minor"})}><option value="major">大调</option><option value="minor">小调</option></select>
         </div>

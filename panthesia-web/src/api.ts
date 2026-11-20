@@ -103,10 +103,10 @@ async function practiceRequest<T>(mode: "edit" | "read" | "demo", song: Practice
   const request = { command, engineId: song.engineId ?? undefined, contentId: song.contentId, scoreRevision: song.scoreRevision, annotationRevision: song.annotationRevision ?? 0, requestId, catalogRevision };
   return postLocal<T>(mode === "edit" ? "edit_practice" : mode === "demo" ? "start_practice_demo" : "read_practice", `/api/practice-${mode}`, request);
 }
-async function postLocal<T>(nativeCommand: string, path: string, request: unknown, timeout = 125000): Promise<T> {
+async function postLocal<T>(nativeCommand: string, path: string, request: unknown, timeout = 125000, keepalive=false): Promise<T> {
   if (isTauri()) return invoke<T>(nativeCommand, { request });
   const response = await fetch(service + path, {
-    cache: "no-store",
+    cache: "no-store",keepalive,
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Panthesia-Client": "web" },
     body: JSON.stringify(request),
@@ -249,6 +249,7 @@ export const api = {
     ? invoke("routine_templates") : http("/api/routines/templates"),
   saveHistoryAnnotation: (request: HistoryAnnotationRequest): Promise<HistoryAnnotationSaved> => postLocal("save_history_annotation", "/api/history-annotation", request),
   readHistory: <T>(command: HistoryReadCommand, scope?: HistoryReadScope, engineId?: string): Promise<T> => scope ? postLocal("read_history", "/api/history-read", {command,scope,...(engineId ? {engineId} : {})}) : engineId ? api.commandForEngine<T>(engineId, command) : postLocal("read_history", "/api/history-read", command),
+  readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>postLocal("read_notation","/api/notation-read",request,60000,request.type==="release"),
   notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
   mapScore: (request: ScoreMappingRequest): Promise<ScoreMappingResult> => postLocal("map_score", "/api/score-map", request),
   openDataFolder: () => invoke<void>("open_practice_data_folder"),

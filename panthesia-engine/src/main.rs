@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args: Vec<_> = std::env::args().collect();
     let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\PracticeLibrary"));
+        .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\Datasets"));
     let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             documents.dispatch(request);
         } else if request.method() == &Method::Get && request.url() == "/api/routines/templates" {
             reads.dispatch(request);
-        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/notation-document", "/api/history-read", "/api/history-read-scoped", "/api/routines/read", "/api/routines/sources", "/api/routines/options"].contains(&request.url()) {
+        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/notation-document", "/api/notation-read", "/api/history-read", "/api/history-read-scoped", "/api/routines/read", "/api/routines/sources", "/api/routines/options"].contains(&request.url()) {
             reads.dispatch(request);
         } else { business.dispatch(request); }
     }
@@ -271,6 +271,10 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     if body.len() > 16_000_000 { return Err("请求过大".into()); }
                     let command: panthesia_engine::HistoryReadRequest = serde_json::from_str(&body).map_err(|error| error.to_string())?;
                     engine.read_history(command)
+                }
+                (&Method::Post, "/api/notation-read") => {
+                    let input:panthesia_engine::NotationReadRequest=client_json(&mut request,3_000_000,"谱面阅读请求")?;
+                    engine.read_notation(input)
                 }
                 (&Method::Post, "/api/notation-document") => {
                     let input:panthesia_engine::NotationDocumentRequest=client_json(&mut request,32_000_000,"谱面解压请求")?;

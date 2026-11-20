@@ -1,8 +1,8 @@
 param(
-    [string]$LibraryRoot = "D:\Music\MIDI\PracticeLibrary",
+    [string]$LibraryRoot = "D:\Music\MIDI\Datasets",
     [int]$PopKCount = 256,
     [switch]$IncludeGiantMidi,
-    [string]$GiantMidiRoot = "",
+    [string]$GiantMidiRoot = "D:\Music\MIDI\B站纯钢琴演奏视频转MIDI\GiantMIDI-Piano\source",
     [string]$GiantMidiRepository = "D:\Music\_tools\_reference\GiantMIDI-Piano",
     [switch]$Force
 )

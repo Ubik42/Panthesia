@@ -1,4 +1,4 @@
-"""Download/extract the public v1.2 MIDI release with portable filenames."""
+"""Download/extract the official Curated v1.2 MIDI release with portable filenames."""
 import argparse
 import csv
 import hashlib
@@ -9,10 +9,10 @@ import shutil
 import urllib.request
 import zipfile
 
-RELEASE_URL = "https://drive.usercontent.google.com/download?id=1BDEPaEWFEB2ADquS1VYp5iLZYVngw799&export=download&confirm=t"
-# Locally observed digest of the official public download on 2026-10-01;
+RELEASE_URL = "https://drive.usercontent.google.com/download?id=1jLZ8wtRwxKZz6GbxzqpLNYqsWh-TF4-r&export=download&confirm=t"
+# Locally observed digest of the official public download on 2026-11-19;
 # this is a reproducibility pin, not a publisher-provided checksum.
-RELEASE_SHA256 = "41549405bcaeed4783e366f61236db4203c9b5d846fd8e0fee59bcf2658a23b7"
+RELEASE_SHA256 = "d51ac80f80dbe947bd8fa168dcaf1e8cc722bb3357b076856404d4419a78a7a3"
 
 
 def digest(path):
@@ -35,6 +35,10 @@ def prepare(archive, destination):
         raise ValueError('Archive differs from the pinned official v1.2 download')
     destination.mkdir(parents=True, exist_ok=True)
     mappings = []
+    existing_names = {}
+    if (destination / 'filename-map.csv').exists():
+        with (destination / 'filename-map.csv').open(encoding='utf-8-sig', newline='') as handle:
+            existing_names = {r['OriginalBaseName']: Path(r['LocalPath']) for r in csv.DictReader(handle)}
     seen = set()
     with zipfile.ZipFile(archive) as release:
         for entry in release.infolist():
@@ -43,7 +47,8 @@ def prepare(archive, destination):
                 raise ValueError(f'Unsafe archive member: {entry.filename}')
             if entry.is_dir() or original.suffix.lower() not in {'.mid', '.midi'}:
                 continue
-            relative = Path(*(portable_name(part) for part in original.parts))
+            relative = Path("midis", *(portable_name(part) for part in original.parts[1:]))
+            relative = existing_names.get(original.stem, relative)
             key = str(relative).casefold()
             if key in seen:
                 # Distinct case-sensitive YouTube IDs can collide on Windows.
@@ -64,7 +69,7 @@ def prepare(archive, destination):
                 partial.write_bytes(data)
                 os.replace(partial, target)
             mappings.append({'LocalPath': str(relative), 'OriginalBaseName': original.stem})
-    if len(mappings) != 10855:
+    if len(mappings) != 7236:
         raise ValueError(f'Unexpected release size: {len(mappings)} MIDI files')
     temporary = destination / 'filename-map.csv.tmp'
     with temporary.open('w', encoding='utf-8-sig', newline='') as handle:
@@ -77,8 +82,8 @@ def prepare(archive, destination):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', type=Path, default=Path(r'D:\Music\MIDI\PracticeLibrary\_archives\giantmidi-midis-v1.2.zip'))
-    parser.add_argument('--destination', type=Path, default=Path(r'D:\Music\MIDI\projects\GiantMIDI-Piano\source'))
+    parser.add_argument('--archive', type=Path, default=Path(r'D:\Music\MIDI\Datasets\_archives\giantmidi-surname-checked-v1.2.zip'))
+    parser.add_argument('--destination', type=Path, default=Path(r'D:\Music\MIDI\B站纯钢琴演奏视频转MIDI\GiantMIDI-Piano\source'))
     args = parser.parse_args()
     if not args.archive.exists():
         args.archive.parent.mkdir(parents=True, exist_ok=True)

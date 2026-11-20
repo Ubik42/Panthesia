@@ -419,6 +419,14 @@ impl SourceDocument {
             .max()
             .unwrap_or(0)
     }
+    pub fn measure_number(&self,ordinal:usize)->String {
+        let Some(part)=self.parts.iter().enumerate().max_by_key(|(i,p)|(p.measures.len(),usize::MAX-i)).map(|(_,part)|part) else{return (ordinal+1).to_string();};
+        if let Some(measure)=part.measures.get(ordinal){
+            let mut reader=Reader::from_reader(&self.xml[measure.bytes.clone()]);
+            if let Ok(Event::Start(tag))=reader.read_event(){if let Ok(Some(number))=attr(&tag,b"number"){if !number.is_empty(){return number;}}}
+        }
+        (ordinal+1).to_string()
+    }
     pub fn range_at(&self, measure: usize) -> MeasureRange {
         self.ranges[self
             .ranges

@@ -534,6 +534,10 @@ async fn start_practice_demo(
         .await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn read_notation(state:tauri::State<'_,State>,request:panthesia_engine::NotationReadRequest)->Result<serde_json::Value,String>{
+    let engine=state.engine.clone();tauri::async_runtime::spawn_blocking(move||engine.read_notation(request)).await.map_err(|e|e.to_string())?
+}
+#[tauri::command]
 async fn notation_document(request:panthesia_engine::NotationDocumentRequest)->Result<Vec<u8>,String> {
     tauri::async_runtime::spawn_blocking(move||panthesia_engine::notation_document(request.bytes)).await.map_err(|error|error.to_string())?
 }
@@ -1015,7 +1019,7 @@ fn main() {
             let result: Result<(), Box<dyn std::error::Error>> = (|| {
             let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
                 .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\PracticeLibrary"));
+                .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\Datasets"));
             let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT").map(PathBuf::from).unwrap_or_else(|| panthesia_core::product::profile_root(&app.path().app_data_dir().expect("application data location")));
             let data_lock = DataRootLock::acquire(&data)?;
             let data = data_lock.root().to_path_buf();
@@ -1087,7 +1091,7 @@ fn main() {
             adjust_playback,
             edit_practice,
             read_practice,
-            map_score,notation_document,
+            map_score,notation_document,read_notation,
             read_history,
             save_history_annotation,
             edit_history_clips,

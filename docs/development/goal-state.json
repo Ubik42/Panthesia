@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "active",
+  "status": "paused",
   "objectiveVersion": "2026-11-20/6",
   "currentBatch": "B05",
   "completedBatches": [
@@ -113,5 +113,13 @@
     "failed": 0,
     "report": "work/original-product-reset/saved-library-migration-final-20261120.json",
     "snapshot": "work/original-product-reset/saved-library-migration-final-20261120.snapshot"
+  },
+  "pausedAt": "2026-11-20T18:11:32Z",
+  "pauseCheckpoint": {
+    "codeCommitted": false,
+    "debugSha256": "87613DF2E439B7580AF26542EF7B5D72F02370B872682EF8D65022F1A1F5380B",
+    "implementation": "Independent chunked read-only notation sessions; shared range preview consumers; performed key signatures and projection for labels/engraving/export, including verified legacy source fallback.",
+    "validation": "Web build and embedded Debug build passed; reader lifecycle and repeat/key/legacy fallback targeted cases passed. Native reader flow interrupted by explicit user pause; do not report passed.",
+    "next": "Inspect p18-window/reader-native-evidence.json and p18-native-run.log; resume unfinished native flow, then stage owned changes without original nine, update current plan/handoff, commit. No Release update."
   }
 }

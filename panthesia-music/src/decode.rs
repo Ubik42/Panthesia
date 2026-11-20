@@ -138,6 +138,9 @@ pub(crate) fn read(
     }
     events.sort_by_key(|e| (e.tick, e.track, e.ordinal));
     keys.sort_by_key(|e| (e.0, e.1, e.2));
+    let canonical:BTreeMap<_,_>=keys.into_iter().map(|(tick,_,_,value)|(tick,value)).collect();
+    let mut signatures=Vec::new();
+    for (tick,(fifths,minor)) in canonical {if signatures.last().is_none_or(|last:&key_signature::KeySignatureEvent|last.fifths!=fifths||last.minor!=minor){signatures.push(key_signature::KeySignatureEvent{tick,fifths,minor});}}
     let tempo = tempo_track::TempoTrack::build(&smf.tracks, ppq);
     let musical_time =
         musical_time::MusicalTime::build_checked(&smf.tracks, ppq, last_tick, check)?;
@@ -391,7 +394,8 @@ pub(crate) fn read(
             .collect::<Vec<_>>()
             .into(),
         format: smf.header.format,
-        key_signature: keys.first().map(|e| e.3),
+        key_signature:signatures.first().map(|e|(e.fifths,e.minor)),
+        key_signatures:signatures.into(),
         tracks: tracks.into(),
         program_track,
         tempo_track: tempo,

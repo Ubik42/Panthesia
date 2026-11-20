@@ -1,5 +1,5 @@
-import {renderScore,emptyScorePages,type ScorePages} from "./features/scores/scoreRenderCache";
-import {useScorePage} from "./features/scores/useScorePage";
+import {useNotationReader} from "./features/scores/useNotationReader";
+import {NotationReaderNavigation} from "./features/scores/NotationReaderNavigation";
 import { useEffect, useRef, useState } from "react";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -16,28 +16,25 @@ export function ScoreFilePreview({
   closeLabel?: string;
   label?: string;
 }) {
-  const [pages, setPages] = useState<ScorePages>(emptyScorePages),
-    [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+  const [pdf,setPdf]=useState<PDFDocumentProxy|null>(null);
   const [page, setPage] = useState(0),
     [url, setUrl] = useState(""),
     [error, setError] = useState("");
-  const pageView=useScorePage(pages,page);
   const [ready, setReady] = useState(false),
     canvas = useRef<HTMLCanvasElement>(null);
   const kind = importKind(file.name);
+  const reader=useNotationReader(kind==="notation"?file:null),pageView=reader.pageView;
   useEffect(() => {
-    setPages(emptyScorePages);
     setPdf(null);
     setPage(0);
     setUrl("");
     setError("");
     setReady(false);
-    let disposed = false,
-      controller=new AbortController(),
-      objectUrl = "";
+    let disposed = false, objectUrl = "";
     let task: import("pdfjs-dist").PDFDocumentLoadingTask | undefined;
     const load = async () => {
-      if (file.size > (kind === "notation" ? 4_000_000 : 48_000_000))
+      if(kind==="notation")return;
+      if (file.size > 48_000_000)
         throw new Error("文件超过谱面容量上限");
       if (kind === "pdf") {
         const lib = await import("pdfjs-dist");
@@ -65,17 +62,12 @@ export function ScoreFilePreview({
           setUrl(objectUrl);
           setReady(true);
         }
-      } else {
-        const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
-        if (disposed) return;
-        const result=await renderScore({bytes,compressed:/\.mxl$/i.test(file.name)},controller.signal,()=>{});
-        if(!disposed){setPages(result.pages);setReady(true);}
+
       }
     };
     void load().catch((e) => !disposed && setError(String(e)));
     return () => {
       disposed = true;
-      controller.abort();
       void task?.destroy();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -106,7 +98,7 @@ export function ScoreFilePreview({
       task?.cancel();
     };
   }, [pdf, page]);
-  const count = pdf?.numPages ?? (pages.length || 1);
+  const count=pdf?.numPages??1;
   return (
     <section className="batch-file-preview" aria-label={label} data-dialog-scope="">
       <div className="batch-preview-heading">
@@ -116,6 +108,7 @@ export function ScoreFilePreview({
         </button>
       </div>
       <div className="batch-preview-toolbar">
+        {kind==="notation"?<NotationReaderNavigation reader={reader}/>:<>
         <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
           上一页
         </button>
@@ -128,12 +121,13 @@ export function ScoreFilePreview({
         >
           下一页
         </button>
+        </>}
       </div>
-      {error || pageView.error ? (
-        <p role="alert">{error || pageView.error}</p>
+      {error || reader.error || pageView.error ? (
+        <p role="alert">{error || reader.error || pageView.error}</p>
       ) : (
         <>
-          {(!ready || kind==="notation"&&pageView.loading) && <p role="status">正在读取实际谱面…</p>}
+          {(kind==="notation"?(reader.busy||pageView.loading):!ready) && <p role="status">{kind==="notation"?reader.status||"正在读取谱页…":"正在读取实际谱面…"}</p>}
           <div className="batch-preview-sheet">
             {kind === "pdf" ? (
               <canvas ref={canvas} aria-label="PDF 谱页" />

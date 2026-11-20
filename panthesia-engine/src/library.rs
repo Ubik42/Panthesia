@@ -203,7 +203,7 @@ fn registered_folders(data: &Path) -> Result<Vec<PathBuf>, String> {
     }
 }
 pub(crate) fn catalog_root() -> PathBuf {
-    panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT").map(PathBuf::from).unwrap_or_else(||PathBuf::from(r"D:\Music\MIDI\PracticeLibrary"))
+    panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT").map(PathBuf::from).unwrap_or_else(||PathBuf::from(r"D:\Music\MIDI\Datasets"))
 }
 fn folder_key(path: &Path) -> String {
     crate::library_workspace::key(path).trim_start_matches("//?/").to_owned()

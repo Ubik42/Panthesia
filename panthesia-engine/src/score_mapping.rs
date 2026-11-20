@@ -88,9 +88,11 @@ impl Context {
                     }
                 }
             };
+            let key_source=crate::practice_keys::source(&self.key_source,self.asset.as_deref());
             let (fifths, minor) =
-                crate::practice_notation::key_for(&self.key_source, &self.variant);
-            panthesia_core::practice_engraving::engrave_range(
+                crate::practice_notation::key_for(&key_source, &self.variant);
+            let keys=crate::practice_keys::engraving(&key_source,&self.variant,fifths,minor);
+            panthesia_core::practice_engraving::engrave_range_with_keys(
                 &self.file,
                 &self.title,
                 fifths,
@@ -98,6 +100,7 @@ impl Context {
                 self.quantize == 0,
                 range,
                 &staff,
+                &keys,
                 check,
             )
         } else if self.quantize == 0 {

@@ -3,7 +3,7 @@ use midi_file::MidiFile;
 use std::{collections::HashMap, fmt::Write};
 
 const DIVISIONS: u64 = 32;
-pub const GENERATOR: &str = "panthesia-practice-engraving-v4";
+pub const GENERATOR: &str = "panthesia-practice-engraving-v5";
 /// Half-open global measure ordinals. Bounds apply to each request, not the song.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -31,17 +31,21 @@ pub fn engrave_range(
     staff: &impl Fn(usize, usize, u8) -> u8,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Engraving, String> {
+    let keys=projected_keys(file,fifths,minor);
+    engrave_range_with_keys(file,title,fifths,minor,simplified,range,staff,&keys,check)
+}
+pub fn engrave_range_with_keys(
+    file:&MidiFile,title:&str,fifths:i8,minor:bool,simplified:bool,range:MeasureRange,
+    staff:&impl Fn(usize,usize,u8)->u8,keys:&[midi_file::key_signature::KeySignatureEvent],check:&impl Fn()->Result<(),String>,
+)->Result<Engraving,String>{
     range.end(file.musical_time.measures.len())?;
-    engrave_selected(
-        file,
-        title,
-        fifths,
-        minor,
-        simplified,
-        Some(range),
-        staff,
-        check,
-    )
+    engrave_selected(file,title,fifths,minor,simplified,Some(range),staff,keys,check)
+}
+fn projected_keys(file:&MidiFile,fifths:i8,minor:bool)->Vec<midi_file::key_signature::KeySignatureEvent>{
+    use midi_file::key_signature::{tonic,project,KeySignatureEvent};
+    let Some(first)=file.key_signatures.first() else{return vec![];};
+    let shift=i16::from(tonic(fifths,minor))-i16::from(tonic(first.fifths,first.minor));
+    file.key_signatures.iter().map(|key|{let (_,fifths,minor)=project(key.fifths,key.minor,shift,(first.minor!=minor).then_some(minor));KeySignatureEvent{tick:key.tick,fifths,minor}}).collect()
 }
 pub struct Engraving {
     pub bytes: Vec<u8>,
@@ -222,16 +226,8 @@ fn engrave_with_rhythm(
     simplified: bool,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Engraving, String> {
-    engrave_selected(
-        file,
-        title,
-        fifths,
-        minor,
-        simplified,
-        None,
-        &|_, _, pitch| if pitch >= 60 { 1 } else { 2 },
-        check,
-    )
+    let keys=projected_keys(file,fifths,minor);
+    engrave_selected(file,title,fifths,minor,simplified,None,&|_,_,pitch|if pitch>=60 {1}else{2},&keys,check)
 }
 fn engrave_selected(
     file: &MidiFile,
@@ -241,6 +237,7 @@ fn engrave_selected(
     simplified: bool,
     range: Option<MeasureRange>,
     staff_for: &impl Fn(usize, usize, u8) -> u8,
+    keys:&[midi_file::key_signature::KeySignatureEvent],
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Engraving, String> {
     check()?;
@@ -362,6 +359,8 @@ fn engrave_selected(
     let mut offsets = vec![0; lanes.len()];
     let mut segments: HashMap<(usize, usize), usize> = HashMap::new();
     let mut previous_meter = None;
+    let mut previous_key=None;
+    let key_at=|position:u64|keys.get(keys.partition_point(|key|units(key.tick as f64,ppq)<=position).saturating_sub(1)).filter(|key|units(key.tick as f64,ppq)<=position).map_or((fifths,minor),|key|(key.fifths,key.minor));
     for (ordinal, measure) in file
         .musical_time
         .measures
@@ -394,9 +393,10 @@ fn engrave_selected(
         )
         .unwrap();
         let meter = (measure.numerator, measure.denominator);
-        if ordinal == first || previous_meter != Some(meter) {
+        let (fifths,minor)=key_at(start);
+        if ordinal == first || previous_meter != Some(meter) || previous_key!=Some((fifths,minor)) {
             write!(xml, "<attributes><divisions>{DIVISIONS}</divisions>").unwrap();
-            if ordinal == first {
+            if ordinal == first || previous_key!=Some((fifths,minor)) {
                 write!(
                     xml,
                     "<key><fifths>{fifths}</fifths><mode>{}</mode></key>",
@@ -416,6 +416,13 @@ fn engrave_selected(
             xml.push_str("</attributes>");
         }
         previous_meter = Some(meter);
+        previous_key=Some((fifths,minor));
+        let changes:std::collections::BTreeMap<_,_>=keys.iter().filter_map(|key|{let at=units(key.tick as f64,ppq);(at>start&&at<end).then_some((at,(key.fifths,key.minor)))}).collect();
+        let mut key_cursor=start;
+        for (at,(fifths,minor)) in changes {
+            write!(xml,"<forward><duration>{}</duration></forward><attributes><key><fifths>{fifths}</fifths><mode>{}</mode></key></attributes>",at-key_cursor,if minor {"minor"}else{"major"}).unwrap();key_cursor=at;
+        }
+        if key_cursor>start {write!(xml,"<backup><duration>{}</duration></backup>",key_cursor-start).unwrap();}
         if ordinal == first {
             let bpm = file.tempo_track.bpm_at_seconds(
                 file.tempo_track
@@ -455,6 +462,7 @@ fn engrave_selected(
             let staff = lane.staff;
             let mut cursor = start;
             let mut written_accidentals = HashMap::new();
+            let mut written_key=(fifths,minor);
             while offsets[lane_index] < lane.notes.len()
                 && lane.notes[offsets[lane_index]].end <= start
             {
@@ -476,6 +484,8 @@ fn engrave_selected(
                 for (position, length, kind, dot) in pieces(note_start, note_end, start, beat) {
                     check()?;
                     for (chord_index, note) in lane.notes[at..after].iter().enumerate() {
+                        let note_key=key_at(position);if note_key!=written_key {written_accidentals.clear();written_key=note_key;}
+                        let fifths=note_key.0;
                         let segment = segments.entry((note.track, note.index)).or_default();
                         let id = format!(
                             "panthesia-practice-t{}-n{}-s{}",

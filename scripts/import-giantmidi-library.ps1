@@ -1,9 +1,8 @@
 param(
-    [string]$LibraryRoot = "D:\Music\MIDI\PracticeLibrary",
+    [string]$LibraryRoot = "D:\Music\MIDI\Datasets",
     [string]$RepositoryRoot = "D:\Music\_tools\_reference\GiantMIDI-Piano",
-    # Omit this to import the four repository previews. Supply an extracted
-    # official release directory to import the full or surname-checked release.
-    [string]$MidiRoot = ""
+    # Defaults to the official Curated release. An explicitly empty path imports repository previews.
+    [string]$MidiRoot = "D:\Music\MIDI\B站纯钢琴演奏视频转MIDI\GiantMIDI-Piano\source"
 )
 
 Set-StrictMode -Version Latest
@@ -46,6 +45,7 @@ if ([System.IO.File]::Exists($catalogPath)) {
 $files = @(Get-ChildItem -LiteralPath $MidiRoot -Recurse -File |
     Where-Object { $_.Extension -in @('.mid', '.midi') } | Sort-Object FullName)
 if ($files.Count -eq 0) { throw "No MIDI files found in $MidiRoot" }
+if (-not $isPreview -and $files.Count -ne 7236) { throw "Expected the official 7,236-file Curated source; refusing to mix another release into this collection." }
 $plans = [System.Collections.Generic.List[object]]::new()
 $originalNames = @{}
 $nameMapPath = Join-Path $MidiRoot 'filename-map.csv'
@@ -97,7 +97,7 @@ foreach ($file in $files) {
         }
     }
     $row = [pscustomobject]@{
-        Category = "Classical transcription/GiantMIDI (unreviewed)"
+        Category = $(if ($isPreview) { "Classical transcription/GiantMIDI (repository previews)" } else { "Classical transcription/GiantMIDI (Curated; unreviewed transcription)" })
         Title = $title
         Composer = $composer
         License = "CC BY 4.0; see upstream disclaimer"
@@ -141,7 +141,7 @@ if ([System.IO.Directory]::Exists((Join-Path $RepositoryRoot '.git'))) {
     Revision = $revision
     Upstream = $sourceUrl
     ImportedAt = [DateTimeOffset]::UtcNow.ToString('o')
-    Selection = $(if ($isPreview) { 'repository previews' } else { 'supplied release directory' })
+    Selection = $(if ($isPreview) { 'repository previews' } else { 'official Curated v1.2 source directory' })
     ReviewStatus = 'Automatic transcription; not reviewed teaching scores or hand assignments'
     Files = @($plans | ForEach-Object { [pscustomobject]@{ LocalPath = $_.Row.LocalPath; SHA256 = $_.SHA256 } })
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $destination 'last-import.json') -Encoding utf8

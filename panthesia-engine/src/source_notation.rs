@@ -31,6 +31,8 @@ pub(crate) struct SourceView {
     visits: Vec<Visit>,
     complete: bool,
     numbers: Vec<String>,
+    key_changes: Vec<(ScoreTime, i8, bool)>,
+    keys_trusted: bool,
 }
 fn pitch(p: &panthesia_core::musicxml::Pitch) -> Option<u8> {
     use panthesia_core::musicxml::Step::*;
@@ -111,6 +113,11 @@ impl SourceView {
             .map(|(_, p)| p)
             .ok_or("原谱缺少声部")?;
         let plan = score_playback::build_playback_plan(part, PlaybackLimits::default());
+        let key_changes = score_playback::performed_key_signatures(part, &plan, check)?;
+        let keys_trusted = plan.complete
+            && alignment.navigation_complete
+            && panthesia_core::score_alignment::summarize_alignment(alignment).readiness
+                == panthesia_core::score_alignment::AlignmentReadiness::Ready;
         let mut beat_type = 4f64;
         let mut beats = vec![];
         for m in &part.measures {
@@ -149,6 +156,8 @@ impl SourceView {
             .collect();
         Ok(Self {
             document,
+            key_changes,
+            keys_trusted,
             links,
             visits,
             complete: plan.complete && alignment.navigation_complete,
@@ -165,6 +174,25 @@ impl SourceView {
                 })
                 .collect(),
         })
+    }
+    pub(crate) fn key_signatures(
+        &self,
+        file: &midi_file::MidiFile,
+    ) -> Vec<midi_file::key_signature::KeySignatureEvent> {
+        if !self.keys_trusted {
+            return vec![];
+        }
+        self.key_changes
+            .iter()
+            .map(
+                |(at, fifths, minor)| midi_file::key_signature::KeySignatureEvent {
+                    tick: (at.numerator.max(0) as u128 * u128::from(file.musical_time.ppq)
+                        / u128::from(at.denominator)) as u64,
+                    fifths: *fifths,
+                    minor: *minor,
+                },
+            )
+            .collect()
     }
     pub(crate) fn prepared(
         &self,

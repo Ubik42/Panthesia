@@ -242,6 +242,7 @@ pub struct MeasureAttributes {
     pub onset: ScoreTime,
     pub divisions: u32,
     pub key_fifths: Option<i8>,
+    pub key_mode:Option<String>,
     pub time_signature: Option<TimeSignature>,
     pub staves: Option<u8>,
     pub clefs: Vec<Clef>,
@@ -772,6 +773,7 @@ fn finish_direction(
 struct AttributesBuilder {
     divisions: Option<u32>,
     key_fifths: Option<i8>,
+    key_mode:Option<String>,
     beats: Option<String>,
     beat_type: Option<String>,
     staves: Option<u8>,
@@ -1358,6 +1360,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                         }
                         attributes.as_mut().unwrap().divisions = Some(parsed);
                     }
+                    b"mode" if attributes.is_some() && parent_is(&path,2,b"key") => {attributes.as_mut().unwrap().key_mode=nonempty(value);}
                     b"fifths" if attributes.is_some() => {
                         attributes.as_mut().unwrap().key_fifths = Some(parse_i8("fifths", &value)?);
                     }
@@ -1395,6 +1398,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                                 onset: part_position.add(cursor),
                                 divisions,
                                 key_fifths: built.key_fifths,
+                                key_mode:built.key_mode,
                                 time_signature: built
                                     .beats
                                     .zip(built.beat_type)

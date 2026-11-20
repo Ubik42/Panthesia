@@ -332,22 +332,11 @@ impl Player {
                 meter = Some(value);
             }
         }
-        let variant = self.variant();
-        if file.key_signature.is_some() || variant.tonic.is_some() {
-            let info = self.variant_document();
-            let minor = info["minor"].as_bool().unwrap_or(false);
-            let tonic =
-                (info["tonic"].as_i64().unwrap_or(0) + i64::from(variant.transpose)).rem_euclid(12);
-            if let Some(sharps) = (-7i8..=7)
-                .filter(|s| (i64::from(*s) * 7 + if minor { 9 } else { 0 }).rem_euclid(12) == tonic)
-                .min_by_key(|s| s.abs())
-            {
-                conductor.push((
-                    0,
-                    TrackEventKind::Meta(MetaMessage::KeySignature(sharps, minor)),
-                ));
-            }
-        }
+        let info=self.variant_document();
+        if let Some(keys)=info["keyChanges"].as_array().filter(|_|info["keySource"]!="estimate"){for key in keys {
+            let (Some(tick),Some(fifths),Some(minor))=(key["tick"].as_u64(),key["fifths"].as_i64(),key["minor"].as_bool())else{continue;};
+            conductor.push((tick,TrackEventKind::Meta(MetaMessage::KeySignature(fifths as i8,minor))));
+        }}
         fn encode(
             mut values: Vec<(u64, TrackEventKind<'static>)>,
         ) -> Result<Vec<TrackEvent<'static>>, String> {
@@ -414,7 +403,9 @@ impl Player {
         let variant = self.variant();
         let source = self.source_file.as_ref().or(self.file.as_ref());
         let (estimate, minor) = source.map_or((0, false), |f| key_estimate(f));
-        let signature = source.and_then(|f| f.key_signature);
+        let key_source=source.map(|file|crate::practice_keys::source(file,self.notation.as_deref()));
+        let signature=key_source.as_ref().and_then(|file|file.key_signature);
+        let authored_key=source.is_some_and(|file|file.key_signatures.is_empty())&&signature.is_some();
         let tonic = variant
             .tonic
             .or_else(|| {
@@ -437,7 +428,7 @@ impl Player {
         let effective_tonic=(i16::from(tonic)+i16::from(variant.transpose)).rem_euclid(12) as u8;
         let effective_fifths=signature.filter(|(_,m)|*m==minor).map(|(f,_)|f).filter(|f|((i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)) as u8==effective_tonic).unwrap_or_else(||(-7i8..=7).filter(|f|((i16::from(*f)*7+if minor{9}else{0}).rem_euclid(12)) as u8==effective_tonic).min_by_key(|f|f.abs()).unwrap_or(0));
         let edition=source.and_then(|file|panthesia_core::song_project::PracticeEdition::new(&file.content_id,variant.clone()).ok());
-        serde_json::json!({"editionId":edition.map(|e|e.id),"settings":variant,"tonic":tonic,"effectiveTonic":effective_tonic,"effectiveFifths":effective_fifths,"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
+        serde_json::json!({"editionId":edition.map(|e|e.id),"settings":variant,"tonic":tonic,"effectiveTonic":effective_tonic,"effectiveFifths":effective_fifths,"keyChanges":key_source.as_ref().map(|file|crate::practice_keys::timeline(file,&variant,effective_fifths,minor)).unwrap_or_default(),"minor":minor,"keySource":if variant.tonic.is_some(){"manual"}else if authored_key{"score"}else if signature.is_some(){"midi"}else{"estimate"},"minPitch":notes.iter().min(),"maxPitch":notes.iter().max(),"active":variant.active(),"sourceHasScore":self.notation.is_some()})
     }
     pub(super) fn apply_variant_memory(&mut self, value: &Variant) -> Result<(), String> {
         if !self.variant().active() {

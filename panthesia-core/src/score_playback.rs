@@ -2561,3 +2561,15 @@ mod tests {
         assert!(!build_playback_plan(&part(&source), PlaybackLimits::default()).complete);
     }
 }
+
+/// Restore authored key context on every performed visit, including backward jumps.
+pub fn performed_key_signatures(part:&Part,plan:&PlaybackPlan,check:&impl Fn()->Result<(),String>)->Result<Vec<(ScoreTime,i8,bool)>,String>{
+    let written:BTreeMap<_,_>=part.measures.iter().flat_map(|m|&m.attributes).filter_map(|a|a.key_fifths.map(|f|(a.onset,(f,a.key_mode.as_deref()==Some("minor"))))).collect();
+    let mut result=vec![];let mut active=None;
+    for visit in &plan.visits {
+        check()?;let measure=&part.measures[visit.source_measure_ordinal as usize];let start=measure.start.add(visit.source_start);let end=measure.start.add(visit.source_end);
+        let changes=written.range(..=start).next_back().map(|(_,key)|(visit.performed_start,*key)).into_iter().chain(written.range((std::ops::Bound::Excluded(start),std::ops::Bound::Excluded(end))).map(|(at,key)|(visit.performed_start.add(at.subtract(start)),*key)));
+        for (at,key) in changes {if active!=Some(key){result.push((at,key.0,key.1));active=Some(key);}}
+    }
+    Ok(result)
+}

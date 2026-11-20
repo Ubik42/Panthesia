@@ -444,6 +444,7 @@ pub fn generate_checked(
             check()?;
             include(m.start, false)?;
             include(m.duration, false)?;
+            for attributes in &m.attributes {include(attributes.onset,false)?;}
             for e in &m.events {
                 match e {
                     ScoreEvent::Note(n) => {
@@ -939,6 +940,9 @@ pub fn generate_checked(
         return Err("谱面中没有可练习的有时值音符".into());
     }
     let mut conductor: Vec<(u64, u8, TrackEventKind<'static>)> = vec![];
+    for (at,fifths,minor) in crate::score_playback::performed_key_signatures(master,&plan,check)? {
+        conductor.push((tick(at)?,2,TrackEventKind::Meta(MetaMessage::KeySignature(fifths,minor))));
+    }
     for (at, bpm) in tempos {
         conductor.push((
             at,
