@@ -73,7 +73,7 @@ export function decodeInterfaceBackup(text: string): InterfaceBackup {
   for (const key of fields)
     if (
       key !== "shortcuts" &&
-      !(sourcePrefs[key] === undefined && ["keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
+      !(sourcePrefs[key] === undefined && ["practiceView","practiceSplitAxis","practiceSplitRatio","keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
       !(key === "uiScale" && raw.preferences[key] === undefined) &&
       canonical(prefs[key]) !== canonical(sourcePrefs[key])
     )
@@ -107,7 +107,7 @@ export function decodeInterfaceBackup(text: string): InterfaceBackup {
     const normalized = extractLayout(normalizeDisplayPreferences(v.layout));
     for (const key of layoutKeys)
       if (
-        !(key === "uiScale" && v.layout[key] === undefined) &&
+        !(["uiScale", "practiceFocus", "practiceView", "practiceSplitAxis", "practiceSplitRatio"].includes(key) && v.layout[key] === undefined) &&
         canonical(normalized[key]) !== canonical(v.layout[key])
       )
         throw new Error(`「${v.name}」的布局尺寸或开关无效`);

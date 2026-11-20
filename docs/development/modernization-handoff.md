@@ -195,6 +195,19 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 
 P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连续取景仍记为部分；设备范围外音符的伴奏 / 移八度尚未实现。其余原功能矩阵状态继续有效，整体 Goal active。
 
+## P3 / P4：组合演奏工作区与页内跟随批次
+
+- 新增 PracticeStage，单独谱面、瀑布及组合视图共用原演奏状态和 A/B 范围。组合可自动排列或选择上下 / 左右，分隔条支持拖动、方向键和边界键；拖动只更新本地比例，释放后写入偏好。视图、排列、比例进入现有布局及界面备份，旧记录缺少字段时补默认值。
+- 单独谱面 / 组合视图切换保持同一个 Notation 实例，保留当前谱页与缩放。瀑布及其读数在隐藏时不挂载。保持原先音频控制与后台任务边界。
+- 谱面工具栏保留翻页、跟随和缩放；指法、节奏来源、导出及可定位纸谱收进“谱面选项”。阅读区改为自适应剩余空间，组合窗口中可独立滚动。
+- 新增 IntervalTimeline，把瀑布已有的静态区间树提取为共用算法，NotationTimeIndex 按有效演奏秒数使用。替换逐帧 mapping.filter / find 全表扫描，保留长延音、同时起音和精确端点。跟随滚动到同页当前音符；缩放、分隔条和视图变化不改变引擎位置。
+
+受影响 Desktop Debug 与前端构建通过。两项针对检查：共用索引对 10000 个短音及跨全曲长音的边界语义与原筛选一致，瀑布 tick 区间保持原结果；旧界面备份和保存布局缺少新增字段时可解码。见 work/combined-stage-domain.log、combined-stage-backup.log。
+
+实际桌面使用全新隔离资料 work/combined-stage-runtime，并导入本地构造的 48 小节 / 192 音检查谱。定位 90.1 秒后第 38 小节音符在阅读区域内；150% 放大前后位置仍为 90.1 秒，竖 / 横滚动将同一音符保持可见。单独谱面 / 组合切换 DOM 实例相同。播放中拖动分隔条，状态保持 playing，位置从 90.1044 继续至 90.2289；720×800 上下排列无横向溢出，谱面 / 键盘高约 270 / 151 像素。最后源码重启恢复 combined / rows / 63%，播放中改到 125% 后状态仍 playing，位置从 90.1082 至 90.1475；Alt+V 从谱面切入组合，未捕获页面错误。
+
+证据：work/combined-stage-desktop.log；work/combined-stage-runtime/combined-evidence.json、final-reopen-evidence.json；combined-start.png、final-columns.png、final-rows-narrow.png、final-reopened.png。只做上述受影响检查，未执行全套回归。原生全屏、纸谱与高 DPI 的组合覆盖仍按功能矩阵待核对，整体 Goal active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-keyboard-viewport，程序源码提交 93f3ec0，加入本批统一取景。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 D8AC21089D9D30BD69C360FA40EA43EBEF950C29B54896A8FF0B0C2B92B8147B，29 个文件哈希一致。独立 --window-check 为 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/keyboard-viewport-release.log 和 work/keyboard-viewport-package-check/release-evidence.json / startup.log。

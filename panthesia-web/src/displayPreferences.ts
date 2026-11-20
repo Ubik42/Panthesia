@@ -8,6 +8,9 @@ import { pitchName } from "./engine/musicFormatting";
 export type DisplayPreferences = {
   practiceLayoutVersion: number;
   practiceFocus: boolean;
+  practiceView: "keyboard" | "score" | "paper" | "combined";
+  practiceSplitAxis: "auto" | "rows" | "columns";
+  practiceSplitRatio: number;
   skin: "studio" | "midnight" | "rosewood";
   pianoMaterial: "ivory" | "porcelain" | "glass";
   effectStyle: "bloom" | "ripple" | "comet";
@@ -77,6 +80,7 @@ export const zxcvCodes = [
 export const displayDefaults: DisplayPreferences = {
   practiceLayoutVersion: 3,
   practiceFocus: false,
+  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55,
   skin: "studio", pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   effectsEnabled: true,
@@ -150,6 +154,9 @@ export function normalizeDisplayPreferences(
     effectsIntensity: size(raw.effectsIntensity, 0, 100, 70),
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
+    practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",
+    practiceSplitAxis: raw.practiceSplitAxis === "rows" || raw.practiceSplitAxis === "columns" ? raw.practiceSplitAxis : "auto",
+    practiceSplitRatio: size(raw.practiceSplitRatio, 25, 75, 55),
     keyCodes: keys,
     uiScale: size(raw.uiScale, 80, 150, 100),
     shortcuts: normalizeShortcuts(raw.shortcuts, keys),

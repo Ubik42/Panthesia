@@ -1,3 +1,5 @@
+import type { DisplayPreferences } from "./displayPreferences";
+import { PracticeStage } from "./features/practice/PracticeStage";
 import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
 import { resolveKeyboardRange } from "./features/practice/keyboardViewport";
 import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
@@ -189,6 +191,10 @@ export default function App() {
   const { libraryOpen, inspector, setLibraryOpen, setInspector, inspectorTab, setInspectorTab } = panels;
   const panelActions = useRef({ libraryOpen, inspector, setLibraryOpen, setInspector });
   panelActions.current = { libraryOpen, inspector, setLibraryOpen, setInspector };
+  const view = display.practiceView;
+  const setView = useCallback((next: string | ((previous: string) => string)) => setDisplay(previous => ({ ...previous,
+    practiceView: (typeof next === "function" ? next(previous.practiceView) : next) as DisplayPreferences["practiceView"],
+  })), [setDisplay]);
   const seconds = display.previewBars;
   const setSeconds = (value: number) =>
     setDisplay((previous) => ({ ...previous, previewBars: value }));
@@ -269,7 +275,6 @@ export default function App() {
   const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
   const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
   const [settings, setSettings] = useState(false),
-    [view, setView] = useState("score"),
     [editFingers, setEditFingers] = useState(false),
     [selectedNote, setSelectedNote] = useState<
       LoadedSong["notes"][number] | null
@@ -875,7 +880,7 @@ export default function App() {
             break;
           case "view":
             setView((v) =>
-              v === "keyboard" ? "score" : v === "score" ? "paper" : "keyboard",
+              v === "keyboard" ? "score" : v === "score" ? "combined" : v === "combined" ? "paper" : "keyboard",
             );
             break;
           case "library":
@@ -1763,7 +1768,7 @@ export default function App() {
             {song?.generated && song.notes.length>0 && song.notes.every(n=>n.part==="left") && <button disabled={busy} onClick={()=>setLegacyExerciseDialog(true)}>核对旧版左手资料…</button>}
           </>},
           {label:"视图",content:<>
-            <button onClick={()=>setView("score")}>五线谱</button><button onClick={()=>setView("keyboard")}>瀑布与琴键</button><button disabled={!song} onClick={()=>setView("paper")}>PDF / 图片谱页</button>
+            <button onClick={()=>setView("score")}>五线谱</button><button disabled={!song} onClick={()=>setView("combined")}>谱面与瀑布</button><button onClick={()=>setView("keyboard")}>瀑布与琴键</button><button disabled={!song} onClick={()=>setView("paper")}>PDF / 图片谱页</button>
             <button onClick={()=>setLibraryOpen(!libraryOpen)}>{libraryOpen?"隐藏":"显示"}选曲侧栏</button>
             <button onClick={()=>setInspector(!inspector)}>{inspector?"隐藏":"显示"}练习参数</button>
             <button onClick={fullscreen}>切换全屏</button>
@@ -1944,7 +1949,7 @@ export default function App() {
             </button>
           </div>
           <PracticeSetupSummary store={playback} song={song} connected={connected}
-            display={display} showRequired={view === "score"}
+            display={display} showRequired={view === "score" || view === "combined"}
             open={() => panels.revealInspector("setup")} />
           <PracticeContextPanel focus={display.practiceFocus} source={`${song?.engineId}:${song?.contentId}`} disabled={navigation.locked || !startupReady}
             sound={{state:state.sound?.changing?"changing":state.sound?.error?"error":state.sound?.ready?"ready":"offline",label:`${state.output} · ${state.sound?.changing?"正在连接":state.sound?.error?"连接异常，请检查音源":state.sound?.ready?"已连接":"未连接"}`}}>
@@ -1978,6 +1983,7 @@ export default function App() {
               >
                 五线谱
               </button>
+              <button className={view === "combined" ? "selected" : ""} aria-pressed={view === "combined"} disabled={!song} onClick={() => setView("combined")}>谱面与瀑布</button>
               <button
                 className={view === "paper" ? "selected" : ""}
                 aria-pressed={view === "paper"}
@@ -1987,6 +1993,7 @@ export default function App() {
                 谱页
               </button>
             </div>
+            {view === "combined" && <label className="practice-split-arrangement">排列 <select aria-label="谱面与瀑布排列" value={display.practiceSplitAxis} onChange={event => setDisplay(previous => ({...previous, practiceSplitAxis:event.target.value as DisplayPreferences["practiceSplitAxis"]}))}><option value="auto">自动排列</option><option value="rows">上下排列</option><option value="columns">左右并排</option></select></label>}
             <ScoreWorkspaceButton store={workspaceSessions.scores} song={song} disabled={busy} expanded={scoresDialog} open={() => setScoresDialog(true)} />
             <FingeringWorkbenchButton store={workspaceSessions.fingeringWorkbench} disabled={busy || state.recording || navigation.locked || !startupReady} open={() => setFingeringWorkbenchOpen(true)} />
             <ToolbarMore label="谱面与指法" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
@@ -2084,10 +2091,12 @@ export default function App() {
               </label>
             </ToolbarMore>
           </div>
-          {(view === "keyboard" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} outside={outsidePianoRange}
+          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}
-          <div className="piano-stage">
-            {(view === "keyboard" || state.mode === "memory") && <Piano
+          <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis} ratio={display.practiceSplitRatio}
+            changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value}))}>
+            <div className="practice-stage-keyboard" hidden={view !== "keyboard" && view !== "combined" && state.mode !== "memory"} role="region" aria-label="瀑布与琴键区域">
+            {(view === "keyboard" || view === "combined" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
                   state={playback.getSnapshot()}
                   store={playback}
@@ -2102,7 +2111,10 @@ export default function App() {
                   }
                   practiceRange={practiceRange.range}
                 />}
-            {view === "score" && song && state.mode !== "memory" && (
+            {(view === "keyboard" || view === "combined" || state.mode === "memory") && (song || state.recording) && <PracticeStageReadout store={playback} connected={connected} song={song} display={display} />}
+            </div>
+            <div className="practice-stage-notation" hidden={(view !== "score" && view !== "combined") || state.mode === "memory"} role="region" aria-label="五线谱区域">
+            {(view === "score" || view === "combined") && song && state.mode !== "memory" && (
               <PlaybackView
                 store={playback}
                 contentId={song?.contentId ?? null}
@@ -2197,6 +2209,7 @@ export default function App() {
                 )}
               </PlaybackView>
             )}
+            </div>
             {view === "paper" && song && state.mode !== "memory" && (
               <PlaybackView
                 store={playback}
@@ -2216,7 +2229,7 @@ export default function App() {
                 )}
               </PlaybackView>
             )}
-            {selectedNote && view !== "score" && state.mode !== "memory" && (
+            {selectedNote && view !== "score" && view !== "combined" && state.mode !== "memory" && (
               <div className="finger-editor">
                 <span>{pitchName(selectedNote.pitch)} · 当前指法 {selectedNote.finger ?? "未设置"}</span>
                 <button
@@ -2267,12 +2280,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            {(song || state.recording) && (view !== "score" || state.mode === "memory") && <PracticeStageReadout
-              store={playback}
-              connected={connected}
-              song={song}
-              display={display}
-            />}
             {!song && <PracticeWelcome
               resumeTitle={(recentPractice ?? starterSong)?.title} resumeRecent={!!recentPractice}
               disabled={busy || openingActive || state.recording || !connected || navigation.locked}
@@ -2281,7 +2288,7 @@ export default function App() {
               choose={() => { void changeWorkspace("library"); }} importFile={() => void importMidi()}
               generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => setSettings(true)} />}
 
-          </div>
+          </PracticeStage>
           {state.routine && (
             <RoutineStatus
               state={state}

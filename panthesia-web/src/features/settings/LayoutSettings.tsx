@@ -163,6 +163,11 @@ export function LayoutSettings({
           显示练习参数
         </label>
       </div>
+      <div className="layout-combined-controls">
+        <label>练习视图<select aria-label="默认练习视图" value={value.practiceView} onChange={event=>update({practiceView:event.target.value as DisplayPreferences["practiceView"]})}><option value="score">五线谱</option><option value="keyboard">瀑布与琴键</option><option value="combined">谱面与瀑布</option><option value="paper">PDF / 图片谱页</option></select></label>
+        <label>组合排列<select aria-label="组合视图排列" value={value.practiceSplitAxis} onChange={event=>update({practiceSplitAxis:event.target.value as DisplayPreferences["practiceSplitAxis"]})}><option value="auto">自动排列</option><option value="rows">上下排列</option><option value="columns">左右并排</option></select></label>
+        <label>谱面比例 {value.practiceSplitRatio}%<input aria-label="组合视图谱面比例" type="range" min={25} max={75} value={value.practiceSplitRatio} onChange={event=>update({practiceSplitRatio:Number(event.target.value)})}/></label>
+      </div>
       <div className="interface-scale-controls">
         <label>
           整体缩放

@@ -1,3 +1,4 @@
+import { IntervalTimeline } from "./intervalTimeline";
 import type { LoadedSong } from "../../engine/sessionTypes";
 
 type Note = LoadedSong["notes"][number];
@@ -20,42 +21,8 @@ export function after<T>(
 }
 
 /** A static interval tree includes long sustained notes that start far before the viewport. */
-export class NoteTimeline {
-  private readonly notes: readonly Note[];
-  private readonly maximumEnd: Float64Array;
-
-  constructor(notes: readonly Note[]) {
-    this.notes = [...notes].sort(
-      (a, b) => a.tick - b.tick || a.pitch - b.pitch,
-    );
-    this.maximumEnd = new Float64Array(Math.max(1, notes.length * 4));
-    if (notes.length) this.build(1, 0, notes.length);
-  }
-
-  private build(node: number, low: number, high: number): number {
-    if (high - low === 1)
-      return (this.maximumEnd[node] = this.notes[low].endTick);
-    const middle = low + Math.floor((high - low) / 2);
-    return (this.maximumEnd[node] = Math.max(
-      this.build(node * 2, low, middle),
-      this.build(node * 2 + 1, middle, high),
-    ));
-  }
-
-  visit(from: number, to: number, render: (note: Note) => void) {
-    if (!this.notes.length || to < from) return;
-    const walk = (node: number, low: number, high: number) => {
-      if (this.maximumEnd[node] < from || this.notes[low].tick > to) return;
-      if (high - low === 1) {
-        render(this.notes[low]);
-        return;
-      }
-      const middle = low + Math.floor((high - low) / 2);
-      walk(node * 2, low, middle);
-      walk(node * 2 + 1, middle, high);
-    };
-    walk(1, 0, this.notes.length);
-  }
+export class NoteTimeline extends IntervalTimeline<Note> {
+  constructor(notes: readonly Note[]) { super(notes, note => note.tick, note => note.endTick, (a, b) => a.pitch - b.pitch); }
 }
 
 /** Held-finger actions are ordered once per annotation update, rather than per note and frame. */

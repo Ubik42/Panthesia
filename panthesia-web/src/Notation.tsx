@@ -1,3 +1,5 @@
+import { ToolbarMore } from "./app/ToolbarMore";
+import { NotationTimeIndex, revealNotationNote } from "./features/scores/notationTimeIndex";
 import { renderScore } from "./features/scores/scoreRenderCache";
 import "./features/scores/notationWorkspace.css";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
@@ -180,8 +182,7 @@ export function Notation({
   ]);
   const [zoom, setZoom] = useState(0),
     [simpleFingers, setSimpleFingers] = useState(false),
-    [paperWidth, setPaperWidth] = useState(900),
-    [paperHeight, setPaperHeight] = useState(600);
+    [paperWidth, setPaperWidth] = useState(900);
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     try {
@@ -208,16 +209,7 @@ export function Notation({
     if (!el) return;
     const update = () => {
       setPaperWidth(Math.max(240, el.clientWidth - 24));
-      const pane = el.closest(".notation-pane");
-      if (pane)
-        setPaperHeight(
-          Math.max(
-            160,
-            pane.getBoundingClientRect().bottom -
-              el.getBoundingClientRect().top -
-              12,
-          ),
-        );
+
     };
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -455,12 +447,10 @@ export function Notation({
     );
     return () => cancelAnimationFrame(frame);
   }, [historyFocus, focusReliable, focusTargets, loading, page, html]);
+  const timeIndex = useMemo(() => new NotationTimeIndex(mapping), [mapping]);
   useEffect(() => {
-    const current = mapping.filter(
-      (n) => n.start <= state.position + 0.03 && n.end >= state.position,
-    );
+    const {active: current, next} = timeIndex.at(state.position);
     if (follow) {
-      const next = current[0] ?? mapping.find((n) => n.start >= state.position);
       if (next) setPage(next.page);
     }
     activeIds.current.forEach((id) =>
@@ -474,7 +464,11 @@ export function Notation({
         ?.querySelector(`[id="${CSS.escape(id)}"]`)
         ?.classList.add("playing-note"),
     );
-  }, [state.position, mapping, follow, page, pages]);
+    if (follow && next?.page === page && scroll.current) {
+      const note = root.current?.querySelector(`[id="${CSS.escape(next.id)}"]`);
+      if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note);
+    }
+  }, [state.position, timeIndex, follow, page, pages, zoom, paperWidth]);
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -695,6 +689,22 @@ export function Notation({
           />
           跟随演奏
         </label>
+        <label>
+          缩放
+          <select
+            aria-label="乐谱缩放"
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+          >
+            <option value={0}>适合宽度</option>
+            {[75, 100, 125, 150, 200].map((z) => (
+              <option key={z} value={z}>
+                {z}%
+              </option>
+            ))}
+          </select>
+        </label>
+        <ToolbarMore label="谱面选项" disabled={loading}>
         <button
           className={edit ? "selected" : ""}
           disabled={!mapping.length || editorBusy || !canEdit}
@@ -727,21 +737,6 @@ export function Notation({
             <option value="important">重点指法</option>
           </select>
         </label>
-        <label>
-          缩放
-          <select
-            aria-label="乐谱缩放"
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-          >
-            <option value={0}>适合宽度</option>
-            {[75, 100, 125, 150, 200].map((z) => (
-              <option key={z} value={z}>
-                {z}%
-              </option>
-            ))}
-          </select>
-        </label>
         {song.hasScore && !asset?.practiceNotation && <ScoreExportButton song={song} disabled={editorBusy} expanded={exporting} open={() => setExporting(true)} />}
         {song.hasScore && !asset?.practiceNotation && <button
           disabled={loading || editorBusy || asset?.practiceNotation || asset?.readiness !== "Ready" || !asset.sourceFingerprint || !mappingToken || !mapping.length || !pages.length}
@@ -751,6 +746,7 @@ export function Notation({
           生成可定位纸谱
         </button>}
         {!!song.practiceVariant?.settings.quantize && song.hasScore && <label>书面节奏 <select aria-label="谱面节奏来源" value={sourceRhythm ? "source" : "practice"} disabled={editorBusy} onChange={event=>setSourceRhythm(event.target.value==="source")}><option value="practice">量化练习谱</option><option value="source">所选原谱</option></select></label>}
+        </ToolbarMore>
         <span className="notation-alignment-status" title={asset?.alignmentSource === "duetIdentity" ? "DuET 逐音来源已核对" : undefined}>
           {asset
             ? `${asset.practiceNotation ? (asset.practiceNotationKind === "simplified" ? "MIDI 简化谱" : "量化练习谱") : asset.alignmentSource === "duetIdentity" ? "逐音" : "配对"} ${asset.coverage}% · ${asset.readiness === "Ready" ? "可跟随" : asset.readiness === "Blocked" ? "导航未通过" : "需校对"}${asset.trillCount ? ` · 颤音 ${asset.trillCount} 处` : ""}${asset.mordentCount ? ` · 波音 ${asset.mordentCount} 处` : ""}${asset.turnCount ? ` · 回音 ${asset.turnCount} 处` : ""}${asset.invertedTurnCount ? ` · 倒回音 ${asset.invertedTurnCount} 处` : ""}`
@@ -898,7 +894,6 @@ export function Notation({
         <div
           className="notation-scroll"
           ref={scroll}
-          style={{ maxHeight: paperHeight }}
         >
           <div
             className="score-paper"

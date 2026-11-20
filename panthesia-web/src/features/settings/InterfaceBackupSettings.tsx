@@ -20,6 +20,7 @@ import { codeLabel } from "../../displayPreferences";
 import { shortcutActions, shortcutLabel } from "../../shortcuts";
 const labels: Record<string, string> = {
   practiceFocus: "专注演奏布局",
+  practiceView: "练习视图", practiceSplitAxis: "组合排列", practiceSplitRatio: "组合谱面比例",
   uiScale: "整体界面缩放",
   notation: "音符名称",
   noteLabels: "音符提示",
@@ -50,6 +51,7 @@ const describe = (v: unknown) =>
       ? v.map((k) => String(k).replace(/^(Key|Digit)/, "")).join(" ")
       : ((
           {
+            keyboard: "瀑布与琴键", score: "五线谱", paper: "谱页", combined: "谱面与瀑布", rows: "上下排列", columns: "左右并排",
             pitch: "音名",
             solfege: "固定唱名",
             degree: "大调级数",
@@ -66,7 +68,9 @@ const describe = (v: unknown) =>
           } as Record<string, string>
         )[String(v)] ?? String(v));
 const settingText = (key: string, v: unknown) =>
-  key === "keyboardDeviceRanges"
+  key === "practiceSplitRatio" ? `${v}%`
+    : key === "practiceSplitAxis" && v === "auto" ? "自动排列"
+    : key === "keyboardDeviceRanges"
     ? Object.entries(v as Record<string, {low:number; high:number}>).map(([name, range]) => `${name}：${pitchName(range.low)}–${pitchName(range.high)}`).join("；") || "未设置"
     : key === "keyboardLow" || key === "keyboardHigh" ? pitchName(Number(v))
     : key === "uiScale"
