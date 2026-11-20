@@ -1,6 +1,6 @@
 # Panthesia 当前开发交接
 
-更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本批程序源码 d9f63d0。
+更新：2026-11-19。Goal active。工程 D:\Music\_tools\Panthesia，分支 main。本批程序源码 d9c76fc。
 
 ## 当前续接点
 
@@ -283,7 +283,10 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-bookmark-navigation，程序源码提交 d9f63d0，包含个人书签、MIDI 标记、数字定位与书签循环，并修正旧包替换导入的书签保护。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 CF7EAC06EFD11B0D8056576006F1953D847B9924B36FCDD39F3BFB92B575ACD4。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/bookmark-navigation-release.log、bookmarks-core-test.log 和 bookmark-navigation-package-check/{release-evidence.json,startup.log}。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-loop-practice，程序源码提交 d9c76fc，包含普通循环错误阈值重开、失败结果语义和瀑布下一轮预览。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 CCE8BF4AF70D3B7961062B57CB219D54A5571C076BE236BCAA141FBE135E3E58。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。独立启动同样隔离 WebView2 用户目录。见 work/loop-practice-release.log 及 loop-practice-package-check/{release-evidence.json,startup.log}。
+
+
+上一批运行包为 outputs/releases/Panthesia-20261119-bookmark-navigation，程序源码提交 d9f63d0，包含个人书签、MIDI 标记、数字定位与书签循环，并修正旧包替换导入的书签保护。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 CF7EAC06EFD11B0D8056576006F1953D847B9924B36FCDD39F3BFB92B575ACD4。29 个文件哈希一致；独立 --window-check 返回 PASS，visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/bookmark-navigation-release.log、bookmarks-core-test.log 和 bookmark-navigation-package-check/{release-evidence.json,startup.log}。
 
 outputs/releases/Panthesia-20261119-bookmarks 为本批中间包，源码 f01c584；尚未包含旧包替换的书签保护修正，交付使用上面的 bookmark-navigation。
 
