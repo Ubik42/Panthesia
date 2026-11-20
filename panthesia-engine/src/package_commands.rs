@@ -14,12 +14,13 @@ impl Player {
         &mut self,
         as_file: bool,
     ) -> Result<serde_json::Value, String> {
-        let (bytes,summary)=self.prepare_piece_package()?;
+        let (bytes,summary)=self.prepare_song_package_checked(&||Ok(()))?;
+        let title=summary["title"].as_str().unwrap_or(&self.title).to_owned();
         if as_file {
             let path=crate::package_loading::store(&self.data,&bytes)?;
-            Ok(serde_json::json!({"path":path,"title":self.title,"summary":summary}))
+            Ok(serde_json::json!({"path":path,"title":title,"summary":summary}))
         } else {
-            Ok(serde_json::json!({"bytes":bytes,"title":self.title,"summary":summary}))
+            Ok(serde_json::json!({"bytes":bytes,"title":title,"summary":summary}))
         }
     }
     pub(super) fn prepare_piece_package(&mut self) -> Result<(Vec<u8>,serde_json::Value),String> {

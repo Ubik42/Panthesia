@@ -373,7 +373,7 @@ export function PackageDialog({
           <div className="dialog-heading">
             <div>
               <h2 id="package-title">曲目包</h2>
-              <p>MIDI、谱页、教学标注与练习规则一起保存</p>
+              <p>整首歌曲与配套谱面一起保存</p>
             </div>
             <button
               autoFocus
@@ -390,8 +390,7 @@ export function PackageDialog({
             <div>
               <strong>{song?.title || "尚未打开曲目"}</strong>
               <p>
-                包含全部谱面版本、元数据、指法、分手、拍号修正、分组评级、手型设置、命名练习段落、演奏书签、速度阶梯及音轨名称、颜色与声音设置。PDF
-                与图片包含页序及阅读设置。个人成绩、阶梯进度及设备设置保留在本机。导出成品采用开始制作时的资料快照。
+                保存当前歌曲的全部演奏版本、配套谱面、手别、指法和练习设置。恢复后可继续练习；演奏记录与设备设置保存在本机。
               </p>
             </div>
             <MediaExportButton
@@ -508,6 +507,17 @@ export function PackageDialog({
                 <span>关闭窗口后保留预览、导入策略与原请求。</span>
               </div>
               <dl>
+                {summary.performances?.length > 0 && (
+                  <>
+                    <dt>归档内演奏版本</dt>
+                    <dd>
+                      {summary.performances
+                        .map((version) => version.label || version.title)
+                        .join("、")}
+                      （共 {summary.performances.length} 个）
+                    </dd>
+                  </>
+                )}
                 <dt>作曲家</dt>
                 <dd>{summary.metadata.composer || "未填写"}</dd>
                 <dt>谱面版本</dt>
@@ -523,13 +533,15 @@ export function PackageDialog({
                     )
                     .join("、") || "无"}
                 </dd>
-                <dt>演奏书签</dt><dd>{summary.bookmarks?.join("、") || "无"}</dd>
+                <dt>演奏书签</dt>
+                <dd>{summary.bookmarks?.join("、") || "无"}</dd>
                 <dt>速度阶梯</dt>
                 <dd>{summary.ladders?.join("、") || "无"}</dd>
                 <dt>指法与分手</dt>
                 <dd>
                   {summary.fingerings} 个指法 · {summary.hands} 个逐音分手
-                  {summary.notePlayback > 0 && ` · ${summary.notePlayback} 个逐音播放规则`}
+                  {summary.notePlayback > 0 &&
+                    ` · ${summary.notePlayback} 个逐音播放规则`}
                 </dd>
                 <dt>音轨设置</dt>
                 <dd className="package-track-settings">

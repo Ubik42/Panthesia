@@ -5,6 +5,17 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 const LIMIT: usize = 4_000_000;
+pub(crate) fn display_name(path: &Path) -> String {
+    let directory = path.parent();
+    if directory.is_some_and(|p| p.ends_with("library/assets/notation")) {
+        "配套乐谱".into()
+    } else {
+        path.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned()
+    }
+}
 fn verified_asset(path: &Path, hash: &str) -> bool {
     use std::io::Read;
     let Ok(file) = std::fs::File::open(path) else {

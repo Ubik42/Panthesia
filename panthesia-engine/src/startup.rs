@@ -430,16 +430,7 @@ impl Prepared {
         })();
         let prepared=prepared.and_then(|song|{
             match song {
-                Some(Song::File(mut file))=>{
-                    file.check()?;check()?;
-                    let source=file.file.source_path.as_ref().ok_or("曲目缺少来源")?;
-                    let cid=file.file.content_id.clone();
-                    let owned=crate::song_repository::SongRepository::open(root)?.retain_with_parts(source,&cid,&file.title,"",data.preferences.songs.get(&cid).map(|s|&s.parts),&check)?;
-                    let versions=data.preferences.score_versions.entry(cid).or_default();
-                    crate::notation_assets::retain_editions(root,&file.file.content_id,&owned,versions)?;
-                    file.rebind_annotations(owned,versions,&check)?;
-                    Ok(Some(Song::File(file)))
-                },
+                Some(Song::File(file))=>file.retain_assets(root,&mut data.preferences,&check).map(|file|Some(Song::File(file))),
                 other=>Ok(other),
             }
         });

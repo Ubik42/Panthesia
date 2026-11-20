@@ -100,8 +100,7 @@ impl Engine {
         token: &background_tasks::TaskToken,
     ) -> Result<Value, String> {
         token.stage("decoding")?;
-        let package = piece_package::Package::decode(bytes)?;
-        let cid = package.manifest.content_id.clone();
+        let (cid,mut result)=crate::portable_song::inspect(bytes,&||token.check())?;
         token.source(cid.clone(), blake3::hash(bytes).to_hex().to_string())?;
         token.check()?;
         let (reply, receiver) = mpsc::sync_channel(1);
@@ -114,7 +113,6 @@ impl Engine {
         let known = receiver.recv().map_err(|_| "曲目包预览状态通道已关闭")??;
         let workspace = library_workspace::Workspace::load(&self.data)?;
         token.check()?;
-        let mut result = package.summary();
         result["existing"] = json!(
             known
                 || workspace
@@ -182,8 +180,8 @@ impl Engine {
                         .ok_or("请先打开需要导出的曲目")?
                         .content_id
                         .clone();
-                    let title = reader.title.clone();
-                    let (bytes, summary) = reader.prepare_piece_package_checked(&|| token.check())?;
+                    let (bytes, summary) = reader.prepare_song_package_checked(&|| token.check())?;
+                    let title=summary["title"].as_str().unwrap_or(&reader.title).to_owned();
                     token.source(cid, blake3::hash(&bytes).to_hex().to_string())?;
                     Ok::<_, String>((bytes, title, summary))
                 },

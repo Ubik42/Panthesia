@@ -134,13 +134,7 @@ impl Assets {
                             .iter()
                             .find(|v| v.path == score_path)
                             .map(|v| v.name.clone())
-                            .unwrap_or_else(|| {
-                                score_path
-                                    .file_name()
-                                    .unwrap_or_default()
-                                    .to_string_lossy()
-                                    .into()
-                            });
+                            .unwrap_or_else(|| crate::notation_assets::display_name(&score_path));
                         check()?;
                         notation::ScoreAsset::new_checked(bytes, name, &aligned_file, check)
                             .map_err(|e| format!("乐谱无法恢复：{e}"))
@@ -392,6 +386,19 @@ impl Prepared {
         check()?;
         prepared.check()?;
         Ok(prepared)
+    }
+    pub(crate) fn install_owned(self,player:&mut Player)->Result<(),String>{
+        let prepared=self.retain_assets(&player.data,&mut player.preferences,&||Ok(()))?;
+        player.install_prepared(prepared.file,prepared.title,None,Some(InstallData{assets:Some(prepared.assets),timeline:prepared.timeline}))
+    }
+    pub(crate) fn retain_assets(mut self,data:&Path,preferences:&mut crate::preferences::Preferences,check:&impl Fn()->Result<(),String>)->Result<Self,String>{
+        self.check()?;check()?;
+        let source=self.file.source_path.as_ref().ok_or("曲目缺少来源")?;
+        let cid=self.file.content_id.clone();
+        let owned=crate::song_repository::SongRepository::open(data)?.retain_with_parts(source,&cid,&self.title,"",preferences.songs.get(&cid).map(|s|&s.parts),check)?;
+        let versions=preferences.score_versions.entry(cid.clone()).or_default();
+        crate::notation_assets::retain_editions(data,&cid,&owned,versions)?;
+        self.rebind_annotations(owned,versions,check)?;Ok(self)
     }
     pub(crate) fn rebind_annotations(&mut self,anchor:PathBuf,versions:&[ScoreVersion],check:&impl Fn()->Result<(),String>)->Result<(),String>{
         let mut watches=vec![Watch::capture(&anchor)?,Watch::capture(&library::metadata_sidecar_path(&anchor))?];

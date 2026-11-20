@@ -47,6 +47,9 @@ pub(crate) fn read(data:&Path)->Result<(RepertoireRegistry,String),String>{
     repository.snapshot()
 }
 
+fn notation_entry_id(registry:&RepertoireRegistry,performance:&str,version:&crate::preferences::ScoreVersion)->String{
+    registry.notations.values().find(|n|n.performance_id==performance&&n.version_id==version.id&&n.content_id==version.content_id).map(|n|n.id.clone()).unwrap_or_else(||format!("{performance}:{}",version.id))
+}
 fn migrate(
     registry: &mut RepertoireRegistry,
     data: &Path,
@@ -163,7 +166,7 @@ fn migrate(
         versions.iter().any(|v| {
             !registry
                 .notations
-                .contains_key(&format!("{performance}:{}", v.id))
+                .contains_key(&notation_entry_id(registry,performance,v))
         })
     });
     let automatic_origins = if needs_origins {
@@ -179,7 +182,7 @@ fn migrate(
     for (performance, versions) in &score_versions {
         for version in versions {
             check()?;
-            let id = format!("{performance}:{}", version.id);
+            let id = notation_entry_id(registry,performance,version);
             let builtin =
                 crate::library::is_builtin_notation(data, &version.path, &version.content_id);
             let automatic = automatic_origins.get(&version.content_id);

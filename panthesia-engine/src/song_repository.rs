@@ -1,5 +1,6 @@
 //! Content-owned MIDI assets and the authoritative song/performance/location directory.
 //! The old repertoire JSON is an import/export format; normal edits commit here.
+mod archive;
 use crate::library::SongRow;
 use panthesia_core::repertoire::{MusicalWork, PerformanceEdition, RepertoireRegistry};
 use rusqlite::{Connection, OptionalExtension, params};
@@ -68,6 +69,7 @@ impl SongRepository {
         };
         result.import_legacy()?;
         result.import_workspace_locations()?;
+        crate::portable_song::recover(data,&mut result)?;
         Ok(result)
     }
     pub fn managed_path(data: &Path, cid: &str) -> Result<PathBuf, String> {
@@ -125,7 +127,18 @@ impl SongRepository {
             panthesia_core::utils::atomic_file::write_new(&backup, &bytes).map_err(error)?;
         }
         let tx = self.db.transaction().map_err(error)?;
-        write_registry(&tx, &registry)?;
+        // Legacy changes can contribute previously unseen records and source locations.
+        // Current song membership, names and edition decisions remain authoritative.
+        let mut merged=read_registry(&tx)?;
+        let mut known_locations=merged.performances.values().flat_map(|p|p.locations.iter().map(|p|key(Path::new(p)))).collect::<std::collections::BTreeSet<_>>();
+        for (id,work)in registry.works{merged.works.entry(id).or_insert(work);}
+        for (id,mut incoming)in registry.performances{
+            incoming.locations.retain(|path|known_locations.insert(key(Path::new(path))));
+            if let Some(current)=merged.performances.get_mut(&id){current.locations.extend(incoming.locations);}else{merged.performances.insert(id,incoming);}
+        }
+        for (id,notation)in registry.notations{merged.notations.entry(id).or_insert(notation);}
+        merged.validate()?;
+        write_registry(&tx, &merged)?;
         tx.execute("INSERT INTO settings(key,value) VALUES('legacy_repertoire_hash',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[hash]).map_err(error)?;
         tx.execute("INSERT INTO settings(key,value) VALUES('legacy_repertoire_stamp',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[stamp]).map_err(error)?;
         tx.commit().map_err(error)
@@ -856,6 +869,16 @@ mod tests {
         assert!(!data.join("practice-import-journal.json").exists());
     }
     #[test]
+    fn changed_legacy_registry_adds_records_without_reverting_current_song_edits(){
+        let fixture=Fixture::new();let data=fixture.data();std::fs::create_dir_all(&data).unwrap();
+        let ids=[blake3::hash(b"first").to_hex().to_string(),blake3::hash(b"second").to_hex().to_string(),blake3::hash(b"third").to_hex().to_string()];
+        let mut old=RepertoireRegistry::default();old.register(&ids[0],"Old first","",None);old.register(&ids[1],"Old second","",None);
+        let file=data.join("repertoire.json");std::fs::write(&file,serde_json::to_vec(&old).unwrap()).unwrap();
+        let mut repository=SongRepository::open(&data).unwrap();let (mut registry,revision)=repository.snapshot().unwrap();let song=registry.performances[&ids[0]].work_id.clone();registry.performances.get_mut(&ids[1]).unwrap().work_id=song.clone();registry.works.get_mut(&song).unwrap().title="Current edited song".into();repository.save_registry(&registry,&revision,Some(&ids[1])).unwrap();drop(repository);
+        old.works.get_mut(&song).unwrap().title="Stale external overwrite".into();old.register(&ids[2],"New legacy source","",None);let bytes=serde_json::to_vec(&old).unwrap();std::fs::write(&file,&bytes).unwrap();
+        let snapshot=SongRepository::open(&data).unwrap().export_directory().unwrap();assert_eq!(snapshot.registry.performances[&ids[1]].work_id,song);assert_eq!(snapshot.registry.works[&song].title,"Current edited song");assert!(snapshot.registry.performances.contains_key(&ids[2]));assert!(snapshot.locked.contains(&ids[1]));assert_eq!(std::fs::read(file).unwrap(),bytes);
+    }
+    #[test]
     fn owned_documents_migrate_effective_parts_once_and_preserve_legacy_inputs() {
         let fixture = Fixture::new();
         let data = fixture.data();
@@ -1113,7 +1136,7 @@ mod tests {
         );
     }
 }
-fn registry_revision(registry: &RepertoireRegistry) -> Result<String, String> {
+pub(crate) fn registry_revision(registry: &RepertoireRegistry) -> Result<String, String> {
     Ok(
         blake3::hash(&serde_json::to_vec_pretty(registry).map_err(error)?)
             .to_hex()

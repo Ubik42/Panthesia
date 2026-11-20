@@ -53,6 +53,7 @@ pub(crate) fn prepare_checked(
     })
 }
 impl Prepared {
+    pub(crate) fn with_assets(mut self,assets:crate::exercise_assets::Prepared)->Self{self.assets=Some(assets);self}
     pub(crate) fn materialize_for_startup(
         mut self,
         data: &std::path::Path,

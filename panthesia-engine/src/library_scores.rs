@@ -64,11 +64,7 @@ pub(super) fn versions(
         {
             rows.push(ScoreVersion {
                 id: associated_id(&path,&a.content_id),
-                name: path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into(),
+                name: crate::notation_assets::display_name(&path),
                 path,
                 content_id: a.content_id,
             });

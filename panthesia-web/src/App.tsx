@@ -165,7 +165,24 @@ export default function App() {
   useEffect(installDiagnostics, []);
   const [appMenuOpen,setAppMenuOpen]=useState(false);
   const [songSetup,setSongSetup]=useState(false);
-  useEffect(()=>{if(!appMenuOpen)return;const pointer=(event:MouseEvent)=>{const target=event.target as Element;if(!target.closest('[aria-label="应用菜单"]') && (!target.closest('.workspace-topbar') || target.closest('.workspace-topbar button')))setAppMenuOpen(false);};const key=(event:KeyboardEvent)=>{if(event.key==="Escape")setAppMenuOpen(false);};window.addEventListener("click",pointer);window.addEventListener("keydown",key);return()=>{window.removeEventListener("click",pointer);window.removeEventListener("keydown",key);};},[appMenuOpen]);
+  useEffect(() => {
+    if (!appMenuOpen) return;
+    const pointer = (event: MouseEvent) => {
+      const target = event.target as Element;
+      const toggle = target.closest('button[aria-label="应用菜单"]');
+      const menu = target.closest(".workspace-topbar");
+      if (!toggle && (!menu || target.closest("button"))) setAppMenuOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAppMenuOpen(false);
+    };
+    window.addEventListener("click", pointer);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("click", pointer);
+      window.removeEventListener("keydown", key);
+    };
+  }, [appMenuOpen]);
 
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());

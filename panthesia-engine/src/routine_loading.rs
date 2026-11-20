@@ -673,32 +673,8 @@ impl Prepared {
     }
     pub fn install(self, player: &mut Player) -> Result<(), String> {
         match self {
-            Self::File(p) => player.install_prepared(
-                p.file,
-                p.title,
-                None,
-                Some(load_pipeline::InstallData {
-                    assets: Some(p.assets),
-                    timeline: p.timeline,
-                }),
-            ),
-            Self::Exercise(p, a) => {
-                crate::legacy_exercise_tracks::capture_before_install(
-                    player,
-                    &p.file,
-                    p.plan.spec,
-                )?;
-                a.store(&player.data, &p.file.content_id)?;
-                player.install_prepared(
-                    p.file,
-                    p.title,
-                    Some(p.plan),
-                    Some(load_pipeline::InstallData {
-                        assets: Some(a.assets),
-                        timeline: p.timeline,
-                    }),
-                )
-            }
+            Self::File(p)=>p.install_owned(player),
+            Self::Exercise(p,a)=>p.with_assets(a).install(player),
         }
     }
     #[cfg(test)]

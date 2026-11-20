@@ -197,7 +197,7 @@ impl Package {
     pub fn decode(bytes: &[u8]) -> Result<Self, String> {
         Self::decode_checked(bytes, &|| Ok(()))
     }
-    fn decode_checked(bytes: &[u8], check: &dyn Fn() -> Result<(), String>) -> Result<Self, String> {
+    pub(crate) fn decode_checked(bytes: &[u8], check: &dyn Fn() -> Result<(), String>) -> Result<Self, String> {
         check()?;
         if bytes.is_empty() || bytes.len() > 256_000_000 {
             return Err("曲目包为空或超过 256 MB".into());

@@ -1047,6 +1047,7 @@ export interface MediaExportInput {
 }
 
 export interface MediaExportSummary {
+  "performances": number;
   "scores": number;
   "paperBooks": number;
   "paperPages": number;
@@ -1311,7 +1312,16 @@ export interface PackageProvenancePreview {
   "sourceUrl": string | null;
 }
 
+export interface PackagePerformancePreview {
+  "contentId": string;
+  "label": string;
+  "title": string;
+  "scores": number;
+  "papers": number;
+}
+
 export interface PackagePreview {
+  "performances": Array<PackagePerformancePreview>;
   "token": string;
   "engineId": string;
   "fileName": string | null;

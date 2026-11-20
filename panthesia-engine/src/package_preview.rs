@@ -38,7 +38,18 @@ pub struct PackageProvenancePreview {
 }
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PackagePerformancePreview {
+    pub content_id: String,
+    pub label: String,
+    pub title: String,
+    pub scores: usize,
+    pub papers: usize,
+}
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PackagePreview {
+    #[serde(default)]
+    pub performances: Vec<PackagePerformancePreview>,
     pub token: String,
     pub engine_id: String,
     pub file_name: Option<String>,
@@ -57,7 +68,7 @@ pub struct PackagePreview {
     pub note_playback: usize,
     pub passages: Vec<String>,
     #[serde(default)]
-    pub bookmarks:Vec<String>,
+    pub bookmarks: Vec<String>,
     pub groups: Vec<Vec<String>>,
     pub rating: u8,
     pub existing: bool,

@@ -141,15 +141,7 @@ impl Song {
     }
     pub fn install(self, player: &mut Player) -> Result<(), String> {
         match self {
-            Self::File(value) => player.install_prepared(
-                value.file,
-                value.title,
-                None,
-                Some(load_pipeline::InstallData {
-                    assets: Some(value.assets),
-                    timeline: value.timeline,
-                }),
-            ),
+            Self::File(value) => value.install_owned(player),
             Self::Exercise(value) => value.install(player),
         }
     }

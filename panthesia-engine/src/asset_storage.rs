@@ -84,6 +84,9 @@ fn allowed_relative(relative: &str) -> bool {
     ) {
         return true;
     }
+    if let Some(name)=relative.strip_prefix("library/pending-song-imports/"){
+        return name.strip_suffix(".json").is_some_and(valid_hash);
+    }
     let parts = relative.split('/').collect::<Vec<_>>();
     if parts.iter().any(|part| {
         part.is_empty()

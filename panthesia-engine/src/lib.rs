@@ -1,3 +1,4 @@
+mod portable_song;
 #[cfg(test)]
 mod unified_asset_tests;
 pub mod song_repository;
@@ -1502,19 +1503,18 @@ impl Player {
             }
             Command::ImportStagedPackage { .. } => return Err("请先预览曲目包".into()),
             Command::InspectPackage { bytes } => {
-                let package = piece_package::Package::decode(&bytes)?;
-                let mut result = package.summary();
+                let (content_id,mut result)=portable_song::inspect(&bytes,&||Ok(()))?;
                 result["existing"] = serde_json::json!(
-                    self.history.song(&package.manifest.content_id).is_some()
+                    self.history.song(&content_id).is_some()
                         || library_workspace::Workspace::load(&self.data)?
                             .entries
                             .values()
-                            .any(|e| e.content_id.as_ref() == Some(&package.manifest.content_id))
+                            .any(|e| e.content_id.as_ref() == Some(&content_id))
                 );
                 return Ok(result);
             }
             Command::ImportPackage { bytes, policy } => {
-                return self.import_piece_package(bytes, policy);
+                return self.import_portable_package(bytes, policy);
             }
             Command::ImportMidi { bytes, name } => return self.install_import(import_pipeline::prepare(import_pipeline::Input::Midi { bytes, name })?),
             Command::ImportScore { bytes, name, default_bpm } => return self.install_import(import_pipeline::prepare(import_pipeline::Input::Score { bytes, name, bpm: default_bpm })?),

@@ -44,7 +44,7 @@ export function MediaExportButton({
       onClick={open}
       aria-haspopup="dialog"
     >
-      {kind === "practiceMidi" ? "导出练习版 MIDI" : kind === "midi" ? "导出原始 MIDI" : "导出当前曲目包"}
+      {kind === "practiceMidi" ? "导出练习版 MIDI" : kind === "midi" ? "导出原始 MIDI" : "导出完整歌曲"}
       {label && (
         <span
           className={`preparation-button-status ${label === "需处理" || label === "待确认" ? "needs-review" : ""}`}

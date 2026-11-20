@@ -44,7 +44,11 @@ export function MediaExportDialog({
         <header className="dialog-heading">
           <div>
             <h2 id="media-export-title">
-              {kind === "practiceMidi" ? "导出练习版 MIDI" : kind === "midi" ? "导出原始 MIDI" : "导出曲目包"}
+              {kind === "practiceMidi"
+                ? "导出练习版 MIDI"
+                : kind === "midi"
+                  ? "导出原始 MIDI"
+                  : "导出曲目包"}
             </h2>
             <p>{source.title}</p>
           </div>
@@ -64,9 +68,11 @@ export function MediaExportDialog({
             <Package size={26} aria-hidden="true" />
           )}
           <p>
-            {kind === "practiceMidi" ? "导出当前转调、量化后的音符与演奏事件。原始 MIDI 保留；该文件可在其他 MIDI 软件中使用。" : kind !== "package"
-              ? "保留原始 MIDI 的音符与演奏事件，生成可另存的副本。练习指法、谱页和个人设置可通过曲目包一起保存。"
-              : "将 MIDI、全部谱面、个人标记、教学规则和曲目设置一起打包。个人成绩、设备设置与练习进度继续保留在本机。"}
+            {kind === "practiceMidi"
+              ? "导出当前转调、量化后的音符与演奏事件。原始 MIDI 保留；该文件可在其他 MIDI 软件中使用。"
+              : kind !== "package"
+                ? "保留原始 MIDI 的音符与演奏事件，生成可另存的副本。练习指法、谱页和个人设置可通过曲目包一起保存。"
+                : "将 MIDI、全部谱面、个人标记、教学规则和曲目设置一起打包。个人成绩、设备设置与练习进度继续保留在本机。"}
           </p>
         </div>
         {workspace.message && (
@@ -130,7 +136,10 @@ export function MediaExportDialog({
               <dl className="media-export-summary">
                 <div>
                   <dt>演奏谱面</dt>
-                  <dd>{artifact.summary.scores} 份</dd>
+                  <dd>
+                    {artifact.summary.scores} 份 ·{" "}
+                    {artifact.summary.performances || 1} 个演奏版本
+                  </dd>
                 </div>
                 <div>
                   <dt>PDF / 图片谱</dt>

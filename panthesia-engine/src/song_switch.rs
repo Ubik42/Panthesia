@@ -29,7 +29,7 @@ impl Input {
     fn install_package(reader: &mut Player, bytes: Vec<u8>, policy: String, token: &background_tasks::TaskToken) -> Result<Value, String> {
         token.stage("decoding")?;
         let fingerprint = blake3::hash(&bytes).to_hex().to_string();
-        let result = reader.import_piece_package(bytes, policy)?;
+        let result = reader.import_portable_package_checked(bytes, policy,&||token.check())?;
         token.source(reader.file.as_ref().ok_or("曲目包未生成演奏曲目")?.content_id.clone(), fingerprint)?;
         Ok(result)
     }
@@ -54,16 +54,10 @@ impl Input {
     }
     pub(super) fn install_prepared_file(
         reader: &mut Player,
-        mut prepared: load_pipeline::Prepared,
+        prepared: load_pipeline::Prepared,
         token: &background_tasks::TaskToken,
     ) -> Result<(), String> {
-        prepared.check()?;
-        if let Some(source)=prepared.file.source_path.as_ref() {
-            let mut repository=crate::song_repository::SongRepository::open(&reader.data)?;
-            let managed=repository.retain_with_parts(source,&prepared.file.content_id,&prepared.title,"",reader.preferences.songs.get(&prepared.file.content_id).map(|s|&s.parts),&||token.check())?;
-            reader.retain_notation_assets(&prepared.file.content_id,&managed)?;
-            prepared.rebind_annotations(managed,reader.preferences.score_versions.get(&prepared.file.content_id).map(Vec::as_slice).unwrap_or_default(),&||token.check())?;
-        }
+        let prepared=prepared.retain_assets(&reader.data,&mut reader.preferences,&||token.check())?;
         token.source(
             prepared.file.content_id.clone(),
             prepared

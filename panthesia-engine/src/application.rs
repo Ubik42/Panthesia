@@ -4,7 +4,7 @@ use crate::{
     asset_edit, audio, demo_loading, file_locations, fingerings, history_actions,
     history_clip_edit, history_loading, history_operations, history_reader, history_replay_loading,
     history_source, import_pipeline, library, library_monitor, library_repairs, library_scores,
-    library_workspace, load_pipeline, metadata_templates, package_loading, piece_package,
+    library_workspace, load_pipeline, metadata_templates, package_loading,
     practice_backup_import, practice_backup_preview, practice_catalog, practice_edit, routine_edit,
     runtime_request, score_attachments, score_mapping, score_sources, song_switch, storage_control,
 };
@@ -1052,16 +1052,15 @@ impl Engine {
             );
         }
         if let Command::InspectPackage { bytes } = command {
-            let package = piece_package::Package::decode(&bytes)?;
-            let mut result = package.summary();
+            let (content_id,mut result)=crate::portable_song::inspect(&bytes,&||Ok(()))?;
             let index = library_workspace::Workspace::load(&self.data)?;
             let prefs = Preferences::load(&self.data.join("web-preferences.json"))?;
             result["existing"] = serde_json::json!(
                 index
                     .entries
                     .values()
-                    .any(|e| e.content_id.as_ref() == Some(&package.manifest.content_id))
-                    || prefs.songs.contains_key(&package.manifest.content_id)
+                    .any(|e| e.content_id.as_ref() == Some(&content_id))
+                    || prefs.songs.contains_key(&content_id)
             );
             return Ok(result);
         }

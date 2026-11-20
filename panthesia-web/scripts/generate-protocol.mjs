@@ -72,7 +72,7 @@ const domains = [
   ["../src-tauri/src/score_jobs.rs", ["ScoreJobKind", "ScoreJobRequest"]],
   ["../src-tauri/src/score_jobs.rs", ["ScoreSubmitted", "ScoreDraft", "ScoreJobPhase", "ScoreJobStatus"], "output"],
   ["../../panthesia-engine/src/package_preview.rs", ["PackagePreviewRequest"]],
-  ["../../panthesia-engine/src/package_preview.rs", ["PackagePaperPreview", "PackageTrackPreview", "PackageMetadataPreview", "PackageProvenancePreview", "PackagePreview"], "output"],
+  ["../../panthesia-engine/src/package_preview.rs", ["PackagePaperPreview", "PackageTrackPreview", "PackageMetadataPreview", "PackageProvenancePreview", "PackagePerformancePreview", "PackagePreview"], "output"],
   ["../../panthesia-engine/src/music_import.rs", ["ExerciseRequest", "PackagePolicy", "PackageRequest"]],
   ["../../panthesia-engine/src/music_import.rs", ["MusicKind", "MusicPhase", "ImportedSong", "MusicReceipt"], "output"],
   ["../../panthesia-engine/src/state_order.rs", ["StateOrder"], "output"],

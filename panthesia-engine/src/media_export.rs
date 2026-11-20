@@ -34,6 +34,8 @@ pub struct MediaExportInput {
 #[derive(Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaExportSummary {
+    #[serde(default)]
+    pub performances:usize,
     pub scores: usize,
     pub paper_books: usize,
     pub paper_pages: usize,
@@ -47,7 +49,12 @@ impl MediaExportSummary {
     fn from_package(value: &serde_json::Value) -> Self {
         let count = |field: &str| value[field].as_array().map_or(0, Vec::len);
         let number = |field: &str| value[field].as_u64().unwrap_or(0) as usize;
+        if let Some(totals)=value.get("archiveTotals"){
+            let total=|name:&str|totals[name].as_u64().unwrap_or(0)as usize;
+            return Self{performances:count("performances"),scores:total("scores"),paper_books:total("paperBooks"),paper_pages:total("paperPages"),fingerings:total("fingerings"),finger_actions:total("fingerActions"),hands:total("hands"),passages:total("passages"),ladders:total("ladders")};
+        }
         Self {
+            performances:1,
             scores: count("scores"),
             paper_books: count("papers"),
             paper_pages: value["papers"]
@@ -103,6 +110,7 @@ impl Engine {
                     return Err("曲目已切换，请返回来源曲目后重新导出".into());
                 }
                 check()?;
+                let mut title=reader.title.clone();
                 let (bytes, summary) = match input.kind {
                     MediaExportKind::PracticeMidi => {
                         let value=reader.export_practice_variant()?;
@@ -113,14 +121,15 @@ impl Engine {
                         (reader.prepare_midi_export()?, MediaExportSummary::default())
                     }
                     MediaExportKind::Package => {
-                        let (bytes, summary) = reader.prepare_piece_package_checked(check)?;
+                        let (bytes, summary) = reader.prepare_song_package_checked(check)?;
+                        title=summary["title"].as_str().unwrap_or(&title).to_owned();
                         (bytes, MediaExportSummary::from_package(&summary))
                     }
                 };
                 check()?;
                 Ok::<_, String>(Payload {
                     bytes,
-                    title: if input.kind==MediaExportKind::PracticeMidi {let v=reader.variant();format!("{} [转调{:+} 量化{}]",reader.title,v.transpose,v.quantize)}else{reader.title.clone()},
+                    title: if input.kind==MediaExportKind::PracticeMidi {let v=reader.variant();format!("{} [转调{:+} 量化{}]",reader.title,v.transpose,v.quantize)}else{title},
                     content_id: input.content_id.clone(),
                     summary,
                 })
