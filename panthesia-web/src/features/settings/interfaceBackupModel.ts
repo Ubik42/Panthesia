@@ -17,7 +17,7 @@ export const settingsGroups = {
     "octave",
     "fontSize",
     "palette",
-    "range", "keyboardLow", "keyboardHigh", "keyboardDeviceRanges",
+    "range", "keyboardViewport", "keyboardLow", "keyboardHigh", "keyboardDeviceRanges",
     "previewBars", "loopPreview",
     ...layoutKeys,
   ],
@@ -73,7 +73,7 @@ export function decodeInterfaceBackup(text: string): InterfaceBackup {
   for (const key of fields)
     if (
       key !== "shortcuts" &&
-      !(sourcePrefs[key] === undefined && ["practiceView","practiceSplitAxis","practiceSplitRatio","keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
+      !(sourcePrefs[key] === undefined && ["keyboardViewport","practiceView","practiceSplitAxis","practiceSplitRatio","keyboardLow","keyboardHigh","keyboardDeviceRanges","practiceFocus","skin","pianoMaterial","effectStyle","barOpacity","beatOpacity","subdivisionOpacity","gridSubdivision","effectsEnabled","effectsPreset","effectsPalette","effectsIntensity","reduceMotion"].includes(key)) &&
       !(key === "uiScale" && raw.preferences[key] === undefined) &&
       canonical(prefs[key]) !== canonical(sourcePrefs[key])
     )

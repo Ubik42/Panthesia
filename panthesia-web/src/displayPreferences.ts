@@ -1,4 +1,4 @@
-import { normalizeDeviceRanges, type KeyboardRangeMode, type KeyboardRange } from "./features/practice/keyboardViewport";
+import { normalizeKeyboardViewport, normalizePreviewBars, type KeyboardViewport, normalizeDeviceRanges, type KeyboardRangeMode, type KeyboardRange } from "./features/practice/keyboardViewport";
 import {
   normalizeShortcuts,
   shortcutDefaults,
@@ -33,6 +33,7 @@ export type DisplayPreferences = {
   fontSize: number;
   palette: "standard" | "accessible";
   range: KeyboardRangeMode;
+  keyboardViewport: KeyboardViewport | null;
   keyboardLow: number;
   keyboardHigh: number;
   keyboardDeviceRanges: Record<string, KeyboardRange>;
@@ -103,7 +104,7 @@ export const displayDefaults: DisplayPreferences = {
   fontSize: 10,
   palette: "standard",
   range: "song",
-  keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
+  keyboardViewport: null, keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
   loopPreview:true,
   libraryOpen: false,
@@ -186,12 +187,11 @@ export function normalizeDisplayPreferences(
     octave: typeof raw.octave === "boolean" ? raw.octave : true,
     fontSize: [10, 12, 14, 16].includes(raw.fontSize ?? 0) ? raw.fontSize! : 10,
     range: raw.range === 49 || raw.range === 88 || raw.range === "device" || raw.range === "custom" ? raw.range : "song",
+    keyboardViewport: normalizeKeyboardViewport(raw.keyboardViewport),
     keyboardLow: size(raw.keyboardLow, 0, 116, 36),
     keyboardHigh: Math.max(size(raw.keyboardLow, 0, 116, 36) + 11, size(raw.keyboardHigh, 11, 127, 84)),
     keyboardDeviceRanges: normalizeDeviceRanges(raw.keyboardDeviceRanges),
-    previewBars: [2, 4, 8, 12].includes(raw.previewBars ?? 0)
-      ? raw.previewBars!
-      : 4,
+    previewBars: normalizePreviewBars(raw.previewBars ?? 4),
     libraryOpen: raw.practiceLayoutVersion === 3 && typeof raw.libraryOpen === "boolean" ? raw.libraryOpen : false,
     practiceLayoutVersion: 3,
     inspector: raw.practiceLayoutVersion === 3 && typeof raw.inspector === "boolean" ? raw.inspector : false,

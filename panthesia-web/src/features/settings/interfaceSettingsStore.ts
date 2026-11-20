@@ -59,6 +59,7 @@ const sharePreferences = (
     canonicalSetting(previous.shortcuts)
   )
     preferences.shortcuts = previous.shortcuts;
+  if (canonicalSetting(preferences.keyboardViewport) === canonicalSetting(previous.keyboardViewport)) preferences.keyboardViewport = previous.keyboardViewport;
   if (canonicalSetting(preferences.keyboardDeviceRanges) === canonicalSetting(previous.keyboardDeviceRanges)) preferences.keyboardDeviceRanges = previous.keyboardDeviceRanges;
   return canonicalSetting(preferences) === canonicalSetting(previous)
     ? previous

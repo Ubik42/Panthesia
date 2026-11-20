@@ -1,11 +1,14 @@
 import { tickAtSeconds } from "./features/practice/practicePresentation";
 import {
   isBlackKey,
-  panKeyboardRange,
-  zoomKeyboardRange,
+  keyboardLayout,
+  viewportFromRange,
+  previewTickSpan,
+  type KeyboardViewport,
   type KeyboardRange,
 } from "./features/practice/keyboardViewport";
 import { useEffect, useMemo, useRef } from "react";
+import { usePianoViewportGestures } from "./features/practice/usePianoViewportGestures";
 import { PianoKeyboard } from "./features/practice/pianoKeyboard";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
 import { WaterfallClock } from "./features/practice/waterfallClock";
@@ -26,20 +29,15 @@ import {
 } from "./displayPreferences";
 
 const sharp = isBlackKey;
-function keyGeometry(pitch: number, width: number, white: number[]) {
-  const w = width / white.length;
-  const index = white.filter((p) => p < pitch).length;
-  return sharp(pitch)
-    ? { x: index * w - w * 0.31, w: w * 0.62 }
-    : { x: index * w, w };
-}
 export function Piano({
   song,
   state,
   store,
   onNote,
   keyboardRange,
+  keyboardViewport,
   onViewportChange,
+  onPreviewBarsChange,
   previewBars = 4,
   onSelect,
   display = displayDefaults,
@@ -51,31 +49,55 @@ export function Piano({
   store?: PlaybackStore;
   onNote: (pitch: number, active: boolean) => void;
   keyboardRange: KeyboardRange;
-  onViewportChange?: (range: KeyboardRange) => void;
+  keyboardViewport?: KeyboardViewport;
+  onViewportChange?: (viewport: KeyboardViewport) => void;
+  onPreviewBarsChange?: (bars: number) => void;
   previewBars?: number;
   display?: DisplayPreferences;
   onSelect?: (note: LoadedSong["notes"][number]) => void;
   canInteract?: () => boolean;
   practiceRange?: PracticeRange | null;
 }) {
-  const pitches = useMemo(
-    () =>
-      Array.from(
-        { length: keyboardRange.high - keyboardRange.low + 1 },
-        (_, i) => keyboardRange.low + i,
-      ),
-    [keyboardRange.low, keyboardRange.high],
+  const viewport = useMemo(
+    () => keyboardViewport ?? viewportFromRange(keyboardRange),
+    [keyboardViewport, keyboardRange.low, keyboardRange.high],
   );
-  const white = useMemo(() => pitches.filter((p) => !sharp(p)), [pitches]);
-  const black = useMemo(() => pitches.filter(sharp), [pitches]);
+  const layout = useMemo(() => keyboardLayout(viewport), [viewport]);
+  const white = useMemo(
+    () => layout.filter((key) => !key.black).map((key) => key.pitch),
+    [layout],
+  );
+  const black = useMemo(
+    () => layout.filter((key) => key.black).map((key) => key.pitch),
+    [layout],
+  );
   const keyLayout = useMemo(
-    () =>
-      new Map(pitches.map((pitch) => [pitch, keyGeometry(pitch, 1, white)])),
-    [pitches, white],
+    () => new Map(layout.map((key) => [key.pitch, key])),
+    [layout],
   );
-  const geometry = (pitch: number, width: number) => {
-    const key = keyLayout.get(pitch)!;
-    return { x: key.x * width, w: key.w * width };
+  const geometry = useMemo(
+    () => (pitch: number, width: number) => {
+      const key = keyLayout.get(pitch)!;
+      return { x: key.x * width, w: key.w * width };
+    },
+    [keyLayout],
+  );
+  const painted = useRef({white,black,geometry});
+  const presentation = useRef({
+    display,
+    previewBars,
+    keyLayout,
+    white,
+    black,
+    geometry,
+  });
+  presentation.current = {
+    display,
+    previewBars,
+    keyLayout,
+    white,
+    black,
+    geometry,
   };
   const timeline = useMemo(
     () => new NoteTimeline(song?.notes ?? []),
@@ -194,6 +216,9 @@ export function Piano({
   ]);
   useEffect(() => {
     const element = canvas.current!;
+    element.dataset.renderGeneration = String(
+      Number(element.dataset.renderGeneration ?? 0) + 1,
+    );
     const effects = new PianoEffects();
     const sprites = new WaterfallSprites();
     const ctx = element.getContext("2d", { alpha: false })!;
@@ -210,18 +235,22 @@ export function Piano({
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let suspended = false;
     let previousWrong = 0;
-    const palette = effectPalettes[display.effectsPalette];
-    const performanceStyle = display.effectsPreset === "performance";
     const keyboard = new PianoKeyboard(
       display,
       white,
       black,
       geometry,
-      palette.right,
+      effectPalettes[display.effectsPalette].right,
     );
     let frame = 0;
     const draw = () => {
       frame = 0;
+      const { display, previewBars, keyLayout, white, black, geometry } =
+        presentation.current;
+      const palette = effectPalettes[display.effectsPalette];
+      const performanceStyle = display.effectsPreset === "performance";
+      keyboard.configure(display, white, black, geometry, palette.right);
+      painted.current = {white,black,geometry};
       const { width, height, dpr } = surface;
       if (width <= 0 || height <= 0 || document.hidden) {
         effects.clear();
@@ -347,11 +376,12 @@ export function Piano({
       const measures = song?.measures ?? [];
       const index = Math.max(0, after(measures, tick, (m) => m.startTick) - 1);
       const bar = measures[index];
-      const end =
-        song?.measures[Math.max(0, index) + previewBars]?.startTick ??
-        (bar?.startTick ?? tick) +
-          (bar ? bar.endTick - bar.startTick : 1920) * previewBars;
-      const span = Math.max(1, end - (bar?.startTick ?? tick)),
+      const span = previewTickSpan(
+          measures,
+          index,
+          previewBars,
+          bar ? bar.endTick - bar.startTick : 1920,
+        ),
         pixels = baseline / span;
       const loopStart =
         song && state.passage ? tickAtSeconds(song, state.passage.start) : 0;
@@ -721,6 +751,9 @@ export function Piano({
       motion.removeEventListener("change", motionChanged);
       requestPaint.current = () => {};
     };
+  }, []);
+  useEffect(() => {
+    requestPaint.current();
   }, [previewBars, display, keyLayout, white, black]);
   const release = (pointer?: number) => {
     if (pointer !== undefined) {
@@ -751,74 +784,33 @@ export function Piano({
       document.removeEventListener("visibilitychange", hide);
       clear();
     };
-  }, [onNote, keyboardRange.low, keyboardRange.high]);
-  const viewportActions = useRef({
-    keyboardRange,
+  }, [onNote]);
+  const gestures = usePianoViewportGestures({
+    canvas,
+    viewport,
+    previewBars,
+    keyboardHeight: display.keyboardHeight,
     onViewportChange,
+    onPreviewBarsChange,
     canInteract,
+    release,
   });
-  viewportActions.current = { keyboardRange, onViewportChange, canInteract };
-  useEffect(() => {
-    const element = canvas.current!;
-    let accumulated = 0;
-    let gesture = "";
-    const wheel = (event: WheelEvent) => {
-      const {
-        keyboardRange: range,
-        onViewportChange: change,
-        canInteract: allowed,
-      } = viewportActions.current;
-      if (
-        (!event.ctrlKey && !event.shiftKey) ||
-        !change ||
-        allowed?.() === false
-      )
-        return;
-      event.preventDefault();
-      event.stopPropagation();
-      const kind = event.ctrlKey ? "zoom" : "pan";
-      if (kind !== gesture) accumulated = 0;
-      gesture = kind;
-      const delta =
-        (event.deltaY || event.deltaX) *
-        (event.deltaMode === 1
-          ? 16
-          : event.deltaMode === 2
-            ? element.clientHeight
-            : 1);
-      accumulated += delta;
-      if (Math.abs(accumulated) < 35) return;
-      const steps = Math.max(-4, Math.min(4, Math.trunc(accumulated / 35)));
-      accumulated = 0;
-      const bounds = element.getBoundingClientRect();
-      let next = range;
-      if (kind === "zoom")
-        for (let i = 0; i < Math.abs(steps); i++)
-          next = zoomKeyboardRange(
-            next,
-            -Math.sign(steps),
-            (event.clientX - bounds.left) / Math.max(1, bounds.width),
-          );
-      else next = panKeyboardRange(range, steps);
-      change(next);
-    };
-    element.addEventListener("wheel", wheel, { passive: false });
-    return () => element.removeEventListener("wheel", wheel);
-  }, []);
   return (
     <canvas
       ref={canvas}
       data-key-low={keyboardRange.low}
       data-key-high={keyboardRange.high}
+      data-viewport-start={viewport.start}
+      data-viewport-span={viewport.span}
+      data-preview-bars={previewBars}
+      style={{ touchAction: "none" }}
       tabIndex={0}
       aria-label="按小节排列的音符与可演奏键盘"
       onPointerDown={(e) => {
-        if (
-          canInteract?.() === false ||
-          (e.pointerType === "mouse" && e.button !== 0)
-        )
-          return;
+        if (canInteract?.() === false) return;
         e.currentTarget.focus({ preventScroll: true });
+        if (gestures.down(e)) return;
+        if (e.pointerType === "mouse" && e.button !== 0) return;
         const bounds = e.currentTarget.getBoundingClientRect(),
           x =
             ((e.clientX - bounds.left) * e.currentTarget.clientWidth) /
@@ -837,10 +829,17 @@ export function Piano({
             .find(
               (n) => x >= n.x && x < n.x + n.w && y >= n.y && y < n.y + n.h,
             );
-          if (hit) onSelect?.(hit.note);
+          if (hit) {
+            const select = () => {
+              if (hitSource.current === song) onSelect?.(hit.note);
+            };
+            if (e.pointerType === "touch") gestures.deferSelection(e, select);
+            else select();
+          }
           return;
         }
         release(e.pointerId);
+        const {white,black,geometry} = painted.current;
         const candidates =
           y < e.currentTarget.clientHeight - keyboardHeight * 0.38
             ? [...black, ...white]
@@ -856,9 +855,19 @@ export function Piano({
           e.currentTarget.setPointerCapture(e.pointerId);
         }
       }}
-      onPointerUp={(e) => release(e.pointerId)}
-      onPointerCancel={(e) => release(e.pointerId)}
-      onLostPointerCapture={(e) => release(e.pointerId)}
+      onPointerMove={gestures.move}
+      onPointerUp={(e) => {
+        gestures.up(e);
+        release(e.pointerId);
+      }}
+      onPointerCancel={(e) => {
+        gestures.cancel(e);
+        release(e.pointerId);
+      }}
+      onLostPointerCapture={(e) => {
+        gestures.cancel(e);
+        release(e.pointerId);
+      }}
     />
   );
 }

@@ -1,3 +1,4 @@
+import { PreviewBarsControl } from "../practice/PreviewBarsControl";
 import { KeyboardRangeSettings } from "./KeyboardRangeSettings";
 import { InterfaceDisplayPreview } from "./InterfaceDisplayPreview";
 import { PianoEffectsSettings } from "./PianoEffectsSettings";
@@ -269,22 +270,7 @@ export function DisplaySettingsDialog({
                         <option value="accessible">左右手蓝橙配色</option>
                       </select>
                     </label>
-                    <label>
-                      前方预览
-                      <select
-                        aria-label="键盘音符预览小节数"
-                        value={value.previewBars}
-                        onChange={(event) =>
-                          update({ previewBars: Number(event.target.value) })
-                        }
-                      >
-                        {[2, 4, 8, 12].map((bars) => (
-                          <option key={bars} value={bars}>
-                            {bars} 小节
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <PreviewBarsControl value={value.previewBars} change={previewBars=>update({previewBars})} label="前方预览" ariaLabel="键盘音符预览小节数"/>
                   </div>
                   <KeyboardRangeSettings value={value} change={update} input={input} />
                   <div className="display-settings-checks">
@@ -473,7 +459,7 @@ export function DisplaySettingsDialog({
                   fontSize: displayDefaults.fontSize,
                   palette: displayDefaults.palette,
                   range: displayDefaults.range,
-                  keyboardLow: displayDefaults.keyboardLow, keyboardHigh: displayDefaults.keyboardHigh,
+                  keyboardViewport: null, keyboardLow: displayDefaults.keyboardLow, keyboardHigh: displayDefaults.keyboardHigh,
                   previewBars: displayDefaults.previewBars,
                 });
                 setError("");

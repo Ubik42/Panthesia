@@ -29,7 +29,7 @@ export function KeyboardRangeSettings({
             [input]: { low, high },
           },
         });
-    } else change({ keyboardLow: low, keyboardHigh: high });
+    } else change({ keyboardViewport: null, keyboardLow: low, keyboardHigh: high });
   };
   return (
     <fieldset className="keyboard-range-settings">
@@ -125,7 +125,7 @@ export function KeyboardRangeSettings({
           <p>
             {device
               ? "设备音域用于显示和范围提示。演奏音高、伴奏和评分继续使用歌曲的练习条件。"
-              : "取景只改变画面。演奏页可用 Ctrl + 滚轮缩放、Shift + 滚轮平移。"}
+              : "取景只改变画面。Ctrl + 滚轮连续缩放；Shift + 滚轮或 Alt / 中键拖动平移。瀑布区域支持双指水平缩放、垂直调整前方范围。"}
           </p>
         </>
       )}

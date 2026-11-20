@@ -4,7 +4,8 @@ import { SavedPassageBar } from "./features/practice/SavedPassageBar";
 import type { DisplayPreferences } from "./displayPreferences";
 import { PracticeStage } from "./features/practice/PracticeStage";
 import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
-import { resolveKeyboardRange } from "./features/practice/keyboardViewport";
+import { PreviewBarsControl } from "./features/practice/PreviewBarsControl";
+import { resolveKeyboardViewport, viewportRange, zoomKeyboardViewport, panKeyboardViewport, normalizePreviewBars, type KeyboardViewport } from "./features/practice/keyboardViewport";
 import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
 import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
@@ -386,10 +387,20 @@ export default function App() {
   useEffect(() => {
     if (view !== "paper" && historyPaperFocus) setHistoryPaperFocus(null);
   }, [view, historyPaperFocus]);
-  const pianoRange = useMemo(() => resolveKeyboardRange(display, song?.notes ?? [], state.input),
-    [display.range, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
-  const outsidePianoRange = useMemo(() => song?.notes.filter(note => note.pitch < pianoRange.low || note.pitch > pianoRange.high).length ?? 0,
-    [song?.notes, pianoRange]);
+  const pianoViewport = useMemo(() => resolveKeyboardViewport(display, song?.notes ?? [], state.input),
+    [display.range, display.keyboardViewport, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
+  const pianoRange = useMemo(()=>viewportRange(pianoViewport),[pianoViewport]);
+  const changePianoViewport = (viewport:KeyboardViewport) => {
+    const range=viewportRange(viewport);
+    setDisplay(previous=>({...previous,range:"custom",keyboardViewport:viewport,keyboardLow:range.low,keyboardHigh:range.high}));
+  };
+  const pianoPitchCounts = useMemo(()=>{
+    const counts=Array<number>(129).fill(0);
+    for(const note of song?.notes??[])counts[note.pitch+1]++;
+    for(let pitch=1;pitch<counts.length;pitch++)counts[pitch]+=counts[pitch-1];
+    return counts;
+  },[song?.notes]);
+  const outsidePianoRange = pianoPitchCounts[pianoRange.low]+pianoPitchCounts[128]-pianoPitchCounts[pianoRange.high+1];
   const recital = ["recital", "memory"].includes(state.mode);
   const ladderActive = Boolean(state.ladder?.active);
   const routineActive = Boolean(state.routine);
@@ -826,6 +837,17 @@ export default function App() {
           return;
         }
         switch (shortcut.id) {
+          case "previewMore": case "previewLess":
+            setDisplay(previous=>({...previous,previewBars:normalizePreviewBars(previous.previewBars+(shortcut.id==="previewMore"?1:-1))}));
+            break;
+          case "keyboardZoomIn": case "keyboardZoomOut": case "keyboardPanLow": case "keyboardPanHigh":
+            setDisplay(previous=>{
+              const view=resolveKeyboardViewport(previous,getBoundSong()?.notes??[],playback.getSnapshot().input);
+              const next=shortcut.id==="keyboardZoomIn"?zoomKeyboardViewport(view,1/1.2):shortcut.id==="keyboardZoomOut"?zoomKeyboardViewport(view,1.2):panKeyboardViewport(view,shortcut.id==="keyboardPanLow"?-3.5:3.5);
+              const range=viewportRange(next);
+              return {...previous,range:"custom",keyboardViewport:next,keyboardLow:range.low,keyboardHigh:range.high};
+            });
+            break;
           case "playPause":
             execute((c) => ({
               type: ["playing", "countIn"].includes(c.status)
@@ -865,9 +887,9 @@ export default function App() {
                 0.25,
                 Math.min(
                   2,
-                  Math.round(
-                    (c.speed + (shortcut.id === "faster" ? 0.05 : -0.05)) * 100,
-                  ) / 100,
+                  (Math.round(c.bpm * c.speed) +
+                    (shortcut.id === "faster" ? 5 : -5)) /
+                    Math.max(1, c.bpm),
                 ),
               ),
             }));
@@ -2106,23 +2128,10 @@ export default function App() {
               >
                 界面与按键
               </button>
-              <label>
-                预览
-                <select
-                  aria-label="预览小节数"
-                  value={seconds}
-                  onChange={(e) => setSeconds(Number(e.target.value))}
-                >
-                  {[2, 4, 8, 12].map((n) => (
-                    <option value={n} key={n}>
-                      {n} 小节
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <PreviewBarsControl value={seconds} change={setSeconds} label="前方预览" ariaLabel="预览小节数"/>
             </ToolbarMore>
           </div>
-          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} outside={outsidePianoRange}
+          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}
           <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis} ratio={display.practiceSplitRatio}
             changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value}))}>
@@ -2134,7 +2143,9 @@ export default function App() {
                   onNote={pointerNote}
                   canInteract={() => !keyboardContext.current.paused && !songOpeningActive.current && !topInputScope() && !topPopup(null)}
                   keyboardRange={pianoRange}
-                  onViewportChange={range => setDisplay(previous => ({ ...previous, range: "custom", keyboardLow: range.low, keyboardHigh: range.high }))}
+                  keyboardViewport={pianoViewport}
+                  onViewportChange={changePianoViewport}
+                  onPreviewBarsChange={setSeconds}
                   previewBars={seconds}
                   display={display}
                   onSelect={

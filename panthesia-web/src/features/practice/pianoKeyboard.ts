@@ -28,6 +28,29 @@ export class PianoKeyboard {
     private geometry: Geometry,
     private defaultColor: string,
   ) {}
+  configure(
+    display: DisplayPreferences,
+    white: readonly number[],
+    black: readonly number[],
+    geometry: Geometry,
+    defaultColor: string,
+  ) {
+    if (
+      this.display === display &&
+      this.white === white &&
+      this.black === black &&
+      this.geometry === geometry &&
+      this.defaultColor === defaultColor
+    )
+      return;
+    this.display = display;
+    this.white = white;
+    this.black = black;
+    this.geometry = geometry;
+    this.defaultColor = defaultColor;
+    this.baseKey = "";
+    this.activeKey = "";
+  }
   paint(ctx: CanvasRenderingContext2D, input: Frame) {
     const {
       width,
@@ -101,7 +124,10 @@ export class PianoKeyboard {
           display.keyLabels !== "none" &&
           (display.keyLabels !== "c" || pitch % 12 === 0)
         ) {
-          ctx.fillStyle = display.pianoMaterial === "glass" && !active ? "#eff7ff" : "#53635e";
+          ctx.fillStyle =
+            display.pianoMaterial === "glass" && !active
+              ? "#eff7ff"
+              : "#53635e";
           ctx.font = `${display.fontSize}px sans-serif`;
           const label = displayPitch(pitch, display);
           const size = Math.min(
@@ -189,9 +215,18 @@ export class PianoKeyboard {
     };
     const cacheKey = `${width}:${height}:${keyboardHeight}:${dpr}`;
     if (this.baseKey !== cacheKey) {
-      keyboardImage.width = Math.ceil(width * dpr);
-      keyboardImage.height = Math.ceil((keyboardHeight + 7) * dpr);
+      const targetWidth = Math.ceil(width * dpr),
+        targetHeight = Math.ceil((keyboardHeight + 7) * dpr);
+      if (
+        keyboardImage.width !== targetWidth ||
+        keyboardImage.height !== targetHeight
+      ) {
+        keyboardImage.width = targetWidth;
+        keyboardImage.height = targetHeight;
+      }
       const cached = keyboardImage.getContext("2d")!;
+      cached.setTransform(1, 0, 0, 1, 0, 0);
+      cached.clearRect(0, 0, targetWidth, targetHeight);
       cached.setTransform(dpr, 0, 0, dpr, 0, -(baseline - 7) * dpr);
       paintKeys(cached, true);
       this.baseKey = cacheKey;

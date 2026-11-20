@@ -1,4 +1,10 @@
 export const shortcutActions = [
+  { id: "previewMore", label: "前方多显示一小节", key: "PageUp" },
+  { id: "previewLess", label: "前方少显示一小节", key: "PageDown" },
+  { id: "keyboardZoomIn", label: "放大瀑布与琴键", key: "Ctrl+Shift+Equal" },
+  { id: "keyboardZoomOut", label: "缩小瀑布与琴键", key: "Ctrl+Shift+Minus" },
+  { id: "keyboardPanLow", label: "视窗向低音平移", key: "Alt+Shift+ArrowLeft" },
+  { id: "keyboardPanHigh", label: "视窗向高音平移", key: "Alt+Shift+ArrowRight" },
   { id: "bookmark1", label: "定位第 1 个书签", key: "Alt+Digit1" },
   { id: "bookmark2", label: "定位第 2 个书签", key: "Alt+Digit2" },
   { id: "bookmark3", label: "定位第 3 个书签", key: "Alt+Digit3" },
@@ -12,8 +18,8 @@ export const shortcutActions = [
   { id: "restart", label: "从头开始", key: "Ctrl+Home" },
   { id: "previousMeasure", label: "上一小节", key: "Alt+ArrowLeft" },
   { id: "nextMeasure", label: "下一小节", key: "Alt+ArrowRight" },
-  { id: "slower", label: "速度降低 5%", key: "Ctrl+Minus" },
-  { id: "faster", label: "速度提高 5%", key: "Ctrl+Equal" },
+  { id: "slower", label: "速度降低 5 BPM", key: "Ctrl+Minus" },
+  { id: "faster", label: "速度提高 5 BPM", key: "Ctrl+Equal" },
   { id: "metronome", label: "开关节拍器", key: "Ctrl+KeyM" },
   { id: "view", label: "切换键盘 / 乐谱 / 纸谱", key: "Alt+KeyV" },
   { id: "library", label: "显示 / 隐藏曲库", key: "Alt+KeyB" },
@@ -84,6 +90,7 @@ export function shortcutLabel(chord: string | null) {
     .map(
       (v) =>
         ({
+          PageUp: "PgUp", PageDown: "PgDown",
           Space: "空格",
           ArrowLeft: "←",
           ArrowRight: "→",

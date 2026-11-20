@@ -1,8 +1,11 @@
+import { PreviewBarsControl } from "./PreviewBarsControl";
 import type { DisplayPreferences } from "../../displayPreferences";
 import { pitchName } from "../../engine/musicFormatting";
 import {
-  panKeyboardRange,
-  zoomKeyboardRange,
+  panKeyboardViewport,
+  zoomKeyboardViewport,
+  viewportRange,
+  type KeyboardViewport,
   type KeyboardRange,
   type KeyboardRangeMode,
 } from "./keyboardViewport";
@@ -21,16 +24,25 @@ export const parseKeyboardRange = (value: string): KeyboardRangeMode =>
 export function KeyboardRangeControls({
   value,
   range,
+  viewport,
   outside,
   change,
 }: {
   value: DisplayPreferences;
   range: KeyboardRange;
+  viewport: KeyboardViewport;
   outside: number;
   change: (patch: Partial<DisplayPreferences>) => void;
 }) {
-  const move = (next: KeyboardRange) =>
-    change({ range: "custom", keyboardLow: next.low, keyboardHigh: next.high });
+  const move = (next: KeyboardViewport) => {
+    const range = viewportRange(next);
+    change({
+      range: "custom",
+      keyboardViewport: next,
+      keyboardLow: range.low,
+      keyboardHigh: range.high,
+    });
+  };
   return (
     <div className="keyboard-range-controls" aria-label="瀑布与键盘取景">
       <label>
@@ -57,36 +69,46 @@ export function KeyboardRangeControls({
         <button
           aria-label="键盘向低音平移"
           title="向低音移动一个八度；Shift + 滚轮平移"
-          disabled={range.low === 0}
-          onClick={() => move(panKeyboardRange(range, -7))}
+          disabled={viewport.start <= 0}
+          onClick={() => move(panKeyboardViewport(viewport, -7))}
         >
           ←
         </button>
         <button
           aria-label="缩小键盘取景"
           title="显示更多琴键；Ctrl + 滚轮缩放"
-          disabled={range.low === 0 && range.high === 127}
-          onClick={() => move(zoomKeyboardRange(range, -1))}
+          disabled={viewport.span >= 75}
+          onClick={() => move(zoomKeyboardViewport(viewport, 1.2))}
         >
           −
         </button>
         <button
           aria-label="放大键盘取景"
           title="放大琴键；Ctrl + 滚轮缩放"
-          disabled={range.high - range.low <= 12}
-          onClick={() => move(zoomKeyboardRange(range, 1))}
+          disabled={viewport.span <= 8}
+          onClick={() => move(zoomKeyboardViewport(viewport, 1 / 1.2))}
         >
           ＋
         </button>
         <button
           aria-label="键盘向高音平移"
           title="向高音移动一个八度；Shift + 滚轮平移"
-          disabled={range.high === 127}
-          onClick={() => move(panKeyboardRange(range, 7))}
+          disabled={viewport.start + viewport.span >= 75}
+          onClick={() => move(panKeyboardViewport(viewport, 7))}
         >
           →
         </button>
       </div>
+      <PreviewBarsControl
+        value={value.previewBars}
+        change={(previewBars) => change({ previewBars })}
+      />
+      <button
+        title="Ctrl + 滚轮连续缩放；Shift + 滚轮或 Alt / 中键拖动平移。瀑布区域双指水平缩放、垂直调整前方小节。"
+        onClick={() => change({ range: "song" })}
+      >
+        适合歌曲
+      </button>
       {outside > 0 && (
         <button
           className="keyboard-range-outside"

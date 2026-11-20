@@ -1,3 +1,4 @@
+import { viewportRange, type KeyboardViewport } from "../practice/keyboardViewport";
 import { pitchName } from "../../engine/musicFormatting";
 import {
   loadInterfaceBackup,
@@ -30,6 +31,7 @@ const labels: Record<string, string> = {
   fontSize: "提示字号",
   palette: "声部配色",
   range: "键盘范围",
+  keyboardViewport: "连续取景位置",
   keyboardLow: "自定义最低音", keyboardHigh: "自定义最高音", keyboardDeviceRanges: "MIDI 设备音域",
   previewBars: "预览小节",
   libraryOpen: "显示曲库",
@@ -68,7 +70,8 @@ const describe = (v: unknown) =>
           } as Record<string, string>
         )[String(v)] ?? String(v));
 const settingText = (key: string, v: unknown) =>
-  key === "practiceSplitRatio" ? `${v}%`
+  key === "keyboardViewport" ? v ? (()=>{const range=viewportRange(v as KeyboardViewport);return `${pitchName(range.low)}–${pitchName(range.high)} · 连续取景`;})() : "按显示范围取景"
+    : key === "practiceSplitRatio" ? `${v}%`
     : key === "practiceSplitAxis" && v === "auto" ? "自动排列"
     : key === "keyboardDeviceRanges"
     ? Object.entries(v as Record<string, {low:number; high:number}>).map(([name, range]) => `${name}：${pitchName(range.low)}–${pitchName(range.high)}`).join("；") || "未设置"
