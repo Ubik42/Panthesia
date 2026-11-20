@@ -210,7 +210,9 @@ P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连
 
 ## 交付状态
 
-当前可试用运行包为 outputs/releases/Panthesia-20261119-keyboard-viewport，程序源码提交 93f3ec0，加入本批统一取景。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 D8AC21089D9D30BD69C360FA40EA43EBEF950C29B54896A8FF0B0C2B92B8147B，29 个文件哈希一致。独立 --window-check 为 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/keyboard-viewport-release.log 和 work/keyboard-viewport-package-check/release-evidence.json / startup.log。
+当前可试用运行包为 outputs/releases/Panthesia-20261119-combined-practice，程序源码提交 0df57c4，包含组合视图、页内跟随、保持演奏位置的缩放及共用区间索引。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 39356B911D24AF8B2CD572F52C2D2C225E0838AA82D7EAB5597981CEC339AA07。29 个文件哈希一致，独立 --window-check 返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/combined-practice-release.log 及 work/combined-practice-package-check/release-evidence.json / startup.log。
+
+上一批运行包为 outputs/releases/Panthesia-20261119-keyboard-viewport，程序源码提交 93f3ec0，加入本批统一取景。manifest 标记 dirty=true（工作区原有曲库路径修改），源码指纹 D8AC21089D9D30BD69C360FA40EA43EBEF950C29B54896A8FF0B0C2B92B8147B，29 个文件哈希一致。独立 --window-check 为 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首 / 9 音符，MIDI 已连接。见 work/keyboard-viewport-release.log 和 work/keyboard-viewport-package-check/release-evidence.json / startup.log。
 
 上一批运行包为 outputs/releases/Panthesia-20261119-score-workflow，程序源码提交 324387e，增加采用前谱页预览、直接返回演奏与谱面管理皮肤。构建包含工作区原有曲库路径调整，manifest 标记 dirty=true，源码指纹 E0B97E1CB127F57F32453A4B43C35BEB12A0D928A2ECF69960ACC186C150D186。29 个文件哈希一致；独立 --window-check 返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符、MIDI 已连接。见 work/score-workflow-release.log 及 work/score-workflow-package-check/release-evidence.json / startup.log。
 
