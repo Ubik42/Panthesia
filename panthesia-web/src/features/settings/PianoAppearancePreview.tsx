@@ -18,6 +18,7 @@ const geometry = (pitch: number, width: number) => {
 /** Preview uses the same materials and strike renderer as the practice keyboard. */
 export function PianoAppearancePreview({ value }: { value: DisplayPreferences }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const effectsCanvas=useRef<HTMLCanvasElement>(null);
   const [demo, setDemo] = useState(0);
   const [running, setRunning] = useState(false);
   useEffect(() => {
@@ -27,7 +28,7 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
     if (!ctx) return;
     const palette = effectPalettes[value.effectsPalette];
     const keyboard = new PianoKeyboard(value, whites, blacks, geometry, palette.right);
-    const effects = new PianoEffects();
+    const effects = new PianoEffects(effectsCanvas.current!);
     const reduced = value.reduceMotion || matchMedia("(prefers-reduced-motion: reduce)").matches;
     const start = performance.now();
     let frame = 0, stopped = false;
@@ -73,13 +74,13 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
     const hide = () => { if (document.hidden) { stopped = true; cancelAnimationFrame(frame); setRunning(false); } };
     document.addEventListener("visibilitychange", hide);
     paint(start);
-    return () => { stopped = true; cancelAnimationFrame(frame); observer.disconnect(); document.removeEventListener("visibilitychange", hide); };
+    return () => { stopped = true; cancelAnimationFrame(frame); effects.dispose(); observer.disconnect(); document.removeEventListener("visibilitychange", hide); };
   }, [value, demo]);
   return <figure className="piano-appearance-preview">
     <figcaption><div><strong>你的练习室</strong><span>琴键材质、落键光效与练习网格</span></div>
       <button type="button" onClick={() => setDemo(n => n + 1)}><Play size={13} />{running ? "重新演示" : "演示落键"}</button>
     </figcaption>
-    <canvas ref={canvas} aria-label="钢琴外观与落键光效预览" role="img" />
+    <div className="piano-preview-surface"><canvas ref={canvas} aria-label="钢琴外观与落键光效预览" role="img" /><canvas ref={effectsCanvas} className="piano-gpu-effects" aria-hidden="true" /></div>
     <p>设置立即生效并自动保存。演示只展示画面。</p>
   </figure>;
 }

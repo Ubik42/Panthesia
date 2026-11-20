@@ -10,6 +10,7 @@ const liveFields = [
   "practiceMs",
   "required",
   "pressed",
+  "pressedKeys",
   "score",
   "midiEvents",
   "audioLevel",

@@ -50,6 +50,9 @@ pub struct PlaybackPerformance {
     pub max_publish_ms: f64,
 }
 #[derive(Clone, Serialize)]
+pub struct LiveKey { pub velocity:u8, pub serial:u64 }
+
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub playback_performance: PlaybackPerformance,
@@ -74,6 +77,7 @@ pub struct Snapshot {
     pub hands: String,
     pub required: Vec<u8>,
     pub pressed: Vec<u8>,
+    pub pressed_keys: std::collections::BTreeMap<u8,LiveKey>,
     pub score: PracticeSnapshot,
     pub input: Option<String>,
     pub output: String,
@@ -141,6 +145,7 @@ impl Default for Snapshot {
             hands: "both".into(),
             required: vec![],
             pressed: vec![],
+            pressed_keys: Default::default(),
             score: PracticeSnapshot::default(),
             input: None,
             output: "内置钢琴".into(),

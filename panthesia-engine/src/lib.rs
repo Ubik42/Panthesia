@@ -1101,6 +1101,7 @@ impl Player {
             }
         }
         self.state.pressed.clear();
+        self.state.pressed_keys.clear();
         self.state.pedal = 0;
         if restore_audition { self.restore_track_sound(); }
     }
@@ -2710,7 +2711,8 @@ impl Player {
             self.state.midi_events+=1;
             if bytes.len()>=3 && matches!(bytes[0]&240,128|144) {
                 self.state.pressed.retain(|p|*p!=bytes[1]);
-                if bytes[0]&240==144 && bytes[2]>0 {self.state.pressed.push(bytes[1]);}
+                self.state.pressed_keys.remove(&bytes[1]);
+                if bytes[0]&240==144 && bytes[2]>0 {self.state.pressed.push(bytes[1]);self.state.pressed_keys.insert(bytes[1],session_state::LiveKey{velocity:bytes[2],serial:self.state.midi_events});}
             }
             if bytes.len()>=3 && bytes[0]&240==176 && bytes[1]==64 {self.state.pedal=bytes[2];}
             let mut routed=bytes.to_vec();
@@ -2740,8 +2742,10 @@ impl Player {
         if (kind == 144 || kind == 128) && note <= 127 && velocity <= 127 {
             let active = kind == 144 && velocity != 0;
             self.state.pressed.retain(|p| *p != note);
+            self.state.pressed_keys.remove(&note);
             if active {
                 self.state.pressed.push(note);
+                self.state.pressed_keys.insert(note,session_state::LiveKey{velocity,serial:self.state.midi_events});
             }
             if active && self.state.status == "playing" && self.state.wait {
                 self.playback.guidance.press(note, self.playback.clock);

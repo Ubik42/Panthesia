@@ -81,3 +81,8 @@
 .notation-capabilities dl > div { display: block; padding: 8px 0; }
 .notation-capabilities dt { font-weight: 600; margin-bottom: 4px; }
 .notation-capabilities dd { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
+
+.piano-surface { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; flex: 1; isolation: isolate; }
+.piano-surface > canvas { display: block; width: 100%; height: 100%; }
+.piano-surface > .piano-gpu-effects, .piano-preview-surface > .piano-gpu-effects { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; visibility: hidden; }
+.piano-preview-surface { position: relative; }

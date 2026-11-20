@@ -141,6 +141,7 @@ export function Piano({
     return pitches;
   }, [song?.notes]);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const effectsCanvas = useRef<HTMLCanvasElement>(null);
   const clock = useRef(new WaterfallClock());
   const latest = useRef({
     song,
@@ -177,6 +178,8 @@ export function Piano({
         frame.mode === previous.mode &&
         frame.hands === previous.hands &&
         frame.pressed === previous.pressed &&
+        frame.pressedKeys === previous.pressedKeys &&
+        frame.pedal === previous.pedal &&
         frame.required === previous.required &&
         frame.speed === previous.speed &&
         frame.noteEpoch === previous.noteEpoch &&
@@ -233,7 +236,7 @@ export function Piano({
     element.dataset.renderGeneration = String(
       Number(element.dataset.renderGeneration ?? 0) + 1,
     );
-    const effects = new PianoEffects();
+    const effects = new PianoEffects(effectsCanvas.current!,()=>requestPaint.current());
     const sprites = new WaterfallSprites();
     const ctx = element.getContext("2d", { alpha: false })!;
     const surface = { width: 0, height: 0, dpr: 1 };
@@ -299,6 +302,7 @@ export function Piano({
       hitSource.current = song;
       const visualNotes = new Map<number, string>();
       const playedNotes = new Set<number>();
+      const playedStrikes = new Map<number,{velocity:number;identity:string}>();
       const reduced = display.reduceMotion || motion.matches;
       const strength = display.effectsIntensity / 100;
       const now = performance.now();
@@ -557,7 +561,7 @@ export function Piano({
               note.playbackMode === "Auto" ||
               automaticTracks.has(note.track))
           )
-            playedNotes.add(note.pitch);
+            {playedNotes.add(note.pitch);playedStrikes.set(note.pitch,{velocity:note.velocity,identity:`${note.track}:${note.index}:${note.tick}`});}
           const fill = required ? "#efd484" : noteColor;
           const inRange =
             !practiceRange ||
@@ -664,10 +668,13 @@ export function Piano({
           performance: performanceStyle,
           strength,
           reduced,
+          pedal:state.pedal,
           strikes: [...new Set([...state.pressed, ...playedNotes])]
             .filter((pitch) => keyLayout.has(pitch))
             .map((pitch) => ({
               pitch,
+              velocity:state.pressed.includes(pitch)?state.pressedKeys?.[pitch]?.velocity??88:playedStrikes.get(pitch)?.velocity,
+              identity:state.pressed.includes(pitch)?`input:${state.pressedKeys?.[pitch]?.serial??0}`:playedStrikes.get(pitch)?.identity,
               color:
                 visualNotes.get(pitch) ?? palette.right,
             })),
@@ -737,6 +744,7 @@ export function Piano({
       }
       ctx.textAlign = "left";
       element.dataset.effectParticles = String(effects.particleCount);
+      element.dataset.effectRenderer = effects.renderer;
       if (effects.active || clock.current.moving)
         frame = requestAnimationFrame(draw);
     };
@@ -779,6 +787,7 @@ export function Piano({
     schedule();
     return () => {
       cancelAnimationFrame(frame);
+      effects.dispose();
       resize.disconnect();
       window.removeEventListener("resize", resized);
       document.removeEventListener("visibilitychange", visibility);
@@ -832,6 +841,7 @@ export function Piano({
     release,
   });
   return (
+    <div className="piano-surface">
     <canvas
       ref={canvas}
       data-key-low={keyboardRange.low}
@@ -905,5 +915,7 @@ export function Piano({
         release(e.pointerId);
       }}
     />
+    <canvas ref={effectsCanvas} className="piano-gpu-effects" aria-hidden="true" />
+    </div>
   );
 }

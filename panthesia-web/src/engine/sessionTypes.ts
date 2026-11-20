@@ -247,6 +247,7 @@ export interface Snapshot {
   hands: string;
   required: number[];
   pressed: number[];
+  pressedKeys?: Record<number,{velocity:number;serial:number}>;
   score: {
     matched_notes: number;
     wrong_notes: number;

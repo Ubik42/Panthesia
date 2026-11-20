@@ -33,7 +33,7 @@ export function PianoEffectsSettings({ value, change, compact = false, openAppea
         <label>琴键材质<select aria-label="琴键材质" value={value.pianoMaterial} onChange={e=>change({pianoMaterial:e.target.value as DisplayPreferences["pianoMaterial"]})}><option value="ivory">暖象牙</option><option value="porcelain">白瓷</option><option value="glass">冰晶玻璃</option></select></label>
         <label>落键特效<select aria-label="落键特效" value={value.effectStyle} onChange={e=>change({effectStyle:e.target.value as DisplayPreferences["effectStyle"]})}><option value="bloom">辉光 · 光柱与星屑</option><option value="ripple">涟漪 · 多重扩散光环</option><option value="comet">流星 · 光点与拖尾</option></select></label>
       </div>
-      <p className="parameter-help">练习光效提供清楚的落点与按键反馈；演出光效增加光束、扩散光环和粒子拖尾。</p>
+      <p className="parameter-help">练习光效提供清楚的落点与按键反馈；演出光效增加光束、扩散光环和粒子拖尾，随击键力度变化；踏板会延长星屑余光。</p>
       <label className="effects-intensity">光效强度 <output>{value.effectsIntensity}%</output>
         <input aria-label="光效强度" type="range" min="0" max="100" value={value.effectsIntensity} onChange={e => change({ effectsIntensity: Number(e.target.value) })} />
       </label>

@@ -32,6 +32,7 @@ try {
         'default.sf2' = 'default.sf2'
         'LICENSE' = 'LICENSE'
         'NOTICE.md' = 'NOTICE.md'
+        'third-party/MIDIVisualizer/LICENSE' = 'ThirdParty/MIDIVisualizer/LICENSE'
         'docs/development/desktop-guide.txt' = '使用说明.txt'
         'panthesia-web/public/verovio/NOTICE.md' = 'ThirdParty/Verovio/NOTICE.md'
         'panthesia-web/public/verovio/COPYING' = 'ThirdParty/Verovio/COPYING'
