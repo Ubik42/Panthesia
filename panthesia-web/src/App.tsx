@@ -1,170 +1,149 @@
-import { MetronomeIcon } from "./features/practice/SynthesiaToolbarIcons";
-import { Settings as DisplayGear, Search as ZoomIcon, Music2 as ScoreIcon, Repeat2 as LoopIcon } from "lucide-react";
-import { SongSetupScreen } from "./features/practice/SongSetupScreen";
+import { Bookmark as BookmarkIcon,Settings as DisplayGear,Repeat2 as LoopIcon,Music2 as ScoreIcon,Search as ZoomIcon } from "lucide-react";
+import { AboutDialog } from "./app/AboutDialog";
+import { ActionSearch } from "./app/ActionSearch";
+import { applicationCommands,type ApplicationCommandId } from "./app/applicationCommands";
+import { ApplicationMenu } from "./app/ApplicationMenu";
+import { CurrentPracticeBar } from "./app/CurrentPracticeBar";
+import { DesktopCloseProgress } from "./app/DesktopCloseProgress";
 import { installDiagnostics } from "./app/diagnostics";
-import {FolderManager} from "./features/library/FolderManager";
-import { pathKey } from "./engine/pathIdentity";
-import { SongBookmarks, type BookmarkNavigation } from "./features/practice/SongBookmarks";
-import { SavedPassageBar } from "./features/practice/SavedPassageBar";
+import { isCapturingKeys,isComposingKey,isTextEntry,isVisibleInput,topInputScope,topPopup,visibleDialogs } from "./app/inputOwnership";
+import { PracticeReturnBar } from "./app/PracticeReturnBar";
+import { PreparationButton } from "./app/PreparationButton";
+import { performRecoveryAction,type RecoveryHost } from "./app/recovery/recoveryActions";
+import { SessionRecoveryDialog } from "./app/recovery/SessionRecovery";
+import type { RecoveryAction,RecoveryIssue } from "./app/recovery/sessionRecoveryModel";
+import { createSessionRecoveryStore } from "./app/recovery/sessionRecoveryStore";
+import { SessionStatus } from "./app/SessionStatus";
+import type { SongWorkspaceRequest,SongWorkspaceTarget } from "./app/songWorkspaceVisit";
+import { StartupNotice } from "./app/StartupNotice";
+import { useDialogFocus } from "./app/useDialogFocus";
+import { useWorkspaceSessions } from "./app/useWorkspaceSessions";
+import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
+import { historyResumeContext,libraryResumeContext } from "./app/workspaceResumeContext";
 import type { DisplayPreferences } from "./displayPreferences";
-import { PracticeStage } from "./features/practice/PracticeStage";
-import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
-import { PreviewBarsControl } from "./features/practice/PreviewBarsControl";
-import { resolveKeyboardViewport, viewportRange, zoomKeyboardViewport, panKeyboardViewport, normalizePreviewBars, type KeyboardViewport } from "./features/practice/keyboardViewport";
-import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
-import { product } from "./product.generated";
-import { SongCredits } from "./features/practice/SongCredits";
+import type { MediaExportKind } from "./engine/commands.generated";
+import { pathKey } from "./engine/pathIdentity";
+import { TaskActivity } from "./engine/TaskActivity";
+import { WorkProgressDialog } from "./features/activity/WorkProgress";
+import type { WorkEntry } from "./features/activity/workProgressStore";
+import { EditDraftCenter } from "./features/editing/EditDraftCenter";
+import { ImportQueueButton,ImportQueueNotice } from "./features/imports/ImportQueueButton";
+import { FolderManager } from "./features/library/FolderManager";
+import type { LibrarySearchRequest } from "./features/library/libraryBrowse";
+import { type LibraryOpenLocation } from "./features/library/libraryOpen";
+import { LibraryOpenRecovery } from "./features/library/LibraryOpenRecovery";
+import { checkLibraryPrepared,sourceForLibraryRow } from "./features/library/libraryOpenStore";
 import { prepareLibraryPractice } from "./features/library/prepareLibraryPractice";
 import { SongBrowser } from "./features/library/SongBrowser";
-import { ApplicationMenu } from "./app/ApplicationMenu";
-import { PracticeQueueStrip } from "./features/practice/PracticeQueueStrip";
-import { PracticeLibraryPanel } from "./features/practice/PracticeLibraryPanel";
-import { practiceCollectionByPath, collectionSongRow, type PracticeLibraryItem } from "./features/practice/practiceLibraryModel";
 import { useLibraryOpening } from "./features/library/useLibraryOpening";
-import { LibraryOpenRecovery } from "./features/library/LibraryOpenRecovery";
-import { checkLibraryPrepared, sourceForLibraryRow, sourceForLibraryScore } from "./features/library/libraryOpenStore";
-import { getInterfaceWorkbench, hasLayoutNameInput } from "./features/settings/interfaceWorkbenchStore";
-import { getInterfaceSettings } from "./features/settings/interfaceSettingsStore";
-import { requireHistoryScoreTarget, requireHistorySource } from "./features/review/historySource";
-import { getHistoryOperations } from "./features/review/historyOperationStore";
-import { performRecoveryAction, type RecoveryHost } from "./app/recovery/recoveryActions";
-import { SessionRecoveryButton, SessionRecoveryDialog } from "./app/recovery/SessionRecovery";
-import { createSessionRecoveryStore } from "./app/recovery/sessionRecoveryStore";
-import type { RecoveryAction, RecoveryIssue } from "./app/recovery/sessionRecoveryModel";
-import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
-import { WorkProgressButton, WorkProgressDialog } from "./features/activity/WorkProgress";
-import type { WorkEntry } from "./features/activity/workProgressStore";
-import type { MediaExportKind } from "./engine/commands.generated";
-import { capturePlaybackSource, isPlaybackAdjustment, samePlaybackSource } from "./features/practice/playbackCommands";
-import { PracticeReturnBar } from "./app/PracticeReturnBar";
-import { CurrentPracticeBar } from "./app/CurrentPracticeBar";
-import { AboutDialog } from "./app/AboutDialog";
-import { type LibraryOpenLocation } from "./features/library/libraryOpen";
-import { useDialogFocus } from "./app/useDialogFocus";
-import type { LibrarySearchRequest } from "./features/library/libraryBrowse";
-import type { SongWorkspaceRequest, SongWorkspaceTarget } from "./app/songWorkspaceVisit";
-import { ActionSearch } from "./app/ActionSearch";
-import { applicationCommands, type ApplicationCommandId } from "./app/applicationCommands";
+import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
+import { normalizePreviewBars,panKeyboardViewport,resolveKeyboardViewport,viewportRange,zoomKeyboardViewport,type KeyboardViewport } from "./features/practice/keyboardViewport";
+import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
+import { capturePlaybackSource,isPlaybackAdjustment,samePlaybackSource } from "./features/practice/playbackCommands";
 import { PlaybackView } from "./features/practice/PlaybackView";
-import { PracticeWelcome } from "./features/practice/PracticeWelcome";
 import { PracticeLegend } from "./features/practice/PracticeLegend";
-import { EditDraftButton, EditDraftCenter } from "./features/editing/EditDraftCenter";
-import { useWorkspaceSessions } from "./app/useWorkspaceSessions";
-import { DesktopCloseProgress } from "./app/DesktopCloseProgress";
-import { ImportQueueButton, ImportQueueNotice } from "./features/imports/ImportQueueButton";
-import { PreparationButton } from "./app/PreparationButton";
-import {ScoreWorkspaceButton} from "./features/scores/ScoreWorkspaceButton";
-import {SongEditionBar} from "./features/practice/SongEditionBar";
-import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
-import { PracticeVariantPanel } from "./features/practice/PracticeVariantPanel";
-import { isCapturingKeys, isComposingKey, isTextEntry, isVisibleInput, topInputScope, topPopup, visibleDialogs } from "./app/inputOwnership";
-import { libraryResumeContext, historyResumeContext } from "./app/workspaceResumeContext";
-import { SessionStatus } from "./app/SessionStatus";
-import { StartupNotice } from "./app/StartupNotice";
-import { TaskActivity } from "./engine/TaskActivity";
+import { collectionSongRow,practiceCollectionByPath,type PracticeLibraryItem } from "./features/practice/practiceLibraryModel";
+import { PracticeLibraryPanel } from "./features/practice/PracticeLibraryPanel";
+import { PracticeRangeControls } from "./features/practice/PracticeRangeControls";
 import {
-  PracticeStageReadout,
-  PracticeResultStrip,
-  PracticeSetupSummary,
-  PracticePedal,
-  RecordingLabel,
+PracticePedal,
+PracticeStageReadout
 } from "./features/practice/PracticeReadouts";
-import { useLiveNotes } from "./features/practice/useLiveNotes";
-import { usePracticeSession } from "./features/practice/usePracticeSession";
-import { usePracticePanels } from "./features/practice/usePracticePanels";
+import { PracticeStage } from "./features/practice/PracticeStage";
 import { PracticeTransport } from "./features/practice/PracticeTransport";
-import { PracticeInspector, type PracticeInspectorTool } from "./features/practice/PracticeInspector";
-import { activeMeasures, nextAvailableQueueSong, seekableMeasures } from "./features/practice/practicePresentation";
+import { PracticeVariantPanel } from "./features/practice/PracticeVariantPanel";
+import { PracticeWelcome } from "./features/practice/PracticeWelcome";
+import { PreviewBarsControl } from "./features/practice/PreviewBarsControl";
+import { SongBookmarks,type BookmarkNavigation } from "./features/practice/SongBookmarks";
+import { SongEditionBar } from "./features/practice/SongEditionBar";
+import { SongSetupScreen } from "./features/practice/SongSetupScreen";
+import { LabelsIcon,MetronomeIcon } from "./features/practice/SynthesiaToolbarIcons";
+import { useLiveNotes } from "./features/practice/useLiveNotes";
+import { usePracticePanels } from "./features/practice/usePracticePanels";
+import { usePracticeSession } from "./features/practice/usePracticeSession";
+import { getHistoryOperations } from "./features/review/historyOperationStore";
+import { requireHistoryScoreTarget,requireHistorySource } from "./features/review/historySource";
+import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
+import { HandSplitScreen } from "./features/screens/HandSplitScreen";
+import { HomeScreen } from "./features/screens/HomeScreen";
+import { LabelSettings } from "./features/screens/LabelSettings";
+import { ScreenHeader } from "./features/screens/ScreenHeader";
+import { SettingsScreen } from "./features/screens/SettingsScreen";
+import { SongOptionsDialog } from "./features/screens/SongOptionsDialog";
+import { TrackSetupScreen } from "./features/screens/TrackSetupScreen";
+import { useProductScreens } from "./features/screens/useProductScreens";
+import { getInterfaceSettings } from "./features/settings/interfaceSettingsStore";
+import { getInterfaceWorkbench,hasLayoutNameInput } from "./features/settings/interfaceWorkbenchStore";
+import { product } from "./product.generated";
+
 import {
-  useWorkspaceNavigation,
-  type Workspace,
-} from "./app/useWorkspaceNavigation";
-import { DeviceSettingsDialog } from "./features/devices/DeviceSettingsDialog";
-import { WorkspaceTools } from "./app/WorkspaceTools";
-import { ToolbarMore } from "./app/ToolbarMore";
-import { WorkspaceNavigation } from "./app/WorkspaceNavigation";
-import { requireValue } from "./engine/requireValue";
-import { eventShortcut, shortcutActions, shortcutLabel } from "./shortcuts";
-import { PanelResizeHandle } from "./PanelResizeHandle";
-import type {
-  HistoryScoreFocus,
-  HistoryScoreReview,
-} from "./historyScoreFocus";
-import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
-import {
-  keyboardMap,
-  codeLabel,
-} from "./displayPreferences";
-import { PracticeBackupDialog } from "./PracticeBackupDialog";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  FolderOpen,
-  History,
-  Info,
-  KeyboardMusic,
-  ListMusic,
-  Maximize2,
-  Menu,
-  Music2,
-  RotateCcw,
-  Search,
-  Settings2,
-  Star,
-  X,
+KeyboardMusic,
+Maximize2,
+X
 } from "lucide-react";
+import { useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore } from "react";
 import {
-  api,
-  clock,
-  pitchName,
-  type EngineCommand,
-  type PlaybackAdjustmentCommand,
-  type LoadedSong,
-  type CollectionSong,
-  type Snapshot,
-  type SongRow,
+api,
+pitchName,
+type CollectionSong,
+type EngineCommand,
+type LoadedSong,
+type PlaybackAdjustmentCommand,
+type Snapshot,
+type SongRow
 } from "./api";
-import { Notation } from "./Notation";
-import { FingeringDialog } from "./FingeringDialog";
-import { FingeringWorkbench, FingeringWorkbenchButton } from "./features/fingering/FingeringWorkbench";
-import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
-import { LegacyExerciseTracksDialog } from "./LegacyExerciseTracksDialog";
-import { PackageDialog } from "./PackageDialog";
-import {MediaExportDialog} from "./features/exports/MediaExportDialog";
-import {MediaExportButton} from "./features/exports/MediaExportButton";
-import type {MediaExportSource} from "./features/exports/mediaExportStore";
-import { ImportDialog } from "./ImportDialog";
-import { LibraryDialog } from "./LibraryDialog";
-import { ScoresDialog } from "./ScoresDialog";
-import { ScoreRangeDialog } from "./ScoreRangeDialog";
-import { PaperScore } from "./PaperScore";
-import { MeterDialog } from "./MeterDialog";
-import { HandsDialog } from "./HandsDialog";
-import { RoutineDialog, RoutineStatus } from "./RoutineDialog";
-import { LadderDialog, LadderStatus } from "./LadderDialog";
-import { PassageDialog } from "./PassageDialog";
-import { LiveBarNavigator } from "./BarNavigator";
-import { usePracticeRange } from "./features/practice/usePracticeRange";
-import { PracticeTimeline } from "./features/practice/PracticeTimeline";
-import { Piano } from "./Piano";
+import { ToolbarMore } from "./app/ToolbarMore";
 import {
-  ExerciseDialog,
-  FeedbackDialog,
-  MetadataDialog,
-  type FeedbackPlanSource,
-  type MeasurePartFeedback,
-} from "./PracticeDialogs";
-import { HistoryProblemPlan } from "./HistoryProblemPlan";
-import { HistoryDialog, type HistoryPaperTarget } from "./HistoryDialog";
-import { SongExpressionEditor } from "./features/practice/SongExpressionEditor";
+useWorkspaceNavigation,
+type Workspace,
+} from "./app/useWorkspaceNavigation";
+import { WorkspaceNavigation } from "./app/WorkspaceNavigation";
+import {
+codeLabel,
+keyboardMap,
+} from "./displayPreferences";
+import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { matchesSong } from "./engine/stateOrder";
+import { DeviceSettingsDialog } from "./features/devices/DeviceSettingsDialog";
+import { MediaExportButton } from "./features/exports/MediaExportButton";
+import { MediaExportDialog } from "./features/exports/MediaExportDialog";
+import type { MediaExportSource } from "./features/exports/mediaExportStore";
+import { FingeringWorkbench } from "./features/fingering/FingeringWorkbench";
+import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
+import { activeMeasures,nextAvailableQueueSong,seekableMeasures } from "./features/practice/practicePresentation";
+import { PracticeTimeline } from "./features/practice/PracticeTimeline";
+import { usePracticeRange } from "./features/practice/usePracticeRange";
+import { FingeringDialog } from "./FingeringDialog";
+import { HandsDialog } from "./HandsDialog";
+import { type HistoryPaperTarget } from "./HistoryDialog";
+import type {
+HistoryScoreFocus,
+HistoryScoreReview,
+} from "./historyScoreFocus";
+import { ImportDialog } from "./ImportDialog";
+import { LegacyExerciseTracksDialog } from "./LegacyExerciseTracksDialog";
+import { MeterDialog } from "./MeterDialog";
+import { Notation } from "./Notation";
+import { PackageDialog } from "./PackageDialog";
+import { PaperScore } from "./PaperScore";
+import { PassageDialog } from "./PassageDialog";
+import { Piano } from "./Piano";
+import { PracticeBackupDialog } from "./PracticeBackupDialog";
+import {
+ExerciseDialog,
+MetadataDialog,
+type FeedbackPlanSource
+} from "./PracticeDialogs";
+import { ScoreRangeDialog } from "./ScoreRangeDialog";
+import { ScoresDialog } from "./ScoresDialog";
+import { eventShortcut,shortcutActions,shortcutLabel } from "./shortcuts";
 const normalize = pathKey;
 
 export default function App() {
   useEffect(installDiagnostics, []);
   const [appMenuOpen,setAppMenuOpen]=useState(false);
-  const [songSetup,setSongSetup]=useState(false);
+  const [songOptions,setSongOptions]=useState(false);
+
   useEffect(() => {
     if (!appMenuOpen) return;
     const pointer = (event: MouseEvent) => {
@@ -192,6 +171,9 @@ export default function App() {
     rememberReturn: workspaceSessions.browse.rememberReturn,
   });
   const { workspace } = navigation;
+  const productScreens=useProductScreens(workspace);
+  const songSetup=productScreens.screen==="setup";
+  const setSongSetup=productScreens.setSongSetup;
   const bookmarkNavigation = useRef<BookmarkNavigation>(null);
   const [libraryAdvanced,setLibraryAdvanced]=useState(false);
   const libraryDialog = workspace === "library",
@@ -219,7 +201,8 @@ export default function App() {
     };
   }, [display.uiScale]);
   const panels = usePracticePanels(display, setDisplay);
-  const { libraryOpen, inspector, setLibraryOpen, setInspector, inspectorTab, setInspectorTab } = panels;
+  const { libraryOpen, inspector, setLibraryOpen, inspectorTab, setInspectorTab } = panels;
+  const setInspector=setSongOptions;
   const panelActions = useRef({ libraryOpen, inspector, setLibraryOpen, setInspector });
   panelActions.current = { libraryOpen, inspector, setLibraryOpen, setInspector };
   const view = display.practiceView;
@@ -304,6 +287,7 @@ export default function App() {
   const [expressionReveal, setExpressionReveal] = useState<{ contentId: string; id: string } | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
   const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
+  function openSoundSettings(){setSettingsTab("sound");setSettingsReturnToScores(false);setSettings(true);}
   const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
   const [settings, setSettings] = useState(false),
     [editFingers, setEditFingers] = useState(false),
@@ -507,7 +491,7 @@ export default function App() {
       let commandAccepted = false;
       let readingSavedLists = false;
       try {
-        if ((value.type === "finger" || value.type === "trackSound") && song) await api.editPractice(song, value);
+        if ((value.type === "finger" || value.type === "trackSound" || value.type === "setPartHands" || value.type === "applyHands") && song) await api.editPractice(song, value);
         else if (value.type === "panic") await api.command(value);
         else if (isPlaybackAdjustment(value)) await api.adjustPlayback(capturePlaybackSource(playback.getSnapshot()), value, requestedAt);
         else await api.commandForEngine(playback.getSnapshot().stateOrder?.engineId, value);
@@ -557,9 +541,7 @@ export default function App() {
     const changed = await navigation.request(next, async (from, to) => {
       if (from === "practice" && to !== "practice") {
         if (!(await run({type:"pause"}))) return false;
-        const snapshot=playback.getSnapshot();
-        const judged=snapshot.score.matched_notes+snapshot.score.missed_notes+snapshot.score.wrong_notes;
-        if (!snapshot.saved && judged>0 && snapshot.mode!=="listen" && !["recital","memory"].includes(snapshot.mode) && !(await run({type:"save"},false,undefined,"background"))) return false;
+
       }
       const live = playback.getSnapshot();
       return originEngine === live.stateOrder?.engineId && !requestBusy.current &&
@@ -746,7 +728,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", silence, true);
   }, [display.shortcuts.silence, setState, clearLiveNotes, invalidateKeyboardActions]);
   const keyboardPaused = !!workspaceSessions.desktopClose.status || !startupReady || Boolean(state.storage?.operation) ||
-    workspace !== "practice" || inputOwnership.modal || inputOwnership.popup;
+    workspace !== "practice" || !["performance","freePlay"].includes(productScreens.screen) || inputOwnership.modal || inputOwnership.popup;
   const shortcutScope = JSON.stringify([song?.engineId, song?.contentId, song?.scoreRevision, workspace, loopStart, loopEnd]);
   const keyboardContext = useRef({ paused: keyboardPaused, scope: shortcutScope });
   keyboardContext.current = { paused: keyboardPaused, scope: shortcutScope };
@@ -1025,15 +1007,6 @@ export default function App() {
         if (ok && samePlaybackSource(origin, playback.getSnapshot())) setFeedback(true);
       });
     } else setFeedback(true);
-  };
-  const openInspectorTool = (tool: PracticeInspectorTool) => {
-    switch (tool) {
-      case "meter": setMeterDialog(true); break;
-      case "hands": setHandsDialog(true); break;
-      case "scores": setScoresDialog(true); break;
-      case "ladder": launchPracticeTool(() => setLadderDialog(true)); break;
-      case "passages": launchPracticeTool(() => setPassageDialog(true)); break;
-    }
   };
   const selectedRow = useMemo(
     () => songs.find((r) => normalize(r.path) === normalize(song?.sourcePath)),
@@ -1347,7 +1320,7 @@ export default function App() {
         : { kind: "recent", contentId: value.contentId },
       value.title,
       value.sourcePath,
-    );
+    ).then(ok=>{if(ok)productScreens.show("setup");return ok;});
   const followingQueue = useMemo(
     () => nextAvailableQueueSong(queue, song?.contentId),
     [queue, song?.contentId],
@@ -1455,7 +1428,7 @@ export default function App() {
       setPackageFile(undefined);
       setPackageDialog(true);
     } else if (entry.target === "backup") setPracticeBackup(true);
-    else if (entry.target === "devices") setSettings(true);
+    else if (entry.target === "devices") openSoundSettings();
     else if (entry.target === "exercise") setExerciseDialog(true);
     else if (entry.target === "routine") {
       if (
@@ -1593,7 +1566,7 @@ export default function App() {
     },
     devices: () => {
       setRecoveryOpen(false);
-      setSettings(true);
+      openSoundSettings();
     },
     progress: () => {
       setRecoveryOpen(false);
@@ -1641,7 +1614,7 @@ export default function App() {
     score: (signal) => openPracticeTool(signal, () => setView("score"), false),
     libraryPanel: (signal) => openPracticeTool(signal, () => setLibraryOpen(!panelActions.current.libraryOpen), false),
     inspector: (signal) => openPracticeTool(signal, () => setInspector(!panelActions.current.inspector), false),
-    devices: () => setSettings(true),
+    devices: () => openSoundSettings(),
     display: () => setDisplayDialog(true),
     backup: () => setPracticeBackup(true),
     silence: () => action({ type: "panic" }),
@@ -1762,10 +1735,25 @@ export default function App() {
       clearLiveNotes();
     }
   }, [openingActive, clearLiveNotes]);
+  const chooseSongs = async () => {
+    if (await changeWorkspace("library")) {setLibraryAdvanced(false);setLibrarySearch(null);productScreens.browse();setAppMenuOpen(false);}
+  };
+  const goHome = async () => {
+    if (await changeWorkspace("library")) {clearLiveNotes();productScreens.home();setAppMenuOpen(false);}
+  };
+  const openSongSetup = async (row:SongRow) => {
+    const ok=await load(row,row.contentId??undefined,"selected");
+    if(ok){setView("keyboard");productScreens.show("setup");setAppMenuOpen(false);panels.closeDrawer();}
+    return ok;
+  };
+  const openFreePlay = async () => {
+    if(await changeWorkspace("practice")){if(await run({type:"pause"})){clearLiveNotes();productScreens.show("freePlay");panels.closeDrawer();}}
+  };
   return (
     <div
       data-skin={display.skin}
       className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""} ${libraryOpen ? "with-library" : ""} ${inspector ? "with-inspector" : ""}`}
+      data-product-screen={productScreens.screen}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
       onDragOver={(e) => {
@@ -1804,12 +1792,9 @@ export default function App() {
       <header className="workspace-topbar" hidden={!appMenuOpen} role={appMenuOpen?"dialog":undefined} aria-modal={appMenuOpen||undefined} aria-label="应用菜单">
         <button
           className="app-name"
-          onClick={() => {
-            if (workspace === "practice") setLibraryOpen(!libraryOpen);
-            else void changeWorkspace("practice");
-          }}
-          disabled={workspace !== "practice" && !!workspaceUnavailable}
-          title={workspace === "practice" ? "显示或隐藏曲库" : "返回练习"}
+          onClick={()=>void goHome()}
+          disabled={!!workspaceUnavailable}
+          title="返回主页"
         >
           <img src="/brand.svg" alt="" aria-hidden="true" width={27} height={27} />
           {product.name}
@@ -1826,7 +1811,6 @@ export default function App() {
           {label:"曲库",content:<>
             <button onClick={()=>{setLibraryAdvanced(false);void changeWorkspace("library");}}>选择曲目…</button>
             <button onClick={()=>{void changeWorkspace("library").then(()=>setLibraryAdvanced(true));}}>管理目录与资料…</button>
-            <button onClick={()=>{setLibraryOpen(true);void refresh();}}>显示选曲侧栏</button>
             <button disabled={!song || song.generated || busy} onClick={()=>{setMetadataDraftPath(null);setMetadata(true);}}>当前曲目信息…</button>
             {api.desktop&&<button disabled={busy} onClick={()=>void api.importFolder().then(refresh).catch(e=>setError(String(e)))}>添加扫描文件夹…</button>}
             <button disabled={busy} onClick={()=>void api.command({type:"refreshLibrary"}).then(refresh).catch(e=>setError(String(e)))}>重新扫描目录</button>
@@ -1842,17 +1826,16 @@ export default function App() {
           </>},
           {label:"视图",content:<>
             <button onClick={()=>setView("score")}>五线谱</button><button disabled={!song} onClick={()=>setView("combined")}>谱面与瀑布</button><button onClick={()=>setView("keyboard")}>瀑布与琴键</button><button disabled={!song} onClick={()=>setView("paper")}>PDF / 图片谱页</button>
-            <button onClick={()=>setLibraryOpen(!libraryOpen)}>{libraryOpen?"隐藏":"显示"}选曲侧栏</button>
-            <button onClick={()=>setInspector(!inspector)}>{inspector?"隐藏":"显示"}练习参数</button>
+            <button disabled={!song} onClick={()=>setSongOptions(true)}>歌曲选项…</button>
             <button onClick={fullscreen}>切换全屏</button>
             <button onClick={()=>setDisplayDialog(true)}>显示与光效…</button>
           </>},
           {label:"设置",content:<>
-            <button onClick={()=>setSettings(true)}>键盘与音源…</button><button onClick={()=>setDisplayDialog(true)}>界面与快捷键…</button>
+            <button onClick={()=>openSoundSettings()}>键盘与音源…</button><button onClick={()=>setDisplayDialog(true)}>界面与快捷键…</button>
             <button disabled={!song} onClick={()=>setScoresDialog(true)}>谱面管理…</button>
             <button disabled={!song} onClick={()=>{if(song){scorePairTarget.current={contentId:song.contentId,title:song.title};scoreInput.current?.click();}}}>配对原谱…</button>
             <button disabled={!song || busy} onClick={()=>setFingeringWorkbenchOpen(true)}>指法工作台…</button>
-            <button onClick={()=>panels.revealInspector("setup")}>练习参数…</button>
+            <button onClick={()=>setSongOptions(true)}>练习参数…</button>
           </>},
           {label:"帮助",content:<>
             <button onClick={()=>{clearLiveNotes();setCommandsOpen(true);}}>查找操作…</button>
@@ -1919,14 +1902,22 @@ export default function App() {
       {!importDialog && <ImportQueueNotice queue={workspaceSessions.imports} open={() => setImportDialog(true)} />}
       {workspace !== "library" && startupReady && <LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus} />}
       {busy && !importDialog && !fingeringDialog && !exerciseDialog && <TaskActivity />}
-      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{setSongSetup(false);void changeWorkspace("library");}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>setHandsDialog(true)} sound={()=>setSettings(true)} scores={()=>setScoresDialog(true)} settings={()=>{setSongSetup(false);panels.revealInspector("setup");}} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode})){setSongSetup(false);await run({type:"play"});}}} />}
+      {startupReady && productScreens.screen==="home" && <HomeScreen rows={allLibraryRows} collection={collection} disabled={!!workspaceUnavailable||!connected} choose={()=>void chooseSongs()} freePlay={()=>void openFreePlay()} settings={()=>productScreens.settings()} open={openSongSetup}/>}
+      {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen back={()=>productScreens.home()} devices={()=>openSoundSettings()} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} folders={()=>productScreens.folders()} display={()=>setDisplayDialog(true)} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
+      {startupReady && productScreens.screen==="folders" && <FolderManager changed={refreshWithCollection} backLabel="设置" close={()=>productScreens.settings()}/>}
+
+      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void chooseSongs();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
+      {workspace==="practice" && productScreens.screen==="parts" && song && <TrackSetupScreen song={song} disabled={busy||openingActive||!connected} builtin={!state.outputId} pianoOnly={/default\.sf2$/i.test(state.soundfont??"")} back={()=>productScreens.show("setup")} custom={track=>{const t=song.tracks.find(t=>t.id===track);if(t&&!t.visible){void run({type:"track",id:t.id,mode:t.mode,part:t.part,visible:true},true).then(ok=>{if(ok)productScreens.split(track);});}else productScreens.split(track);}} command={value=>run(value,true)}/>}
+      {workspace==="practice" && productScreens.screen==="split" && song && productScreens.splitTrack!==null && <HandSplitScreen key={`${song.contentId}:${productScreens.splitTrack}`} song={song} trackId={productScreens.splitTrack} disabled={busy||openingActive||!connected} back={()=>productScreens.show("parts")} command={value=>run(value,true)}/>}
+      {workspace==="practice" && productScreens.screen==="freePlay" && <main className="product-freeplay product-page"><ScreenHeader title="自由演奏" back={()=>void goHome()} backDisabled={state.recording||busy} backLabel="主页"><button disabled={busy||!connected} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}>{state.recording?"停止并保存录音":"录音"}</button><button onClick={()=>openSoundSettings()}>设置</button></ScreenHeader><div className="product-freeplay-stage"><Piano song={null} state={playback.getSnapshot()} store={playback} onNote={pointerNote} canInteract={()=>!keyboardContext.current.paused&&!topInputScope()&&!topPopup(null)} keyboardRange={pianoRange} keyboardViewport={pianoViewport} display={display}/></div></main>}
+
       <div
         className="workspace"
         ref={panels.root}
         data-practice-compact={panels.compact ? "" : undefined}
         data-practice-short={panels.short ? "" : undefined}
-        hidden={workspace !== "practice" || !startupReady || songSetup}
-        inert={workspace !== "practice" || !startupReady || songSetup}
+        hidden={workspace !== "practice" || !startupReady || productScreens.screen!=="performance"}
+        inert={workspace !== "practice" || !startupReady || productScreens.screen!=="performance"}
         style={
           {
             "--library-width": `${display.libraryWidth}px`,
@@ -1959,15 +1950,15 @@ export default function App() {
         <main className="practice-panel">
           <PracticeTransport
             store={playback}
-            back={() => {void run({type:"pause"});setSongSetup(true);panels.closeDrawer();}}
+            back={() => {void run({type:"pause"}).then(ok=>{if(ok){setSongSetup(true);panels.closeDrawer();}});}}
             tools={          <div className="synthesia-play-tools">
             <ToolbarMore icon={<ScoreIcon size={27}/>} label="歌曲设置" scale={display.uiScale / 100} disabled={!song || busy || navigation.locked || !startupReady}>
-              <button onClick={() => panels.revealInspector("setup")}>练习与版本设置…</button>
+              <button onClick={() => setSongOptions(true)}>练习与版本设置…</button>
               <button onClick={() => setScoresDialog(true)}>谱面管理…</button>
-              <button onClick={() => setSettings(true)}>键盘与音源…</button>
+              <button onClick={() => openSoundSettings()}>键盘与音源…</button>
               <button onClick={() => setDisplayDialog(true)}>外观、网格与按键…</button>
               <button onClick={() => setFingeringWorkbenchOpen(true)}>指法工作台…</button>
-              <button disabled={!song || busy} onClick={() => setHandsDialog(true)}>分手与逐音播放</button>
+              <button disabled={!song || busy} onClick={() => {void run({type:"pause"}).then(ok=>{if(ok)productScreens.show("parts");});}}>手别、颜色与乐器</button>
               <button
                 disabled={!song || busy}
                 onClick={() => {
@@ -2076,7 +2067,16 @@ export default function App() {
             <button className="synthesia-metronome" title="节拍器" aria-label="节拍器" aria-pressed={state.metronome} disabled={busy||!song} onClick={()=>action({type:"metronome",enabled:!state.metronome})}><MetronomeIcon size={27}/></button>
             <ToolbarMore label="键盘缩放" icon={<ZoomIcon size={27}/>} disabled={!song}>          {(view === "keyboard" || view === "combined" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} viewport={pianoViewport} outside={outsidePianoRange}
             change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}</ToolbarMore>
-            <button className="synthesia-loop" title="循环与小节" aria-label="循环与小节" onClick={()=>panels.revealInspector("setup")}><LoopIcon size={27}/></button>
+            <ToolbarMore label="音符标签" icon={<LabelsIcon/>} disabled={!startupReady}><LabelSettings value={display} change={patch=>setDisplay(previous=>({...previous,...patch}))}/></ToolbarMore>
+            <ToolbarMore label="书签" icon={<BookmarkIcon size={27}/>} disabled={!song||busy}><div className="product-bookmark-menu" onClick={e=>e.stopPropagation()}>
+          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
+            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
+            song={song} store={playback} range={practiceRange} visible={productScreens.screen === "performance"}
+            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
+            seek={(position)=>adjustRealtime({type:"seek",position})}
+            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
+            </div></ToolbarMore>
+            <ToolbarMore label="循环" icon={<LoopIcon size={27}/>} disabled={!song||busy}><div className="product-loop-menu" onClick={e=>e.stopPropagation()}><PracticeRangeControls range={practiceRange} disabled={!connected||busy||state.recording} active={!!state.passage} loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} toggle={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}/><label><input type="checkbox" checked={display.loopPreview} onChange={e=>setDisplay(previous=>({...previous,loopPreview:e.target.checked}))}/>预览下一轮</label></div></ToolbarMore>
           </div>
 }
             menu={() => setAppMenuOpen(v=>!v)}
@@ -2094,11 +2094,7 @@ export default function App() {
             restartShortcut={display.shortcuts.restart ? shortcutLabel(display.shortcuts.restart) : ""}
           />
           <PracticeTimeline
-            loopPreview={display.loopPreview}
-            changeLoopPreview={enabled=>setDisplay(previous=>({...previous,loopPreview:enabled}))}
             range={practiceRange}
-            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})}
-            togglePicking={()=>{setEditFingers(false);setSelectedNote(null);practiceRange.toggle();}}
             store={playback}
             song={song}
             busy={busy || openingActive}
@@ -2108,7 +2104,7 @@ export default function App() {
           <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis === "auto" ? "rows" : display.practiceSplitAxis} ratio={display.practiceSplitAxis === "auto" ? 25 : display.practiceSplitRatio}
             changeRatio={value => setDisplay(previous => ({...previous,practiceSplitRatio:value,practiceSplitAxis:previous.practiceSplitAxis==="auto"?"rows":previous.practiceSplitAxis}))}>
             <div className="practice-stage-keyboard" hidden={view !== "keyboard" && view !== "combined" && state.mode !== "memory"} role="region" aria-label="瀑布与琴键区域">
-            {(view === "keyboard" || view === "combined" || state.mode === "memory") && <Piano
+            {productScreens.screen==="performance" && (view === "keyboard" || view === "combined" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
                   state={playback.getSnapshot()}
                   store={playback}
@@ -2128,7 +2124,7 @@ export default function App() {
             {(view === "keyboard" || view === "combined" || state.mode === "memory") && (song || state.recording) && <PracticeStageReadout store={playback} connected={connected} song={song} display={display} />}
             </div>
             <div className="practice-stage-notation" hidden={(view !== "score" && view !== "combined") || state.mode === "memory"} role="region" aria-label="五线谱区域">
-            {(view === "score" || view === "combined") && song && state.mode !== "memory" && (
+            {productScreens.screen==="performance" && (view === "score" || view === "combined") && song && state.mode !== "memory" && (
               <PlaybackView
                 store={playback}
                 contentId={song?.contentId ?? null}
@@ -2215,7 +2211,7 @@ export default function App() {
                       setSelectedNote(note);
                       setFingeringDialog(true);
                     }}
-                    assignHands={() => setHandsDialog(true)}
+                    assignHands={() => {void run({type:"pause"}).then(ok=>{if(ok)productScreens.show("parts");});}}
                     edit={editFingers && !recital}
                     canEdit={!recital}
                     onEdit={value=>{if(value)practiceRange.cancelPicking();setEditFingers(value);}}
@@ -2224,7 +2220,7 @@ export default function App() {
               </PlaybackView>
             )}
             </div>
-            {view === "paper" && song && state.mode !== "memory" && (
+            {productScreens.screen==="performance" && view === "paper" && song && state.mode !== "memory" && (
               <PlaybackView
                 store={playback}
                 contentId={song?.contentId ?? null}
@@ -2300,67 +2296,20 @@ export default function App() {
               input={state.input} inputConnected={state.inputConnected}
               resume={() => { const target = recentPractice ?? starterSong; if (target) void load(target, target.contentId ?? undefined, "recent"); }}
               choose={() => { void changeWorkspace("library"); }} importFile={() => void importMidi()}
-              generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => setSettings(true)} />}
+              generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => openSoundSettings()} />}
 
           </PracticeStage>
 
 
 
         </main>
-        {inspector && (
-          <PracticeInspector
-            store={playback}
-            state={state}
-            song={song}
-            busy={busy}
-            compact={true}
-            width={display.inspectorWidth}
-            resize={(width) => setDisplay((old) => ({ ...old, inspectorWidth: width }))}
-            close={() => setInspector(false)}
-            command={action}
-            openTool={openInspectorTool}
-            start={loopStart}
-            end={loopEnd}
-            selectStart={setLoopStart}
-            selectEnd={setLoopEnd}
-            additionalSettings={<>
-          <details className="practice-passage-details"><summary>小节与分段</summary>
-          {song && (
-            <LiveBarNavigator
-              store={playback}
-              song={song}
-              condensed={panels.compact || panels.short}
-              start={loopStart}
-              end={loopEnd}
-              disabled={busy || state.recording || ladderActive || routineActive}
-              recital={recital}
-              select={(first, last) => { setLoopStart(first); setLoopEnd(last); }}
-              command={action}
-            />
-          )}
-          </details>
-              {song && <SongEditionBar song={song} active={workspace==="practice" && inspector} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
-              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
-          {song && <SongBookmarks key={`bookmarks:${JSON.stringify([song.engineId,song.contentId])}`} ref={bookmarkNavigation}
-            shortcutHint={display.shortcuts.bookmark1 ? `${shortcutLabel(display.shortcuts.bookmark1)} 等快捷键定位` : "可在界面与按键中设置定位键"}
-            song={song} store={playback} range={practiceRange} visible={workspace === "practice"}
-            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
-            seek={(position)=>adjustRealtime({type:"seek",position})}
-            loop={(start,end,enabled)=>run({type:"loop",start,end,enabled})} />}
-          {song && !song.generated && <SavedPassageBar key={JSON.stringify([song.engineId,song.contentId])}
-            song={song} store={playback} range={practiceRange} visible={workspace === "practice" && !passageDialog}
-            disabled={busy || openingActive || !connected || state.recording || recital || ladderActive || routineActive || navigation.locked}
-            changed={async()=>{const session=await api.session();installSession(session);}}
-            manage={()=>launchPracticeTool(()=>setPassageDialog(true))} />}
-          <PracticeQueueStrip store={playback} queue={queue} busy={busy || openingActive} connected={connected}
-            open={openQueuedSong}
-            manage={() => { setPracticeLibraryBrowse((previous) => ({ ...previous, tab: "queue", query: "", source: "", page: 0, focusedKey: song?.contentId ?? null })); setLibraryOpen(true); }}
-            repair={() => { void changeWorkspace("library").then((opened) => { if (opened) setLibraryLaunch("missing"); }); }} />
 
-            </>}
-          />
-        )}
       </div>
+      {songOptions && song && <SongOptionsDialog close={()=>setSongOptions(false)}>
+              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
+              {song && <SongEditionBar song={song} active={songOptions} disabled={busy || openingActive || !!state.recording} execute={command=>run(command,true)} openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)} manage={()=>setScoresDialog(true)}/>}
+              {song && <PracticeVariantPanel song={song} disabled={busy || openingActive || state.recording} apply={async value => {const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;}} />}
+      </SongOptionsDialog>}
       <footer hidden={true} className="statusbar">
         <span>
           <KeyboardMusic size={13} />
@@ -2502,13 +2451,14 @@ export default function App() {
           }}
         />
       )}
-      {libraryDialog && startupReady && !libraryAdvanced && libraryLaunch==="normal" && !librarySearch && <SongBrowser
+      {startupReady && <div className="product-browser-host" hidden={productScreens.screen!=="library"||libraryAdvanced||libraryLaunch!=="normal"||!!librarySearch} inert={productScreens.screen!=="library"||libraryAdvanced||libraryLaunch!=="normal"||!!librarySearch}><SongBrowser
         rows={allLibraryRows} ready={libraryReady} current={song} collection={collection}
+        visible={productScreens.screen==="library"&&!libraryAdvanced} back={()=>void goHome()}
         unavailable={workspaceUnavailable}
         menu={()=>setAppMenuOpen(v=>!v)} manage={()=>setLibraryAdvanced(true)}
-        open={async row=>{const ok=await load(row,row.contentId??undefined,"selected");if(ok){setView("keyboard");setSongSetup(true);setAppMenuOpen(false);}return ok;}}
-        preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/>} 
-      {libraryDialog && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
+        open={openSongSetup}
+        preparation={<LibraryOpenRecovery opening={libraryOpening} engineId={progressEngineId} focusRequest={libraryOpenFocus}/>}/></div>}
+      {libraryDialog && productScreens.screen==="library" && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
       {libraryScoreRange && (
         <ScoreRangeDialog
           song={libraryScoreRange.song}

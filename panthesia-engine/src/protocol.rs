@@ -251,6 +251,7 @@ pub enum Command {
         range: (usize, usize),
         reference: u8,
     },
+    SetPartHands { content_id:String, track:usize, part:Option<PracticePart>, split_pitch:Option<u8>, proof:String, #[serde(default)] hints:Vec<panthesia_core::library::NoteHandHint>, #[serde(default)] clear:Vec<usize> },
     ApplyHands {
         content_id: String,
         hints: Vec<panthesia_core::library::NoteHandHint>,

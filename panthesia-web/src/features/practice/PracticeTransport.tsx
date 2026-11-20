@@ -185,12 +185,12 @@ export function PracticeTransport({
         <button
           className="icon-button"
           aria-label={
-            nextHint ?? (nextTitle ? `队列下一首：${nextTitle}` : "队列下一首")
+            nextHint ?? nextTitle ?? "下一小节"
           }
           title={
             nextDisabledReason ??
             nextHint ??
-            (nextTitle ? `下一首：${nextTitle}` : "队列中暂无下一首")
+            (nextTitle ?? "下一小节")
           }
           disabled={
             !nextTitle ||

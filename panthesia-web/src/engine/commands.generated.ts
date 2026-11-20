@@ -2615,6 +2615,7 @@ export type EngineCommand =
   | { type: "suggestFingers"; "hand"?: PracticePart | null; "track": number; "index": number; "profile"?: HandSpanProfile; "range"?: [number, number] | null }
   | { type: "applyFingers"; "content_id": string; "hints": Array<FingerHint> }
   | { type: "suggestHands"; "track": number; "range": [number, number]; "reference": number }
+  | { type: "setPartHands"; "content_id": string; "track": number; "part"?: PracticePart | null; "split_pitch"?: number | null; "proof": string; "hints"?: Array<NoteHandHint>; "clear"?: Array<number> }
   | { type: "applyHands"; "content_id": string; "hints": Array<NoteHandHint>; "clear"?: Array<[number, number]>; "proof"?: string | null }
   | { type: "noteHand"; "track": number; "index": number; "part"?: PracticePart | null }
   | { type: "undoHands" }

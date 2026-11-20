@@ -1,3 +1,5 @@
+import { ScreenHeader } from "../screens/ScreenHeader";
+import { Folder } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { LibraryFolder } from "./useLibraryReads";
@@ -5,8 +7,10 @@ import type { LibraryFolder } from "./useLibraryReads";
 export function FolderManager({
   close,
   changed,
+  backLabel="歌曲",
 }: {
   close: () => void;
+  backLabel?: string;
   changed: () => Promise<unknown>;
 }) {
   const [folders, setFolders] = useState<LibraryFolder[]>([]),
@@ -34,91 +38,5 @@ export function FolderManager({
       setBusy(false);
     }
   };
-  return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!busy) close();
-      }}
-    >
-      <section
-        className="settings-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="扫描目录管理"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <h2>扫描目录</h2>
-          <button disabled={busy} onClick={close}>
-            完成
-          </button>
-        </div>
-        <p>默认目录和手动添加的目录在这里统一管理。</p>
-        <div className="scan-folders">
-          {folders.length === 0 && <p>暂无扫描目录，可添加 MIDI 文件夹。</p>}
-          {folders.map((folder) => (
-            <div
-              className="scan-folder-entry"
-              key={folder.path}
-              style={{
-                padding: "12px 0",
-                borderBottom: "1px solid var(--border, #dde1ed)",
-              }}
-            >
-              <strong>
-                {folder.kind === "catalog"
-                  ? "默认曲库"
-                  : folder.path
-                      .replaceAll("\\", "/")
-                      .split("/")
-                      .filter(Boolean)
-                      .at(-1)}
-              </strong>
-              <p style={{ overflowWrap: "anywhere", margin: "4px 0" }}>
-                {folder.path}
-              </p>
-              <small>
-                {folder.automatic ? "自动发现" : "手动添加"} ·{" "}
-                {folder.available ? "可访问" : "当前不可访问"}
-              </small>
-              {folder.kind === "folder" && (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void execute(() =>
-                      api.command({
-                        type: "removeLibraryFolder",
-                        path: folder.path,
-                      }),
-                    )
-                  }
-                >
-                  停止扫描
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        {error && <p role="alert">{error}</p>}
-        <p className="parameter-help">停止扫描后原文件保留。</p>
-        <div className="dialog-actions">
-          <button
-            disabled={busy || !api.desktop}
-            onClick={() => void execute(() => api.importFolder())}
-          >
-            添加目录…
-          </button>
-          <button
-            disabled={busy}
-            onClick={() =>
-              void execute(() => api.command({ type: "refreshLibrary" }))
-            }
-          >
-            重新扫描
-          </button>
-        </div>
-      </section>
-    </div>
-  );
+  return <main className="product-page product-folders"><ScreenHeader title="歌曲文件夹" back={close} backLabel={backLabel} backDisabled={busy}/><section className="product-folder-list" aria-label="已登记歌曲目录">{!folders.length&&<p>还没有歌曲文件夹。</p>}{folders.map(folder=><article key={folder.path}><Folder size={35}/><div><strong>{folder.kind==="catalog"?"默认曲库":folder.path.replaceAll("\\","/").split("/").filter(Boolean).at(-1)||folder.path}</strong><span>{folder.path}</span></div><small>{folder.available?"已连接":"未连接"}</small>{folder.kind==="folder"&&<button disabled={busy} onClick={()=>void execute(()=>api.command({type:"removeLibraryFolder",path:folder.path}))}>移除</button>}</article>)}</section>{error&&<p className="product-inline-error" role="status">目录操作未能完成。<button onClick={()=>void api.openLogs().catch(()=>{})}>打开日志</button></p>}<footer className="product-page-footer"><span>移除目录后，原文件保持原状。</span><button disabled={busy||!api.desktop} onClick={()=>void execute(()=>api.importFolder())}>添加文件夹…</button><button disabled={busy} onClick={()=>void execute(()=>api.command({type:"refreshLibrary"}))}>{busy?"正在更新…":"重新扫描"}</button></footer></main>;
 }

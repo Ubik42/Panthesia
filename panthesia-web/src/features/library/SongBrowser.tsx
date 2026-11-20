@@ -1,6 +1,6 @@
 import { portablePath } from "../../engine/pathIdentity";
 import { parseSongSearch, matchesSongSearch } from "./songSearch";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Folder, Layers3, Music2, Search } from "lucide-react";
 import {
   api,
@@ -53,6 +53,8 @@ export function SongBrowser({
   unavailable,
   preparation,
   menu,
+  back,
+  visible=true,
 }: {
   rows: readonly SongRow[];
   ready: boolean;
@@ -63,16 +65,18 @@ export function SongBrowser({
   unavailable?: string | null;
   preparation?: React.ReactNode;
   menu: () => void;
+  back: () => void;
+  visible?: boolean;
 }) {
   const [roots, setRoots] = useState<LibraryFolder[]>([]),
     [selectedFolder, setSelectedFolder] = useState(() =>
-      stored("neothesia-browser-folder", "") === "builtin"
+      stored("panthesia-browser-folder",stored("neothesia-browser-folder", "")) === "builtin"
         ? ""
-        : stored("neothesia-browser-folder", ""),
+        : stored("panthesia-browser-folder",stored("neothesia-browser-folder", "")),
     ),
     [query, setQuery] = useState(""),
     [selectedPath, setSelectedPath] = useState(() =>
-      stored("neothesia-browser-song", ""),
+      stored("panthesia-browser-song",stored("neothesia-browser-song", "")),
     ),
     [page, setPage] = useState(0),
     [tab, setTab] = useState("all"),
@@ -93,6 +97,8 @@ export function SongBrowser({
   }, [error]);
   const queryValue = useDeferredValue(query.trim().toLocaleLowerCase()),
     list = useRef<HTMLDivElement>(null);
+  const scroll=useRef(0);
+  useLayoutEffect(()=>{if(visible&&list.current)list.current.scrollTop=scroll.current;},[visible]);
   const grouping = useSongCatalog(rows);
   const catalogIndex = useMemo(
     () =>
@@ -111,26 +117,19 @@ export function SongBrowser({
         type: "libraryFolders",
       });
       setRoots(value.folders);
-      if (
-        selectedFolder &&
-        !value.folders.some(
-          (folder) =>
-            selectedFolder === libraryPath(folder.path) ||
-            selectedFolder.startsWith(libraryPath(folder.path) + "/"),
-        )
-      )
-        setSelectedFolder("");
+      setSelectedFolder(previous=>previous&&!value.folders.some(folder=>previous===libraryPath(folder.path)||previous.startsWith(libraryPath(folder.path)+"/"))?"":previous);
+
     } catch (e) {
       setError(String(e));
     }
   };
   useEffect(() => {
-    void readRoots();
-  }, []);
+    if(visible)void readRoots();
+  }, [visible,rows]);
   useEffect(() => {
     try {
-      localStorage.setItem("neothesia-browser-folder", selectedFolder);
-      localStorage.setItem("neothesia-browser-song", selectedPath);
+      localStorage.setItem("panthesia-browser-folder", selectedFolder);
+      localStorage.setItem("panthesia-browser-song", selectedPath);
     } catch {}
   }, [selectedFolder, selectedPath]);
   const forest = useMemo(() => {
@@ -382,10 +381,8 @@ export function SongBrowser({
       <header className="synthesia-library-header">
         <button
           className="synthesia-back"
-          onClick={() => {
-            setSelectedFolder(folderTrail.at(-2)?.path ?? "");
-            setQuery("");
-          }}
+          data-workspace-close
+          onClick={back}
         >
           <ChevronRight size={20} style={{ transform: "rotate(180deg)" }} />
           Panthesia
@@ -448,6 +445,7 @@ export function SongBrowser({
         </div>
         <div
           ref={list}
+          onScroll={e=>{if(visible)scroll.current=e.currentTarget.scrollTop;}}
           className="browser-song-list"
           role="listbox"
           aria-label="曲目"

@@ -11,3 +11,5 @@ import "./app/instrumentSkins.css";
 createRoot(document.getElementById("root")!).render(<App />);
 
 import "./features/practice/synthesiaLayout.css";
+
+import "./features/screens/productScreens.css";

@@ -5,7 +5,7 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "finger" | "editFingersFor" | "undoFingers" | "undoFingersFor" | "applyFingers"
   | "acceptFingerPlan" | "acceptHeldFingerPlan" | "clearHeldFingerActions"
   | "clearNoteHeldFingerActions" | "saveHeldActionEdit"
-  | "editNotePlayback" | "noteHand" | "applyHands" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
+  | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
   | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
   | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"

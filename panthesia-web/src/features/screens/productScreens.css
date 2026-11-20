@@ -1,0 +1,873 @@
+/* Synthesia official UI00/UI03/UI04 structure; Panthesia artwork and Chinese controls. */
+.synthesia-layout [hidden],
+.synthesia-layout .product-browser-host[hidden] {
+  display: none !important;
+}
+.product-browser-host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.product-browser-host > .song-browser {
+  width: 100%;
+}
+.product-page {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: #eee;
+  color: #30383d;
+  color-scheme: light;
+}
+.product-screen-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 400;
+  margin: 0;
+}
+.synthesia-layout .product-page button:focus-visible,
+.synthesia-layout .product-home button:focus-visible {
+  outline: 3px solid #f1b94c;
+  outline-offset: -4px;
+}
+.product-home {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: #b5cfdb;
+  color: #30383d;
+  color-scheme: light;
+  overflow: auto;
+}
+.product-home-brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--synth-blue);
+  padding: 28px 4%;
+  min-height: 145px;
+  color: white;
+}
+.product-home-brand img {
+  width: 78px;
+  height: 78px;
+}
+.product-home-brand h1 {
+  font:
+    clamp(58px, 7.5vw, 100px)/1.1 Georgia,
+    "Times New Roman",
+    serif;
+  margin: 0;
+  letter-spacing: -2px;
+  color: white;
+}
+.product-home-body {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 5%;
+  padding: 25px 2% 35px;
+  flex: 1;
+  min-height: 0;
+}
+.product-home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  justify-content: flex-start;
+  padding-top: 40px;
+}
+.synthesia-layout .product-home-actions button {
+  background: #129d0c;
+  border: 1px solid #6cab61;
+  border-radius: 7px;
+  box-shadow: inset 0 1px #ffffff55;
+  color: #fff;
+  min-height: 104px;
+  font-size: 36px;
+  font-weight: 400;
+  padding: 16px;
+}
+.synthesia-layout .product-home-actions button:hover:not(:disabled) {
+  background: #1aaa14;
+}
+.synthesia-layout .product-home-actions .product-home-settings {
+  margin-top: 30px;
+  background: var(--synth-blue);
+  border-color: #6eb6d6;
+}
+.product-home-recent {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.product-home-recent h2 {
+  font-size: 28px;
+  font-weight: 400;
+  margin: 0 20px 14px;
+}
+.product-recent-list {
+  border: 1px solid #aaa;
+  border-radius: 14px;
+  background: #efefef;
+  overflow: auto;
+  min-height: 180px;
+}
+.synthesia-layout .product-recent-list button {
+  display: block;
+  width: 100%;
+  padding: 21px;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  border-radius: 0;
+  background: #efefef;
+  color: #333;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 76px;
+}
+.synthesia-layout .product-recent-list button:hover:not(:disabled) {
+  background: #d3e7f0;
+}
+.product-recent-list button:last-child {
+  border-bottom: 0;
+}
+.product-recent-list p {
+  padding: 24px;
+  font-size: 19px;
+  color: #626b70;
+}
+.product-settings-body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+.product-settings-body > nav {
+  background: #b5cfdb;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0;
+  gap: 4px;
+}
+.synthesia-layout .product-settings-body > nav button {
+  color: #30383d;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  padding: 20px 25px;
+  font-size: 22px;
+  border-radius: 0;
+}
+.synthesia-layout .product-settings-body > nav button[aria-current] {
+  background: #0aa7df;
+  color: white;
+}
+.product-settings-body > section {
+  padding: 35px 6%;
+  overflow: auto;
+}
+.product-settings-body h2 {
+  font-size: 30px;
+  font-weight: 400;
+  margin: 0 0 25px;
+}
+.synthesia-layout .product-settings-body > section > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  background: #fafafa;
+  color: #333;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  min-height: 90px;
+  padding: 20px 25px;
+  font-size: 24px;
+  gap: 12px;
+  max-width: 800px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.product-settings-body > section > button span {
+  font-size: 16px;
+  color: #667078;
+}
+.product-track-grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  align-content: start;
+  padding: 45px max(4%, 20px);
+}
+.product-track-card {
+  background: var(--part-color);
+  color: white;
+  border-radius: 9px;
+  border: 1px solid #ffffff88;
+  overflow: hidden;
+  box-shadow: inset 0 1px #fff4;
+}
+.synthesia-layout .product-track-card button {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  box-shadow: none;
+}
+.synthesia-layout .product-track-card button:hover:not(:disabled) {
+  background: #ffffff20;
+}
+.synthesia-layout .product-track-instrument {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  min-height: 130px;
+  padding: 22px;
+  text-align: left;
+}
+.product-track-instrument span {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.product-track-instrument strong {
+  font-size: 30px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-track-instrument small {
+  font-size: 17px;
+  color: #fff;
+}
+.product-track-controls {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr 1fr;
+  border-top: 1px solid #ffffff66;
+}
+.synthesia-layout .product-track-controls button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  border-right: 1px solid #ffffff66;
+  font-size: 19px;
+}
+.product-track-controls button:last-child {
+  border-right: 0;
+}
+.product-track-controls svg {
+  width: 28px;
+  height: 28px;
+}
+.product-page-footer {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 15px 25px;
+  min-height: 65px;
+  background: #b5cfdb;
+  border-top: 1px solid #9aafb9;
+  color: #344c59;
+  font-size: 16px;
+}
+.synthesia-layout .product-page-footer button {
+  background: #eee;
+  color: #344c59;
+  border: 1px solid #a4adb1;
+  padding: 10px 20px;
+  font-size: 18px;
+  min-height: 42px;
+}
+.product-track-screen .song-details-dialog {
+  color-scheme: light;
+  background: #b5cfdb;
+  color: #333;
+  border: 8px solid #174e66;
+  width: min(950px, 92vw);
+  max-height: 85vh;
+}
+.product-track-screen .song-details-dialog > header {
+  background: #b5cfdb;
+  color: #333;
+  border-color: #8ba6b2;
+}
+.product-track-picker {
+  padding: 18px;
+  max-height: 65vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.synthesia-layout .product-track-picker button {
+  font-size: 23px;
+  padding: 15px 20px;
+  min-height: 58px;
+  background: #eee;
+  color: #333;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  text-align: left;
+  font-weight: 400;
+}
+.synthesia-layout .product-track-picker button[aria-pressed="true"] {
+  background: #c4ddeb;
+  border-color: #3b83b3;
+  box-shadow: inset 5px 0 #3b83b3;
+}
+.product-color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.synthesia-layout .product-color-grid button {
+  min-height: 70px;
+}
+.product-track-picker.picker-instrument {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  overflow: hidden;
+}
+.product-track-picker.picker-instrument > nav,
+.product-instrument-list {
+  overflow: auto;
+  min-height: 0;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.synthesia-layout .product-track-picker.picker-instrument > nav button {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  padding: 12px;
+  border-radius: 0;
+  min-height: 45px;
+}
+.synthesia-layout
+  .product-track-picker.picker-instrument
+  > nav
+  button[aria-selected="true"] {
+  background: #08a9df;
+  color: white;
+}
+.product-instrument-list {
+  border: 1px solid #aaa;
+  border-radius: 10px;
+  background: #eee;
+}
+.synthesia-layout .product-instrument-list button {
+  border: 0;
+  border-bottom: 1px solid #aaa;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.product-track-picker label {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 21px;
+}
+.product-track-picker select {
+  color: #333;
+  background: #fff;
+  border: 1px solid #999;
+  padding: 10px;
+  font-size: 21px;
+}
+.product-song-options {
+  position: absolute;
+  right: 15px;
+  top: 59px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: #b5cfdb;
+  border: 1px solid #688995;
+  box-shadow: 0 5px 12px #0004;
+  min-width: 260px;
+}
+.synthesia-layout .product-song-options button {
+  font-size: 19px;
+  text-align: left;
+  background: #eee;
+  border: 1px solid #aaa;
+  border-radius: 0;
+  color: #333;
+  padding: 13px 18px;
+}
+.product-freeplay-stage {
+  display: flex;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #172027;
+}
+.product-freeplay-stage > .piano-stage,
+.product-freeplay-stage > canvas {
+  flex: 1;
+}
+.product-hand-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+}
+.product-hand-tools {
+  background: #b5cfdb;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  padding: 20px 15px;
+}
+.product-hand-tools h2 {
+  font-size: 20px;
+  font-weight: 400;
+  margin: 0 0 8px;
+}
+.synthesia-layout .product-hand-tools button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #eee;
+  color: #333;
+  border: 1px solid #9aa5aa;
+  min-height: 54px;
+  font-size: 18px;
+}
+.synthesia-layout .product-hand-tools button[aria-pressed="true"] {
+  background: #397bb4;
+  color: white;
+}
+.product-hand-tools label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+  color: #344c59;
+  margin-top: 8px;
+}
+.product-hand-tools select,
+.product-hand-time input {
+  color: #333;
+  background: #fafafa;
+  border: 1px solid #999;
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px;
+  font-size: 17px;
+}
+.product-hand-roll {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #18242d;
+  overflow: hidden;
+}
+.product-hand-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #e5ebee;
+  color: #3d515b;
+  padding: 8px;
+  flex-shrink: 0;
+  min-height: 52px;
+}
+.product-hand-time label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.product-hand-time input {
+  width: 85px;
+}
+.synthesia-layout .product-hand-time button {
+  background: #d3e0e6;
+  color: #333;
+  border: 1px solid #9aa5aa;
+  padding: 5px;
+}
+.product-hand-svg {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  touch-action: none;
+}
+.product-hand-svg rect[role="button"] {
+  cursor: crosshair;
+}
+.product-hand-svg rect[role="button"]:focus {
+  outline: none;
+  stroke: white;
+  stroke-width: 3px;
+}
+.product-inline-error {
+  margin: 0;
+  padding: 12px;
+  background: #fff2de;
+  color: #613c11;
+}
+@media (max-width: 900px) {
+  .product-home-brand {
+    min-height: 120px;
+    padding: 22px 4%;
+  }
+  .product-home-brand img {
+    width: 60px;
+    height: 60px;
+  }
+  .product-home-actions {
+    gap: 18px;
+    padding-top: 36px;
+  }
+  .synthesia-layout .product-home-actions button {
+    font-size: 29px;
+    min-height: 90px;
+  }
+  .synthesia-layout .product-recent-list button {
+    font-size: 21px;
+    padding: 18px;
+    min-height: 70px;
+  }
+  .product-home-recent h2 {
+    font-size: 24px;
+  }
+  .product-track-grid {
+    padding: 25px;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .product-settings-body {
+    grid-template-columns: 200px 1fr;
+  }
+  .product-hand-body {
+    grid-template-columns: 180px 1fr;
+  }
+  .product-track-instrument strong {
+    font-size: 25px;
+  }
+  .product-hand-tools {
+    padding: 12px;
+  }
+  .product-track-picker.picker-instrument {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+}
+@media (max-height: 700px) {
+  .product-home-brand {
+    min-height: 110px;
+    padding: 15px 4%;
+  }
+  .product-home-brand h1 {
+    font-size: 64px;
+  }
+  .product-home-brand img {
+    width: 60px;
+    height: 60px;
+  }
+  .product-home-actions {
+    padding-top: 22px;
+    gap: 18px;
+  }
+  .synthesia-layout .product-home-actions button {
+    min-height: 85px;
+  }
+  .synthesia-layout .product-home-actions .product-home-settings {
+    margin-top: 15px;
+  }
+  .product-track-grid {
+    padding-top: 25px;
+  }
+  .product-hand-tools {
+    gap: 8px;
+  }
+  .synthesia-layout .product-hand-tools button {
+    min-height: 44px;
+  }
+}
+
+.product-label-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #334c58;
+  font-size: 16px;
+}
+.product-label-settings h3 {
+  font-size: 19px;
+  margin: 5px 0;
+  font-weight: 500;
+  border-bottom: 1px solid #9eafb8;
+  padding-bottom: 8px;
+}
+.product-label-settings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.product-label-settings select {
+  background: #f7f7f7;
+  color: #333;
+  border: 1px solid #9baab0;
+  font-size: 16px;
+  padding: 8px;
+  max-width: 190px;
+}
+.product-label-settings input {
+  accent-color: #167eae;
+  width: 18px;
+  height: 18px;
+}
+.synthesia-layout .product-bookmark-menu .song-bookmarks {
+  display: block;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.synthesia-layout .product-bookmark-menu .bookmark-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.synthesia-layout .product-bookmark-menu select {
+  max-width: 100%;
+  color: #333;
+  background: #f7f7f7;
+  padding: 8px;
+  font-size: 16px;
+}
+.synthesia-layout .product-bookmark-menu .bookmark-heading {
+  font-size: 18px;
+  flex-basis: 100%;
+}
+.synthesia-layout .product-bookmark-menu button,
+.synthesia-layout .product-loop-menu button {
+  color: #344c58;
+  background: #eef2f4;
+  border: 1px solid #a9b7be;
+  border-radius: 4px;
+  font-size: 16px;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+.synthesia-layout .product-loop-menu .practice-range-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.product-loop-menu > label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 16px;
+  color: #344c58;
+  margin-top: 18px;
+}
+
+.product-song-options-dialog .settings-dialog {
+  color-scheme: light;
+  background: #eaf0f3;
+  color: #334c58;
+  width: min(900px, 94vw);
+}
+.product-song-options-dialog .settings-dialog > header {
+  background: #b5cfdb;
+  color: #334c58;
+  border-color: #9aafb9;
+}
+.product-song-options-dialog .practice-variant,
+.product-song-options-dialog .song-edition-bar {
+  position: relative;
+  inset: auto;
+  margin: 18px;
+  border: 1px solid #a8b7be;
+  background: #fff;
+  color: #334c58;
+  border-radius: 5px;
+}
+.product-song-options-dialog .practice-variant > summary {
+  color: #334c58;
+  padding: 18px;
+  font-size: 20px;
+}
+.product-song-options-dialog .variant-body {
+  position: static;
+  max-height: 55vh;
+  width: auto;
+  box-shadow: none;
+  background: #f4f7f9;
+  color: #334c58;
+  overflow: auto;
+}
+.product-song-options-dialog .variant-body p {
+  font-size: 15px;
+  color: #4e6571;
+}
+.product-song-options-dialog .variant-body button,
+.product-song-options-dialog .variant-body input,
+.product-song-options-dialog .variant-body select {
+  color: #334c58;
+  background: #fff;
+  border: 1px solid #a6b5bd;
+}
+
+.product-setup-start {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 70px;
+  background: var(--synth-blue);
+  padding: 8px 25px;
+}
+.synthesia-layout .product-setup-start button {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: white;
+  font-size: 26px;
+  min-height: 50px;
+  padding: 8px 15px;
+}
+.synthesia-layout .synthesia-setup-body button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 3px #558da6;
+  border-color: #558da6;
+  background: linear-gradient(#d9e7ee, #c8dce6);
+}
+.synthesia-layout
+  .synthesia-song-setup
+  > .synthesia-library-header
+  > .toolbar-more {
+  margin-left: auto;
+}
+.synthesia-song-setup > .synthesia-library-header > .toolbar-more > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.product-settings-host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.product-folder-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 25px max(4%, 20px);
+}
+.product-folder-list > article {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 23px 20px;
+  border-bottom: 1px solid #aab0b4;
+  background: #f5f5f5;
+  color: #374e5b;
+}
+.product-folder-list > article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+.product-folder-list strong {
+  font-size: 24px;
+  font-weight: 400;
+}
+.product-folder-list span {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+  color: #617681;
+}
+.product-folder-list small {
+  font-size: 17px;
+}
+.synthesia-layout .product-folder-list button {
+  color: #344c58;
+  background: #e6ecef;
+  border: 1px solid #a9b7be;
+  padding: 8px 20px;
+  font-size: 17px;
+}
+
+.synthesia-library-header.back-on-right > .synthesia-back {
+  order: 2;
+}
+.product-hand-body {
+  grid-template-columns: 200px minmax(0, 1fr) 150px;
+}
+.product-hand-right {
+  border-left: 1px solid #92a7b2;
+  padding: 20px 12px;
+}
+.product-hand-right p {
+  font-size: 15px;
+  color: #455f6b;
+  line-height: 1.7;
+}
+.synthesia-layout .product-hand-continue {
+  margin-left: auto;
+  background: var(--synth-blue);
+  color: white;
+  min-width: 130px;
+}
+@media (max-width: 1000px) {
+  .product-hand-body {
+    grid-template-columns: 170px minmax(0, 1fr) 110px;
+  }
+  .product-hand-right {
+    padding: 15px 8px;
+  }
+  .synthesia-layout .product-hand-right button {
+    font-size: 15px;
+    padding: 6px;
+  }
+}
+
+.product-track-controls {
+  grid-template-columns: 1.6fr 1fr 1fr;
+}

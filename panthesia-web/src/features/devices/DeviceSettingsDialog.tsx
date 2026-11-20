@@ -1,25 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Cable,
-  KeyboardMusic,
-  RefreshCw,
-  SlidersHorizontal,
-  Volume2,
-  X,
+Cable,
+KeyboardMusic,
+RefreshCw,
+SlidersHorizontal,
+Volume2,
+X,
 } from "lucide-react";
+import { useCallback,useEffect,useRef,useState } from "react";
 import {
-  api,
-  type EngineCommand,
-  type Snapshot,
-  type SoundFontStatus,
+api,
+type EngineCommand,
+type Snapshot,
+type SoundFontStatus,
 } from "../../api";
 import { TaskActivity } from "../../engine/TaskActivity";
-import { useDeviceCatalog } from "./useDeviceCatalog";
-import { DeviceScanNotice } from "./DeviceScanNotice";
-import "./deviceSettings.css";
 import type { PlaybackStore } from "../practice/playbackStore";
 import { usePlaybackFields } from "../practice/PlaybackView";
 import { DuetRuntimePanel } from "../settings/DuetRuntimePanel";
+import { DeviceScanNotice } from "./DeviceScanNotice";
+import "./deviceSettings.css";
+import { useDeviceCatalog } from "./useDeviceCatalog";
 
 type Calibration = { message: string; suggested: number | null };
 const pluginName = (path: string) =>
@@ -62,7 +62,7 @@ export function DeviceSettingsDialog({
   close: () => void;
   initialTab?: "sound"|"duet";
 }) {
-  const [tab,setTab]=useState(initialTab);
+  const tab=initialTab;
   const inputActivity = usePlaybackFields(store, [
     "pressed",
     "midiEvents",
@@ -355,7 +355,7 @@ export function DeviceSettingsDialog({
       >
         <div className="dialog-heading">
           <div>
-            <h2 id="device-title">演奏与制谱设置</h2>
+            <h2 id="device-title">{tab==="sound"?"键盘与音源":"后台制谱设置"}</h2>
             <p className="device-subtitle">
               {tab==="sound"?"选择输入键盘、演奏音源和发声设备，然后试音。":"配置本机 Python、DuET 模型和计算设备。"}
             </p>
@@ -371,38 +371,9 @@ export function DeviceSettingsDialog({
             <X size={19} />
           </button>
         </div>
-        <nav className="device-settings-tabs" role="tablist" aria-label="设置分类"><button role="tab" aria-selected={tab==="sound"} onClick={()=>setTab("sound")}>设备与声音</button><button role="tab" aria-selected={tab==="duet"} onClick={()=>setTab("duet")}>DuET 制谱</button></nav>
+
         {tab==="duet"&&<div className="device-settings-body"><DuetRuntimePanel disabled={!!unavailable}/></div>}
         <div className="device-settings-body" hidden={tab!=="sound"}>
-          <div className="sound-signal-path" aria-label="当前发声链路">
-            <span>
-              <small>输入键盘</small>
-              <strong>{state.input ?? "电脑 / 屏幕键盘"}</strong>
-              <em>
-                {inputActivity.pressed.length
-                  ? `正在输入：${inputActivity.pressed.join(" · ")}`
-                  : state.inputConnected
-                    ? "已连接，按琴键查看输入"
-                    : "请选择或连接键盘"}
-              </em>
-            </span>
-            <span aria-hidden="true">→</span>
-            <span>
-              <small>演奏音源</small>
-              <strong>{state.output}</strong>
-              <em>{state.sound?.ready ? "已连接" : "等待连接"}</em>
-            </span>
-            <span aria-hidden="true">→</span>
-            <span>
-              <small>发声设备</small>
-              <strong>{state.sound?.device ?? "系统默认设备"}</strong>
-              <em>
-                {selectedOutput && !selectedOutput.startsWith("vst3:")
-                  ? "由 Windows MIDI 路由控制"
-                  : "应用音频输出"}
-              </em>
-            </span>
-          </div>
           <section
             className="device-audio-endpoint"
             aria-label="发声设备与试音"

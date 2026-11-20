@@ -102,6 +102,28 @@ impl Player {
                 .map(Some)
                 .map_err(|error| error.to_string());
             }
+            Command::SetPartHands {content_id,track,part,split_pitch,proof,hints,clear} => {
+                let file=self.file.as_ref().ok_or("请先选择曲目")?;
+                if file.content_id!=content_id || self.hand_suggestion_proof()?!=proof{return Err("曲目或手别已改变，请重新打开音轨设置".into());}
+                if part.is_some()==split_pitch.is_some() || split_pitch.is_some_and(|p|p>127){return Err("手别分配参数无效".into());}
+                let source=file.tracks.iter().find(|t|t.track_id==track).ok_or("音轨不存在")?;
+                let previous=self.config.tracks.iter().find(|t|t.track_id==track).ok_or("音轨不存在")?;
+                let visible=previous.visible;let previous_part=previous.practice_part;
+                let mut merged=hands::hints(&self.note_hands);merged.retain(|h|h.track_id!=track);
+                if let Some(pitch)=split_pitch{
+                    merged.extend(source.notes.iter().enumerate().map(|(index,n)|panthesia_core::library::NoteHandHint{track_id:track,note_index:index,part:if n.note<pitch{PracticePart::LeftHand}else{PracticePart::RightHand}}));
+                }
+                if hints.len()+clear.len()>4096 || hints.iter().any(|h|h.track_id!=track) || clear.iter().any(|&i|i>=source.notes.len()){return Err("逐音修正参数无效或超过 4096 个".into());}
+                let clear=clear.into_iter().collect::<std::collections::HashSet<_>>();
+                let replacements=hints.iter().map(|h|h.note_index).collect::<std::collections::HashSet<_>>();
+                if clear.iter().any(|i|replacements.contains(i)){return Err("同一音符不能同时设置和清除手别".into());}
+                merged.retain(|h|h.track_id!=track||(!clear.contains(&h.note_index)&&!replacements.contains(&h.note_index)));
+                merged.extend(hints);
+                self.write_hands(merged,true)?;
+                if let Some(part)=part{
+                    self.command(Command::Track{id:track,mode:if part==PracticePart::Other{"auto"}else{"human"}.into(),part:hands::label(part).into(),visible:if part==PracticePart::Other{false}else if previous_part==PracticePart::Other{true}else{visible}})?;
+                }
+            }
             Command::ApplyHands {
                 content_id,
                 hints,
@@ -365,5 +387,27 @@ impl Player {
         self.state.status = "paused".into();
         self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod product_hand_tests {
+    use super::*;
+    #[test]
+    fn whole_track_split_and_reset_preserve_fingers_and_reject_stale_edits(){
+        use midi_file::midly::{Smf,Header,Format,Timing,TrackEvent,TrackEventKind,MidiMessage,MetaMessage};
+        let data=std::env::temp_dir().join(format!("panthesia-product-hands-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir_all(&data).unwrap();let path=data.join("owned-input.mid");let mut events=vec![];
+        for i in 0..5000 {let key=if i%2==0{48}else{72};events.push(TrackEvent{delta:0.into(),kind:TrackEventKind::Midi{channel:0.into(),message:MidiMessage::NoteOn{key:key.into(),vel:80.into()}}});events.push(TrackEvent{delta:1.into(),kind:TrackEventKind::Midi{channel:0.into(),message:MidiMessage::NoteOff{key:key.into(),vel:0.into()}}});}
+        events.push(TrackEvent{delta:0.into(),kind:TrackEventKind::Meta(MetaMessage::EndOfTrack)});let smf=Smf{header:Header::new(Format::SingleTrack,Timing::Metrical(480.into())),tracks:vec![events]};smf.save(&path).unwrap();let bytes=std::fs::read(&path).unwrap();
+        let mut player=Player::empty(data.clone(),Default::default(),true);player.command(Command::Load{path:path.clone(),title:"Owned split fixture".into()}).unwrap();let file=player.file.as_ref().unwrap();let cid=file.content_id.clone();let owned=player.annotation_path(file).unwrap();
+        panthesia_core::library::save_song_fingerings(&owned,&cid,vec![panthesia_core::library::FingerHint{track_id:0,note_index:0,finger:4}]).unwrap();
+        let proof=player.hand_suggestion_proof().unwrap();player.command(Command::SetPartHands{content_id:cid.clone(),track:0,part:None,split_pitch:Some(60),proof:proof.clone(),hints:vec![panthesia_core::library::NoteHandHint{track_id:0,note_index:0,part:PracticePart::RightHand}],clear:vec![1]}).unwrap();
+        let saved=panthesia_core::library::load_song_sidecar(&owned,&cid).unwrap();assert_eq!(saved.hands.len(),4999);assert_eq!(saved.fingerings[0].finger,4);assert_eq!(saved.hands.iter().find(|h|h.note_index==0).unwrap().part,PracticePart::RightHand);assert_eq!(saved.hands.iter().find(|h|h.note_index==2).unwrap().part,PracticePart::LeftHand);assert!(!saved.hands.iter().any(|h|h.note_index==1));
+        let before=std::fs::read(panthesia_core::library::metadata_sidecar_path(&owned)).unwrap();assert!(player.command(Command::SetPartHands{content_id:cid.clone(),track:0,part:Some(PracticePart::LeftHand),split_pitch:None,proof,hints:vec![],clear:vec![]}).is_err());assert_eq!(std::fs::read(panthesia_core::library::metadata_sidecar_path(&owned)).unwrap(),before);
+        let proof=player.hand_suggestion_proof().unwrap();player.command(Command::SetPartHands{content_id:cid.clone(),track:0,part:Some(PracticePart::LeftHand),split_pitch:None,proof,hints:vec![],clear:vec![]}).unwrap();let saved=panthesia_core::library::load_song_sidecar(&owned,&cid).unwrap();assert!(saved.hands.is_empty());assert_eq!(saved.track_parts[&0],PracticePart::LeftHand);assert_eq!(saved.fingerings[0].finger,4);assert_eq!(std::fs::read(&path).unwrap(),bytes);
+        player.apply_variant_memory(&crate::practice_variant::Variant{transpose:2,..Default::default()}).unwrap();let proof=player.hand_suggestion_proof().unwrap();
+        player.command(Command::SetPartHands{content_id:cid.clone(),track:0,part:None,split_pitch:Some(50),proof,hints:vec![],clear:vec![]}).unwrap();let saved=panthesia_core::library::load_song_sidecar(&owned,&cid).unwrap();assert_eq!(saved.hands.len(),5000);assert!(saved.hands.iter().all(|h|h.part==PracticePart::RightHand));assert_eq!(saved.fingerings[0].finger,4);assert_eq!(std::fs::read(path).unwrap(),bytes);
+
     }
 }

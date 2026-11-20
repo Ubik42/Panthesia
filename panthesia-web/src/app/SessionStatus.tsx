@@ -27,7 +27,7 @@ export function SessionStatus({
   );
   useEffect(() => {
     for (const issue of state.issues) {
-      if (issue.severity !== "info")
+      if (issue.severity !== "info" || issue.startupWarning)
         reportDiagnostic(issue.title, issue.detail);
     }
   }, [state.issues]);
@@ -40,9 +40,6 @@ export function SessionStatus({
         !issue.startupWarning,
     ),
     recording = state.issues.find((issue) => issue.id === "recording-saved");
-  const startupNotes = state.issues.filter(
-    (issue) => issue.severity === "info" && issue.startupWarning,
-  );
   const actionButton = (
     issue: RecoveryIssue,
     action: RecoveryAction,
@@ -81,23 +78,6 @@ export function SessionStatus({
             : null}
         </div>
       )}
-      {startupNotes.map((issue) => (
-        <div
-          className="app-notice startup-result-notice"
-          role="status"
-          key={issue.id}
-        >
-          <CheckCircle2 size={16} aria-hidden="true" />
-          <div>
-            <strong>{issue.title}</strong>
-            <span>{issue.detail}</span>
-          </div>
-          {issue.actions
-            .filter((action) => action !== "dismissStartup")
-            .map((action) => actionButton(issue, action, action))}
-          {actionButton(issue, "dismissStartup")}
-        </div>
-      ))}
       {primary && (
         <div
           className={`session-problem-strip severity-${primary.severity}`}

@@ -57,7 +57,7 @@ pub(crate) fn classify(command: &Command) -> Option<Kind> {
         | Command::ClearNoteHeldFingerActions { .. }
         | Command::SaveHeldActionEdit { .. } => Kind::Fingers,
         Command::FingerPair { proof: Some(_), .. } => Kind::Fingers,
-        Command::Track { .. } | Command::EditNotePlayback { .. } | Command::NoteHand { .. } | Command::ApplyHands { .. } | Command::UndoHands | Command::UndoHandsFor { .. } => Kind::Hands,
+        Command::Track { .. } | Command::EditNotePlayback { .. } | Command::NoteHand { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. } | Command::UndoHands | Command::UndoHandsFor { .. } => Kind::Hands,
         Command::Meter { .. } | Command::SaveMeterMap { .. } => Kind::Meter,
         Command::TrackSound { .. } => Kind::Sound,
         Command::ApplyScoreRange { .. } | Command::ApplyTickRange { .. } => Kind::Range,

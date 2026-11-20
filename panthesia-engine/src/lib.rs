@@ -1225,7 +1225,7 @@ impl Player {
         }
         if self.routine.is_some() && matches!(command,
             Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
+            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
             |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
             |Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
             |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
@@ -1261,7 +1261,7 @@ impl Player {
         }
         if self.ladder.as_ref().is_some_and(|r|r.active) && matches!(command,
             Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
+            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
             |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
             |Command::OpenPassage{..}|Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
             |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
@@ -1317,7 +1317,7 @@ impl Player {
                     | Command::ApplyScoreRange { .. }
                     | Command::Mode { .. }
                     | Command::Track { .. }
-                    | Command::ApplyHands { .. }
+                    | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                     | Command::EditNotePlayback { .. }
                     | Command::NoteHand { .. }
                     | Command::Meter { .. } | Command::SaveMeterMap { .. }
@@ -1353,7 +1353,7 @@ impl Player {
                         | Command::Meter { .. } | Command::SaveMeterMap { .. }
                         | Command::EditNotePlayback { .. }
                     | Command::NoteHand { .. }
-                        | Command::ApplyHands { .. }
+                        | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                         | Command::UndoHands
                         | Command::Speed { .. }
                         | Command::CountIn { .. }
@@ -1488,7 +1488,7 @@ impl Player {
                 None => Ok(serde_json::Value::Null),
             };
         }
-        if self.variant().active() && matches!(command,Command::Meter{..}|Command::SaveMeterMap{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::ApplyHands{..}|Command::EditFingersFor{..}) {return Err("请先恢复原始演奏，再修改源谱网格、分手或指法".into());}
+        if self.variant().active() && matches!(command,Command::Meter{..}|Command::SaveMeterMap{..}|Command::EditNotePlayback{..}|Command::EditFingersFor{..}) {return Err("请先恢复原始演奏，再修改源谱网格、分手或指法".into());}
         self.state.error = None;
         match command {
             Command::PracticeVariant{content_id,score_revision,value}=>return self.set_variant(&content_id,score_revision,value),
@@ -1553,7 +1553,7 @@ impl Player {
                 self.coach = AdaptiveTempoCoach::default();
                 self.reset(0.);
             }
-            command @ (Command::SuggestHands { .. } | Command::ApplyHands { .. }
+            command @ (Command::SuggestHands { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
                 | Command::NoteHand { .. } | Command::UndoHands | Command::UndoHandsFor { .. } | Command::HandUndoState | Command::ReadHandAssignments { .. }
                 | Command::HandSpanDefault { .. } | Command::HandSpanFor { .. } | Command::FingerProfiles) => {
                 if let Some(result) = self.hand_annotation_command(command)? { return Ok(result); }

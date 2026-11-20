@@ -16,3 +16,5 @@ export function MetronomeIcon({ size = 27 }: { size?: number }) {
     </svg>
   );
 }
+
+export function LabelsIcon(){return <svg width="29" height="29" viewBox="0 0 29 29" aria-hidden="true"><text x="1" y="23" fill="currentColor" fontSize="24" fontFamily="Georgia,serif">La</text></svg>;}

@@ -1,11 +1,10 @@
-import { memo, useMemo } from "react";
-import { clock, type LoadedSong } from "../../api";
-import { practiceDuration } from "../../practiceTime";
+import { memo,useMemo } from "react";
+import { clock,type LoadedSong } from "../../api";
 import { usePlaybackFields } from "./PlaybackView";
+import { rangeTime } from "./PracticeRangeControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 import type { PracticeRangeController } from "./usePracticeRange";
-import { PracticeRangeControls, rangeTime } from "./PracticeRangeControls";
 const fields = [
   "practiceMs",
   "beat",
@@ -58,10 +57,6 @@ export function PracticeTimeline({
   busy,
   seek,
   range,
-  loop,
-  togglePicking,
-  loopPreview,
-  changeLoopPreview,
 }: {
   store: PlaybackStore;
   song: LoadedSong | null;
@@ -69,10 +64,6 @@ export function PracticeTimeline({
   busy: boolean;
   seek: (position: number) => Promise<boolean>;
   range: PracticeRangeController;
-  loop: (start: number, end: number, enabled: boolean) => Promise<boolean>;
-  togglePicking: () => void;
-  loopPreview: boolean;
-  changeLoopPreview: (enabled: boolean) => void;
 }) {
   const state = usePlaybackFields(store, fields);
   const start = state.passage?.start ?? 0,
@@ -157,38 +148,7 @@ export function PracticeTimeline({
           <span key={f}>{formatTime(start + (end - start) * f)}</span>
         ))}
       </div>
-      <div className="practice-range-toolbar">
-        <span className="time-ruler-practice">
-          已练 {practiceDuration(state.practiceMs ?? 0)}
-        </span>
-        {state.passage && (
-          <>
-            <label className="loop-preview-switch">
-              <input
-                type="checkbox"
-                aria-label="瀑布预览下一轮"
-                checked={loopPreview}
-                onChange={(event) => changeLoopPreview(event.target.checked)}
-                disabled={unavailable || busy}
-              />
-              瀑布预览下一轮
-            </label>
-            {!disabled && state.loopRestartErrors > 0 && (
-              <span>错音或漏音达到 {state.loopRestartErrors} 个后重开</span>
-            )}
-            {state.loopRestarts > 0 && (
-              <span role="status">因错误重开 {state.loopRestarts} 次</span>
-            )}
-          </>
-        )}
-        <PracticeRangeControls
-          range={range}
-          disabled={unavailable || busy}
-          active={!!state.passage}
-          loop={loop}
-          toggle={togglePicking}
-        />
-      </div>
+
     </div>
   );
 }
