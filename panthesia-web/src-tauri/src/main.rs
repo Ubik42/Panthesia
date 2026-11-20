@@ -534,6 +534,14 @@ async fn start_practice_demo(
         .await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn music_file_exists(path:PathBuf)->Result<bool,String>{
+    tauri::async_runtime::spawn_blocking(move||match std::fs::metadata(path){
+        Ok(value)=>Ok(value.is_file()),
+        Err(error) if error.kind()==std::io::ErrorKind::NotFound=>Ok(false),
+        Err(error)=>Err(error.to_string()),
+    }).await.map_err(|error|error.to_string())?
+}
+#[tauri::command]
 async fn read_notation(state:tauri::State<'_,State>,request:panthesia_engine::NotationReadRequest)->Result<serde_json::Value,String>{
     let engine=state.engine.clone();tauri::async_runtime::spawn_blocking(move||engine.read_notation(request)).await.map_err(|e|e.to_string())?
 }
@@ -1091,7 +1099,7 @@ fn main() {
             adjust_playback,
             edit_practice,
             read_practice,
-            map_score,notation_document,read_notation,
+            map_score,notation_document,read_notation,music_file_exists,
             read_history,
             save_history_annotation,
             edit_history_clips,

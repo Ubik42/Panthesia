@@ -1,5 +1,4 @@
 import { reportDiagnostic } from "./diagnostics";
-import { api } from "../api";
 import { useEffect, useSyncExternalStore } from "react";
 import { CheckCircle2, LifeBuoy, LoaderCircle, X } from "lucide-react";
 import {
@@ -31,12 +30,12 @@ export function SessionStatus({
         reportDiagnostic(issue.title, issue.detail);
     }
   }, [state.issues]);
-  const problems = state.issues.filter((issue) => issue.severity !== "info"),
+  const problems = state.issues.filter((issue) => issue.severity !== "info" && !issue.workId && !issue.id.startsWith("work:")),
     primary = problems[0];
   const progress = state.issues.find(
       (issue) =>
         issue.severity === "info" &&
-        issue.id !== "recording-saved" &&
+        issue.id !== "recording-saved" && issue.id !== "binding" &&
         !issue.startupWarning,
     ),
     recording = state.issues.find((issue) => issue.id === "recording-saved");
@@ -88,14 +87,6 @@ export function SessionStatus({
             <strong>{primary.title}</strong>
           </div>
 
-          {api.desktop && (
-            <button
-              type="button"
-              onClick={() => void api.openLogs().catch(() => {})}
-            >
-              打开日志
-            </button>
-          )}
           <button type="button" onClick={openRecovery}>
             详情
           </button>

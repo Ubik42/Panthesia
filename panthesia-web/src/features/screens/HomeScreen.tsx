@@ -11,6 +11,7 @@ export function HomeScreen({
   freePlay,
   settings,
   open,
+  openProblem,
 }: {
   rows: readonly SongRow[];
   collection: readonly CollectionSong[];
@@ -19,6 +20,7 @@ export function HomeScreen({
   freePlay: () => void;
   settings: () => void;
   open: (row: SongRow) => Promise<boolean>;
+  openProblem?: {path:string;message:string}|null;
 }) {
   const [pending, setPending] = useState(false);
   const { catalog } = useSongCatalog(rows);
@@ -88,7 +90,8 @@ export function HomeScreen({
                   }
                 }}
               >
-                {row.title}
+                <span>{row.title}</span>
+                {openProblem&&pathKey(openProblem.path)===pathKey(row.path)&&<small className="song-file-status">{openProblem.message}</small>}
               </button>
             ))}
             {!recent.length && <p>从“选择歌曲”开始演奏。</p>}

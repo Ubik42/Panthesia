@@ -424,7 +424,7 @@ export function projectRecovery(
       id: `work:${entry.id}`,
       workId: entry.id,
       severity: "attention",
-      title: `${entry.title} · ${entry.problem.kind === "input" ? "输入暂存未完成" : entry.problem.kind === "refresh" ? "已保存，界面待更新" : "需要继续处理"}`,
+      title: `${entry.title} · ${entry.problem.kind === "input" ? "输入暂存未完成" : entry.problem.kind === "refresh" ? "后台同步" : "需要继续处理"}`,
       detail: entry.problem.detail,
       guidance:
         (entry.stale ? "这项工作来自上次连接。" : "") +

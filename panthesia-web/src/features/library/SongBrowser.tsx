@@ -51,7 +51,7 @@ export function SongBrowser({
   open,
   manage,
   unavailable,
-  preparation,
+  openProblem,
   menu,
   back,
   visible=true,
@@ -63,7 +63,7 @@ export function SongBrowser({
   open: (row: SongRow) => Promise<boolean>;
   manage: () => void;
   unavailable?: string | null;
-  preparation?: React.ReactNode;
+  openProblem?: {path:string;message:string}|null;
   menu: () => void;
   back: () => void;
   visible?: boolean;
@@ -606,6 +606,7 @@ export function SongBrowser({
                     <small>{practiceDate(group.lastUsed)} 打开</small>
                   </span>
                 )}
+                {openProblem&&group.performances.some(p=>p.locations.some(row=>libraryPath(row.path)===libraryPath(openProblem.path)))&&<small className="song-file-status">{openProblem.message}</small>}
                 {isCurrent && <span className="browser-current">当前歌曲</span>}
                 <ChevronRight size={15} />
               </button>
@@ -614,10 +615,7 @@ export function SongBrowser({
         </div>
         {error && (
           <p className="browser-list-notice" role="status">
-            这次操作未能完成，详情已记入日志。
-            <button onClick={() => void api.openLogs().catch(() => {})}>
-              打开日志
-            </button>
+            文件操作未能完成。
             <button onClick={() => setError("")}>收起</button>
           </p>
         )}
@@ -677,8 +675,7 @@ export function SongBrowser({
             )}
           </div>
         </footer>
-        {preparation}
-      </section>
+        </section>
       {context && selected && (
         <SongContextMenu
           x={context.x}

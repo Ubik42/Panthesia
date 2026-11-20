@@ -1,5 +1,4 @@
 import { createWorkspaceBrowseStore } from "./workspaceBrowseStore";
-import { getLibraryOpens, libraryOpenPending } from "../features/library/libraryOpenStore";
 import { getInterfaceSettings } from "../features/settings/interfaceSettingsStore";
 import { getHistoryOperations, historyOperationPending } from "../features/review/historyOperationStore";
 import { flushReplayEditors, pendingReplayEditors } from "../features/review/replayEditorStore";
@@ -80,7 +79,6 @@ export function useWorkspaceSessions() {
   useEffect(() => {
     const interfaceSettings = getInterfaceSettings(), interfaceWorkbench = getInterfaceWorkbench();
     const releases = [
-      registerCloseParticipant("library-open-progress", { label: "曲目打开进度", prepare: () => getLibraryOpens().retrySave(), pending: libraryOpenPending }),
       registerCloseParticipant("history-operation-progress", { label: "历史操作进度", prepare: () => getHistoryOperations().retrySave(), pending: historyOperationPending }),
       registerCloseParticipant("replay-editor-drafts", { label: "回放片段输入", prepare: flushReplayEditors, pending: pendingReplayEditors }),
       registerCloseParticipant("interface-settings", {

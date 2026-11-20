@@ -1,4 +1,3 @@
-import { getLibraryOpens, libraryOpenLabel, libraryOpenProgress } from "../library/libraryOpenStore";
 import { collectInterfaceWork } from "../settings/interfaceWork";
 import { getHistoryOperations, historyIntentLabel } from "../review/historyOperationStore";
 import { historyFailure } from "../review/historySource";
@@ -430,61 +429,6 @@ export function collectWork(
   }
   const interfaceWork = collectInterfaceWork();
   if (interfaceWork) add(interfaceWork);
-  const libraryOpens = getLibraryOpens(),
-    libraryState = libraryOpens.getSnapshot();
-  for (const intent of libraryState.entries) {
-    if (intent.disposition === "presented" && !intent.releasePending) continue;
-    const id = intent.request.id,
-      receipt = libraryState.receipts[id],
-      phase = receipt?.phase ?? intent.lastPhase;
-    const running =
-      libraryState.working.includes(id) ||
-      ["queued", "running", "committing"].includes(phase);
-    const error =
-      libraryState.storageError ||
-      libraryState.errors[id] ||
-      intent.error ||
-      receipt?.error ||
-      receipt?.warning ||
-      "";
-    add({
-      id: `library-open:${id}`,
-      libraryOpenId: id,
-      libraryOpenWorkspace: intent.workspace ?? "library",
-      title: libraryOpenLabel(intent.request.source),
-      subject: intent.title || "原曲目",
-      target: "library-open",
-      phase: running
-        ? "running"
-        : error || ["error", "unknown", "unconfirmed"].includes(phase)
-          ? "attention"
-          : "waiting",
-      detail: error || libraryOpenProgress(phase, receipt?.stage),
-      problem: problem(error, libraryState.storageError ? "input" : "refresh"),
-      version: JSON.stringify([intent, phase, receipt?.stage, running, error]),
-      copy: libraryOpens.copyInput,
-      requestEngineIds: [intent.request.engineId],
-      cancel: receipt?.cancellable
-        ? () => {
-            libraryOpens.keep(id);
-            return libraryOpens
-              .cancel(id, intent.request.engineId)
-              .then(() => {});
-          }
-        : undefined,
-    });
-  }
-  if (libraryState.storageError && !libraryState.entries.length)
-    add({
-      id: "library-open-recovery",
-      title: "曲库打开进度",
-      subject: "保留的原请求",
-      target: "library-open",
-      phase: "attention",
-      detail: libraryState.storageError,
-      problem: problem(libraryState.storageError, "input"),
-      copy: libraryOpens.copyInput,
-    });
   const historyOperations = getHistoryOperations(), historyState = historyOperations.getSnapshot();
   for (const intent of historyState.entries) {
     if (intent.disposition === "presented" && !intent.releasePending) continue;
@@ -1014,7 +958,7 @@ export function createWorkProgressStore(sources: WorkSources) {
     getContext: () => context,
     setContext: (next: ProgressContext) => {
       if (JSON.stringify(context) !== JSON.stringify(next)) {
-        if (next.connected && next.engineId && (!context.connected || context.engineId !== next.engineId)) void Promise.all([getHistoryOperations().refreshPending(next.engineId), getLibraryOpens().refreshPending(next.engineId)]);
+        if (next.connected && next.engineId && (!context.connected || context.engineId !== next.engineId)) void Promise.all([getHistoryOperations().refreshPending(next.engineId)]);
         context = next;
         deviceTasks.setContext(next);
         schedule();
@@ -1024,7 +968,7 @@ export function createWorkProgressStore(sources: WorkSources) {
     getSnapshot: () => snapshot,
     refresh: schedule,
     readNow: async () => {
-      await Promise.all([background?.refresh(), deviceTasks.refresh(), context.engineId ? Promise.all([getHistoryOperations().refreshPending(context.engineId), getLibraryOpens().refreshPending(context.engineId)]) : Promise.resolve()]);
+      await Promise.all([background?.refresh(), deviceTasks.refresh(), context.engineId ? Promise.all([getHistoryOperations().refreshPending(context.engineId)]) : Promise.resolve()]);
     },
     subscribe(listener: () => void) {
       listeners.add(listener);

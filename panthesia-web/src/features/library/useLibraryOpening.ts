@@ -1,21 +1,18 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import {
-  getLibraryOpens,
-  type LibraryOpenIntent,
-  type LibraryOpenWorkspace,
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../api";
+import { reportDiagnostic } from "../../app/diagnostics";
+import type {
+  LibraryOpenIntent,
+  LibraryOpenWorkspace,
 } from "./libraryOpenStore";
 import type {
   LibraryOpenSource,
+  LibraryOpenReceipt,
   LibraryPrepared,
 } from "../../engine/commands.generated";
 
-export function useLibraryOpening({
-  engineId,
-  workspace,
-  visible,
-  canPresent,
-  present,
-}: {
+/** Opening is an ephemeral navigation operation, not a saved user task. */
+export function useLibraryOpening(options: {
   engineId?: string;
   workspace: LibraryOpenWorkspace;
   visible: boolean;
@@ -27,253 +24,148 @@ export function useLibraryOpening({
     workspace: LibraryOpenWorkspace,
   ) => Promise<boolean>;
 }) {
-  const store = getLibraryOpens();
-  const state = useSyncExternalStore(
-    store.subscribe,
-    store.getSnapshot,
-    store.getSnapshot,
+  const current = useRef(options);
+  current.current = options;
+  const active = useRef<AbortController | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const cancelPending = () => active.current?.abort();
+  useEffect(
+    () => () => {
+      active.current?.abort();
+    },
+    [options.engineId, options.workspace, options.visible],
   );
-  const [error, setError] = useState("");
-  const [submission, setSubmission] = useState<{
-    ticket: number;
-    engineId: string;
-  } | null>(null);
-  const [ready, setReady] = useState<{ id: string; ticket: number } | null>(
-    null,
-  );
-  const current = useRef({ engineId, workspace, visible, canPresent, present });
-  current.current = { engineId, workspace, visible, canPresent, present };
-  const epoch = useRef(0),
-    admission = useRef<{ ticket: number; engineId: string } | null>(null);
-  const previousWorkspace = useRef(workspace),
-    previousEngine = useRef(engineId);
-  useEffect(() => {
-    if (
-      !visible ||
-      previousWorkspace.current !== workspace ||
-      previousEngine.current !== engineId
-    ) {
-      epoch.current++;
-      store.keepPending();
-    }
-    previousWorkspace.current = workspace;
-    previousEngine.current = engineId;
-  }, [visible, workspace, engineId]);
-  useEffect(() => {
-    if (engineId) void store.refreshPending(engineId);
-  }, [engineId, store]);
-  const activeIds = state.entries
-    .filter(
-      (entry) =>
-        entry.request.engineId === engineId &&
-        ["queued", "running", "committing"].includes(
-          state.receipts[entry.request.id]?.phase ?? entry.lastPhase,
-        ),
-    )
-    .map((entry) => entry.request.id);
-  const activeKey = JSON.stringify(activeIds);
-  useEffect(() => {
-    if (!visible || !engineId || !activeIds.length) return;
-    let stopped = false,
-      timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      await Promise.all(
-        activeIds.map((id) => store.inspect(id, engineId).catch(() => {})),
-      );
-      if (!stopped) timer = setTimeout(poll, 1500);
-    };
-    timer = setTimeout(poll, 1500);
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-    };
-  }, [activeKey, visible, engineId, store]);
-  const fail = (failure: unknown) =>
-    setError(failure instanceof Error ? failure.message : String(failure));
-  const enter = async (id: string, ticket: number) => {
-    const engine = current.current.engineId,
-      owner = current.current.workspace;
-    if (!engine) throw new Error("练习室尚未连接，请稍后读取打开结果。");
-    const receipt = await store.follow(id, engine);
-    const intent = store
-      .getSnapshot()
-      .entries.find((entry) => entry.request.id === id);
-    if (!intent || !receipt) return;
-    if (
-      ticket !== epoch.current ||
-      !current.current.visible ||
-      intent.disposition !== "pending"
-    )
-      return;
-    if (["queued", "running", "committing"].includes(receipt.phase)) {
-      setReady({ id, ticket });
-      return;
-    }
-    if (receipt.phase !== "done" || !receipt.result) return;
-    if (!current.current.canPresent) {
-      setReady({ id, ticket });
-      return;
-    }
-    const presented=await current.current.present(
-      intent,
-      receipt.result.libraryPrepared,
-      () =>
-        ticket === epoch.current &&
-        current.current.visible &&
-        current.current.canPresent &&
-        current.current.engineId === engine &&
-        current.current.workspace === owner &&
-        store.getSnapshot().entries.find((entry) => entry.request.id === id)
-          ?.disposition === "pending",
-      owner,
-    );
-    if(presented) {
-      store.present(id);
-      setError("");
-    } else if(ticket===epoch.current) {
-      // Binding a just-loaded song may temporarily block presentation. Keep its
-      // completion pending until the workspace can display the installed session.
-      setReady({id,ticket});
-    }
-  };
-  useEffect(() => {
-    if (!ready || !visible || !canPresent) return;
-    setReady(null);
-    if (ready.ticket === epoch.current)
-      void enter(ready.id, ready.ticket).catch((failure) => {
-        if (ready.ticket === epoch.current) fail(failure);
-      });
-  }, [ready, visible, canPresent, engineId]);
   const start = async (
     source: LibraryOpenSource,
     title: string,
     path: string,
   ) => {
-    if (!current.current.engineId || !current.current.visible)
-      throw new Error("练习室重新连接后，可在曲库中打开曲目。");
-    const snapshot = store.getSnapshot();
-    const pending = snapshot.entries.filter(
-      (entry) => entry.disposition === "pending",
-    );
-    if (
-      admission.current?.engineId === current.current.engineId ||
-      pending.some(
-        (entry) =>
-          entry.request.engineId === current.current.engineId &&
-          !["error", "cancelled", "released"].includes(
-            snapshot.receipts[entry.request.id]?.phase ?? entry.lastPhase,
-          ),
-      )
-    )
-      throw new Error("还有待接续的曲目打开操作，请先读取结果或保留进度。");
-    for (const entry of pending) store.keep(entry.request.id);
-    setError("");
-    const ticket = ++epoch.current,
-      engine = current.current.engineId,
-      owner = current.current.workspace;
-    admission.current = { ticket, engineId: engine };
-    setSubmission({ ticket, engineId: engine });
-    // The workspace remains available while the native worker prepares the song.
-    void store
-      .create(
+    if (active.current) return false;
+    const engine = options.engineId,
+      owner = options.workspace;
+    if (!engine || !options.visible) return false;
+    const controller = new AbortController(),
+      signal = controller.signal;
+    active.current = controller;
+    setSubmitting(true);
+    const id = `library-${crypto.randomUUID()}`;
+    let submitted = false,
+      finished = false;
+    const valid = () =>
+      !signal.aborted &&
+      current.current.engineId === engine &&
+      current.current.workspace === owner &&
+      current.current.visible;
+    const wait = () =>
+      new Promise<void>((resolve, reject) => {
+        signal.throwIfAborted();
+        const abort = () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+          signal.removeEventListener("abort", abort);
+          resolve();
+        }, 150);
+        signal.addEventListener("abort", abort, { once: true });
+      });
+    const read = () =>
+      api.commandForEngine<LibraryOpenReceipt | null>(engine, {
+        type: "readLibraryOpen",
+        id,
+        metadata_only: false,
+      });
+    try {
+      const state = await api.state();
+      signal.throwIfAborted();
+      if (state.stateOrder?.engineId !== engine) return false;
+      const request = {
+        engineId: engine,
+        id,
+        createdAtMs: Date.now(),
+        origin: {
+          contentId: state.contentId ?? null,
+          scoreRevision: state.scoreRevision ?? 0,
+          midiEvents: state.midiEvents,
+          status: state.status,
+        },
         source,
+      };
+      const intent: LibraryOpenIntent = {
+        request,
         title,
         path,
-        engine,
-        () =>
-          ticket === epoch.current &&
-          current.current.visible &&
-          current.current.engineId === engine &&
-          current.current.workspace === owner,
-        owner,
-      )
-      .then((intent) => enter(intent.request.id, ticket))
-      .catch((failure) => {
-        if (ticket === epoch.current && current.current.engineId === engine)
-          fail(failure);
-      })
-      .finally(() => {
-        if (admission.current?.ticket === ticket) {
-          admission.current = null;
-          setSubmission(null);
-        }
-      });
-  };
-  return {
-    store,
-    state,
-    error,
-    submitting: submission?.engineId === engineId && !!submission,
-    clearError: () => setError(""),
-    start,
-    async reopen(id: string) {
+        workspace: owner,
+        disposition: "pending",
+        lastPhase: "unknown",
+        error: "",
+      };
+      submitted = true;
+      let receipt: LibraryOpenReceipt | null;
       try {
-        if (!current.current.canPresent)
-          throw new Error("请先完成当前编辑，再按原选择重新打开。");
-        const snapshot = store.getSnapshot();
-        const intent = snapshot.entries.find(
-          (entry) => entry.request.id === id,
-        );
-        if (!intent) throw new Error("原打开选择尚未读到。");
-        const receipt = snapshot.receipts[id];
+        receipt = await api.commandForEngine<LibraryOpenReceipt>(engine, {
+          type: "startLibraryOpen",
+          request,
+        });
+      } catch (error) {
+        reportDiagnostic("曲目打开请求", error);
+        receipt = await read();
+        if (!receipt) throw error;
+      }
+      while (valid()) {
+        if (!receipt) throw Error("曲目文件无法读取");
+        if (receipt.phase === "done") {
+          if (!receipt.result) {
+            receipt = await read();
+            continue;
+          }
+          finished = true;
+          // Source binding can finish one render after the native commit.
+          if (!current.current.canPresent) {
+            await wait();
+            continue;
+          }
+          if (
+            await current.current.present(
+              intent,
+              receipt.result.libraryPrepared,
+              () => valid() && current.current.canPresent,
+              owner,
+            )
+          )
+            return true;
+          await wait();
+          continue;
+        }
         if (
-          intent.request.engineId === current.current.engineId &&
-          receipt &&
-          ["queued", "running", "committing"].includes(receipt.phase)
+          ["error", "cancelled", "released", "unconfirmed"].includes(
+            receipt.phase,
+          )
         )
-          throw new Error("原打开仍在处理，可先读取进度或取消准备。");
-        store.keep(id);
-        await start(intent.request.source, intent.title, intent.path);
-      } catch (failure) {
-        fail(failure);
+          throw Error(receipt.error || "曲目文件无法读取");
+        await wait();
+        receipt = await read();
       }
-    },
-    async resume(id: string, retry = false) {
-      const engine = current.current.engineId,
-        owner = current.current.workspace;
-      if (!engine) return;
-      if (!current.current.canPresent) {
-        setError("请先完成当前编辑，再接续曲目打开结果。");
-        return;
+      return false;
+    } catch (error) {
+      if (signal.aborted) return false;
+      reportDiagnostic("曲目读取", error);
+      throw error;
+    } finally {
+      if (submitted) {
+        if (!finished)
+          await api
+            .commandForEngine(engine, { type: "cancelLibraryOpen", id })
+            .catch((error) => reportDiagnostic("取消曲目读取", error));
+        await api
+          .commandForEngine(engine, { type: "releaseLibraryOpen", id })
+          .catch((error) => reportDiagnostic("释放曲目读取", error));
       }
-      setError("");
-      store.resume(id);
-      const ticket = ++epoch.current;
-      try {
-        if (retry) {
-          const intent = store
-            .getSnapshot()
-            .entries.find((entry) => entry.request.id === id);
-          if (intent?.request.engineId !== engine)
-            throw new Error("原操作来自上次连接，可读取原结果后核对当前曲目。");
-          await store.retry(
-            id,
-            () =>
-              ticket === epoch.current &&
-              current.current.visible &&
-              current.current.engineId === engine &&
-              current.current.workspace === owner,
-          );
-        }
-        await enter(id, ticket);
-      } catch (failure) {
-        if (ticket === epoch.current && current.current.engineId === engine)
-          fail(failure);
+      if (active.current === controller) {
+        active.current = null;
+        setSubmitting(false);
       }
-    },
-    keep(id: string) {
-      epoch.current++;
-      store.keep(id);
-      setError("");
-    },
-    async cancel(id: string) {
-      epoch.current++;
-      if (current.current.engineId)
-        try {
-          await store.cancel(id, current.current.engineId);
-        } catch (failure) {
-          fail(failure);
-        }
-    },
+    }
   };
+  return { submitting, start, cancelPending };
 }

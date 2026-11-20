@@ -1224,3 +1224,5 @@
 .synthesia-layout .product-settings-leaf .interface-save-status {
   color: #405967;
 }
+
+.song-file-status { font-size: 12px; color: #955132; margin-left: auto; }

@@ -550,6 +550,7 @@ export const api = {
       { contentId, append: append ?? null },
     ),
   openLogs: () => invoke<void>("open_log_folder"),
+  musicFileExists: (path:string):Promise<boolean|null> => isTauri()?invoke<boolean>("music_file_exists",{path}):Promise.resolve(null),
   revealFile: (path: string) => invoke<void>("reveal_library_file", { path }),
   importFolder: () => invoke<number | null>("import_folder"),
   repairPath: (contentId: string, from: string) =>
