@@ -1,3 +1,4 @@
+import { isBlackKey, panKeyboardRange, zoomKeyboardRange, type KeyboardRange } from "./features/practice/keyboardViewport";
 import { useEffect, useMemo, useRef } from "react";
 import { PianoKeyboard } from "./features/practice/pianoKeyboard";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
@@ -18,7 +19,7 @@ import {
   type DisplayPreferences,
 } from "./displayPreferences";
 
-const sharp = (pitch: number) => [1, 3, 6, 8, 10].includes(pitch % 12);
+const sharp = isBlackKey;
 function keyGeometry(pitch: number, width: number, white: number[]) {
   const w = width / white.length;
   const index = white.filter((p) => p < pitch).length;
@@ -31,7 +32,8 @@ export function Piano({
   state,
   store,
   onNote,
-  fullRange = true,
+  keyboardRange,
+  onViewportChange,
   previewBars = 4,
   onSelect,
   display = displayDefaults,
@@ -42,26 +44,15 @@ export function Piano({
   state: Snapshot;
   store?: PlaybackStore;
   onNote: (pitch: number, active: boolean) => void;
-  fullRange?: boolean;
+  keyboardRange: KeyboardRange;
+  onViewportChange?: (range: KeyboardRange) => void;
   previewBars?: number;
   display?: DisplayPreferences;
   onSelect?: (note: LoadedSong["notes"][number]) => void;
   canInteract?: () => boolean;
   practiceRange?: PracticeRange|null;
 }) {
-  const pitches = useMemo(() => {
-    const variant = song?.practiceVariant?.active;
-    let low = fullRange || variant ? 21 : 36,
-      high = fullRange || variant ? 108 : 84;
-    if (variant)
-      for (const note of song!.notes) {
-        low = Math.min(low, note.pitch);
-        high = Math.max(high, note.pitch);
-      }
-    if (sharp(low)) low = Math.max(0, low - 1);
-    if (sharp(high)) high = Math.min(127, high + 1);
-    return Array.from({ length: high - low + 1 }, (_, i) => low + i);
-  }, [fullRange, song?.notes, song?.practiceVariant?.active]);
+  const pitches = useMemo(() => Array.from({ length: keyboardRange.high - keyboardRange.low + 1 }, (_, i) => keyboardRange.low + i), [keyboardRange.low, keyboardRange.high]);
   const white = useMemo(() => pitches.filter((p) => !sharp(p)), [pitches]);
   const black = useMemo(() => pitches.filter(sharp), [pitches]);
   const keyLayout = useMemo(
@@ -597,7 +588,7 @@ export function Piano({
       motion.removeEventListener("change", motionChanged);
       requestPaint.current = () => {};
     };
-  }, [fullRange, previewBars, display, keyLayout, white, black]);
+  }, [previewBars, display, keyLayout, white, black]);
   const release = (pointer?: number) => {
     if (pointer !== undefined) {
       const pitch = held.current.get(pointer);
@@ -627,10 +618,39 @@ export function Piano({
       document.removeEventListener("visibilitychange", hide);
       clear();
     };
-  }, [onNote, fullRange]);
+  }, [onNote, keyboardRange.low, keyboardRange.high]);
+  const viewportActions = useRef({ keyboardRange, onViewportChange, canInteract });
+  viewportActions.current = { keyboardRange, onViewportChange, canInteract };
+  useEffect(() => {
+    const element = canvas.current!;
+    let accumulated = 0;
+    let gesture = "";
+    const wheel = (event: WheelEvent) => {
+      const { keyboardRange: range, onViewportChange: change, canInteract: allowed } = viewportActions.current;
+      if ((!event.ctrlKey && !event.shiftKey) || !change || allowed?.() === false) return;
+      event.preventDefault(); event.stopPropagation();
+      const kind = event.ctrlKey ? "zoom" : "pan";
+      if (kind !== gesture) accumulated = 0;
+      gesture = kind;
+      const delta = (event.deltaY || event.deltaX) * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1);
+      accumulated += delta;
+      if (Math.abs(accumulated) < 35) return;
+      const steps = Math.max(-4, Math.min(4, Math.trunc(accumulated / 35)));
+      accumulated = 0;
+      const bounds = element.getBoundingClientRect();
+      let next = range;
+      if (kind === "zoom") for (let i = 0; i < Math.abs(steps); i++) next = zoomKeyboardRange(next, -Math.sign(steps), (event.clientX - bounds.left) / Math.max(1, bounds.width));
+      else next = panKeyboardRange(range, steps);
+      change(next);
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => element.removeEventListener("wheel", wheel);
+  }, []);
   return (
     <canvas
       ref={canvas}
+      data-key-low={keyboardRange.low}
+      data-key-high={keyboardRange.high}
       tabIndex={0}
       aria-label="按小节排列的音符与可演奏键盘"
       onPointerDown={(e) => {

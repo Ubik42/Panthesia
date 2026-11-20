@@ -1,3 +1,5 @@
+import { KeyboardRangeControls } from "./features/practice/KeyboardRangeControls";
+import { resolveKeyboardRange } from "./features/practice/keyboardViewport";
 import { PlaybackAdjustmentQueue } from "./features/practice/playbackAdjustmentQueue";
 import { PracticeContextPanel } from "./features/practice/PracticeContextPanel";
 import { product } from "./product.generated";
@@ -187,10 +189,7 @@ export default function App() {
   const { libraryOpen, inspector, setLibraryOpen, setInspector, inspectorTab, setInspectorTab } = panels;
   const panelActions = useRef({ libraryOpen, inspector, setLibraryOpen, setInspector });
   panelActions.current = { libraryOpen, inspector, setLibraryOpen, setInspector };
-  const wideKeys = display.range === 88,
-    seconds = display.previewBars;
-  const setWideKeys = (value: boolean) =>
-    setDisplay((previous) => ({ ...previous, range: value ? 88 : 49 }));
+  const seconds = display.previewBars;
   const setSeconds = (value: number) =>
     setDisplay((previous) => ({ ...previous, previewBars: value }));
   const {
@@ -378,6 +377,10 @@ export default function App() {
   useEffect(() => {
     if (view !== "paper" && historyPaperFocus) setHistoryPaperFocus(null);
   }, [view, historyPaperFocus]);
+  const pianoRange = useMemo(() => resolveKeyboardRange(display, song?.notes ?? [], state.input),
+    [display.range, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
+  const outsidePianoRange = useMemo(() => song?.notes.filter(note => note.pitch < pianoRange.low || note.pitch > pianoRange.high).length ?? 0,
+    [song?.notes, pianoRange]);
   const recital = ["recital", "memory"].includes(state.mode);
   const ladderActive = Boolean(state.ladder?.active);
   const routineActive = Boolean(state.routine);
@@ -428,9 +431,6 @@ export default function App() {
     state.passage?.start,
     state.passage?.end,
   ]);
-  useEffect(() => {
-    if (song) setWideKeys(song.notes.some((n) => n.pitch < 36 || n.pitch > 84));
-  }, [song?.contentId]);
   useEffect(() => {
     if (!song?.fingerActions?.length) return;
     let cancelled = false;
@@ -2069,17 +2069,6 @@ export default function App() {
                 界面与按键
               </button>
               <label>
-                显示
-                <select
-                  aria-label="键盘显示范围"
-                  value={wideKeys ? "88" : "49"}
-                  onChange={(e) => setWideKeys(e.target.value === "88")}
-                >
-                  <option value="49">49 键</option>
-                  <option value="88">88 键</option>
-                </select>
-              </label>
-              <label>
                 预览
                 <select
                   aria-label="预览小节数"
@@ -2095,6 +2084,8 @@ export default function App() {
               </label>
             </ToolbarMore>
           </div>
+          {(view === "keyboard" || state.mode === "memory") && <KeyboardRangeControls value={display} range={pianoRange} outside={outsidePianoRange}
+            change={patch => { if (!navigation.locked && startupReady) setDisplay(previous => ({ ...previous, ...patch })); }} />}
           <div className="piano-stage">
             {(view === "keyboard" || state.mode === "memory") && <Piano
                   song={state.mode === "memory" ? null : song}
@@ -2102,7 +2093,8 @@ export default function App() {
                   store={playback}
                   onNote={pointerNote}
                   canInteract={() => !keyboardContext.current.paused && !songOpeningActive.current && !topInputScope() && !topPopup(null)}
-                  fullRange={wideKeys}
+                  keyboardRange={pianoRange}
+                  onViewportChange={range => setDisplay(previous => ({ ...previous, range: "custom", keyboardLow: range.low, keyboardHigh: range.high }))}
                   previewBars={seconds}
                   display={display}
                   onSelect={
@@ -2911,6 +2903,7 @@ export default function App() {
       )}
       {displayDialog && (
         <DisplaySettingsDialog
+          input={state.input}
           value={display}
           change={setDisplay}
           close={() => setDisplayDialog(false)}

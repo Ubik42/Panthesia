@@ -1,0 +1,65 @@
+.keyboard-range-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  flex: none;
+  padding: 5px 16px;
+  background: var(--instrument-panel, #fff);
+  color: var(--instrument-text, #273147);
+  border-bottom: 1px solid var(--instrument-line, #dce2ed);
+  font-size: 11px;
+}
+.keyboard-range-controls > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.keyboard-range-controls :is(select, button) {
+  border: 1px solid var(--instrument-line, #dce2ed);
+  background: var(--instrument-surface, #f5f6fa);
+  color: inherit;
+  border-radius: 4px;
+  min-height: 27px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+.keyboard-range-controls output {
+  color: var(--instrument-muted, #71809a);
+  font-variant-numeric: tabular-nums;
+}
+.keyboard-range-buttons {
+  display: flex;
+  gap: 3px;
+}
+.keyboard-range-controls .keyboard-range-outside {
+  color: var(--instrument-accent, #6474d1);
+  margin-left: auto;
+}
+.keyboard-range-settings {
+  margin: 16px 0;
+  border: 1px solid var(--instrument-line, #46505b);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 0;
+}
+.keyboard-range-settings label {
+  display: grid;
+  gap: 6px;
+}
+.keyboard-range-settings p {
+  line-height: 1.6;
+  color: var(--instrument-muted, #aab8cc);
+  font-size: 12px;
+}
+.keyboard-range-limits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.keyboard-range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}

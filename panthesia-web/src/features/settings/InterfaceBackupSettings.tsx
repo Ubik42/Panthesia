@@ -1,3 +1,4 @@
+import { pitchName } from "../../engine/musicFormatting";
 import {
   loadInterfaceBackup,
   exportCurrentInterface,
@@ -28,6 +29,7 @@ const labels: Record<string, string> = {
   fontSize: "提示字号",
   palette: "声部配色",
   range: "键盘范围",
+  keyboardLow: "自定义最低音", keyboardHigh: "自定义最高音", keyboardDeviceRanges: "MIDI 设备音域",
   previewBars: "预览小节",
   libraryOpen: "显示曲库",
   inspector: "显示练习参数",
@@ -64,7 +66,10 @@ const describe = (v: unknown) =>
           } as Record<string, string>
         )[String(v)] ?? String(v));
 const settingText = (key: string, v: unknown) =>
-  key === "uiScale"
+  key === "keyboardDeviceRanges"
+    ? Object.entries(v as Record<string, {low:number; high:number}>).map(([name, range]) => `${name}：${pitchName(range.low)}–${pitchName(range.high)}`).join("；") || "未设置"
+    : key === "keyboardLow" || key === "keyboardHigh" ? pitchName(Number(v))
+    : key === "uiScale"
     ? `${v}%`
     : key === "tonic"
       ? ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"][
@@ -79,7 +84,7 @@ const settingText = (key: string, v: unknown) =>
           ].includes(key)
         ? `${v} 像素`
         : key === "range"
-          ? `${v} 键`
+          ? (({song:"按歌曲音域",device:"按 MIDI 键盘",custom:"自定义音域"} as Record<string,string>)[String(v)] ?? `${v} 键`)
           : key === "previewBars"
             ? `${v} 小节`
             : key === "keyboardOctave"

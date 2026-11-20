@@ -1,3 +1,4 @@
+import { KeyboardRangeSettings } from "./KeyboardRangeSettings";
 import { InterfaceDisplayPreview } from "./InterfaceDisplayPreview";
 import { PianoEffectsSettings } from "./PianoEffectsSettings";
 import { PianoAppearancePreview } from "./PianoAppearancePreview";
@@ -29,10 +30,12 @@ import {
 } from "../../displayPreferences";
 export function DisplaySettingsDialog({
   value,
+  input = null,
   change,
   close,
 }: {
   value: DisplayPreferences;
+  input?: string | null;
   change: (value: DisplayPreferences) => void;
   close: () => void;
 }) {
@@ -267,21 +270,6 @@ export function DisplaySettingsDialog({
                       </select>
                     </label>
                     <label>
-                      键盘范围
-                      <select
-                        aria-label="屏幕键盘范围"
-                        value={value.range}
-                        onChange={(event) =>
-                          update({
-                            range: Number(event.target.value) as 49 | 88,
-                          })
-                        }
-                      >
-                        <option value={49}>49 键 · 集中查看</option>
-                        <option value={88}>88 键 · 完整钢琴</option>
-                      </select>
-                    </label>
-                    <label>
                       前方预览
                       <select
                         aria-label="键盘音符预览小节数"
@@ -298,6 +286,7 @@ export function DisplaySettingsDialog({
                       </select>
                     </label>
                   </div>
+                  <KeyboardRangeSettings value={value} change={update} input={input} />
                   <div className="display-settings-checks">
                     {[["octave", "显示音区数字"]].map(([key, label]) => (
                       <label key={key}>
@@ -484,6 +473,7 @@ export function DisplaySettingsDialog({
                   fontSize: displayDefaults.fontSize,
                   palette: displayDefaults.palette,
                   range: displayDefaults.range,
+                  keyboardLow: displayDefaults.keyboardLow, keyboardHigh: displayDefaults.keyboardHigh,
                   previewBars: displayDefaults.previewBars,
                 });
                 setError("");

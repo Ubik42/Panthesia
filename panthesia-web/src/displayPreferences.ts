@@ -1,3 +1,4 @@
+import { normalizeDeviceRanges, type KeyboardRangeMode, type KeyboardRange } from "./features/practice/keyboardViewport";
 import {
   normalizeShortcuts,
   shortcutDefaults,
@@ -28,7 +29,10 @@ export type DisplayPreferences = {
   octave: boolean;
   fontSize: number;
   palette: "standard" | "accessible";
-  range: 49 | 88;
+  range: KeyboardRangeMode;
+  keyboardLow: number;
+  keyboardHigh: number;
+  keyboardDeviceRanges: Record<string, KeyboardRange>;
   previewBars: number;
   libraryOpen: boolean;
   inspector: boolean;
@@ -93,7 +97,8 @@ export const displayDefaults: DisplayPreferences = {
   octave: true,
   fontSize: 10,
   palette: "standard",
-  range: 49,
+  range: "song",
+  keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
   libraryOpen: false,
   inspector: false,
@@ -170,7 +175,10 @@ export function normalizeDisplayPreferences(
         : 0,
     octave: typeof raw.octave === "boolean" ? raw.octave : true,
     fontSize: [10, 12, 14, 16].includes(raw.fontSize ?? 0) ? raw.fontSize! : 10,
-    range: raw.range === 88 ? 88 : 49,
+    range: raw.range === 49 || raw.range === 88 || raw.range === "device" || raw.range === "custom" ? raw.range : "song",
+    keyboardLow: size(raw.keyboardLow, 0, 116, 36),
+    keyboardHigh: Math.max(size(raw.keyboardLow, 0, 116, 36) + 11, size(raw.keyboardHigh, 11, 127, 84)),
+    keyboardDeviceRanges: normalizeDeviceRanges(raw.keyboardDeviceRanges),
     previewBars: [2, 4, 8, 12].includes(raw.previewBars ?? 0)
       ? raw.previewBars!
       : 4,

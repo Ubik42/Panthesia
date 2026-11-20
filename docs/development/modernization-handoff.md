@@ -182,6 +182,19 @@ P3/P4 按 roadmap 推进。P1 与上述 P2 主流程已落地；重新记谱和�
 
 后续集中按主流程做交付审计及原功能矩阵未完成项；复杂曲目记谱质量和外部推理环境仍需对应实际使用范围。整体 Goal 继续 active。
 
+## P3 / P4：歌曲、设备与自定义键盘取景批次
+
+- 新增 keyboardViewport 纯计算模块，统一音域、白键边缘、按歌曲取景、缩放和平移。Piano 与瀑布消费同一个范围，指针击键继续使用同一几何。删除 fullRange 布尔分支及 App 换歌时强制改写 49 / 88 键的副作用，练习变换不再强制展开 88 键。
+- 新增取景工具栏：歌曲音域、49 / 88 键、MIDI 设备和自定义范围；显示实际音区、视窗外音符数量及适合歌曲入口。放大 / 缩小与平移按钮立即生效，Ctrl + 滚轮以指针位置缩放，Shift + 滚轮平移；普通滚轮继续交给原界面滚动。变化时释放屏幕按住的琴键，避免持音残留。
+- 显示设置新增自定义上下限和实体键盘音域，支持常用 25 / 49 / 61 / 76 / 88 键预置。设备配置按 MIDI 输入名称保存；未设置的设备明确提示暂用 88 键，用户输入音域不冒充硬件自动识别。只影响显示，范围外自动伴奏 / 移八度策略仍属 P14 未完成范围。
+- 新范围进入现有偏好事务与界面备份，旧备份缺少新字段时仍可读取；旧 49 / 88 键设置保持原值。新资料默认歌曲音域。备份预览显示设备与音区名称。
+
+受影响 Desktop Debug / 前端构建通过。一次取景边界检查覆盖 MIDI 0–127、单音极端位置、缩放和平移的白键一致性、两个设备范围的独立选择及固定范围保持，见 work/keyboard-viewport-domain.log。实际桌面使用全新隔离资料 work/keyboard-viewport-runtime：五指练习取景 50–76，放大 / 平移至 64–86，Ctrl 滚轮至 67–83；选择 49 键再换至低音练习仍为 36–84。播放中缩放与平移前后状态均为 playing，位置从 0.0003022 前进至 0.0747993 秒。为已连接 Keystation 61 MK3 设置 36–96，偏好实际保存后重启，显示继续为该 61 键范围。
+
+证据：work/keyboard-viewport-desktop.log；work/keyboard-viewport-runtime/viewport-evidence.json、reopen-evidence.json、zoom-pan.png、device-range.png、reopened.png。首段自动化曾在预备拍操作，后续补充 playing 场景；持久化检查等待实际保存完成，最终以 settings / playing / reopen 字段为准。未跑全套回归。
+
+P05 / P06 主行为已落地。P07 按白键逐档缩放和平移，像素级连续取景仍记为部分；设备范围外音符的伴奏 / 移八度尚未实现。其余原功能矩阵状态继续有效，整体 Goal active。
+
 ## 交付状态
 
 当前可试用运行包为 outputs/releases/Panthesia-20261119-score-workflow，程序源码提交 324387e，增加采用前谱页预览、直接返回演奏与谱面管理皮肤。构建包含工作区原有曲库路径调整，manifest 标记 dirty=true，源码指纹 E0B97E1CB127F57F32453A4B43C35BEB12A0D928A2ECF69960ACC186C150D186。29 个文件哈希一致；独立 --window-check 返回 PASS：visible、frontend、IPC、audio、notationWasm、pdfPages 均 ready，内置曲库 5 首、9 音符、MIDI 已连接。见 work/score-workflow-release.log 及 work/score-workflow-package-check/release-evidence.json / startup.log。
