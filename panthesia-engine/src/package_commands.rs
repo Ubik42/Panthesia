@@ -388,7 +388,8 @@ impl Player {
             preferences.track_sounds.insert(id.clone(),m.track_sounds.clone());
             preferences.track_appearances.insert(id.clone(),m.track_appearances.clone());
             preferences.passages.insert(id.clone(), m.passages.clone());
-            preferences.bookmarks.insert(id.clone(),m.bookmarks.clone());
+            // Older packages do not describe bookmarks; replacing their supported data must keep local positions.
+            if m.version>=18 {preferences.bookmarks.insert(id.clone(),m.bookmarks.clone());}
             preferences
                 .hand_span_profiles
                 .insert(id.clone(), m.hand_profiles.clone());

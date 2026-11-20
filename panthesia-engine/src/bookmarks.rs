@@ -240,7 +240,7 @@ mod tests {
         let package_bytes: Vec<u8> =
             serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone())
                 .unwrap();
-        let package = crate::piece_package::Package::decode(&package_bytes).unwrap();
+        let mut package = crate::piece_package::Package::decode(&package_bytes).unwrap();
         assert_eq!(package.manifest.version, 18);
         assert_eq!(package.manifest.bookmarks[0].tick, 240);
         let mut target = Player::new(root.join("target"), PathBuf::new(), true);
@@ -251,6 +251,9 @@ mod tests {
             })
             .unwrap();
         assert_eq!(target.preferences.bookmarks[&cid][0].id, id);
+        package.manifest.version=17;package.manifest.bookmarks.clear();
+        target.command(Command::ImportPackage{bytes:package.encode().unwrap(),policy:"replace".into()}).unwrap();
+        assert_eq!(target.preferences.bookmarks[&cid][0].id,id);
         p.remove_bookmark(&cid, id).unwrap();
         assert!(p.preferences.bookmarks[&cid].is_empty());
         assert_eq!(std::fs::read(source).unwrap(), bytes);
