@@ -214,9 +214,7 @@ impl Player {
                 ))
             })
             .clone();
-        let replay = (!self.closing.load(Ordering::Acquire)
-            && self.routine.is_none()
-            && !self.ladder.as_ref().is_some_and(|run| run.active))
+        let replay = (!self.closing.load(Ordering::Acquire))
         .then(|| self.capture_asset_context(true, false));
         self.storage_id = Some(id);
         self.storage_busy.store(true, Ordering::Release);

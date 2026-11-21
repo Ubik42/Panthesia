@@ -7,11 +7,6 @@ import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import type { ScoreMappingRequest } from "./features/scores/mappingTypes";
 import type { PracticeRange } from "./features/practice/usePracticeRange";
 import { TaskActivity } from "./engine/TaskActivity";
-import { ScoreHistoryReview } from "./ScoreHistoryReview";
-import type {
-  HistoryScoreFocus,
-  HistoryScoreReview,
-} from "./historyScoreFocus";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   api,
@@ -60,13 +55,6 @@ export function Notation({
   edit,
   onEdit,
   canEdit,
-  historyFocus,
-  clearHistoryFocus,
-  historyReview,
-  clearHistoryReview,
-  practiceHistoryReview,
-  openOriginalHistoryReview,
-  openHistoryPlan,
   toolRequest,
   clearToolRequest,
   selectPracticeNote,
@@ -87,18 +75,6 @@ export function Notation({
   edit: boolean;
   canEdit: boolean;
   onEdit: (value: boolean) => void;
-  historyFocus?: HistoryScoreFocus | null;
-  clearHistoryFocus?: () => void;
-  historyReview?: HistoryScoreReview | null;
-  clearHistoryReview: () => void;
-  openOriginalHistoryReview: (signal: AbortSignal) => Promise<void>;
-  openHistoryPlan: (id: string, day: string | null) => void;
-  practiceHistoryReview: (
-    reference: number,
-    before: number,
-    after: number,
-    source?: import("./features/review/historySource").HistorySource,
-  ) => Promise<void>;
 }) {
   const [rangeSelection, setRangeSelection] = useState<{
     first: number;
@@ -385,97 +361,6 @@ export function Notation({
       setRangeAnchor({position:state.position});
     }
   },[asset,follow,loading,state.position,song.duration]);
-  useEffect(() => {
-    if (historyFocus && ["playing", "countIn"].includes(state.status))
-      setFollow(true);
-  }, [historyFocus?.request, state.status]);
-  const focusApplied = useRef("");
-  const focusTargets = useMemo(
-    () =>
-      historyFocus?.contentId === song.contentId
-        ? mapping.filter(
-            (m) =>
-              m.track === historyFocus.track &&
-              m.index === historyFocus.index &&
-              m.pitch === historyFocus.pitch,
-          )
-        : [],
-    [mapping, historyFocus, song.contentId],
-  );
-  const focusReliable =
-    historyFocus?.scoreRevision === song.scoreRevision &&
-    asset?.readiness === "Ready" &&
-    new Set(focusTargets.map((m) => `${m.page}:${m.id}`)).size === 1;
-  useEffect(() => {
-    if (!historyFocus || !focusReliable || loading) return;
-    const key = `${historyFocus.request}:${song.scoreRevision}`;
-    if (focusApplied.current !== key) {
-      focusApplied.current = key;
-      setFollow(false);
-      setPage(focusTargets[0].page);
-    }
-  }, [historyFocus, focusReliable, focusTargets, loading, song.scoreRevision]);
-  useEffect(() => {
-    const el = root.current;
-    if (!el) return;
-    el.querySelectorAll(".history-score-outline").forEach((n) => n.remove());
-    el.querySelectorAll(".history-score-note").forEach((n) => {
-      n.classList.remove("history-score-note");
-      n.removeAttribute("data-history-grade");
-    });
-    if (!historyFocus || !focusReliable || loading) return;
-    const note = focusTargets[0];
-    if (note.page !== page) return;
-    const target = el.querySelector<SVGGraphicsElement>(
-      `[id="${CSS.escape(note.id)}"]`,
-    );
-    if (!target) return;
-    target.classList.add("history-score-note");
-    target.setAttribute("data-history-grade", historyFocus.kind);
-    const head =
-      target.querySelector<SVGGraphicsElement>(".notehead") ?? target;
-    const svg = target.ownerSVGElement,
-      ctm = svg?.getScreenCTM();
-    if (svg && ctm) {
-      const box = head.getBoundingClientRect(),
-        inverse = ctm.inverse();
-      const a = new DOMPoint(box.left - 7, box.top - 7).matrixTransform(
-          inverse,
-        ),
-        b = new DOMPoint(box.right + 7, box.bottom + 7).matrixTransform(
-          inverse,
-        );
-      const outline = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "rect",
-      );
-      outline.setAttribute("class", "history-score-outline");
-      outline.setAttribute("x", String(a.x));
-      outline.setAttribute("y", String(a.y));
-      outline.setAttribute("width", String(b.x - a.x));
-      outline.setAttribute("height", String(b.y - a.y));
-      outline.setAttribute("rx", String(4 / Math.hypot(ctm.a, ctm.b)));
-      outline.setAttribute("fill", "none");
-      outline.setAttribute(
-        "stroke",
-        historyFocus.kind === "missed" ? "#bc4242" : "#b07912",
-      );
-      outline.setAttribute(
-        "stroke-width",
-        String(2 / Math.hypot(ctm.a, ctm.b)),
-      );
-      outline.setAttribute("pointer-events", "none");
-      outline.style.fill = "none";
-      outline.style.stroke =
-        historyFocus.kind === "missed" ? "#bc4242" : "#b07912";
-      outline.style.strokeWidth = String(2 / Math.hypot(ctm.a, ctm.b));
-      svg.append(outline);
-    }
-    const frame = requestAnimationFrame(() =>
-      target.scrollIntoView({ block: "center", inline: "center" }),
-    );
-    return () => cancelAnimationFrame(frame);
-  }, [historyFocus, focusReliable, focusTargets, loading, page, html]);
   const timeIndex = useMemo(() => new NotationTimeIndex(mapping), [mapping]);
   useEffect(() => {
     const {active: current, next} = timeIndex.at(state.position);
@@ -800,63 +685,6 @@ export function Notation({
       {asset?.practiceNotationKind === "simplified" && <p className="score-rhythm-note">书面节奏按十六分音符整理，演奏保持原时序。复杂节奏可从“添加 / 管理谱面”使用 DuET 制谱。</p>}
         </ToolbarMore>
       </div>
-      {historyReview?.contentId === song.contentId && (
-        <ScoreHistoryReview
-          engineId={song.engineId ?? undefined}
-          key={`${historyReview.historyId}:${historyReview.scoreRevision}`}
-          review={historyReview}
-          openPlan={openHistoryPlan}
-          mapping={mapping}
-          root={root}
-          page={page}
-          markup={pageView.markup}
-          ready={
-            !loading &&
-            asset?.readiness === "Ready" &&
-            historyReview.scoreRevision === song.scoreRevision
-          }
-          blocked={
-            state.recording ||
-            !!state.routine ||
-            !!state.ladder?.active ||
-            ["playing", "countIn"].includes(state.status) ||
-            !!state.pressed.length
-          }
-          selectPage={setPage}
-          pauseFollow={() => setFollow(false)}
-          practice={practiceHistoryReview}
-          openOriginal={openOriginalHistoryReview}
-          close={clearHistoryReview}
-        />
-      )}
-      {historyFocus?.contentId === song.contentId && (
-        <div className="score-history-focus" role="status">
-          <span>
-            历史参考音 · 演奏第 {historyFocus.measure} 小节 ·{" "}
-            {pitchName(historyFocus.pitch)} ·{" "}
-            {(
-              {
-                onTime: "准时",
-                early: "偏早",
-                late: "偏晚",
-                missed: "漏音",
-                pending: "未计分",
-                approximate: "近似对照",
-              } as Record<string, string>
-            )[historyFocus.kind] ?? historyFocus.kind}
-          </span>
-          <span>
-            {loading
-              ? "正在定位谱面…"
-              : focusReliable
-                ? "已标出当前关联乐谱中的对应音，反复位置按所选那次演奏定位。"
-                : historyFocus.scoreRevision !== song.scoreRevision
-                  ? "关联乐谱已更新，请回到历史重新定位；选段仍可练习。"
-                  : "当前谱面尚无可靠的唯一对应，请先校对乐谱；选段仍可练习。"}
-          </span>
-          <button onClick={clearHistoryFocus}>清除历史标记</button>
-        </div>
-      )}
       {rangeSelection && (
         <ScoreRangeDialog
           song={song}

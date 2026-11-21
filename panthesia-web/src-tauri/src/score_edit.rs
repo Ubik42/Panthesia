@@ -126,14 +126,6 @@ impl Drop for Reservation {
 pub fn reserve(state: &crate::State, id: &str) -> Result<Lease, String> {
     Lease::take(state.score_saves.clone(), id, &state.closing, None)
 }
-pub fn reserve_draft(state: &crate::State, id: &str) -> Result<Lease, String> {
-    Lease::take(
-        state.score_saves.clone(),
-        id,
-        &state.closing,
-        Some(&state.allow_closing_drafts),
-    )
-}
 #[derive(Clone)]
 struct Cache {
     data: PathBuf,

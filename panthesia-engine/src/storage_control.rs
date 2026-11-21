@@ -19,8 +19,6 @@ pub(super) fn allowed(command: &Command) -> bool {
     matches!(
         command,
         Command::Panic
-            | Command::ReadHistoryOperation { .. }
-            | Command::CancelHistoryOperation { .. }
             | Command::ReadLibraryOpen { .. }
             | Command::CancelLibraryOpen { .. }
             | Command::Pause

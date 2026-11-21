@@ -42,7 +42,7 @@ export function TickRangeDialog({
   changed,
 }: {
   song: LoadedSong;
-  state: Pick<Snapshot, "routine" | "recording" | "status">;
+  state: Pick<Snapshot, "recording" | "status">;
   first: number;
   last: number;
   preset?: Preset;
@@ -278,7 +278,6 @@ export function TickRangeDialog({
   const blocked =
     sourceChanged ||
     !!edits.pendingRefresh ||
-    !!state.routine ||
     !!state.recording ||
     ["playing", "countIn"].includes(state.status);
   return (

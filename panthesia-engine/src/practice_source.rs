@@ -38,7 +38,6 @@ impl SourceIdentity {
                 latency: player.state.latency,
                 hands: player.state.hands.clone(),
                 rounds: player.state.rounds,
-                adaptive: player.state.adaptive,
             },
             note_playback: player.config.note_playback_rules(),
             speed: player.state.speed.to_bits(),

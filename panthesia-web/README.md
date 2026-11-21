@@ -129,7 +129,6 @@ Tauri 隐藏窗口检查可设置 `PANTHESIA_HEADLESS_CHECK=1`；实际桌面启
 通过 Tauri IPC 读取内置 MIDI 并初始化音色和音频设备，成功后返回退出码 0。
 检查不打开远程调试端口，也不播放音符。
 所有启动检查必须设置 `PANTHESIA_DATA_ROOT` 为独立检查目录；窗口设置、缓存与练习资料一同隔离。
-Release 包可用 `scripts/verify-portable.ps1 -Package <运行包目录>` 检查：校验资源，导入乐谱，完成两轮模拟输入，关闭后重新启动并继续一轮。检查使用无声引擎，并分别初始化音色、音频设备、乐谱 WASM 和 PDF 渲染器。结果与资料保存在独立目录；真实键盘和声音质量需另行验收。
 
 运行包可通过仓库的 `scripts/package-web-practice.ps1 -Destination <目录>` 重建，
 包含 `Panthesia.exe`、`default.sf2` 和中文使用说明。

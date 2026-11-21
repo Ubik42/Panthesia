@@ -280,7 +280,6 @@ pub fn command_paths(command: &crate::Command) -> Vec<PathBuf> {
         | crate::Command::InspectSong { path, .. }
         | crate::Command::SongPreview { path }
         | crate::Command::SetLibraryCollection { path, .. }
-        | crate::Command::SaveSongLearning { path, .. }
         | crate::Command::LibraryMetadataHistory { path, .. } | crate::Command::PreviewMetadataRestore { path, .. } | crate::Command::RestoreLibraryMetadata { path, .. }
         | crate::Command::PreviewLibraryMetadata { path, .. }
         | crate::Command::ReadLibraryMetadata { path, .. }

@@ -70,14 +70,6 @@ impl ScoreAsset {
         check()?;
         Ok(prepared)
     }
-    pub(crate) fn from_document(
-        bytes: Vec<u8>,
-        name: String,
-        score: Score,
-        file: &MidiFile,
-    ) -> Result<Self, String> {
-        Self::from_document_checked(bytes, name, score, file, &|| Ok(()))
-    }
     pub(crate) fn from_document_checked(
         bytes: Vec<u8>,
         name: String,
@@ -197,11 +189,6 @@ impl ScoreAsset {
             }
         }
         marks
-    }
-    pub fn payload(&self, file: Option<&MidiFile>) -> serde_json::Value {
-        let mut result = self.route_payload(file);
-        result["bytes"] = serde_json::json!(self.bytes);
-        result
     }
     /// Route readers do not need a JSON number for every byte in the source file.
     pub fn route_payload(&self, file: Option<&MidiFile>) -> serde_json::Value {

@@ -276,7 +276,6 @@ fn execute(reader: &mut Player, command: Command) -> Result<Value, String> {
     }
 }
 pub(crate) struct Context {
-    scope: Option<preferences::Shared<crate::practice_conditions::Scope>>,
     engine_id: Option<String>,
     undo: Option<crate::practice_edit::Undo>,
     data: PathBuf,
@@ -298,8 +297,6 @@ pub(crate) struct Context {
     meter: Option<panthesia_core::library::MeterCorrection>,
     revision: u64,
     presets: SoundPresets,
-    routine: Option<ActivePlan>,
-    ladder: Option<preferences::LadderRun>,
 }
 pub(crate) struct Outcome {
     preferences: Option<Preferences>,
@@ -366,7 +363,6 @@ impl Context {
     }
     pub(super) fn into_player(self, rebuild_timeline: bool) -> Result<Player, String> {
         let mut player = Player::empty(self.data, PathBuf::new(), true);
-        player.projections.scope.replace(self.scope);
         player.detached_engine_id = self.engine_id;
         if let Some(preferences) = self.preferences {
             player.preferences = preferences;
@@ -392,8 +388,6 @@ impl Context {
         player.meter_correction = self.meter;
         player.score_revision = self.revision;
         player.soundfont_presets = self.presets;
-        player.routine = self.routine;
-        player.ladder = self.ladder;
         if let Some(file) = &player.file {
             if rebuild_timeline {
                 let timeline = match self.timeline {
@@ -759,20 +753,15 @@ impl Engine {
                 };
                 check_receipt_ready()?;
                 token.stage(if library_read {
-                    if matches!(command, Command::ReadSongLearning { .. }) {
-                        "readingLearning"
-                    } else {
-                        "readingLibrary"
-                    }
+                    "readingLibrary"
                 } else if editor_read {
                     "preparingPractice"
                 } else {
                     "readingScore"
                 })?;
                 token.check()?;
-                let observation = engine.observe_writers();
-                let learning_read = matches!(&command, Command::ReadSongLearning { .. });
-                let mut result = if library_read {
+                let _observation = engine.observe_writers();
+                let result = if library_read {
                     // Library queries never publish their transient index changes.
                     // Candidate scans do not retain every MIDI as a transaction input.
                     crate::library_edits::read(command, &engine.data, &|| token.check())?
@@ -822,7 +811,6 @@ impl Engine {
                     engine.dispatch(command)?
                 };
                 token.check()?;
-                if learning_read { result["writeSettled"] = serde_json::json!(engine.writers_settled(&observation)); }
                 Ok(result)
             },
         )
@@ -940,12 +928,8 @@ impl Player {
         if apply {
             self.check_unsaved_switch()?;
         }
-        if apply
-            && (self.routine.is_some()
-                || self.ladder.as_ref().is_some_and(|run| run.active)
-                || matches!(self.state.status.as_str(), "playing" | "countIn"))
-        {
-            return Err("请先停止演奏和练习计划，再应用原谱更新".into());
+        if apply && matches!(self.state.status.as_str(), "playing" | "countIn") {
+            return Err("请先停止演奏，再应用原谱更新".into());
         }
         self.panic();
         if matches!(self.state.status.as_str(), "playing" | "countIn") {
@@ -972,7 +956,6 @@ impl Player {
         let mut state = self.state.clone();
         state.content_id = self.file.as_ref().map(|file| file.content_id.clone());
         Context {
-            scope: runtime.then(|| self.projections.scope.borrow().clone()).flatten(),
             engine_id: self.source_engine_id().map(str::to_owned),
             undo: None,
             data: self.data.clone(),
@@ -1002,8 +985,6 @@ impl Player {
             meter: self.meter_correction,
             revision: self.score_revision,
             presets: self.soundfont_presets.clone(),
-            routine: runtime.then(|| self.routine.clone()).flatten(),
-            ladder: runtime.then(|| self.ladder.clone()).flatten(),
         }
     }
     pub(super) fn finish_asset_edit(

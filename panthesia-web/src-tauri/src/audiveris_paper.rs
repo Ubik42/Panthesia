@@ -464,7 +464,7 @@ fn convert_with_timeout(
 #[tauri::command]
 pub async fn recognize_paper_with_audiveris(
     state: tauri::State<'_, super::State>,
-    transfers: tauri::State<'_, crate::practice_backup_bridge::Sessions>,
+    transfers: tauri::State<'_, crate::file_transfer::Sessions>,
     content_id: String,
     book_id: String,
     expected_pages: Vec<PageIdentity>,
@@ -476,7 +476,7 @@ pub async fn recognize_paper_with_audiveris(
         return Err("识谱 PDF 只能使用一种传输方式".into());
     }
     let uploaded = prepared_pdf_session
-        .map(|id| crate::practice_backup_bridge::take_score_input(&transfers, &id))
+        .map(|id| crate::file_transfer::take_score_input(&transfers, &id))
         .transpose()?;
     let tracked = job.is_some();
     let guard = state.score_jobs.begin(

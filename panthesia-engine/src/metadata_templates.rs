@@ -311,5 +311,7 @@ mod tests {
     }
 }
 
+#[cfg(test)]
 pub fn snapshot_unlocked(data:&Path)->Result<BTreeMap<String,Rules>,String>{Ok(read(data)?.templates)}
+#[cfg(test)]
 pub fn merge_bytes_unlocked(data:&Path,incoming:&BTreeMap<String,Rules>,replace:bool)->Result<Option<Vec<u8>>,String>{let mut value=read(data)?;let before=value.templates.clone();for(name,rules)in incoming{if name!=name.trim()||name.trim().is_empty()||name.chars().count()>80||name.chars().any(char::is_control){return Err("备份模板名称无效".into());}validate(rules)?;if replace||!value.templates.contains_key(name){value.templates.insert(name.clone(),rules.clone());}}if value.templates.len()>50{return Err("合并后资料模板超过 50 套，请先整理本地模板".into());}if value.templates==before{return Ok(None);}value.revision=value.revision.checked_add(1).ok_or("模板版本超出范围")?;value.version=required_version(&value.templates);Ok(Some(serde_json::to_vec_pretty(&value).map_err(|e|e.to_string())?))}

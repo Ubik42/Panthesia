@@ -20,7 +20,6 @@ pub mod synthesia_metadata;
 pub mod musicxml;
 pub mod practice;
 pub mod practice_history;
-pub mod speed_ladder;
 pub mod repertoire;
 pub mod score_document;
 pub mod score_alignment;

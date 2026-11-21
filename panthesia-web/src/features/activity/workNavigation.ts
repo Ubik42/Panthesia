@@ -34,11 +34,6 @@ export async function openWorkEntry(
     return { ok: false, error: "已取消打开，原任务继续保留。" };
   const unavailable = host.unavailable(entry.target);
   if (unavailable) return { ok: false, error: unavailable };
-  if (["routine", "ladder", "replay", "history-action"].includes(entry.target))
-    return {
-      ok: false,
-      error: "这项旧训练任务属于独立评分分支，原记录继续保留。",
-    };
   if (["scores", "score", "passage", "hands", "meter"].includes(entry.target)) {
     if (!entry.source)
       return {
@@ -97,7 +92,6 @@ export async function openWorkEntry(
     switch (entry.target) {
       case "imports":
       case "package":
-      case "backup":
       case "devices":
       case "exercise":
       case "drafts":

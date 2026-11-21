@@ -45,23 +45,3 @@ pub(crate) fn encode<T: Serialize, W: Write>(
         .map_err(|error| error.to_string())
 }
 
-pub(crate) fn measure<T: Serialize>(
-    value: &T,
-    limit: usize,
-    check: impl Fn() -> Result<(), String>,
-) -> Result<usize, String> {
-    struct Count(usize);
-    impl Write for Count {
-        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-            self.0 = self
-                .0
-                .checked_add(bytes.len())
-                .ok_or_else(|| io::Error::other("序列化大小无效"))?;
-            Ok(bytes.len())
-        }
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-    encode(value, Count(0), limit, check).map(|count| count.0)
-}

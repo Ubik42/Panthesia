@@ -433,13 +433,13 @@ pub(super) fn same_reviewed(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Command, KeyboardRange};
+    
     use panthesia_core::{
-        exercise::{ExercisePlan, ExerciseSpec},
+        exercise::ExerciseSpec,
         practice::{AttemptSummary, PracticeHands, PracticePart},
         practice_history::{PracticeSessionContext, PracticeSessionKind},
     };
-    use std::{collections::BTreeMap, io::Write};
+    use std::collections::BTreeMap;
     fn session(
         file: &MidiFile,
         sidecar: &SongSidecar,
@@ -486,124 +486,5 @@ mod tests {
         });
         value.scope = file_scope(file, sidecar, &value);
         value
-    }
-    #[test]
-    fn reviewed_alias_compares_proven_history_without_editing_attempts_and_revokes() {
-        let root = std::env::temp_dir().join(format!(
-            "legacy-history-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        fs::create_dir_all(root.join("song-assets")).unwrap();
-        let spec = ExerciseSpec {
-            hands: ExerciseHands::Left,
-            ..Default::default()
-        };
-        let plan = ExercisePlan::generate(spec, &KeyboardRange::new(21..=108)).unwrap();
-        let cid = plan.practice_id();
-        let source = root.join("song-assets").join(format!("{cid}.mid"));
-        let mut smf = plan.to_smf().unwrap();
-        smf.tracks.remove(1);
-        let mut bytes = vec![];
-        smf.write_std(&mut bytes).unwrap();
-        fs::File::create(&source)
-            .unwrap()
-            .write_all(&bytes)
-            .unwrap();
-        library::save_song_sidecar(&source, &cid, SongSidecar::default()).unwrap();
-        let mut p = Player::new(root.clone(), PathBuf::new(), true);
-        p.command(Command::Generate { spec }).unwrap();
-        let e = evidence(&p, &cid).unwrap();
-        let old = session(&e.old, &e.old_sidecar, spec, "old-left", 1);
-        let current = session(&e.active, &e.active_sidecar, spec, "new-left", 2);
-        assert_ne!(old.scope, current.scope);
-        assert!(practice_conditions::same_reviewed_left_layout(
-            &old, &current
-        ));
-        p.history
-            .record_session(&cid, "左手练习", old.clone())
-            .unwrap();
-        p.history
-            .record_session(&cid, "左手练习", current.clone())
-            .unwrap();
-        let history_before = p.history.snapshot_bytes().unwrap();
-        let candidate = preview(&p, &cid).unwrap();
-        assert_eq!(candidate["rows"][0]["eligible"], true);
-        assert!(
-            update(&p, &cid, "old-left", "new-left", "outdated", true)
-                .unwrap_err()
-                .contains("重新检查")
-        );
-        let mut slower = current.clone();
-        slower.speed = 0.8;
-        assert_eq!(
-            pair_reason(&e, &old, &slower),
-            Some("速度、音符覆盖或其他演奏条件不同")
-        );
-        assert_eq!(
-            p.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            0
-        );
-        let token = candidate["fingerprint"].as_str().unwrap();
-        update(&p, &cid, "old-left", "new-left", token, true).unwrap();
-        let detail = p.history_detail(&cid, "new-left").unwrap();
-        assert_eq!(detail["comparison"]["count"], 1);
-        assert_eq!(detail["comparison"]["reviewedLegacyCount"], 1);
-        assert_eq!(p.history.snapshot_bytes().unwrap(), history_before);
-        let mut reopened = Player::new(root.clone(), PathBuf::new(), true);
-        assert_eq!(
-            reopened.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            1
-        );
-        reopened.command(Command::Generate { spec }).unwrap();
-        assert_eq!(
-            reopened.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            1
-        );
-        let after = preview(&reopened, &cid).unwrap();
-        update(
-            &reopened,
-            &cid,
-            "old-left",
-            "new-left",
-            after["fingerprint"].as_str().unwrap(),
-            false,
-        )
-        .unwrap();
-        assert_eq!(
-            reopened.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            0
-        );
-        let fresh = preview(&reopened, &cid).unwrap();
-        update(
-            &reopened,
-            &cid,
-            "old-left",
-            "new-left",
-            fresh["fingerprint"].as_str().unwrap(),
-            true,
-        )
-        .unwrap();
-        assert_eq!(
-            reopened.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            1
-        );
-        let current_side = library::metadata_sidecar_path(&e.active_path);
-        let mut changed = library::load_song_sidecar(&e.active_path, &cid).unwrap();
-        changed.metadata.notes = Some("后来改动的资料".into());
-        library::save_song_sidecar(&e.active_path, &cid, changed).unwrap();
-        assert_eq!(
-            reopened.history_detail(&cid, "new-left").unwrap()["comparison"]["count"],
-            0
-        );
-        assert!(current_side.is_file());
-        let mut altered = old;
-        altered.scope = Some("practice-v1-invalid".into());
-        assert_eq!(
-            pair_reason(&e, &altered, &current),
-            Some("旧成绩的音符范围无法由保留的旧 MIDI 和分手资料重算证明")
-        );
     }
 }

@@ -558,9 +558,6 @@ impl Player {
         let timeline = load_pipeline::Timeline::new_checked(&file, &|| check())?;
         let title = file.name.clone();
         check()?;
-        if self.routine.is_some() {
-            self.stop_routine()?;
-        }
         self.install_prepared(
             file,
             title,

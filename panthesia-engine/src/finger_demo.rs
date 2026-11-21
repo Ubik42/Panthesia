@@ -33,53 +33,7 @@ impl Demo {
     }
 }
 impl Player {
-    pub(super) fn begin_history_demo(&mut self, id: String, end: f64, rate: f64, events: Vec<(f64, usize, [u8; 3])>, index: crate::replay_index::Index, range: Option<(f64, f64)>) -> Result<Value, String> {
-        self.ensure_audio()?;
-        self.panic();
-        let position = range.map_or(0., |(start, _)| start);
-        let (cursor, sounding) = index.restore(&events, position);
-        self.finger_demo = Some(Demo {
-            id, start: 0., end, position, rate, active: true, paused: false, history: true,
-            replay_loop: range, loop_rounds: 0, events, replay_index: Some(index), audition_index: None,
-            cursor, lease: Duration::ZERO, held: None,
-        });
-        // Reconstruct held notes and pedal at the chosen position before the first tick.
-        // Earlier attacks are never sent to the output when starting a saved selection.
-        for event in sounding { self.send(&event); }
-        self.tick_finger_demo(Duration::ZERO);
-        Ok(self.finger_demo_state())
-    }
-    pub(super) fn history_replay_loop(&mut self,id:&str,start:f64,end:f64,enabled:bool)->Result<Value,String>{
-        let current=self.finger_demo.as_ref().filter(|d|d.history && d.id==id).ok_or("这次回放已结束或被接管，请重新回放")?;
-        if enabled && (!start.is_finite() || !end.is_finite() || start<current.start || end>current.end || end-start<0.1){return Err("循环范围应在保留的演奏内，至少 0.1 秒且终点晚于起点".into());}
-        let mut demo=self.finger_demo.take().unwrap();
-        demo.replay_loop=enabled.then_some((start,end));demo.loop_rounds=0;demo.lease=Duration::ZERO;
-        if enabled && (demo.position<start || demo.position>=end){
-            self.panic();demo.position=start;let (cursor,events)=demo.replay_state(start);demo.cursor=cursor;
-            if demo.active{for e in events{self.send(&e);}}else{demo.paused=true;}
-        }
-        self.finger_demo=Some(demo);Ok(self.finger_demo_state())
-    }
 
-    pub(super) fn history_replay_control(&mut self,id:&str,action:&str,position:Option<f64>,rate:Option<f64>)->Result<Value,String>{
-        let current=self.finger_demo.as_ref().filter(|d|d.history && d.id==id).ok_or("这次回放已结束或被接管，请重新回放")?;
-        if !["pause","resume","seek","rate"].contains(&action){return Err("回放操作无效".into());}
-        if action=="seek" && position.is_none_or(|p|!p.is_finite() || p<current.start || p>current.end){return Err("回放位置超出已保留范围".into());}
-        if action=="seek" && current.replay_loop.is_some_and(|(start,end)|position.is_some_and(|p|p<start || p>=end)){return Err("请在当前回放循环内定位，或先关闭循环".into());}
-        if action=="rate" && rate.is_none_or(|r|!r.is_finite() || !(0.25..=1.).contains(&r)){return Err("回放速度应为 25% 至 100%".into());}
-        if action=="resume" && current.position>=current.end{return Err("回放已结束，请先定位到较早位置".into());}
-        let mut demo=self.finger_demo.take().unwrap();
-        demo.lease=Duration::ZERO;
-        match action{
-            "pause"=>{self.panic();demo.active=false;demo.paused=true;},
-            "resume"=>{self.panic();let (cursor,events)=demo.replay_state(demo.position);demo.cursor=cursor;for e in events{self.send(&e);}demo.active=true;demo.paused=false;},
-            "seek"=>{self.panic();demo.position=position.unwrap();let (cursor,events)=demo.replay_state(demo.position);demo.cursor=cursor;if demo.active && demo.position<demo.end{for e in events{self.send(&e);}}else{demo.active=false;demo.paused=demo.position<demo.end;}},
-            "rate"=>demo.rate=rate.unwrap(),
-            _=>unreachable!()
-        }
-        self.finger_demo=Some(demo);
-        Ok(self.finger_demo_state())
-    }
 
     pub(super) fn finger_demo_control(&mut self,id:&str,action:&str,position:Option<f64>)->Result<Value,String>{
         let current=self.finger_demo.as_ref().filter(|d|!d.history && d.id==id).ok_or("这次示范已停止或被接管，请重新开始")?;
@@ -137,8 +91,6 @@ impl Player {
         }
         if matches!(self.state.status.as_str(), "playing" | "countIn")
             || self.recorder.is_recording()
-            || self.routine.is_some()
-            || self.ladder.as_ref().is_some_and(|r| r.active)
             || !self.state.pressed.is_empty()
         {
             return Err("请先停止练习和录音，并松开琴键，再开始指法示范".into());
@@ -284,58 +236,12 @@ mod tests {
     use super::*;
     use panthesia_core::fingering::HandSpanProfile;
     #[test]
-    fn history_replay_loop_wraps_keeps_paused_and_excludes_endpoint(){
-        let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work").join(format!("cycle176-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
-        let mut p=Player::new(data,PathBuf::from("unused.sf2"),true);let before=p.snapshot();
-        p.begin_finger_demo(0.,4.,1.,vec![(0.,usize::MAX,[144,60,80]),(2.,usize::MAX,[144,62,90]),(2.2,usize::MAX,[128,62,0]),(3.,usize::MAX,[128,60,0])],None).unwrap();
-        p.finger_demo.as_mut().unwrap().history=true;let id=p.finger_demo.as_ref().unwrap().id.clone();
-        assert!(p.history_replay_loop("stale",1.,2.,true).is_err());
-        assert!(p.history_replay_loop(&id,2.,1.,true).is_err());
-        p.history_replay_loop(&id,1.,2.,true).unwrap();assert_eq!(p.finger_demo.as_ref().unwrap().position,1.);
-        p.tick_finger_demo(Duration::from_millis(1500));let demo=p.finger_demo.as_ref().unwrap();
-        assert_eq!(demo.position,1.5);assert_eq!(demo.loop_rounds,1);assert_eq!(demo.cursor,1);
-        assert!(p.history_replay_control(&id,"seek",Some(2.),None).is_err());
-        p.history_replay_control(&id,"pause",None,None).unwrap();p.tick_finger_demo(Duration::from_millis(500));assert_eq!(p.finger_demo.as_ref().unwrap().position,1.5);
-        p.history_replay_control(&id,"resume",None,None).unwrap();p.tick_finger_demo(Duration::from_millis(2800));
-        assert_eq!(p.finger_demo.as_ref().unwrap().loop_rounds,4);
-        assert!((p.finger_demo.as_ref().unwrap().position-1.3).abs()<0.000001);
-        p.history_replay_loop(&id,0.,4.,false).unwrap();p.tick_finger_demo(Duration::from_millis(2800));assert!(!p.finger_demo.as_ref().unwrap().active);
-        assert_eq!(p.snapshot().position,before.position);assert_eq!(p.snapshot().score,before.score);
-    }
-    #[test]
     fn history_replay_state_preserves_pedal_latched_notes_and_channels(){
         let events=vec![(0.,usize::MAX,[145,60,80]),(0.2,usize::MAX,[177,64,100]),(0.3,usize::MAX,[129,60,0]),(0.4,usize::MAX,[146,62,90]),(1.,usize::MAX,[177,64,0]),(2.,usize::MAX,[130,62,0])];
         let (cursor,state)=replay_state(&events,0.5);
         assert_eq!(cursor,4);assert_eq!(state,vec![[177,64,100],[145,60,80],[129,60,0],[146,62,90]]);
         assert_eq!(replay_state(&events,1.5).1,vec![[146,62,90]]);
         assert!(replay_state(&events,2.).1.is_empty());
-    }
-    #[test]
-    fn history_replay_pause_seek_resume_scoped_state_and_lease(){
-        let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work").join(format!("cycle175-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
-        let mut p=Player::new(data,PathBuf::from("unused.sf2"),true);
-        let before=p.snapshot();
-        p.begin_finger_demo(0.,4.,0.5,vec![(0.,usize::MAX,[144,60,88]),(3.,usize::MAX,[128,60,0])],None).unwrap();
-        p.finger_demo.as_mut().unwrap().history=true;
-        let id=p.finger_demo.as_ref().unwrap().id.clone();
-        assert!(p.history_replay_control("stale","pause",None,None).is_err());
-        assert!(p.finger_demo.as_ref().unwrap().active);
-        p.tick_finger_demo(Duration::from_millis(500));
-        p.history_replay_control(&id,"pause",None,None).unwrap();
-        p.tick_finger_demo(Duration::from_secs(1));
-        assert_eq!(p.finger_demo.as_ref().unwrap().position,0.25);
-        assert!(p.finger_demo.as_ref().unwrap().paused);
-        p.history_replay_control(&id,"seek",Some(2.),None).unwrap();
-        assert!(!p.finger_demo.as_ref().unwrap().active);
-        assert!(p.history_replay_control(&id,"seek",Some(5.),None).is_err());
-        assert_eq!(p.finger_demo.as_ref().unwrap().position,2.);
-        p.history_replay_control(&id,"rate",None,Some(1.)).unwrap();
-        p.history_replay_control(&id,"resume",None,None).unwrap();
-        p.tick_finger_demo(Duration::from_millis(500));
-        assert_eq!(p.finger_demo.as_ref().unwrap().position,2.5);
-        assert_eq!(p.snapshot().position,before.position);assert_eq!(p.snapshot().score,before.score);
-        p.history_replay_control(&id,"pause",None,None).unwrap();
-        p.tick_finger_demo(Duration::from_secs(4));assert!(p.finger_demo.is_none());
     }
     #[test]
     fn held_substitution_changes_fingers_without_retriggering_the_key(){

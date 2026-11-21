@@ -9,10 +9,4 @@ impl Player {
         self.state.current_history_id = None;
         self.continue_finished_round();
     }
-    pub(super) fn set_loop_restart_errors(
-        &mut self,
-        _count: u16,
-    ) -> Result<serde_json::Value, String> {
-        Ok(serde_json::json!({"ok":true}))
-    }
 }

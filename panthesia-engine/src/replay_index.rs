@@ -1,4 +1,4 @@
-//! History seek state is prepared once on a worker and reconstructed from bounded checkpoints.
+//! Seek state for prepared demo playback is built once on a worker and reconstructed from bounded checkpoints.
 type Event = (f64, usize, [u8; 3]);
 const STRIDE: usize = 256;
 
@@ -86,18 +86,6 @@ pub(crate) struct Index {
     checkpoints: Vec<State>,
 }
 impl Index {
-    pub(crate) fn new(events: &[Event]) -> Self {
-        let mut state = State::default();
-        let mut checkpoints = Vec::with_capacity(events.len() / STRIDE + 1);
-        checkpoints.push(state.clone());
-        for (index, (_, _, message)) in events.iter().enumerate() {
-            state.apply(*message);
-            if (index + 1) % STRIDE == 0 {
-                checkpoints.push(state.clone());
-            }
-        }
-        Self { checkpoints }
-    }
     pub(crate) fn restore(&self, events: &[Event], position: f64) -> (usize, Vec<[u8; 3]>) {
         let cursor = events.partition_point(|event| event.0 <= position + 0.000001);
         let block = cursor / STRIDE;

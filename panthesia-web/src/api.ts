@@ -6,10 +6,8 @@ import { readDeviceSnapshot, type DeviceScanTarget } from "./engine/deviceCatalo
 export type { DeviceSnapshot, DeviceScanTarget, DeviceScanStatus } from "./engine/deviceCatalog";
 import type { PlaybackAdjustmentCommand, PlaybackAdjustmentSource } from "./features/practice/playbackCommands";
 export type { PlaybackAdjustmentCommand, PlaybackAdjustmentSource } from "./features/practice/playbackCommands";
-import type { HistoryAnnotationRequest, HistoryAnnotationSaved } from "./features/review/historyTypes";
 import type { ScoreMappingRequest, ScoreMappingResult } from "./features/scores/mappingTypes";
 import type { ScoreSource, ScoreSourcePreview, SourceApplyMode, AppliedSource } from "./features/scores/sourceTypes";
-import type { RoutineState, RoutineList, RoutineSummary, RoutineSourceOptions } from "./features/routines/routineTypes";
 import { invoke as nativeInvoke, isTauri } from "@tauri-apps/api/core";
 import type { EngineCommand } from "./engine/commands.generated";
 export type { EngineCommand } from "./engine/commands.generated";
@@ -23,9 +21,7 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
   catch(error) { reportDiagnostic(command,error); throw error; }
 }
 const historyReadCommands = new Set<EngineCommand["type"]>([
-  "weakPractice", "dueReview", "collection", "history", "historyQuery", "readHistoryPage", "historyDetail", "practiceTime", "practiceCalendar",
-  "readHistoryDetail", "readHistoryPerformance", "historyProblemNotes", "historyReplayClips", "readHistoryReplayClips", "historyPerformance", "songLearningEvidence", "readSongExpressionGoal", "readHistoryAnnotation",
-]);
+  "collection", "practiceTime", ]);
 
 let sessionReadSequence = 0;
 const service = "http://127.0.0.1:32124";
@@ -39,19 +35,12 @@ const backgroundCommands = new Set<EngineCommand["type"]>([
   "libraryRepairs", "midiReplacements", "previewMidiReplacement", "decideMidiReplacement", "readLibraryPath",
   "relinkLibrary", "setLibraryPrimary", "ignoreLibraryPath", "restoreLibraryPath", "pendingMetadataHistory", "pendingMetadataHistoryPage", "claimPendingMetadataHistory", "readMetadataHistoryClaim",
   "libraryWorkspace", "inspectSong", "inspectSongs", "libraryGroup", "removeLibraryGroup", "assignLibrary", "unassignLibrary",
-  "readSongLearning", "saveSongLearning", "readLibraryMetadata", "previewLibraryMetadata", "saveLibraryMetadata", "resetLibraryMetadataDefaults", "restoreLibraryMetadata", "updateSongMetadata",
+  "readLibraryMetadata", "previewLibraryMetadata", "saveLibraryMetadata", "resetLibraryMetadataDefaults", "restoreLibraryMetadata", "updateSongMetadata",
   "libraryMetadataHistory", "previewMetadataRestore", "metadataTemplates", "updateMetadataTemplate",
   "importMidi", "importScore", "importScoreOriginal",
   "startLibraryOpen", "readLibraryOpen", "cancelLibraryOpen", "releaseLibraryOpen",
-  "load", "loadIndexed", "openRecent", "historyOpen", "historyPerformance",
-  "historyScoreReview", "historyPracticeRange", "performHistoryAction", "playHistorySource", "startHistoryReplay", "startHistoryReplayRange", "startHistoryOperation", "readHistoryOperation", "cancelHistoryOperation", "releaseHistoryOperation",
-  "openRoutineItem", "generate", "openLibraryScore", "openPassage", "startLadder",
-  "inspectPackage", "importPackage", "importStagedPackage", "exportPackage", "exportPackageFile",
-  "practiceBackupSnapshot", "exportPracticeBackup",
-  "inspectPracticeBackup",
-  "applyPracticeBackup", "importStagedPracticeBackup",
-  "retrySave", "recording", "soundFont", "feedback",
-  "linkScoreSource", "applyScoreSource", "acknowledgeScoreSource", "unlinkScoreSource",
+  "load", "loadIndexed", "openRecent", "generate", "openLibraryScore", "openPassage", "inspectPackage", "importPackage", "importStagedPackage", "exportPackage", "exportPackageFile",
+  "retrySave", "recording", "soundFont", "linkScoreSource", "applyScoreSource", "acknowledgeScoreSource", "unlinkScoreSource",
   "scoreSources", "previewScoreSource", "manageLibraryScore", "addLibraryScore",
   "pairScore", "activateScore", "detachScore", "saveScoreVersion", "removeScoreVersion", "scoreVersions", "renameScoreVersion", "setPaperMapping", "savePaperPractice", "previewPaperPractice", "previewScoreVersionRoute", "previewCrossPaperTransfer", "paperTransferSources", "score", "exportAnnotatedScore", "addScoreAttachment", "updateScoreAttachment", "readPaperView", "savePaperView", "seekPaperMeasure", "seekPaperNote",
   "editPaperAnnotation", "editPaperInk", "editPaperNoteAnchor", "batchPaperNoteAnchors",
@@ -92,9 +81,6 @@ async function http<T>(path: string, command?: EngineCommand, post = false): Pro
   return data;
 }
 function engineCommand<T={ok:boolean}>(command:EngineCommand):Promise<T> {
-  if (command.type === "passageCatalog") return postLocal<T>("read_routine_sources", "/api/routines/sources", command);
-  if (command.type === "routines") return postLocal<T>("read_routines", "/api/routines/read", { day: command.day });
-  if (command.type === "saveHistoryReplayClip" || command.type === "deleteHistoryReplayClip") return postLocal<T>("edit_history_clips", "/api/history-clips/edit", command);
   if (historyReadCommands.has(command.type)) return postLocal<T>("read_history", "/api/history-read", command);
   return isTauri()?invoke<T>("engine_command",{command}):http<T>("/api/command",command);
 }
@@ -153,17 +139,6 @@ async function savePaperFile(format: "png" | "pdf", name: string, bytes: Uint8Ar
 
 export const api = {
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,
-  backupImportProtocol: async (): Promise<number> => {
-    if(isTauri())return invoke<number>("backup_import_protocol").catch(error=>{if(/not found|unknown command|不存在/i.test(String(error)))return 0;throw error;});
-    const response=await fetch(service+"/api/practice-backup/protocol",{cache:"no-store",signal:AbortSignal.timeout(15000)});
-    if(response.status===404)return 0;
-    if(!response.ok)throw new Error("备份接口暂不可读，请保留预览后重试。");
-    const version=await response.json();if(!Number.isInteger(version)||version<0)throw new Error("备份接口版本无效。");return version;
-  },
-  prepareBackupImport: (request: import("./engine/commands.generated").BackupImportRequest): Promise<import("./engine/commands.generated").BackupImportReceipt> => postLocal("prepare_backup_import", "/api/practice-backup/prepare", request, 15000),
-  readBackupImport: (request: import("./engine/commands.generated").BackupImportQuery): Promise<import("./engine/commands.generated").BackupImportReceipt | null> => postLocal("read_backup_import", "/api/practice-backup/read", request, 15000),
-  cancelBackupImport: (request: import("./engine/commands.generated").BackupImportQuery): Promise<import("./engine/commands.generated").BackupImportReceipt | null> => postLocal("cancel_backup_import", "/api/practice-backup/cancel", request, 15000),
-
   prepareMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, input: import("./engine/commands.generated").MediaExportInput): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("prepare_media_export", {request, input}),
   listMediaExports: (engineId: string): Promise<import("./engine/commands.generated").MediaExportListing> => invoke("list_media_exports", {engineId}),
   saveMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, draft: import("./engine/commands.generated").DraftSelection): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("save_media_export", {request, draft}),
@@ -232,22 +207,6 @@ export const api = {
     const state = await api.state();
     return postLocal("cancel_music_import", "/api/music-import/cancel", { id, ...((state.musicImportVersion ?? 0) >= 2 ? { kind } : {}) }, 4000);
   },
-  routineOptions: (contentId:string, engineId?: string): Promise<RoutineSourceOptions> => postLocal("routine_options","/api/routines/options",{contentId, engineId}),
-  editRoutine: <T = { id: string }>(request: import("./engine/commands.generated").RoutineEditRequest): Promise<T> => engineCommand<T>({ type: "editRoutine", request }),
-  readLearningState: async (contentId: string, engineId?: string): Promise<import("./engine/commands.generated").LearningRead> => {
-    const reply = await api.commandForEngine<import("./engine/commands.generated").LearningRead>(engineId, { type: "readSongLearning", content_id: contentId });
-    if (!reply || reply.contentId !== contentId || !Object.hasOwn(reply, "value") || reply.value === undefined || typeof reply.writeSettled !== "boolean") throw new Error("学习资料读取不完整，请重新读取。");
-    return reply;
-  },
-  readLearning: async (contentId: string): Promise<import("./songLearning").SongLearning | null> => {
-    const reply = await engineCommand<{ contentId: string; value: import("./songLearning").SongLearning | null }>({ type: "readSongLearning", content_id: contentId });
-    if (!reply || reply.contentId !== contentId || !Object.hasOwn(reply, "value") || reply.value === undefined) throw new Error("学习资料与所选曲目不一致或读取结果不完整，请重新读取。");
-    return reply.value;
-  },
-  routines: (day: string, scope?: HistoryReadScope, engineId?: string): Promise<RoutineList> => postLocal("read_routines", "/api/routines/read", { day, scope, engineId }),
-  routineTemplates: (): Promise<{ plans: RoutineSummary[] }> => isTauri()
-    ? invoke("routine_templates") : http("/api/routines/templates"),
-  saveHistoryAnnotation: (request: HistoryAnnotationRequest): Promise<HistoryAnnotationSaved> => postLocal("save_history_annotation", "/api/history-annotation", request),
   readHistory: <T>(command: HistoryReadCommand, scope?: HistoryReadScope, engineId?: string): Promise<T> => scope ? postLocal("read_history", "/api/history-read", {command,scope,...(engineId ? {engineId} : {})}) : engineId ? api.commandForEngine<T>(engineId, command) : postLocal("read_history", "/api/history-read", command),
   readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>postLocal("read_notation","/api/notation-read",request,60000,request.type==="release"),
   notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
@@ -619,60 +578,6 @@ export const api = {
   exportPaperBook: (name: string, bytes: Uint8Array, options: PaperSaveOptions = {}) => savePaperFile("pdf", name, bytes, options),
   exportAnnotatedScore: (request: Extract<EngineCommand, { type: "exportAnnotatedScore" }>) =>
     invoke<string | null>("export_annotated_score", { request }),
-  pickPracticeBackup: () =>
-    invoke<import("./features/backups/backupTypes").BackupSummary | null>("pick_practice_backup"),
-  exportPracticeBackup: (selection: {
-    plans: boolean;
-    records: boolean;
-    presets: boolean;
-    days: number;
-  }) => invoke<string | null>("export_practice_backup", { selection }),
-  downloadPracticeBackup: async (selection: {plans:boolean;records:boolean;presets:boolean;days:number}, options:{signal?:AbortSignal;progress?:(text:string)=>void}={}):Promise<Blob> => {
-    const check=()=>{if(options.signal?.aborted)throw new DOMException("备份读取已停止，原资料保留。","AbortError");};
-    check();options.progress?.("正在准备练习资料备份…");
-    if(isTauri()) {
-      const {session,size}=await invoke<{session:string;size:number}>("begin_practice_backup_read",{selection});
-      try {
-        check();
-        if(!Number.isSafeInteger(size)||size<=0||size>256_000_000)throw new Error("练习备份大小无效，最大支持 256 MB");
-        const chunks:BlobPart[]=[];
-        for(let offset=0;offset<size;offset+=1_048_576){
-          check();const length=Math.min(1_048_576,size-offset);
-          const bytes=await invoke<number[]>("read_practice_backup_chunk",{session,offset,length});
-          check();if(bytes.length!==length)throw new Error("练习备份分块不完整");
-          chunks.push(new Uint8Array(bytes));options.progress?.(`正在读取练习备份 ${Math.round((offset+length)/size*100)}%`);
-        }
-        await invoke("finish_practice_backup_read",{session});check();
-        return new Blob(chunks,{type:"application/octet-stream"});
-      }catch(error){await invoke("cancel_practice_backup_transfer",{session}).catch(()=>{});throw error;}
-    }
-    const timeout=AbortSignal.timeout(120000);
-    const response=await fetch(service+"/api/practice-backup/export",{method:"POST",headers:{"X-Panthesia-Client":"web","Content-Type":"application/json"},body:JSON.stringify(selection),signal:options.signal?AbortSignal.any([options.signal,timeout]):timeout});
-    if(!response.ok){const value=await response.json();throw new Error(value.error||"备份导出失败");}
-    const blob=await response.blob();check();
-    if(!blob.size||blob.size>256_000_000)throw new Error("练习备份大小无效");
-    return blob;
-  },
-  stagePracticeBackup: async (file:File,options:{signal?:AbortSignal;progress?:(text:string)=>void}={}):Promise<import("./features/backups/backupTypes").BackupSummary> => {
-    if(!file.size||file.size>256_000_000)throw new Error("练习备份为空或超过 256 MB");
-    const check=()=>{if(options.signal?.aborted)throw new DOMException("备份预览已停止，原文件和原预览保留。","AbortError");};
-    check();
-    if(isTauri()) {
-      const session=await invoke<string>("begin_practice_backup_stage",{size:file.size});
-      try {
-        for(let offset=0;offset<file.size;offset+=1_048_576){
-          check();const bytes=Array.from(new Uint8Array(await file.slice(offset,offset+1_048_576).arrayBuffer()));check();
-          await invoke("write_practice_backup_chunk",{session,offset,bytes});
-          options.progress?.(`正在传输练习备份 ${Math.round(Math.min(file.size,offset+1_048_576)/file.size*100)}%`);
-        }
-        check();options.progress?.("正在核对备份内容与本机资料…");
-        const value=await invoke<import("./features/backups/backupTypes").BackupSummary>("finish_practice_backup_stage",{session});check();return value;
-      }catch(error){await invoke("cancel_practice_backup_transfer",{session}).catch(()=>{});throw error;}
-    }
-    const timeout=AbortSignal.timeout(120000);
-    const response=await fetch(service+"/api/practice-backup/stage",{method:"POST",headers:{"X-Panthesia-Client":"web"},body:file,signal:options.signal?AbortSignal.any([options.signal,timeout]):timeout});
-    const value=await response.json();check();if(!response.ok)throw new Error(value.error||"备份预览失败");return value;
-  },
   pickPackage: () => invoke<import("./engine/commands.generated").PackagePreview | null>("pick_package"),
   stagePackage: async (file: File, options: { signal?: AbortSignal; progress?: (percent: number) => void } = {}): Promise<import("./engine/commands.generated").PackagePreview> => {
     if (!file.size || file.size > 256_000_000) throw new Error("曲目包为空或超过 256 MB");

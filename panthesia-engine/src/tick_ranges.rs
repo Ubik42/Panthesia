@@ -146,28 +146,6 @@ impl Player {
             json!({"range":canonical,"start":start,"end":end,"first":a,"last":b,"description":description,"notes":notes,"targets":targets,"carry":carry}),
         )
     }
-    pub(super) fn tick_range_for_current_loop(&self) -> Option<TickRange> {
-        let p = self.state.passage.as_ref()?;
-        let f = self.file.as_ref()?;
-        let r = TickRange {
-            description: String::new(),
-            content_id: f.content_id.clone(),
-            grid: self.grid_signature(),
-            start_tick: f.tempo_track.seconds_to_pulses(p.start).round() as u64,
-            end_tick: f.tempo_track.seconds_to_pulses(p.end).round() as u64,
-        };
-        let f = self.file.as_ref()?;
-        if f.measures
-            .iter()
-            .any(|m| (m.as_secs_f64() - p.start).abs() < 0.000001)
-            && f.measures
-                .iter()
-                .any(|m| (m.as_secs_f64() - p.end).abs() < 0.000001)
-        {
-            return None;
-        }
-        serde_json::from_value(self.validate_tick_range(&r).ok()?["range"].clone()).ok()
-    }
     pub(super) fn apply_tick_range(&mut self, range: &TickRange) -> Result<Value, String> {
         let v = self.validate_tick_range(range)?;
         self.command(Command::Loop {
@@ -184,15 +162,10 @@ impl Player {
         range: TickRange,
     ) -> Result<Value, String> {
         if self.state.recording
-            || self.routine.is_some()
-            || self.ladder.as_ref().is_some_and(|l| l.active)
             || matches!(self.state.status.as_str(), "playing" | "countIn")
             || !self.state.pressed.is_empty()
         {
             return Err("请先停止演奏、录音和活动计划，再保存段落".into());
-        }
-        if is_recital_mode(&self.state.mode) {
-            return Err("拍内段落请切换到连续、等音或聆听模式".into());
         }
         let v = self.validate_tick_range(&range)?;
         if name.trim().is_empty() || name.chars().count() > 80 || notes.len() > 8192 {
@@ -242,7 +215,6 @@ impl Player {
                 metronome: self.state.metronome,
                 latency: self.state.latency,
                 rounds: self.state.rounds,
-                adaptive: self.state.adaptive,
             },
         };
         let mut prefs = self.preferences.clone();
@@ -264,8 +236,6 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::practice_backup::{Backup, Selection};
-    use crate::routine_commands::{RoutineGoal, RoutineTarget};
     fn player() -> Player {
         let data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../work")
@@ -319,132 +289,6 @@ mod tests {
                 .clone(),
         )
         .unwrap()
-    }
-    #[test]
-    fn precise_range_tempo_restart_daily_and_portable_roundtrip() {
-        let mut p = player();
-        let r = range(&p);
-        let v = p.validate_tick_range(&r).unwrap();
-        assert_eq!(v["start"], 1.25);
-        assert_eq!(v["end"], 3.5);
-        assert_eq!(v["targets"], 3);
-        p.state.speed = 0.7;
-        let saved = p
-            .save_tick_passage(None, "跨速度短段".into(), "保持节奏".into(), r.clone())
-            .unwrap();
-        let id = saved["passage"]["id"].as_str().unwrap().to_string();
-        p.command(Command::OpenPassage { id: id.clone() }).unwrap();
-        assert_eq!(p.state.passage.as_ref().unwrap().start, 1.25);
-        assert_eq!(p.state.passage.as_ref().unwrap().end, 3.5);
-        assert_eq!(p.state.speed, 0.7);
-        let goal = RoutineGoal {
-            expression: None,
-            passes: 1,
-            accuracy: 90,
-            on_time: None,
-            consecutive: false,
-            attempt_limit: 5,
-        };
-        let plan = p
-            .save_routine(None, None, "日课".into(), "".into(), None)
-            .unwrap();
-        let rid = plan["id"].as_str().unwrap();
-        let item = p
-            .save_routine_item(
-                rid,
-                None,
-                None,
-                Some("passage"),
-                Some(&id),
-                "拍内".into(),
-                "".into(),
-                goal.clone(),
-            )
-            .unwrap();
-        assert!(matches!(
-            p.preferences.routines[0].items[0].target,
-            RoutineTarget::PrecisePassage { .. }
-        ));
-        p.save_routine_item(
-            rid,
-            None,
-            None,
-            Some("current"),
-            None,
-            "当前拍内".into(),
-            "".into(),
-            goal,
-        )
-        .unwrap();
-        // Current loops preserve a matching MusicXML route, including its beat trims.
-        // The explicitly selected saved preset above remains a precise MIDI passage.
-        let RoutineTarget::ScorePassage { range: score_range } =
-            &p.preferences.routines[0].items[1].target
-        else { panic!("MusicXML current loop should retain its score route"); };
-        assert!(score_range.start_trim > 0 && score_range.end_trim > 0);
-        let score_preview = p.validate_score_range(score_range).unwrap();
-        assert_eq!(score_preview["start"], 1.25);
-        assert_eq!(score_preview["end"], 3.5);
-        let b:Backup = serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();
-        assert_eq!(b.version(), 20);
-        let b = Backup::decode(&b.encode().unwrap()).unwrap();
-        assert_eq!(
-            b.passages.values().next().unwrap()[0].precise_range,
-            Some(r.clone())
-        );
-        let bytes: Vec<u8> =
-            serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone())
-                .unwrap();
-        let pack = crate::piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(pack.manifest.version, 16);
-        assert_eq!(pack.manifest.passages[0].precise_range, Some(r.clone()));
-        let mut target = player();
-        target
-            .command(Command::ImportPackage {
-                bytes,
-                policy: "replace".into(),
-            })
-            .unwrap();
-        target
-            .command(Command::OpenPassage { id: id.clone() })
-            .unwrap();
-        assert_eq!(target.state.passage.as_ref().unwrap().start, 1.25);
-        let data = p.data.clone();
-        let path = p.file.as_ref().unwrap().source_path.clone().unwrap();
-        drop(p);
-        let mut p = Player::new(data, PathBuf::new(), true);
-        p.command(Command::Load {
-            path,
-            title: "reopen".into(),
-        })
-        .unwrap();
-        p.command(Command::OpenPassage { id }).unwrap();
-        assert_eq!(p.state.passage.as_ref().unwrap().end, 3.5);
-        p.open_routine_item(rid, "2026-10-02", item["id"].as_str().unwrap(), true)
-            .unwrap();
-        p.command(Command::Play).unwrap();
-        for _ in 0..500 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note {
-                    pitch,
-                    velocity: 90,
-                    active: true,
-                })
-                .unwrap();
-                p.command(Command::Note {
-                    pitch,
-                    velocity: 0,
-                    active: false,
-                })
-                .unwrap();
-            }
-            if p.routine_status().unwrap()["progress"]["completed"] == true {
-                break;
-            }
-        }
-        assert_eq!(p.routine_status().unwrap()["progress"]["completed"], true);
-        assert_eq!(p.matcher.snapshot().matched_notes, 3);
     }
     #[test]
     fn precise_guards_end_exclusion_and_meter() {

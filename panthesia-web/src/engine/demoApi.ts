@@ -16,6 +16,4 @@ export const demoApi = {
   start: (song: PracticeEditScope, command: PracticeDemoCommand, requestId: string): Promise<DemoState> => api.startPracticeDemo<DemoState>(song, command, requestId),
   control: (input: Omit<CommandOf<"fingerDemoControl">, "type">): Promise<DemoState> => api.command<DemoState>({ type: "fingerDemoControl", ...input }),
   heldContext: (song: PracticeEditScope, input: Omit<CommandOf<"heldFingerDemoContext">, "type">): Promise<HeldContext> => api.readPractice<HeldContext>(song, { type: "heldFingerDemoContext", ...input }),
-  replay: (input: Omit<CommandOf<"startHistoryReplay">, "type">): Promise<DemoState> => api.command<DemoState>({ type: "startHistoryReplay", ...input }),
-  replayControl: (command: CommandOf<"historyReplayControl"> | CommandOf<"historyReplayLoop">): Promise<DemoState> => api.command<DemoState>(command),
 };

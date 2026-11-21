@@ -2,12 +2,6 @@ import type {
   LibraryBrowse,
   LibraryVisitReturn,
 } from "../features/library/libraryBrowse";
-import type {
-  HistoryBrowse,
-  HistoryFilters,
-  HistoryBarReview,
-  HistorySelection,
-} from "../features/review/historyBrowse";
 import { fields, key as libraryPathKey, type View } from "../features/library/libraryQueryModel";
 import {
   practiceLibraryDefaults,
@@ -18,21 +12,13 @@ import type { SongWorkspaceTarget } from "./songWorkspaceVisit";
 type LibraryCursor = Omit<LibraryBrowse, "editing" | "visitReturn"> & {
   visitReturn?: Omit<LibraryVisitReturn, "editing"> | null;
 };
-type HistoryCursor = Omit<
-  HistoryBrowse,
-  "selected" | "sources" | "returnTo"
-> & { selection: HistorySelection | null };
-export interface HistoryBookmark extends HistoryCursor {
-  returnTo?: HistoryCursor | null;
-}
 export interface WorkspaceBrowseState {
   version: 1;
   busy: boolean;
   storageError: string;
-  issues: Record<"library" | "history" | "practice" | "navigation", string>;
+  issues: Record<"library" | "practice" | "navigation", string>;
   returnWorkspace: "library" | "review" | null;
   library: LibraryCursor | null;
-  history: HistoryBookmark | null;
   practice: PracticeLibraryBrowse;
   practiceScroll: { key: string; top: number } | null;
 }
@@ -98,11 +84,6 @@ const workspace = (value: unknown) =>
     : choice(value, ["library", "practice", "review"] as const);
 const pane = (value: unknown) =>
   value == null ? undefined : choice(value, ["list", "detail"] as const);
-export function readHistorySelection(value: unknown): HistorySelection | null {
-  if (value == null) return null;
-  const row = object(value);
-  return { contentId: identity(row.contentId), id: identity(row.id) };
-}
 function song(value: unknown): SongWorkspaceTarget | null {
   if (value == null) return null;
   const row = object(value);
@@ -236,93 +217,6 @@ function readLibraryCursor(value: unknown): LibraryCursor {
   }
   return cursor;
 }
-function filters(value: unknown): HistoryFilters {
-  const row = object(value);
-  const from = row.from == null ? null : timestamp(row.from);
-  const to = row.to == null ? null : timestamp(row.to);
-  return {
-    query: text(row.query),
-    mode: choice(row.mode, ["", "wait", "flow", "recital", "memory", "listen"]),
-    hands: choice(row.hands, [
-      "",
-      "Both",
-      "Left",
-      "Right",
-      "Custom",
-      "Unspecified",
-    ]),
-    range: choice(row.range, ["", "whole", "loop"]),
-    days: integer(row.days, 365000),
-    from,
-    to,
-  };
-}
-function bar(value: unknown): HistoryBarReview {
-  const row = object(value);
-  return {
-    contentId: identity(row.contentId),
-    id: identity(row.id),
-    page: integer(row.page),
-    errorsOnly: bool(row.errorsOnly),
-    order:
-      row.order == null ? undefined : choice(row.order, ["errors", "measure"]),
-  };
-}
-function historyBase(value: unknown): HistoryCursor {
-  const row = object(value);
-  const reviews = row.barReviews ?? [];
-  if (!Array.isArray(reviews) || reviews.length > 32)
-    throw new Error("小节浏览位置过多");
-  const calendar = row.calendar == null ? undefined : object(row.calendar);
-  return {
-    filters: filters(row.filters),
-    offset: integer(row.offset),
-    selection: readHistorySelection(row.selected ?? row.selection),
-    order: choice(row.order, ["errors", "measure"]),
-    listTop: number(row.listTop),
-    listTopKey: optionalText(row.listTopKey),
-    detailTop: number(row.detailTop),
-    detailTopKey: optionalText(row.detailTopKey),
-    song: song(row.song),
-    visitFrom: workspace(row.visitFrom),
-    pane: pane(row.pane),
-    filtersOpen: bool(row.filtersOpen),
-    detailSection: choice(
-      row.detailSection,
-      ["results", "performance", "comparison", "annotation"],
-      "results",
-    ),
-    barReview: row.barReview == null ? undefined : bar(row.barReview),
-    barReviews: reviews.map(bar),
-    calendar: calendar
-      ? {
-          expanded: bool(calendar.expanded),
-          month: timestamp(calendar.month),
-          trendOpen: bool(calendar.trendOpen),
-        }
-      : undefined,
-  };
-}
-export function packHistoryBrowse(value: HistoryBrowse): HistoryBookmark {
-  return readHistoryCursor(value);
-}
-function readHistoryCursor(value: unknown): HistoryBookmark {
-  const row = object(value);
-  return {
-    ...historyBase(row),
-    returnTo: row.returnTo == null ? null : historyBase(row.returnTo),
-  };
-}
-export function unpackHistoryBrowse(
-  value: HistoryBookmark | null,
-): HistoryBrowse | undefined {
-  if (!value) return undefined;
-  return {
-    ...value,
-    selected: null,
-    returnTo: value.returnTo ? { ...value.returnTo, selected: null } : null,
-  };
-}
 export function readPracticeBrowse(value: unknown): PracticeLibraryBrowse {
   const row = object(value);
   return {
@@ -337,10 +231,9 @@ export const freshWorkspaceBrowse = (): WorkspaceBrowseState => ({
   version: 1,
   busy: false,
   storageError: "",
-  issues: { library: "", history: "", practice: "", navigation: "" },
+  issues: { library: "", practice: "", navigation: "" },
   returnWorkspace: null,
   library: null,
-  history: null,
   practice: practiceLibraryDefaults(),
   practiceScroll: null,
 });
@@ -381,7 +274,6 @@ export function restoreWorkspaceBrowse(
       const issues = row.issues == null ? {} : object(row.issues);
       state.issues = {
         library: issues.library == null ? "" : text(issues.library),
-        history: issues.history == null ? "" : text(issues.history),
         practice: issues.practice == null ? "" : text(issues.practice),
         navigation: issues.navigation == null ? "" : text(issues.navigation),
       };
@@ -395,20 +287,6 @@ export function restoreWorkspaceBrowse(
       )
         throw new Error();
       state.library = readLibraryCursor(library);
-    });
-    restore("回顾", () => {
-      if (row.history == null) return;
-      const history = object(row.history);
-      if (
-        "selected" in history ||
-        "sources" in history ||
-        (history.returnTo &&
-          ("selected" in object(history.returnTo) ||
-            "sources" in object(history.returnTo) ||
-            "returnTo" in object(history.returnTo)))
-      )
-        throw new Error();
-      state.history = readHistoryCursor(history);
     });
     restore("练习选曲", () => {
       state.practice = readPracticeBrowse(row.practice);
@@ -425,7 +303,7 @@ export function restoreWorkspaceBrowse(
       state.returnWorkspace =
         row.returnWorkspace == null
           ? null
-          : choice(row.returnWorkspace, ["library", "review"]);
+          : choice(row.returnWorkspace, ["library"]);
     });
     if (failed.length)
       state.storageError = `${failed.join("、")}的浏览位置暂时无法读取。其他位置已恢复，原记录已保留。`;

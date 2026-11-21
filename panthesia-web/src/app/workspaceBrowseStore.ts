@@ -1,20 +1,16 @@
 import { createPersistentSession } from "./createPersistentSession";
 import {
   packLibraryBrowse,
-  packHistoryBrowse,
   readPracticeBrowse,
   restoreWorkspaceBrowse,
-  unpackHistoryBrowse,
   type WorkspaceBrowseState,
 } from "./workspaceBrowseModel";
 import type { LibraryBrowse } from "../features/library/libraryBrowse";
-import type { HistoryBrowse } from "../features/review/historyBrowse";
 import type { PracticeLibraryBrowse } from "../features/practice/practiceLibraryModel";
 
 type Part = keyof WorkspaceBrowseState["issues"];
 type Pending = Partial<{
   library: LibraryBrowse;
-  history: HistoryBrowse;
   practice: PracticeLibraryBrowse;
   practiceScroll: WorkspaceBrowseState["practiceScroll"];
   returnWorkspace: WorkspaceBrowseState["returnWorkspace"];
@@ -52,10 +48,6 @@ export function createWorkspaceBrowseStore() {
       capture("library", () => ({
         library: packLibraryBrowse(batch.library!),
       }));
-    if (batch.history)
-      capture("history", () => ({
-        history: packHistoryBrowse(batch.history!),
-      }));
     if (batch.practice)
       capture("practice", () => ({
         practice: readPracticeBrowse(batch.practice),
@@ -81,18 +73,13 @@ export function createWorkspaceBrowseStore() {
   return {
     ...recovery,
     initialLibrary: () => initial.library ?? undefined,
-    initialHistory: () => unpackHistoryBrowse(initial.history),
     initialPractice: () => initial.practice,
     initialPracticeScroll: () => initial.practiceScroll,
     initialReturn: () => {
       const target = initial.returnWorkspace;
-      return target &&
-        (target === "library" ? initial.library : initial.history)
-        ? target
-        : null;
+      return target === "library" && initial.library ? target : null;
     },
     rememberLibrary: (value: LibraryBrowse) => stage({ library: value }),
-    rememberHistory: (value: HistoryBrowse) => stage({ history: value }),
     rememberPractice: (value: PracticeLibraryBrowse) =>
       stage({ practice: value }),
     rememberPracticeScroll: (key: string, top: number) => {
@@ -105,7 +92,7 @@ export function createWorkspaceBrowseStore() {
         stage({ practiceScroll: { key, top } });
     },
     rememberReturn: (value: "library" | "review" | null) =>
-      stage({ returnWorkspace: value }),
+      stage({ returnWorkspace: value === "library" ? value : null }),
     flush,
     retrySave: () => {
       flush();

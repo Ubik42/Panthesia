@@ -13,15 +13,6 @@ mod tests {
         num::{u4, u15},
     };
     #[test]
-    fn label_key_follows_transpose_without_overwriting_source_tonic() {
-        let (mut p,_,_)=crate::history_loading::tests::seeded(true,false);
-        let cid=p.file.as_ref().unwrap().content_id.clone();
-        p.preferences.variants.insert(cid.clone(),Variant{tonic:Some(0),minor:Some(false),transpose:2,..Default::default()});
-        let document=p.variant_document();assert_eq!(document["tonic"],0);assert_eq!(document["effectiveTonic"],2);assert_eq!(document["effectiveFifths"],2);
-        p.preferences.variants.insert(cid,Variant{tonic:Some(8),minor:Some(true),transpose:0,..Default::default()});
-        let document=p.variant_document();assert_eq!(document["effectiveTonic"],8);assert_eq!(document["effectiveFifths"],5);
-    }
-    #[test]
     fn practice_transform_preserves_source_drums_and_round_trips_export() {
         let event = |delta: u32, channel: u8, key: u8, on: bool| TrackEvent {
             delta: delta.into(),
@@ -492,12 +483,8 @@ impl Player {
         {
             return Err("曲目已变化，请重新读取转调与量化设置".into());
         }
-        if self.recorder.is_recording()
-            || self.routine.is_some()
-            || self.ladder.as_ref().is_some_and(|l| l.active)
-            || is_recital_mode(&self.state.mode)
-        {
-            return Err("请先结束录音、计划或完整演奏，再更换练习版本".into());
+        if self.recorder.is_recording() {
+            return Err("请先结束录音，再更换练习版本".into());
         }
         value.validate()?;
         let current = self.variant();

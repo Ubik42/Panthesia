@@ -59,9 +59,6 @@ impl Player {
         Ok(self.soundfont_revision)
     }
     pub(super) fn check_soundfont_conditions(&self) -> Result<(), String> {
-        if self.routine.is_some() || self.ladder.is_some() {
-            return Err("请先结束当前计划项目再更换音源".into());
-        }
         if self.recorder.is_recording() {
             return Err("请先停止并保存录音，再更换音源".into());
         }

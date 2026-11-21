@@ -52,7 +52,6 @@ impl Player {
             latency: self.state.latency,
             rounds: self.state.rounds,
             hands: self.state.hands.clone(),
-            adaptive: self.state.adaptive,
         }
     }
     pub(super) fn preview_paper_practice(

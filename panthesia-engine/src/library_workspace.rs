@@ -14,7 +14,8 @@ pub struct Workspace {
     pub groups: Vec<Group>,
     pub entries: BTreeMap<String, Entry>,
     pub revision: u64,
-    pub learning: BTreeMap<String,crate::song_learning::Learning>,
+    /// Learning notes from the assessment era; kept unread and written back unchanged.
+    pub learning: BTreeMap<String,serde_json::Value>,
     pub preferred_paths:BTreeMap<String,PathBuf>,
     pub ignored_paths:std::collections::BTreeSet<String>,
     pub path_relinks:BTreeMap<String,crate::library_repairs::RelinkRecord>,
@@ -550,8 +551,6 @@ pub fn accepts(command: &crate::Command) -> bool {
     matches!(
         command,
         crate::Command::LibraryWorkspace
-            | crate::Command::ReadSongLearning { .. }
-            | crate::Command::SaveSongLearning{..}
             | crate::Command::InspectSong { .. }
             | crate::Command::InspectSongs { .. }
             | crate::Command::LibraryGroup { .. }
@@ -565,26 +564,6 @@ pub fn accepts(command: &crate::Command) -> bool {
             | crate::Command::SaveLibraryMetadata { .. }
             | crate::Command::UpdateSongMetadata { .. }
     )
-}
-pub fn read_learning(
-    data: &Path,
-    content_id: &str,
-    check: impl Fn() -> Result<(), String>,
-) -> Result<serde_json::Value, String> {
-    if content_id.len() != 64 || !content_id.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err("曲目内容身份无效".into());
-    }
-    check()?;
-    let lock = lock_for(data)?;
-    let _guard = wait_for(&lock, &check)?;
-    check()?;
-    let workspace = Workspace::load(data)?;
-    check()?;
-    serde_json::to_value(crate::song_learning::LearningRead {
-        content_id: content_id.to_owned(),
-        value: workspace.learning.get(content_id).cloned(),
-        write_settled: true,
-    }).map_err(|error| error.to_string())
 }
 pub(crate) fn wait_for<'a>(
     lock: &'a std::sync::Mutex<()>,
@@ -608,7 +587,6 @@ pub(crate) fn reads(command: &crate::Command) -> bool {
     matches!(
         command,
         crate::Command::LibraryWorkspace
-            | crate::Command::ReadSongLearning { .. }
             | crate::Command::ReadLibraryMetadata { .. }
             | crate::Command::PreviewLibraryMetadata { .. }
             | crate::Command::LibraryMetadataHistory { .. }
@@ -643,9 +621,6 @@ fn execute_inner(
 ) -> Result<serde_json::Value, String> {
     use crate::Command;
     check()?;
-    if let Command::ReadSongLearning { content_id } = &command {
-        return read_learning(data, content_id, check);
-    }
     let lock = lock_for(data)?;
     let _guard = wait_for(&lock, check)?;
     let mut workspace = Workspace::load(data)?;
@@ -681,23 +656,6 @@ fn execute_inner(
         return Ok(value);
     }
     let mut result = match command {
-        Command::SaveSongLearning {
-            path,
-            content_id,
-            value,
-            expected,
-        } => {
-            crate::song_learning::save_checked(
-                &mut workspace,
-                data,
-                path,
-                content_id,
-                value,
-                expected,
-                check,
-            )?;
-            serde_json::json!({"ok":true})
-        }
         Command::InspectSong { path, force } => {
             serde_json::to_value(workspace.inspect(path, force)?).map_err(|e| e.to_string())?
         }

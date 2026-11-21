@@ -53,7 +53,6 @@ pub(crate) fn prepare_checked(
     })
 }
 impl Prepared {
-    pub(crate) fn with_assets(mut self,assets:crate::exercise_assets::Prepared)->Self{self.assets=Some(assets);self}
     pub(crate) fn materialize_for_startup(
         mut self,
         data: &std::path::Path,
@@ -88,6 +87,7 @@ impl Prepared {
             }),
         )
     }
+    #[cfg(test)]
     pub(crate) fn read_assets(
         self,
         data: &std::path::Path,
@@ -116,9 +116,6 @@ impl Prepared {
             Some(assets) => assets.check(),
             None => Ok(()),
         }
-    }
-    pub(crate) fn notes(&self) -> &[crate::PracticeNote] {
-        &self.timeline.notes
     }
     pub fn install(self, player: &mut Player) -> Result<(), String> {
         self.check()?;
@@ -160,7 +157,7 @@ mod tests {
         Command, Engine,
         background_tasks::TaskPool,
         data_root_lock::DataRootLock,
-        history_loading::tests::seeded,
+        test_fixtures::seeded,
         runtime_request::{self, Request},
     };
     use panthesia_core::{exercise::ExerciseHands, library};
@@ -211,7 +208,7 @@ mod tests {
     }
     #[test]
     fn public_generate_recent_and_history_restore_personal_annotations() {
-        let (player, cid, id) = seeded(true, false);
+        let (player, cid, _) = seeded(true, false);
         let data = player.data.clone();
         drop(player);
         let lock = DataRootLock::acquire(&data).unwrap();
@@ -222,11 +219,6 @@ mod tests {
             },
             Command::OpenRecent {
                 content_id: cid.clone(),
-            },
-            Command::HistoryOpen {
-                content_id: cid.clone(),
-                id,
-                restore: true,
             },
         ] {
             let song = engine.command(command).unwrap();

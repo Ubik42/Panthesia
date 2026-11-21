@@ -444,13 +444,6 @@ impl Player {
                 }
                 .apply_silent(self, token)?;
                 token.check()?;
-                if self.state.mode == "memory"
-                    || selection.is_some() && crate::is_recital_mode(&self.state.mode)
-                {
-                    self.command(crate::Command::Mode {
-                        value: "flow".into(),
-                    })?;
-                }
                 if let Some(selection) = selection {
                     let score = self.notation.as_ref().ok_or("所选曲目尚未建立可定位乐谱")?;
                     if score.source_fingerprint != selection.fingerprint {

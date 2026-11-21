@@ -435,8 +435,6 @@ impl Player {
         }
         if self.recorder.is_recording()
             || self.state.status == "playing"
-            || self.routine.is_some()
-            || self.ladder.as_ref().is_some_and(|r| r.active)
         {
             return Err("请先停止演奏、录音、练习计划和速度阶梯，再应用原谱更新".into());
         }

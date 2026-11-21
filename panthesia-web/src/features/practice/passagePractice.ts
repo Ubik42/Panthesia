@@ -43,10 +43,3 @@ export function measureBpm(song: LoadedSong | undefined, measure: number) {
   }
   return bpm;
 }
-export function ladderBpm(
-  song: LoadedSong | undefined,
-  measure: number,
-  percent: number,
-) {
-  return Math.round(measureBpm(song, measure) * percent) / 100;
-}

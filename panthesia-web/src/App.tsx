@@ -27,7 +27,6 @@ import { StartupNotice } from "./app/StartupNotice";
 import { useDialogFocus } from "./app/useDialogFocus";
 import { useWorkspaceSessions } from "./app/useWorkspaceSessions";
 import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
-import { historyResumeContext,libraryResumeContext } from "./app/workspaceResumeContext";
 import type { DisplayPreferences } from "./displayPreferences";
 import type { MediaExportKind } from "./engine/commands.generated";
 import { pathKey } from "./engine/pathIdentity";
@@ -57,8 +56,6 @@ import { SongSetupScreen } from "./features/practice/SongSetupScreen";
 import { useLiveNotes } from "./features/practice/useLiveNotes";
 import {usePerformanceSize} from "./features/practice/usePerformanceSize";
 import { usePracticeSession } from "./features/practice/usePracticeSession";
-import { getHistoryOperations } from "./features/review/historyOperationStore";
-import { requireHistoryScoreTarget,requireHistorySource } from "./features/review/historySource";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import { HandSplitScreen } from "./features/screens/HandSplitScreen";
 import { HomeScreen } from "./features/screens/HomeScreen";
@@ -101,11 +98,6 @@ import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
 import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { usePracticeRange } from "./features/practice/usePracticeRange";
 import { FingeringDialog } from "./FingeringDialog";
-import { type HistoryPaperTarget } from "./HistoryDialog";
-import type {
-HistoryScoreFocus,
-HistoryScoreReview,
-} from "./historyScoreFocus";
 import { ImportDialog } from "./ImportDialog";
 import { LegacyExerciseTracksDialog } from "./LegacyExerciseTracksDialog";
 import { Notation } from "./Notation";
@@ -113,12 +105,8 @@ import { PackageDialog } from "./PackageDialog";
 import { PaperScore } from "./PaperScore";
 import { PassageDialog } from "./PassageDialog";
 import { Piano } from "./Piano";
-import { PracticeBackupDialog } from "./PracticeBackupDialog";
-import {
-ExerciseDialog,
-MetadataDialog,
-type FeedbackPlanSource
-} from "./PracticeDialogs";
+import { ExerciseDialog } from "./features/practice/ExerciseDialog";
+import { MetadataDialog } from "./features/library/SongMetadataDialog";
 import { ScoreRangeDialog } from "./ScoreRangeDialog";
 import { shortcutLabel } from "./shortcuts";
 const normalize = pathKey;
@@ -159,12 +147,9 @@ export default function App() {
   const setSongSetup=productScreens.setSongSetup;
   const bookmarkNavigation = useRef<BookmarkNavigation>(null);
   const [libraryAdvanced,setLibraryAdvanced]=useState(false);
-  const libraryDialog = workspace === "library",
-    history = workspace === "review";
+  const libraryDialog = workspace === "library";
   const setLibraryDialog = (open: boolean) =>
     open ? navigation.navigate("library") : navigation.closeLibrary();
-  const setHistory = (open: boolean) =>
-    open ? navigation.navigate("review") : navigation.closeReview();
   const interfaceSettings = getInterfaceSettings();
   const display = useSyncExternalStore(
     interfaceSettings.subscribe,
@@ -254,12 +239,8 @@ export default function App() {
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [librarySearch, setLibrarySearch] = useState<LibrarySearchRequest | null>(null);
-  const [historySongRequest, setHistorySongRequest] = useState<SongWorkspaceRequest | null>(null);
-  const [annotationDraftRequest, setAnnotationDraftRequest] = useState<{ id: string; entry: import("./features/review/historyTypes").HistoryEntry } | null>(null);
-  const [replayDraftRequest, setReplayDraftRequest] = useState<{ id: string; entry: import("./features/review/historyTypes").HistoryEntry } | null>(null);
   const [editDraftsOpen, setEditDraftsOpen] = useState(false);
   const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
-  const [expressionReveal, setExpressionReveal] = useState<{ contentId: string; id: string } | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
   const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
   const [settingsDevice,setSettingsDevice]=useState<DeviceObject|undefined>();
@@ -271,11 +252,6 @@ export default function App() {
       LoadedSong["notes"][number] | null
     >(null),
     [exerciseDialog, setExerciseDialog] = useState(false),
-    [feedback, setFeedback] = useState(false),
-    [feedbackPlan, setFeedbackPlan] = useState<{
-      source: FeedbackPlanSource;
-      scoreRevision: number;
-    } | null>(null),
     [metadata, setMetadata] = useState(false),
     [fingeringDraft, setFingeringDraft] = useState<import("./features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
     [legacyExerciseDialog, setLegacyExerciseDialog] = useState(false),
@@ -288,21 +264,6 @@ export default function App() {
       last: number;
     } | null>(null),
     [passageDialog, setPassageDialog] = useState(false),
-    [ladderDialog, setLadderDialog] = useState(false),
-    [routineDialog, setRoutineDialog] = useState(false),
-    [routineSuspended, setRoutineSuspended] = useState(false),
-    [routineResumeRevision, setRoutineResumeRevision] = useState(0),
-    [routineLaunch, setRoutineLaunch] = useState<{
-      id: string;
-      day: string | null;
-    } | null>(null),
-    [routinePassage, setRoutinePassage] = useState<{
-      contentId: string;
-      id: string;
-      name: string;
-      notes: string;
-    } | null>(null),
-    [practiceBackup, setPracticeBackup] = useState(false),
     [progressOpen, setProgressOpen] = useState(false),
     [recoveryOpen, setRecoveryOpen] = useState(false),
     [paperRevision, setPaperRevision] = useState(0),
@@ -317,11 +278,6 @@ export default function App() {
     const actual = playback.getSnapshot();
     if (workspace !== "practice" || view !== "score" || actual.mode === "memory" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
   }, [scoreToolRequest, workspace, view, state.contentId, progressEngineId, state.mode, playback]);
-  const showRoutine = useCallback(() => {
-    setRoutineSuspended(false);
-    setRoutineResumeRevision((revision) => revision + 1);
-    setRoutineDialog(true);
-  }, []);
   const selectionSong = useRef(song?.contentId ?? null);
   useEffect(() => {
     const previousSong = selectionSong.current;
@@ -336,38 +292,7 @@ export default function App() {
         && Math.abs(note.duration - previous.duration) < 0.000001) ?? null;
     });
   }, [song?.contentId, song?.scoreRevision, song?.annotationRevision, song?.notes]);
-  useEffect(() => {
-    if (!routineDialog) setRoutinePassage(null);
-  }, [routineDialog]);
-  const [historyScoreReview, setHistoryScoreReview] =
-    useState<HistoryScoreReview | null>(null);
-  const historyPresentation = useRef({ review: historyScoreReview, workspace, view });
-  historyPresentation.current = { review: historyScoreReview, workspace, view };
   useEffect(() => { if (!fingeringDialog) setFingeringDraft(null); }, [fingeringDialog]);
-  const [historyScoreFocus, setHistoryScoreFocus] =
-    useState<HistoryScoreFocus | null>(null);
-  const [historyPaperFocus, setHistoryPaperFocus] = useState<
-    (HistoryPaperTarget & { request: string }) | null
-  >(null);
-  useEffect(() => {
-    if (historyScoreFocus && song?.contentId !== historyScoreFocus.contentId)
-      setHistoryScoreFocus(null);
-  }, [song?.contentId, historyScoreFocus]);
-  useEffect(() => {
-    if (historyScoreReview && song?.contentId !== historyScoreReview.contentId)
-      setHistoryScoreReview(null);
-  }, [song?.contentId, historyScoreReview]);
-  useEffect(() => {
-    if (feedbackPlan && song?.contentId !== feedbackPlan.source.contentId)
-      setFeedbackPlan(null);
-  }, [song?.contentId, feedbackPlan]);
-  useEffect(() => {
-    if (historyPaperFocus && song?.contentId !== historyPaperFocus.contentId)
-      setHistoryPaperFocus(null);
-  }, [song?.contentId, historyPaperFocus]);
-  useEffect(() => {
-    if (view !== "paper" && historyPaperFocus) setHistoryPaperFocus(null);
-  }, [view, historyPaperFocus]);
   const pianoViewport = useMemo(() => resolveKeyboardViewport(display, song?.notes ?? [], state.input),
     [display.range, display.keyboardViewport, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
   const pianoRange = useMemo(()=>viewportRange(pianoViewport),[pianoViewport]);
@@ -383,12 +308,7 @@ export default function App() {
   },[song?.notes]);
   const outsidePianoRange = pianoPitchCounts[pianoRange.low]+pianoPitchCounts[128]-pianoPitchCounts[pianoRange.high+1];
   const recital = ["recital", "memory"].includes(state.mode);
-  const ladderActive = Boolean(state.ladder?.active);
-  const routineActive = Boolean(state.routine);
-  const attemptLocked =
-    routineActive ||
-    ladderActive ||
-    (recital && ["playing", "paused", "countIn"].includes(state.status));
+  const attemptLocked = recital && ["playing", "paused", "countIn"].includes(state.status);
   useEffect(() => {
     if (state.mode === "memory") {
       setSelectedNote(null);
@@ -450,7 +370,6 @@ export default function App() {
         !live.recording && live.startup?.ready !== false && !live.storage?.operation;
     }, signal);
     if (changed && next === "library") {setLibraryLaunch("normal");setLibraryAdvanced(false);}
-    if (changed && next === "review") setFeedback(false);
     return changed;
   }, [busy, startupReady, state.recording, workspace, navigation.pending, navigation.navigate, navigation.request, run, clearLiveNotes, playback]);
   const currentPracticeTarget: SongWorkspaceTarget | null = song && !binding && matchesSong(state, song) &&
@@ -473,9 +392,6 @@ export default function App() {
       live.contentId !== expected.contentId || normalize(song.sourcePath) !== normalize(expected.path))
       throw new Error("当前练习已改变，请重新选择要继续的曲目。");
     clearLiveNotes();
-    setRoutineSuspended(false);
-    setRoutineDialog(false);
-    setRoutineLaunch(null);
     setLibraryDialog(false);
     return true;
   };
@@ -497,11 +413,11 @@ export default function App() {
     if (next === "library") {
       setLibraryLaunch("normal");
       setLibrarySearch(request);
-    } else setHistorySongRequest(request);
+    }
     return true;
   };
-  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, feedback, metadata, editDraftsOpen, fingeringWorkbenchOpen,
-    fingeringDialog, passageDialog, ladderDialog, routineDialog, practiceBackup, handsDialog, meterDialog,
+  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
+    fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, importDialog, packageDialog, !!mediaExport]);
   const {openPracticeTool,launchPracticeTool}=usePracticeToolNavigation({toolContext,changeWorkspace,playback,run,setError});
   useEffect(() => {
@@ -742,7 +658,6 @@ export default function App() {
     openSimple:target=>{
       if(target==="imports")setImportDialog(true);
       else if(target==="package"){setPackageFile(undefined);setPackageDialog(true);}
-      else if(target==="backup")setPracticeBackup(true);
       else if(target==="devices")openSoundSettings();
       else if(target==="exercise")setExerciseDialog(true);
       else if(target==="drafts")setEditDraftsOpen(true);
@@ -862,8 +777,6 @@ export default function App() {
     workProgress: () => { clearLiveNotes(); setProgressOpen(true); return true; },
     library: (signal) => productActions.current.browse(signal),
     practice: (signal) => productActions.current.resume(signal),
-    review: (signal) => changeWorkspace("review", signal),
-    songHistory: (signal) => song ? visitSongWorkspace("review", { contentId: song.contentId, title: song.title, path: song.sourcePath }, signal) : false,
     play: async (signal) => {
       if (!(await productActions.current.resume(signal)) || signal.aborted) return false;
       productScreens.show("performance");
@@ -871,9 +784,7 @@ export default function App() {
     },
     import: (signal) => openPracticeTool(signal, () => setImportDialog(true), false),
     exercise: (signal) => openPracticeTool(signal, () => setExerciseDialog(true), false),
-    routine: (signal) => openPracticeTool(signal, () => { setRoutineLaunch(null); showRoutine(); }),
     passages: (signal) => openPracticeTool(signal, () => setPassageDialog(true)),
-    ladder: (signal) => openPracticeTool(signal, () => setLadderDialog(true)),
     fingering: (signal) => openPracticeTool(signal, () => { setSelectedNote(null); setFingeringDialog(true); }),
     hands: (signal) => openPracticeTool(signal, () => setHandsDialog(true), false),
     meter: (signal) => openPracticeTool(signal, () => setMeterDialog(true), false),
@@ -885,7 +796,6 @@ export default function App() {
     inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
     display: () => setDisplayDialog(true),
-    backup: () => setPracticeBackup(true),
     silence: () => action({ type: "panic" }),
   }, {
     engine: !connected ? "练习室连接中断，请等待重新连接。" : binding ? "正在读取当前练习，请稍后再试。" : !startupReady ? "练习室正在恢复，完成后可使用。" : operationBusy ? "正在处理练习资料，请等待当前操作完成。" : null,
@@ -927,9 +837,6 @@ export default function App() {
       clearLiveNotes();
       setError("");
       setNotice((prepared.importWarnings ?? []).join("；"));
-        setRoutineSuspended(false);
-      setRoutineDialog(false);
-      setRoutineLaunch(null);
       if (prepared.view !== "practice") {
         setView(prepared.view === "paper" ? "paper" : "score");
         setPaperRevision((value) => value + 1);
@@ -1024,7 +931,6 @@ export default function App() {
             <PreparationButton store={workspaceSessions.piecePackage} name="曲目包…" readyLabel="已保存" disabled={busy || state.recording || openingActive} open={()=>{setPackageFile(undefined);setPackageDialog(true);}}/>
             <MediaExportButton source={song} kind="practiceMidi" disabled={!song || busy} open={()=>{if(song)setMediaExport({contentId:song.contentId,title:song.title,path:song.sourcePath,engineId:song.engineId,kind:"practiceMidi"});}}/>
             <MediaExportButton source={song} kind="midi" disabled={!song || busy} open={exportMidi}/>
-            <button onClick={()=>setPracticeBackup(true)}>练习资料备份…</button>
           </>},
           {label:"曲库",content:<>
             <button onClick={()=>{setLibraryAdvanced(false);void changeWorkspace("library");}}>选择曲目…</button>
@@ -1036,9 +942,9 @@ export default function App() {
           {label:"练习",content:<>
             <button disabled={!song || state.recording} onClick={()=>action({type:["playing","countIn"].includes(playback.getSnapshot().status)?"pause":"play"})}>播放 / 暂停</button>
             <button disabled={!song} onClick={()=>action({type:"restart"})}>从头开始</button>
-            <button disabled={!song || routineActive || ladderActive} onClick={()=>action({type:"mode",value:"wait"})}>弹对后继续</button>
-            <button disabled={!song || routineActive || ladderActive} onClick={()=>action({type:"mode",value:"listen"})}>连续播放</button>
-            <button disabled={busy || openingActive || ladderActive || routineActive} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}> {state.recording?"停止录制":"录制演奏"}</button>
+            <button disabled={!song} onClick={()=>action({type:"mode",value:"wait"})}>弹对后继续</button>
+            <button disabled={!song} onClick={()=>action({type:"mode",value:"listen"})}>连续播放</button>
+            <button disabled={busy || openingActive} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}> {state.recording?"停止录制":"录制演奏"}</button>
             <PreparationButton store={workspaceSessions.exercise} name="技术练习…" readyLabel="已生成" disabled={openingActive} open={()=>setExerciseDialog(true)}/>
             {song?.generated && song.notes.length>0 && song.notes.every(n=>n.part==="left") && <button disabled={busy} onClick={()=>setLegacyExerciseDialog(true)}>核对旧版左手资料…</button>}
           </>},
@@ -1074,11 +980,6 @@ export default function App() {
           <Maximize2 size={16} />
         </button>
       </header>
-      {workspace === "practice" && routineDialog && routineSuspended && <div className="routine-return-banner" role="status">
-        <div><strong>练习计划的输入已保留</strong><span>可以继续编排，或关闭计划窗口并保留草稿后练习。</span></div>
-        <button disabled={busy || !startupReady} onClick={showRoutine}>继续编排计划</button>
-        <button disabled={workspaceSessions.routineWorkbench.getSnapshot().busy} onClick={() => { setRoutineDialog(false); setRoutineSuspended(false); setRoutineLaunch(null); }}>关闭并保留草稿</button>
-      </div>}
 
       <DesktopCloseProgress {...workspaceSessions.desktopClose} />
       <WorkspaceBrowseRecovery store={workspaceSessions.browse} />
@@ -1122,7 +1023,7 @@ export default function App() {
             store={playback}
             back={() => {void run({type:"pause"}).then(ok=>{if(ok){setSongSetup(true);}});}}
             tools={<PerformanceTools song={song} playback={playback} display={display} setDisplay={setDisplay}
-              status={{busy,openingActive,connected,locked:navigation.locked,startupReady,editable:!recital&&!ladderActive&&!routineActive}}
+              status={{busy,openingActive,connected,locked:navigation.locked,startupReady,editable:!recital}}
               keyboard={{range:pianoRange,viewport:pianoViewport,outside:outsidePianoRange}} practiceRange={practiceRange} bookmarkNavigation={bookmarkNavigation}
               visible={productScreens.screen==="performance"} editFingers={editFingers} setEditFingers={setEditFingers} clearSelection={()=>setSelectedNote(null)}
               action={action} run={run} adjustRealtime={adjustRealtime} setView={setView}
@@ -1146,7 +1047,7 @@ export default function App() {
             store={playback}
             song={song}
             busy={busy || openingActive}
-            disabled={!connected || state.recording || recital || ladderActive || routineActive}
+            disabled={!connected || state.recording || recital}
             seek={(position) => adjustRealtime({ type: "seek", position })}
           />
           <PracticeStage combined={view === "combined" && state.mode !== "memory"} axis={display.practiceSplitAxis === "auto" ? "rows" : display.practiceSplitAxis} ratio={display.practiceSplitAxis === "auto" ? 25 : display.practiceSplitRatio}
@@ -1181,70 +1082,6 @@ export default function App() {
                   <Notation
                     toolRequest={scoreToolRequest}
                     clearToolRequest={clearScoreToolRequest}
-                    openHistoryPlan={(id, day) => {
-                      launchPracticeTool(() => {
-                        setRoutineLaunch({ id, day });
-                        setHistoryScoreReview(null);
-                        showRoutine();
-                      });
-                    }}
-                    historyReview={historyScoreReview}
-                    clearHistoryReview={() => setHistoryScoreReview(null)}
-                    openOriginalHistoryReview={async (signal) => {
-                      const original = historyScoreReview;
-                      if (!original || signal.aborted) return;
-                      const origin = playback.getSnapshot().stateOrder?.engineId;
-                      const entry = await api.commandForEngine<import("./features/review/historyTypes").HistoryDetail>(origin, {
-                        type: "readHistoryDetail", content_id: original.contentId, id: original.historyId,
-                      });
-                      requireHistorySource(entry.source, original.contentId, original.historyId);
-                      if (signal.aborted) return;
-                      if (origin !== playback.getSnapshot().stateOrder?.engineId) throw new Error("练习室连接已改变，请重新打开原演奏记录。");
-                      if (!(await changeWorkspace("review", signal))) {
-                        if (signal.aborted) return;
-                        throw new Error("当前练习仍在处理，稍后可返回原演奏记录。");
-                      }
-                      setReplayDraftRequest({ id: crypto.randomUUID(), entry });
-                    }}
-                    practiceHistoryReview={async (reference, before, after, source) => {
-                      if (!historyScoreReview) return;
-                      const originalReview = historyScoreReview;
-                      const originalPresentation = historyPresentation.current;
-                      const origin = playback.getSnapshot().stateOrder?.engineId;
-                      try {
-                        const operations = getHistoryOperations();
-                        const intent = await operations.create(origin, requireHistorySource(source ?? originalReview.source, originalReview.contentId, originalReview.historyId, true), { kind: "practiceRange", reference, before, after }, "score", originalReview.title, undefined, () => historyPresentation.current.review === originalReview && historyPresentation.current.workspace === originalPresentation.workspace && historyPresentation.current.view === originalPresentation.view);
-                        if (!origin) throw new Error("练习室连接尚未读到，请返回原演奏核对结果。");
-                        const receipt = await operations.follow(intent.request.id, origin);
-                        if (historyPresentation.current.review !== originalReview || historyPresentation.current.workspace !== originalPresentation.workspace || historyPresentation.current.view !== originalPresentation.view) return;
-                        if (receipt?.phase !== "done" || !receipt.result) throw new Error(receipt?.error || "原重练请求已保留，可从工作进度返回原演奏核对。");
-                        const result = receipt.result;
-                        if (origin !== playback.getSnapshot().stateOrder?.engineId) throw new Error("原重练请求来自上次连接，请返回练习核对当前曲目。");
-                        await refresh();
-                        const current = playback.getSnapshot();
-                        if (historyPresentation.current.review !== originalReview || historyPresentation.current.workspace !== originalPresentation.workspace || historyPresentation.current.view !== originalPresentation.view) return;
-                        if (origin !== current.stateOrder?.engineId || current.contentId !== result.historyPrepared.contentId || current.scoreRevision !== result.historyPrepared.scoreRevision) throw new Error("已准备的练习又有变化，请核对当前曲目后重新定位。");
-                        if (result.restoreWarning)
-                          throw new Error(result.restoreWarning);
-                        const focus = requireHistoryScoreTarget(result.scoreFocus, result.historyPrepared, reference);
-                        setHistoryScoreReview((current) => current === originalReview ? null : current);
-                        setHistoryScoreFocus(
-                          focus
-                            ? {
-                                ...focus,
-                                request: crypto.randomUUID(),
-                              }
-                            : null,
-                        );
-                        setFeedback(false);
-                        operations.present(intent.request.id);
-                      } catch (e) {
-                        await refresh();
-                        throw e;
-                      }
-                    }}
-                    historyFocus={historyScoreFocus}
-                    clearHistoryFocus={() => setHistoryScoreFocus(null)}
                     song={song}
                     state={live}
                     seek={(position) => action({ type: "seek", position })}
@@ -1277,7 +1114,6 @@ export default function App() {
                   <PaperScore
                     engineId={song.engineId ?? undefined}
                     contentId={song.contentId}
-                    historyFocus={historyPaperFocus}
                     revision={paperRevision}
                     playback={{ measure: live.measure }}
                     contextKey={JSON.stringify(
@@ -1398,13 +1234,6 @@ export default function App() {
           }}
         />
       )}
-      {practiceBackup && (
-        <PracticeBackupDialog
-          session={workspaceSessions.practiceBackup}
-          close={() => setPracticeBackup(false)}
-          changed={refresh}
-        />
-      )}
       {passageDialog && song && (
         <PassageDialog
           key={song.contentId}
@@ -1413,12 +1242,6 @@ export default function App() {
           start={loopStart}
           end={loopEnd}
           close={() => setPassageDialog(false)}
-          addToRoutine={(passage) => {
-            setPassageDialog(false);
-            setRoutineLaunch(null);
-            setRoutinePassage(passage);
-            showRoutine();
-          }}
           changed={async () => {
             const session = await api.session();
             installSession(session);
@@ -1551,15 +1374,7 @@ export default function App() {
           if (!(await resumeEditingSong(contentId, path))) return false;
           setMetadataDraftPath(path); setMetadata(true); return true;
         }}
-        resumeExpression={async (contentId, path) => {
-          if (!(await resumeEditingSong(contentId, path))) return false;
-          if (["playing", "countIn"].includes(playback.getSnapshot().status) && !(await run({ type: "pause" }))) return false;
-          setSongOptions(true); setExpressionReveal({ contentId, id: crypto.randomUUID() }); return true;
-        }}
-        resumeAnnotation={async (entry) => {
-          if (!(await changeWorkspace("review"))) return false;
-          setAnnotationDraftRequest({ id: crypto.randomUUID(), entry }); return true;
-        }} />}
+ />}
 
       {fingeringWorkbenchOpen && <FingeringWorkbench store={workspaceSessions.fingeringWorkbench} close={() => setFingeringWorkbenchOpen(false)} resume={async (draft) => {
         if (!await resumeEditingSong(draft.contentId, draft.path)) return false;

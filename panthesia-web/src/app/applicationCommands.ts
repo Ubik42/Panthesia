@@ -71,17 +71,6 @@ const definitions = [
     featured: true,
   },
   {
-    id: "review",
-    label: "打开练习回顾",
-    description: "查看成绩、评语、回放与复习建议",
-    group: "工作区",
-    icon: History,
-    keywords: "历史 记录 统计 评分 review history huigu",
-    needs: ["engine", "idle", "navigation"],
-    shortcut: "history",
-    featured: true,
-  },
-  {
     id: "play",
     label: "播放或暂停",
     description: "继续当前练习，或暂停演奏",
@@ -91,15 +80,6 @@ const definitions = [
     needs: ["engine", "idle", "navigation", "song"],
     shortcut: "playPause",
     featured: true,
-  },
-  {
-    id: "songHistory",
-    label: "查看当前曲目的历史",
-    description: "按曲目内容查看成绩、评语、日历与周趋势",
-    group: "工作区",
-    icon: History,
-    keywords: "本曲 当前 歌曲 历史 记录 成绩 日历 统计 song history benqu",
-    needs: ["engine", "idle", "navigation", "loaded"],
   },
   {
     id: "import",
@@ -121,16 +101,6 @@ const definitions = [
     needs: ["engine", "idle", "navigation"],
   },
   {
-    id: "routine",
-    label: "编排练习计划",
-    description: "安排日课、曲目与复习内容",
-    group: "练习与编排",
-    icon: ListMusic,
-    keywords: "日课 计划 日程 每天 routine jihua rike",
-    needs: ["engine", "idle", "navigation"],
-    featured: true,
-  },
-  {
     id: "passages",
     label: "管理练习段落",
     description: "保存、选择与安排曲目选段",
@@ -139,15 +109,6 @@ const definitions = [
     keywords: "片段 分段 循环 passage loop",
     needs: ["engine", "idle", "navigation", "song", "editable"],
     shortcut: "passages",
-  },
-  {
-    id: "ladder",
-    label: "打开速度阶梯",
-    description: "逐轮提高速度，保留练习进度",
-    group: "练习与编排",
-    icon: Layers,
-    keywords: "速度 节奏 阶梯 tempo ladder",
-    needs: ["engine", "idle", "navigation", "song", "editable"],
   },
   {
     id: "fingering",
@@ -254,15 +215,6 @@ const definitions = [
     needs: ["navigation"],
   },
   {
-    id: "backup",
-    label: "备份与恢复练习资料",
-    description: "导出记录与设置，或从备份恢复",
-    group: "应用设置",
-    icon: Archive,
-    keywords: "备份 恢复 导出 迁移 backup restore beifen huifu",
-    needs: ["engine", "idle", "navigation"],
-  },
-  {
     id: "silence",
     label: "暂停并停止发声",
     description: "立即停止当前声音",
@@ -288,7 +240,7 @@ export function applicationCommands(
   unavailable: Record<CommandRequirement, string | null>,
   shortcuts: Shortcuts,
 ): ApplicationCommand[] {
-  return definitions.filter(item => !["review", "songHistory", "routine", "ladder"].includes(item.id)).map(
+  return definitions.map(
     (item: CommandDefinition & { id: ApplicationCommandId }) => ({
       ...item,
       shortcut: item.shortcut ? shortcuts[item.shortcut] : null,

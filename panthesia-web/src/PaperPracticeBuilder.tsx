@@ -350,7 +350,6 @@ export function PaperPracticeBuilder({
               {review.settings.metronome ? "节拍器已开" : "节拍器已关"}
             </span>
             <span>输入补偿 {review.settings.latency} ms</span>
-            {review.settings.adaptive && <span>适应速度已开</span>}
           </div>
         )}
         {review && !draft.saved && !draft.pending && (

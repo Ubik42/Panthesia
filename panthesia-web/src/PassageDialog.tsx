@@ -38,20 +38,13 @@ export function PassageDialog({
   end,
   close,
   changed,
-  addToRoutine,
 }: {
   song: LoadedSong;
-  state: Pick<Snapshot, "speed" | "routine" | "recording" | "status">;
+  state: Pick<Snapshot, "speed" | "recording" | "status">;
   start: number;
   end: number;
   close: () => void;
   changed: () => Promise<void>;
-  addToRoutine: (passage: {
-    contentId: string;
-    id: string;
-    name: string;
-    notes: string;
-  }) => void;
 }) {
   const [precise, setPrecise] = useState<Passage | "new" | null>(null),
     [review, setReview] = useState<Passage | null>(null);
@@ -303,7 +296,7 @@ export function PassageDialog({
                 placeholder="名称、备注或小节号"
               />
             </label>
-            <PracticeCatalogFilters store={store} kind="passage" />
+            <PracticeCatalogFilters store={store} />
             <PracticeListPager
               count={visible.length}
               page={page}

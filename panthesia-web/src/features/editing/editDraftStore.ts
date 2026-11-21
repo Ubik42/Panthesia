@@ -1,27 +1,13 @@
 import type { MetadataDraft } from "../library/metadataTypes";
 import { metadataFieldNames } from "../library/metadataFields";
-import type { AnnotationDraft } from "../review/annotationDraft";
-import type { LearningEditDraft } from "../library/learningDraft";
-import { isLearningInputs } from "../library/learningDraft";
-import {
-  expressionFields,
-  isExpressionInputs,
-  type ExpressionDraft,
-} from "../practice/expressionDraft";
 
 type Drafts = {
   metadata: MetadataDraft;
-  annotations: AnnotationDraft;
-  learning: LearningEditDraft;
-  expressions: ExpressionDraft;
 };
 export type EditDraftKind = keyof Drafts;
-const kinds: EditDraftKind[] = [
-  "metadata",
-  "annotations",
-  "learning",
-  "expressions",
-];
+const kinds: EditDraftKind[] = ["metadata"];
+// Draft kinds from the assessment era are kept verbatim and written back unchanged.
+const retainedKinds = ["annotations", "learning", "expressions"] as const;
 const storageKey = "neothesia.edit-drafts.v1";
 const limit = 2_000_000;
 const object = (v: unknown): v is Record<string, unknown> =>
@@ -31,7 +17,6 @@ const text = (v: unknown, length = 32768): v is string =>
 const nullable = (v: unknown, length = 32768) => v === null || text(v, length);
 const numeric = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v);
-const numberOrNull = (v: unknown) => v === null || numeric(v);
 const cid = (v: unknown): v is string =>
   typeof v === "string" && /^[a-f\d]{64}$/i.test(v);
 export const editDraftValue = (value: unknown): string =>
@@ -68,135 +53,10 @@ function metadata(value: unknown) {
     value.tags.every((tag) => text(tag, 2048))
   );
 }
-function annotationText(value: unknown) {
-  return (
-    object(value) &&
-    ["note", "teacher", "next"].every((field) => text(value[field], 8192))
-  );
-}
-function annotation(value: unknown) {
-  return (
-    value === null ||
-    (object(value) &&
-      annotationText(value) &&
-      numeric(value.updated_at_unix_ms))
-  );
-}
-function header(value: unknown, identity: [string, string]) {
-  return (
-    object(value) &&
-    value.contentId === identity[0] &&
-    value.id === identity[1] &&
-    text(value.title) &&
-    nullable(value.path) &&
-    numeric(value.recordedAt) &&
-    numberOrNull(value.playingMs) &&
-    numeric(value.speed) &&
-    text(value.hands, 256) &&
-    nullable(value.mode, 256) &&
-    annotation(value.annotation) &&
-    (value.range === null ||
-      (Array.isArray(value.range) &&
-        value.range.length === 2 &&
-        value.range.every(numeric))) &&
-    typeof value.exactPassage === "boolean" &&
-    typeof value.restorable === "boolean" &&
-    numberOrNull(value.tempo) &&
-    (value.coverage === null ||
-      (object(value.coverage) &&
-        numeric(value.coverage.target) &&
-        numeric(value.coverage.judged))) &&
-    object(value.score) &&
-    [
-      "matched_notes",
-      "on_time_notes",
-      "early_notes",
-      "late_notes",
-      "wrong_notes",
-      "missed_notes",
-      "required_notes",
-    ].every((field) => numeric((value.score as Record<string, unknown>)[field]))
-  );
-}
-function learning(value: unknown) {
-  return (
-    object(value) &&
-    text(value.stage, 256) &&
-    text(value.goal, 32768) &&
-    nullable(value.due, 10) &&
-    numberOrNull(value.weeklyMinutes) &&
-    numberOrNull(value.targetBpm)
-  );
-}
-function learningBase(value: unknown) {
-  if (value === null) return true;
-  if (
-    !object(value) ||
-    !learning(value) ||
-    !numeric(value.updatedAt) ||
-    !text(value.title) ||
-    !Array.isArray(value.transitions) ||
-    value.transitions.length > 64
-  )
-    return false;
-  return value.transitions.every((row) => {
-    if (
-      !object(row) ||
-      !text(row.stage, 256) ||
-      !numeric(row.at) ||
-      (row.plan != null && !learning(row.plan))
-    )
-      return false;
-    if (row.evidence == null) return true;
-    const e = row.evidence;
-    return (
-      object(e) &&
-      object(e.week) &&
-      numeric(e.week.runningMs) &&
-      numberOrNull(e.week.targetMinutes) &&
-      typeof e.week.met === "boolean" &&
-      object(e.wholeSong) &&
-      typeof e.wholeSong.targetBpmMet === "boolean" &&
-      Array.isArray(e.wholeSong.recent) &&
-      e.wholeSong.recent.every(
-        (r) =>
-          object(r) &&
-          text(r.sessionId) &&
-          typeof r.meetsTargetBpm === "boolean",
-      ) &&
-      object(e.routines) &&
-      numeric(e.routines.completedCount)
-    );
-  });
-}
-function valid(kind: EditDraftKind, key: string, value: unknown) {
+
+function valid(_kind: EditDraftKind, key: string, value: unknown) {
   if (!object(value)) return false;
-  if (kind === "expressions") {
-    const goal = (v: unknown) =>
-      v === null ||
-      (object(v) &&
-        expressionFields.every(
-          ({ key }) => v[key] === undefined || numberOrNull(v[key]),
-        ));
-    return (
-      cid(key) &&
-      goal(value.base) &&
-      goal(value.draft) &&
-      (value.inputs === undefined || isExpressionInputs(value.inputs)) &&
-      (value.path === undefined || text(value.path)) &&
-      (value.title === undefined || text(value.title)) &&
-      (value.pending === undefined ||
-        (object(value.pending) &&
-          ["unconfirmed", "refresh"].includes(String(value.pending.phase)) &&
-          goal(value.pending.goal) &&
-          (value.pending.engineId === undefined ||
-            text(value.pending.engineId, 256)) &&
-          (value.pending.expected === undefined ||
-            goal(value.pending.expected))))
-    );
-  }
-  if (kind === "metadata")
-    return (
+  return (
       !!pair(key) &&
       metadata(value.base) &&
       metadata(value.draft) &&
@@ -211,40 +71,6 @@ function valid(kind: EditDraftKind, key: string, value: unknown) {
           (value.refresh.warnings === undefined ||
             (Array.isArray(value.refresh.warnings) &&
               value.refresh.warnings.every((w) => text(w))))))
-    );
-  if (kind === "annotations") {
-    const identity = pair(key);
-    return (
-      !!identity &&
-      annotation(value.base) &&
-      annotationText(value.draft) &&
-      (value.field === undefined ||
-        ["note", "teacher", "next"].includes(String(value.field))) &&
-      (value.pending === undefined ||
-        (object(value.pending) &&
-          ["unconfirmed", "refresh"].includes(String(value.pending.phase)) &&
-          annotationText(value.pending.value) &&
-          annotation(value.pending.expected) &&
-          (value.pending.engineId === undefined ||
-            text(value.pending.engineId, 256)))) &&
-      (value.entry === undefined || header(value.entry, identity))
-    );
-  }
-  return (
-    cid(key) &&
-    text(value.path) &&
-    text(value.title) &&
-    learningBase(value.base) &&
-    learning(value.draft) &&
-    (value.inputs === undefined || isLearningInputs(value.inputs)) &&
-    (value.section === undefined ||
-      ["plan", "evidence", "history"].includes(String(value.section))) &&
-    (value.pending === undefined ||
-      (object(value.pending) &&
-        ["unconfirmed", "refresh"].includes(String(value.pending.phase)) &&
-        (value.pending.engineId === undefined ||
-          text(value.pending.engineId, 256)) &&
-        (value.pending.value === null || learning(value.pending.value))))
   );
 }
 
@@ -341,15 +167,9 @@ export function createEditDraftStore() {
   const listeners = new Set<() => void>();
   const active = {
     metadata: new Map<string, number>(),
-    annotations: new Map<string, number>(),
-    learning: new Map<string, number>(),
-    expressions: new Map<string, number>(),
   };
   const working = {
     metadata: new Set<string>(),
-    annotations: new Set<string>(),
-    learning: new Set<string>(),
-    expressions: new Set<string>(),
   };
   const publish = () => {
     snapshot = {
@@ -360,8 +180,10 @@ export function createEditDraftStore() {
     };
     listeners.forEach((listener) => listener());
   };
+  let retained: Record<string, unknown> = {};
   const documentValue = () => ({
     version: 2,
+    ...retained,
     ...Object.fromEntries(
       kinds.map((kind) => [kind, [...maps[kind].entries()]]),
     ),
@@ -427,24 +249,6 @@ export function createEditDraftStore() {
       active.metadata,
       working.metadata,
     ),
-    annotations: new EditDraftMap<AnnotationDraft>(
-      change,
-      publish,
-      active.annotations,
-      working.annotations,
-    ),
-    learning: new EditDraftMap<LearningEditDraft>(
-      change,
-      publish,
-      active.learning,
-      working.learning,
-    ),
-    expressions: new EditDraftMap<ExpressionDraft>(
-      change,
-      publish,
-      active.expressions,
-      working.expressions,
-    ),
   };
   try {
     raw = localStorage.getItem(storageKey);
@@ -457,8 +261,7 @@ export function createEditDraftStore() {
       });
       if (!object(value) || (value.version !== 1 && value.version !== 2))
         throw new Error("原草稿版本无法读取");
-      if (value.version === 1 && value.expressions === undefined)
-        value.expressions = [];
+      retained = Object.fromEntries(retainedKinds.filter((kind) => value[kind] !== undefined).map((kind) => [kind, value[kind]]));
       // Validate the complete document before installing any of its records.
       for (const kind of kinds) {
         const rows = value[kind];

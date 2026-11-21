@@ -310,6 +310,7 @@ impl Input {
     }
 }
 impl Prepared {
+    #[cfg(test)]
     pub fn read(
         path: PathBuf,
         title: String,
@@ -334,14 +335,6 @@ impl Prepared {
             return Err("曲库索引中的文件内容已改变，请重新检查这首曲目".into());
         }
         Self::from_verified_checked(file, title, watch, names, check)
-    }
-    pub(crate) fn from_verified(
-        file: MidiFile,
-        title: String,
-        watch: Watch,
-        names: impl FnOnce(&str) -> Result<Vec<ScoreVersion>, String>,
-    ) -> Result<Self, String> {
-        Self::from_verified_checked(file, title, watch, names, &|| Ok(()))
     }
     pub(crate) fn from_verified_checked(
         file: MidiFile,
@@ -380,10 +373,6 @@ impl Prepared {
         check()?;
         prepared.check()?;
         Ok(prepared)
-    }
-    pub(crate) fn install_owned(self,player:&mut Player)->Result<(),String>{
-        let prepared=self.retain_assets(&player.data,&mut player.preferences,&||Ok(()))?;
-        player.install_prepared(prepared.file,prepared.title,None,Some(InstallData{assets:Some(prepared.assets),timeline:prepared.timeline}))
     }
     pub(crate) fn retain_assets(mut self,data:&Path,preferences:&mut crate::preferences::Preferences,check:&impl Fn()->Result<(),String>)->Result<Self,String>{
         self.check()?;check()?;

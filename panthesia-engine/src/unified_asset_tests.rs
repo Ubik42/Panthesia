@@ -1,7 +1,7 @@
 //! Storage migration checks use bundled fixtures and isolated profiles only.
 use crate::*;
 use panthesia_core::{
-    library::{self, FingerHint, ScoreAssociation, SongSidecar},
+    library::{self, ScoreAssociation, SongSidecar},
     practice::PracticePart,
 };
 fn root() -> PathBuf {
@@ -63,84 +63,6 @@ fn owned_notation_survives_source_loss_and_preserves_changed_asset() {
             .unwrap()
             .path,
         restored
-    );
-}
-#[test]
-fn panthesia_package_roundtrip_keeps_raw_midi_transform_and_owned_annotations() {
-    let data = root();
-    let source = data.join("source.mid");
-    std::fs::write(&source, MIDI).unwrap();
-    let cid = blake3::hash(MIDI).to_hex().to_string();
-    let track = crate::library::read_midi(&source)
-        .unwrap()
-        .tracks
-        .iter()
-        .find(|t| !t.notes.is_empty())
-        .unwrap()
-        .track_id;
-    let mut sidecar = SongSidecar::default();
-    sidecar.track_parts.insert(track, PracticePart::LeftHand);
-    sidecar.fingerings.push(FingerHint {
-        track_id: track,
-        note_index: 0,
-        finger: 4,
-    });
-    let xml = notation_assets::retain(&data, XML).unwrap();
-    sidecar.score = Some(ScoreAssociation {
-        path: xml,
-        content_id: blake3::hash(XML).to_hex().to_string(),
-    });
-    library::save_song_sidecar(&source, &cid, sidecar).unwrap();
-    let owned = song_repository::SongRepository::open(&data)
-        .unwrap()
-        .retain(&source, &cid, "Fixture", "", &|| Ok(()))
-        .unwrap();
-    let mut player = Player::new(data.clone(), PathBuf::new(), true);
-    player.retain_notation_assets(&cid, &owned).unwrap();
-    player
-        .command(Command::Load {
-            path: owned,
-            title: "Fixture".into(),
-        })
-        .unwrap();
-    let transform = practice_variant::Variant {
-        transpose: 2,
-        quantize: 16,
-        ..Default::default()
-    };
-    player
-        .set_variant(&cid, player.score_revision, transform.clone())
-        .unwrap();
-    let (bytes, _) = player.prepare_piece_package().unwrap();
-    let archive = piece_package::Package::decode(&bytes).unwrap();
-    assert_eq!(archive.manifest.version, 19);
-    assert_eq!(archive.manifest.format, "panthesia-piece");
-    assert_eq!(archive.manifest.practice_variant, transform);
-    assert_eq!(archive.files["performance.mid"], MIDI);
-    assert_eq!(archive.manifest.scores.len(), 1);
-    let target = root();
-    let mut restored = Player::new(target.clone(), PathBuf::new(), true);
-    restored
-        .import_piece_package(bytes, "replace".into())
-        .unwrap();
-    assert_eq!(restored.variant(), transform);
-    let managed = restored
-        .source_file
-        .as_ref()
-        .unwrap()
-        .source_path
-        .as_ref()
-        .unwrap();
-    assert!(managed.starts_with(target.join("library/assets/midi")));
-    assert_eq!(std::fs::read(managed).unwrap(), MIDI);
-    let doc = library::load_song_sidecar(managed, &cid).unwrap();
-    assert_eq!(doc.track_parts[&track], PracticePart::LeftHand);
-    assert_eq!(doc.fingerings[0].finger, 4);
-    assert!(
-        doc.score
-            .unwrap()
-            .path
-            .starts_with(target.join("library/assets/notation"))
     );
 }
 #[test]

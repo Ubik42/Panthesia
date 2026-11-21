@@ -7,7 +7,6 @@ pub mod song_repository;
 mod notation_assets;
 mod loop_practice;
 mod note_guidance;
-mod practice_policy;
 mod song_audition;
 mod library_progress;
 mod bookmarks;
@@ -17,7 +16,6 @@ mod music_import_receipts;
 pub mod package_preview;
 pub mod notation_drafts;
 pub mod pdf_drafts;
-pub mod backup_operations;
 pub mod media_export;
 pub mod media_export_cache;
 mod background_tasks;
@@ -26,36 +24,20 @@ pub use device_catalog::Snapshot as DeviceSnapshot;
 mod import_pipeline;
 mod catalog_import;
 mod load_pipeline;
-mod history_loading;
-mod history_source;
-mod history_operations;
 mod operation_journal;
 mod library_operations;
-mod history_review;
-mod routine_loading;
-mod routine_reader;
-mod routine_edit;
-mod routine_protocol;
-mod source_snapshot;
 mod song_metadata;
 mod metadata_defaults;
 mod exercise_assets;
-mod history_actions;
 mod finger_annotations;
-mod history_replay_loading;
 mod exercise_loading;
 mod runtime_request;
 mod meter_map;
 mod finger_pair;
 mod finger_pair_interactions;
-mod performance_archive;
 mod round_storage;
-mod practice_backup_preview;
-mod practice_backup_import;
 mod pending_save;
 mod settings_storage;
-mod round_analysis;
-pub use round_analysis::GoalState as ExpressionGoalState;
 mod storage_control;
 mod storage_recovery;
 pub use pending_save::{StorageOperation, StorageStatus};
@@ -81,27 +63,20 @@ mod demo_loading;
 mod score_mapping;
 mod source_notation;
 mod history_reader;
-mod history_calendar;
-mod history_list;
-mod history_clip_edit;
 mod json_stream;
 mod replay_index;
-mod shared_map;
+#[cfg(test)]
+mod test_fixtures;
 mod song_switch;
 mod package_loading;
 mod song_document;
 mod state_projection;
-mod feedback_reader;
 pub mod live_notes;
 mod playback_memory;
 pub use state_projection::{StateCursor, StateFrame};
-mod replay_clips;
-mod history_problem_plan;
-mod history_problem_cuts;
 mod practice_conditions;
 mod practice_variant;
 mod passage_practice;
-mod history_multi_plan;
 mod metadata_history;
 mod metadata_templates;
 pub mod file_locations;
@@ -116,8 +91,6 @@ mod legacy_exercise_history;
 mod audio;
 mod track_sound;
 mod track_appearance;
-mod expression_goal;
-mod expression_review;
 mod document;
 mod fingerings;
 mod fingering_protocol;
@@ -128,9 +101,6 @@ mod paper_views;
 mod held_actions;
 mod hands;
 mod history_commands;
-mod weak_practice;
-mod ladder_commands;
-mod routine_commands;
 mod library_index;
 mod library_scores;
 mod score_review;
@@ -149,8 +119,6 @@ mod midi_master_volume;
 mod finger_demo;
 mod demo_protocol;
 mod held_demo;
-mod song_learning;
-mod song_learning_evidence;
 mod package_commands;
 mod piece_package;
 mod preferences;
@@ -162,24 +130,21 @@ use panthesia_core::{
 };
 use preferences::{Passage, Preferences};
 use std::collections::HashMap;
-#[cfg(test)]
-use std::thread;
 pub mod library;
 pub mod library_monitor;
 pub mod library_repairs;
 pub mod score_attachments;
-pub mod practice_backup;
 
 use panthesia_music::{MidiFile, MidiNote};
 use panthesia_core::{
     panthesia_keyboard::KeyboardRange,
     practice::{PracticeMatcher, PracticePart},
     practice_history::{
-        PracticeHistoryStore, PracticeSession, PracticeSessionKind, SongPracticeSetup,
+        PracticeHistoryStore, SongPracticeSetup,
     },
 };
 #[cfg(test)]
-use panthesia_core::practice::{PracticeHands, PracticeTarget};
+use panthesia_core::practice::PracticeHands;
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
@@ -203,19 +168,14 @@ type EventNotes = preferences::Shared<HashMap<panthesia_music::NoteId, usize>>;
 type SongFile = preferences::Shared<MidiFile>;
 type FingerAssignments = preferences::Shared<HashMap<(usize, Duration, u8), u8>>;
 type HandAssignments = preferences::Shared<HashMap<(usize, usize), PracticePart>>;
-type ActivePlan = preferences::Shared<routine_commands::ActiveRoutine>;
 type OriginalGrid = preferences::Shared<panthesia_music::musical_time::MusicalTime>;
 
 mod protocol;
 pub use protocol::Command;
 pub use score_review::ScoreReviewExpectation;
 pub use score_mapping::Input as ScoreMappingRequest;
-pub use routine_reader::ReadRequest as RoutineReadRequest;
-pub use routine_edit::OptionsRequest as RoutineOptionsRequest;
-pub use history_reader::{AnnotationInput as HistoryAnnotationRequest, ReadRequest as HistoryReadRequest, HistoryPageRequest};
+pub use history_reader::ReadRequest as HistoryReadRequest;
 pub use history_reader::ReadScope as ReadTaskScope;
-pub use history_list::{HistoryPage, HistoryListEntry};
-pub use history_calendar::HistoryCalendar;
 pub use practice_edit::Request as PracticeRequest;
 
 #[derive(Clone)]
@@ -224,8 +184,6 @@ pub struct Engine {
     catalog_rows: Arc<Mutex<Option<std::sync::Weak<Mutex<Vec<library::SongRow>>>>>>,
     paper_navigation: Arc<std::sync::atomic::AtomicU64>,
     music_imports: music_import::Store,
-    backup_imports: backup_operations::Store,
-    history_operations: history_operations::Store,
     library_opens: library_operations::Store,
     engine_id: Arc<str>,
     startup: startup::Control,
@@ -267,8 +225,9 @@ pub fn is_control_command(command: &Command) -> bool {
 pub fn is_timed_mode(mode: &str) -> bool {
     matches!(mode, "flow" | "recital" | "memory")
 }
-fn is_recital_mode(mode: &str) -> bool {
-    matches!(mode, "recital" | "memory")
+/// Mainline exposes two modes; any older stored or internal mode reads as listen.
+pub(crate) fn public_mode(value: &str) -> &'static str {
+    if value == "wait" { "wait" } else { "listen" }
 }
 
 pub fn devices() -> serde_json::Value {
@@ -374,21 +333,15 @@ struct Player {
     fingers: FingerAssignments,
     exercise: Option<ExerciseSpec>,
     previous_summary: Option<preferences::Shared<AttemptSummary>>,
-    projections: state_projection::Cache,
     reclaimer: Option<playback_memory::Reclaimer>,
     coach: AdaptiveTempoCoach,
-    ladder: Option<preferences::LadderRun>,
-    routine:Option<ActivePlan>,
-    active_expression_goal:Option<expression_goal::ExpressionGoal>,
-    expression_attempt_started:bool,
     finger_demo: Option<finger_demo::Demo>,
     song_audition: Option<song_audition::Playback>,
     song_audition_pending: Option<String>,
     cancelled_song_auditions: std::collections::VecDeque<String>,
-    audio_stop_epoch: u64,
     cancelled_replay_starts: std::collections::VecDeque<String>,
+    audio_stop_epoch: u64,
     recorder: panthesia_core::recorder::FreeplayRecorder,
-    performance_capture:performance_archive::Capture,
     data: PathBuf,
     notation: Option<Arc<notation::ScoreAsset>>,
     score_revision: u64,
@@ -471,9 +424,7 @@ impl Player {
             track_routing: Default::default(),
             track_sound_cache: Default::default(),
             recorder: panthesia_core::recorder::FreeplayRecorder::default(),
-            performance_capture:Default::default(),
             audio_stop_epoch: 0,
-            cancelled_replay_starts: Default::default(),
             data: data.clone(),
             notation: None,
             score_revision: 0,
@@ -487,17 +438,13 @@ impl Player {
             fingers: FingerAssignments::default(),
             exercise: None,
             previous_summary: None,
-            projections: Default::default(),
             reclaimer: None,
             coach: AdaptiveTempoCoach::default(),
-            ladder: None,
-            routine:None,
-            active_expression_goal:None,
-            expression_attempt_started:false,
             finger_demo: None,
             song_audition: None,
             song_audition_pending: None,
             cancelled_song_auditions: Default::default(),
+            cancelled_replay_starts: Default::default(),
         }
     }
     fn annotation_path(&self, file: &MidiFile) -> Result<PathBuf, String> {
@@ -515,13 +462,6 @@ impl Player {
     }
     fn begin_play(&mut self) {
         self.stop_song_audition(None);
-        self.state.mode = practice_policy::mode(&self.state.mode).into();
-        self.state.wait = self.state.mode == "wait";
-        self.state.adaptive = false;
-        self.routine = None;
-        self.ladder = None;
-        self.active_expression_goal = None;
-        self.expression_attempt_started = false;
         if self.state.count_in > 0 && self.playback.clock == Duration::ZERO {
             let snap = self.snapshot();
             let f = self.file.as_ref().unwrap();
@@ -573,7 +513,6 @@ impl Player {
         self.state.count_in = 1;
         self.state.metronome = false;
         self.state.rounds = 0;
-        self.state.adaptive = false;
 
         self.state.annotation_revision = 0;
         self.fingers.clear();
@@ -659,9 +598,7 @@ impl Player {
             }
         }
         self.state.passage = None;
-        self.ladder = None;
         self.state.repetitions = 0;
-        self.state.loop_restarts=0;
         self.previous_summary = None;
         self.previous_mode = None;
         if let Some(l) = self
@@ -701,7 +638,7 @@ impl Player {
                 .mode
                 .clone()
                 .filter(|mode| {
-                    ["wait", "flow", "listen", "recital", "memory"].contains(&mode.as_str())
+                    ["wait", "flow", "listen"].contains(&mode.as_str())
                 })
                 .unwrap_or_else(|| "listen".into());
             self.state.wait = self.state.mode == "wait";
@@ -709,7 +646,6 @@ impl Player {
             self.state.metronome = settings.metronome;
             self.state.latency = settings.latency;
             self.state.rounds = settings.rounds;
-            self.state.adaptive = settings.adaptive;
             if ["both", "left", "right", "custom"].contains(&settings.hands.as_str()) {
                 self.state.hands = settings.hands.clone();
             }
@@ -727,11 +663,6 @@ impl Player {
                 if !was_selected{if let Some(config)=self.config.tracks.iter_mut().find(|config|config.track_id==track.track_id){config.player=PlayerConfig::Human;config.visible=true;config.practice_part=if channel==0{PracticePart::RightHand}else{PracticePart::LeftHand};scope_changed=true;}}
             }
             if scope_changed&&previous_hands!=Some(spec.hands){self.state.hands="both".into();}
-        }
-        if is_recital_mode(&self.state.mode) {
-            self.state.passage = None;
-            self.state.rounds = 1;
-            self.state.adaptive = false;
         }
         self.source_file = Some(file.clone().into());
         self.file = Some(file.into());
@@ -789,8 +720,7 @@ impl Player {
             self.state.hands = hands;
         }
         if let Some(passage) = prefs.passage.clone() {
-            if !is_recital_mode(&self.state.mode)
-                && self.file.is_some()
+            if self.file.is_some()
                 && passage.start.is_finite()
                 && passage.end.is_finite()
                 && passage.start >= 0.
@@ -848,7 +778,6 @@ impl Player {
             self.preferences.title = self.title.clone();
         }
         if let Some(file) = &self.file {
-            if let Some(run)=&self.ladder {self.preferences.ladder_runs.insert(format!("{}:{}",file.content_id,run.preset.id),run.clone());}
             self.preferences.exercise = self.exercise;
             if let Some(spec)=self.exercise {
                 if self.preferences.exercise_layouts.get(&file.content_id) != Some(&spec.hands) {
@@ -869,7 +798,6 @@ impl Player {
                     latency: self.state.latency,
                     rounds: self.state.rounds,
                     hands: self.state.hands.clone(),
-                    adaptive: self.state.adaptive,
                 };
             // Global volume and device updates retain an unchanged per-song collection.
             if self.preferences.songs.get(&file.content_id) != Some(&settings) {
@@ -977,12 +905,6 @@ impl Player {
         )
     }
     fn grid_signature(&self)->String {let mut grid=self.file.as_deref().map(practice_conditions::grid).unwrap_or_else(||"grid-v1-cbf29ce484222325".into());let variant=self.variant();if variant.active(){grid.push_str(&variant.signature());}grid}
-    fn practice_scope(&self)->String {
-        match self.practice_scope_checked(|| Ok::<(), std::convert::Infallible>(())) {
-            Ok(scope) => scope,
-            Err(never) => match never {},
-        }
-    }
     fn note_player(&self, track: usize, index: usize) -> PlayerConfig {
         playback_adapter::note_player(&self.config, &self.note_hands, &self.state.hands, track, index)
     }
@@ -1041,17 +963,11 @@ impl Player {
         if self.state.mode == "listen" { self.state.mode = "flow".into(); self.state.wait = false; }
         self.state.passage = Some(Passage { start, end });
         self.state.repetitions = 0;
-        self.state.loop_restarts=0;
         self.previous_summary = None;
         self.previous_mode = None;
         self.coach = AdaptiveTempoCoach::default();
         self.reset(start);
         Ok(())
-    }
-    fn selected(&self, track: usize) -> bool {
-        let count = self.file.as_ref().and_then(|file| file.tracks.iter().find(|t| t.track_id == track))
-            .map_or(0, |track| track.notes.len());
-        self.config.has_human_notes(track, count)
     }
     fn ensure_audio(&mut self) -> Result<(), String> {
         if self.sound_change.is_some(){return Err("音源正在切换，请等待完成后再开始演奏".into());}
@@ -1084,7 +1000,6 @@ impl Player {
         self.retire(audition);
         self.song_audition_pending = None;
         self.audio_stop_epoch = self.audio_stop_epoch.wrapping_add(1);
-        self.performance_capture.close(self.playback.clock.as_secs_f64(),self.state.position);
         self.finger_demo = None;
         if let Some(host)=&self.sound_host {host.stop();}
         if let Some(vst) = &self.vst {
@@ -1129,20 +1044,11 @@ impl Player {
     }
     fn reset(&mut self,position:f64) {self.reset_with_sound(position,None);}
     fn reset_with_sound(&mut self,position:f64,prepared:Option<track_sound::Prepared>) {
-        self.state.loop_abort_limit=0;
         self.playback.guidance.clear();
-        self.active_expression_goal = None;
-        let mut projections = std::mem::take(&mut self.projections);
-        if projections.scope.borrow().as_ref().is_some_and(|scope| scope.matches(self)) {
-            self.projections.scope = std::mem::take(&mut projections.scope);
-        }
-        self.retire(projections);
-        self.expression_attempt_started = false;
         self.panic();
         let report = self.matcher.report();
         self.matcher.reset();
-        let capture = std::mem::take(&mut self.performance_capture);
-        self.retire((report, capture));
+        self.retire(report);
         self.playback.clock = Duration::ZERO;
         self.pending_time.clear();self.pending_untracked=0;self.time_fraction=Duration::ZERO;self.time_connected=false;self.time_last_end=None;
         self.state.position = position;
@@ -1157,13 +1063,7 @@ impl Player {
         self.end_hold = 0.;
     }
     fn command(&mut self, command: Command) -> Result<serde_json::Value, String> {
-        let command = practice_policy::normalize(command)?;
-        self.state.mode = practice_policy::mode(&self.state.mode).into();
-        self.state.wait = self.state.mode == "wait";
-        self.state.adaptive = false;
-        self.routine = None;
-        self.ladder = None;
-        self.active_expression_goal = None;
+        let command = normalize_mode(command)?;
         match &command {
             Command::StopSongAudition{id}=>{self.stop_song_audition(Some(id));return Ok(self.song_audition_state(Some(id)));},
             Command::SongAuditionState{id}=>return Ok(self.song_audition_state(Some(id))),
@@ -1182,9 +1082,6 @@ impl Player {
             let song = self.command(Command::CurrentSong)?;
             return Ok(serde_json::json!({ "song": song, "state": self.snapshot() }));
         }
-        if let Command::SetSongExpressionGoal { goal } = command {
-            return self.set_song_expression_goal(goal);
-        }
         if let Command::PreviewLegacyExerciseHistory{content_id}=command {return legacy_exercise_history::preview(self,&content_id);}
         if let Command::ReviewLegacyExerciseHistory{content_id,old_id,current_id,fingerprint,approve}=command {return legacy_exercise_history::update(self,&content_id,&old_id,&current_id,&fingerprint,approve);}
         if let Command::PreviewLegacyExerciseTracks { content_id } = command {
@@ -1193,60 +1090,16 @@ impl Player {
         if let Command::ApplyLegacyExerciseTracks { content_id, fingerprint, restore_conditions } = command {
             return legacy_exercise_tracks::apply(self, &content_id, &fingerprint, restore_conditions);
         }
-        if self.finger_demo.is_some() && !matches!(&command, Command::StartFingerDemo{..}|Command::FingerDemoControl{..}|Command::StartHeldFingerDemo{..}|Command::StartHistoryReplay{..}|Command::StartHistoryReplayRange{..}|Command::PlayHistorySource{..}|Command::HistoryReplayControl{..}|Command::HistoryReplayLoop{..}|Command::HistoryProblemNotes{..}|Command::PreviewProblemCuts{..}|Command::PreviewMultiProblemPlan{..}|Command::SaveMultiProblemPlan{..}|Command::PreviewHistoryProblemPlan{..}|Command::SaveHistoryProblemPlan{..}|Command::HistoryReplayClips{..}|Command::ReadHistoryReplayClips{..}|Command::SaveHistoryReplayClip{..}|Command::DeleteHistoryReplayClip{..}|Command::HistoryPerformance{..}|Command::ReadHistoryPerformance{..}|Command::ReadHistoryDetail{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Volume{..}|Command::SoundFont{..}) {
+        if self.finger_demo.is_some() && !matches!(&command, Command::StartFingerDemo{..}|Command::FingerDemoControl{..}|Command::StartHeldFingerDemo{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Volume{..}|Command::SoundFont{..}) {
             self.panic();
         }
-        if self.routine.is_some() && matches!(command,
-            Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ResetPartSettings{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
-            |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
-            |Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
-            |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
-            return Err("正在练习计划项目，请先结束本项再修改条件".into());
-        }
-        if self.routine.is_some() && matches!(command,Command::Load{..}|Command::Generate{..}|Command::ImportScore{..}|Command::ImportMidi{..}|Command::ImportPackage{..}|Command::OpenRecent{..}|Command::HistoryOpen{..}|Command::OpenPassage{..}|Command::StartLadder{..}) {self.stop_routine()?;}
         match &command {
-            Command::LoopRestartErrors{count}=>return self.set_loop_restart_errors(*count),
             Command::Bookmarks=>return self.bookmark_catalog(String::new()),
             Command::SaveBookmark{content_id,id,name,tick}=>return self.save_bookmark(content_id,id.clone(),name.clone(),*tick),
             Command::RemoveBookmark{content_id,id}=>return self.remove_bookmark(content_id,id),
-            Command::Routines{day}=>return self.routines(day),
-            Command::SaveRoutine{id,day,name,notes,copy_of,request_id}=>return self.save_routine_with_request(id.clone(),day.clone(),name.clone(),notes.clone(),copy_of.clone(),request_id.clone()),
-            Command::SaveRoutineSchedule{id,schedule}=>return self.save_routine_schedule(id,schedule.clone()),
-            Command::RemoveRoutine{id}=>return self.remove_routine(id),
-            Command::PassageCatalog{content_id,query,offset}=>return self.passage_catalog(content_id.as_deref(),query,*offset),
-            Command::ComposePassages{routine_id,day,content_id,entries,goal,proof}=>return self.compose_passages(routine_id,day.as_deref(),content_id,entries,goal,proof.as_deref()),
-            Command::SaveRoutineItem{content_id,routine_id,day,id,source,source_id,title,notes,goal}=>{
-                if content_id.as_ref().is_some_and(|expected|self.file.as_ref().is_none_or(|file|&file.content_id!=expected)){return Err("曲目已切换，请重新选择计划项目来源".into());}
-                return self.save_routine_item(routine_id,day.as_deref(),id.clone(),source.as_deref(),source_id.as_deref(),title.clone(),notes.clone(),goal.clone());
-            },
-            Command::MoveRoutineItem{routine_id,day,item_id,direction}=>return self.move_routine_item(routine_id,day.as_deref(),item_id,*direction),
-            Command::RemoveRoutineItem{routine_id,day,item_id}=>return self.remove_routine_item(routine_id,day.as_deref(),item_id),
-            Command::OpenRoutineItem{routine_id,day,item_id,resume}=>return self.open_routine_item(routine_id,day,item_id,*resume),
             Command::PreviewTickRange{content_id,grid,start,end}=>return self.preview_tick_range(content_id,grid,start,end),
             Command::ApplyTickRange{range}=>return self.apply_tick_range(range),
             Command::SaveTickPassage{id,name,notes,range}=>return self.save_tick_passage(id.clone(),name.clone(),notes.clone(),range.clone()),
-            Command::StopRoutine=>return self.stop_routine(),
-            Command::SkipRoutineItem{routine_id,day,item_id,reason}=>return self.mark_routine_item(routine_id,day,item_id,false,reason),
-            Command::ResetRoutineItem{routine_id,day,item_id}=>return self.mark_routine_item(routine_id,day,item_id,true,""),
-            Command::StopLadder if self.routine.is_some()=>return self.stop_routine(),
-            _=>{}
-        }
-        if self.ladder.as_ref().is_some_and(|r|r.active) && matches!(command,
-            Command::Mode{..}|Command::Wait{..}|Command::Speed{..}|Command::Hands{..}|Command::Track{..}
-            |Command::Meter{..}|Command::SaveMeterMap{..}|Command::ResetPartSettings{..}|Command::SetPartHands{..}|Command::ApplyHands{..}|Command::EditNotePlayback{..}|Command::NoteHand{..}|Command::UndoHands
-            |Command::MeasureLoop{..}|Command::PrepareMeasurePart{..}|Command::Loop{..}|Command::ApplyScoreRange{..}|Command::Rounds{..}|Command::Adaptive{..}
-            |Command::OpenPassage{..}|Command::Seek{..}|Command::SeekMeasure{..}|Command::SeekBeat{..}|Command::StepBeat{..}
-            |Command::CountIn{..}|Command::Metronome{..}|Command::Latency{..}|Command::Save|Command::Recording{active:true}) {
-            return Err("速度阶梯进行中，请先结束阶梯再修改练习条件".into());
-        }
-        match &command {
-            Command::LadderPresets=>return self.ladder_presets(),
-            Command::SaveLadder{id,name,start,end,plan,expression}=>return self.save_ladder(id.clone(),name,*start,*end,plan.clone(),expression.clone()),
-            Command::UpdateLadderName{id,name}=>return self.update_ladder_name(id,name),
-            Command::RemoveLadder{id}=>return self.remove_ladder(id),
-            Command::StartLadder{id,resume}=>return self.start_ladder(id,*resume),
-            Command::StopLadder=>return self.stop_ladder(),
             _=>{}
         }
         let workspace_lock = if matches!(
@@ -1271,11 +1124,6 @@ impl Player {
                     | Command::Load { .. }
                     | Command::LoadIndexed { .. }
                     | Command::OpenRecent { .. }
-                    | Command::HistoryOpen { .. }
-            | Command::PerformHistoryAction { .. }
-            | Command::StartHistoryOperation { .. }
-                    | Command::HistoryPracticeRange { .. }
-                    | Command::HistoryScoreReview { .. }
                     | Command::Generate { .. }
                     | Command::OpenPassage { .. }
                     | Command::Play
@@ -1300,42 +1148,6 @@ impl Player {
         {
             return Err("请先停止录音，再切换曲目或练习设置".into());
         }
-        if is_recital_mode(&self.state.mode) {
-            if matches!(
-                command,
-                Command::PrepareMeasurePart { .. }
-                    | Command::MeasureLoop { enabled: true, .. }
-                    | Command::Loop { enabled: true, .. }
-                    | Command::OpenPassage { .. }
-                    | Command::SavePassage { .. }
-                    | Command::SaveScorePassage { .. }
-                    | Command::ApplyScoreRange { .. }
-                    | Command::Adaptive { enabled: true }
-            ) {
-                return Err("完整演奏与背谱只演奏一遍；选段循环请切换到连续或等音模式".into());
-            }
-            if ["playing", "countIn", "paused"].contains(&self.state.status.as_str())
-                && matches!(
-                    command,
-                    Command::Seek { .. }
-                        | Command::SeekMeasure { .. }
-                        | Command::SeekBeat { .. }
-                        | Command::StepBeat { .. }
-                        | Command::Track { .. }
-                        | Command::Hands { .. }
-                        | Command::Meter { .. } | Command::SaveMeterMap { .. }
-                        | Command::EditNotePlayback { .. }
-                    | Command::NoteHand { .. }
-                        | Command::ResetPartSettings { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
-                        | Command::UndoHands
-                        | Command::Speed { .. }
-                        | Command::CountIn { .. }
-                        | Command::Rounds { .. }
-                )
-            {
-                return Err("本轮演奏已开始，请先重新开始，再修改范围、速度或声部".into());
-            }
-        }
         if library_workspace::accepts(&command) {
             return library_workspace::execute(command, &self.data);
         }
@@ -1356,48 +1168,8 @@ impl Player {
         }
         match &command {
             Command::StartLibraryOpen{..}|Command::ReadLibraryOpen{..}|Command::CancelLibraryOpen{..}|Command::ReleaseLibraryOpen{..}=>return Err("曲库打开操作需要使用后台入口".into()),
-            Command::WeakPractice=>return self.weak_practice(),
-            Command::DueReview{offset,expected}=>return self.due_review(*offset,expected.as_deref()),
-            Command::AcceptWeakPractice{ids,edits,routine_id,day,name,request_id}=>return self.accept_weak_practice_with_edits(ids,edits,routine_id.as_deref(),day.as_deref(),name,request_id.as_deref()),
-            Command::HistoryQuery { query, mode, hands, range, days, offset, limit,from,to } => {
-                return self.history_query_window(query, mode, hands, range, *days, *offset, *limit,*from,*to);
-            }
-            Command::ReadHistoryPage { request } => return self.read_history_page_checked(request, || Ok(())),
-            Command::EditRoutine { .. } => return Err("计划版本核对需要使用后台编辑入口".into()),
-            Command::AnnotateHistory{content_id,id,note,teacher,next,expected}=>return self.annotate_history(content_id,id,note.clone(),teacher.clone(),next.clone(),expected.clone()),
             Command::SetLibraryCollection{path,content_id,favorite,queued} => return self.set_library_collection(path,content_id,*favorite,*queued),
             Command::PracticeTime {content_id,from,to} => return self.practice_time(content_id,*from,*to),
-            Command::PracticeCalendar{from,to,content_id}=>return self.practice_calendar(*from,*to,content_id.as_deref()),
-            Command::HistoryPerformance{content_id,id}=>return self.history_performance(content_id,id),
-            Command::ReadHistoryPerformance{content_id,id}=>return self.read_history_performance(content_id,id),
-            Command::ReadHistoryDetail{content_id,id}=>return self.read_history_detail(content_id,id),
-            Command::PerformHistoryAction{..}|Command::PlayHistorySource{..}|Command::StartHistoryOperation{..}|Command::ReadHistoryOperation{..}|Command::CancelHistoryOperation{..}|Command::ReleaseHistoryOperation{..}=>return Err("带版本的历史操作需要使用后台入口".into()),
-            Command::StartHistoryReplay{content_id,id,source,rate,request_id}=>return self.start_history_replay(content_id,id,source,*rate,request_id.clone()),
-            Command::StartHistoryReplayRange{content_id,id,source,rate,start,end,request_id}=>{
-                let mut context = self.prepare_history_replay_request(content_id,id,source,*rate,request_id.clone())?;
-                context.range = Some((*start,*end));
-                let prepared = history_replay_loading::Prepared::read(&self.data,&context)?;
-                self.check_history_replay(&context)?;
-                prepared.check()?;
-                return prepared.install(self,&context);
-            },
-            Command::HistoryReplayControl{id,action,position,rate}=>return self.history_replay_control(id,action,*position,*rate),
-            Command::HistoryReplayLoop{id,start,end,enabled}=>return self.history_replay_loop(id,*start,*end,*enabled),
-            Command::HistoryReplayClips{content_id,id}=>return self.history_replay_clips(content_id,id),
-            Command::ReadHistoryReplayClips{content_id,id}=>return self.read_history_replay_clips(content_id,id),
-            Command::SaveHistoryReplayClip{..}=>return self.edit_clips_owned(command),
-            Command::DeleteHistoryReplayClip{content_id,id,clip_id,expected}=>return self.delete_history_replay_clip(content_id,id,clip_id,expected),
-            Command::HistoryDetail { content_id, id } => return self.history_detail(content_id, id),
-            Command::HistoryOpen { content_id, id, restore } => return self.history_open(content_id, id, *restore),
-            Command::HistoryProblemNotes{content_id,id,offset}=>return self.history_problem_notes(content_id,id,*offset),
-            Command::PreviewProblemCuts{single,multi,expected,edits}=>{let built=match(single,multi){(Some(s),None)=>self.build_history_problem_plan(s)?,(None,Some(s))=>self.build_multi_problem_plan(s)?,_=>return Err("请选择唯一编排来源".into())};let b=self.apply_problem_cuts(built,expected,edits)?;return Ok(serde_json::json!({"rows":b.rows,"revision":b.revision}));}
-            Command::PreviewMultiProblemPlan{spec}=>return self.preview_multi_problem_plan(spec),
-            Command::SaveMultiProblemPlan{spec,expected,name,notes,goal,edits}=>return self.save_multi_problem_plan(spec,expected,name,notes,goal,edits),
-            Command::PreviewHistoryProblemPlan{spec}=>return self.preview_history_problem_plan(spec),
-            Command::SaveHistoryProblemPlan{spec,expected,name,notes,goal,edits}=>return self.save_history_problem_plan(spec,expected,name,notes,goal,edits),
-            Command::HistoryPracticeRange {content_id,id,reference,before,after}=>return self.history_practice_range(content_id,id,*reference,*before,*after),
-            Command::HistoryScoreReview {content_id,id}=>return self.history_score_review(content_id,id),
-            Command::History => return self.history_query("", "", "", "", 0, 0, 200),
             _ => {}
         }
         let persist = !matches!(
@@ -1406,8 +1178,6 @@ impl Player {
                 | Command::Play
                 | Command::Pause
                 | Command::Panic
-                | Command::Save
-                | Command::Feedback
                 | Command::ExportPackage | Command::ExportPackageFile
                 | Command::InspectPackage { .. }
                 | Command::ExportMidi
@@ -1598,7 +1368,6 @@ impl Player {
                     latency: self.state.latency,
                     rounds: self.state.rounds,
                     hands: self.state.hands.clone(),
-                    adaptive: self.state.adaptive,
                 };
                 let id = id.unwrap_or_else(|| {
                     format!(
@@ -1757,9 +1526,6 @@ impl Player {
             | Command::LibraryMonitorStatus
             | Command::SetLibraryMonitor { .. }
             | Command::LibraryWorkspace
-            | Command::SaveSongLearning{..}
-            | Command::ReadSongLearning{..}
-            | Command::SongLearningEvidence{..}
             | Command::InspectSong { .. }
             | Command::InspectSongs { .. }
             | Command::LibraryGroup { .. }
@@ -1989,8 +1755,6 @@ impl Player {
                 return self.map_score_owned(score_mapping::Input { measure_range:None,display_fingerprint:None,page_count: None,content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
             }
             Command::UpdateLibraryPaper{..}=>return Err("谱页整理应由独立调用线程执行".into()),
-            Command::ExportPracticeBackup{..}|Command::ImportStagedPracticeBackup{..}=>return Err("备份文件应由独立调用线程处理".into()),
-            Command::PracticeBackupSnapshot{..}=>return Err("备份快照应由后台任务读取".into()),
             Command::PendingMetadataHistory | Command::ClaimPendingMetadataHistory{..}=>{
                 let lock=library_workspace::lock_for(&self.data)?;
                 let _guard=lock.lock().map_err(|_|"曲库资料正忙")?;
@@ -2002,8 +1766,6 @@ impl Player {
                     _=>unreachable!(),
                 };
             }
-            Command::InspectPracticeBackup{..}=>return Err("备份预览应由后台任务读取".into()),
-            Command::ApplyPracticeBackup{..}=>return Err("备份导入应由后台任务处理".into()),
             Command::AddLibraryScore{path,content_id,name,bytes,kind,target,..}=>{if kind!="notation"{return Err("谱页操作应由独立调用线程执行".into());}return self.add_library_notation(path,content_id,name,bytes,target);}
             command @ (Command::EditFingersFor { .. } | Command::UndoFingersFor { .. }
                 | Command::Finger { .. } | Command::ApplyFingers { .. } | Command::UndoFingers) => {
@@ -2062,7 +1824,6 @@ impl Player {
                 if active {
                     self.ensure_audio()?;
                     self.matcher.reset();
-                    self.performance_capture=Default::default();
                     self.recorder.start();
                     self.state.recording=true;
                     self.recording_saved=false;
@@ -2104,7 +1865,6 @@ impl Player {
                 let bytes = self.prepare_midi_export()?;
                 return Ok(serde_json::json!({"bytes":bytes,"title":self.title}));
             }
-            Command::Feedback => return self.capture_feedback().prepare(|| Ok(())),
             Command::Panic => {
                 self.panic();
                 if self.state.status != "finished" { self.state.status = "paused".into(); }
@@ -2116,12 +1876,15 @@ impl Player {
                 return self.command(Command::CurrentSong);
             }
             Command::Mode { value } => {
+                let value = match value.as_str() {
+                    "wait" | "listen" => value,
+                    "flow" => "listen".into(),
+                    _ => return Err("只支持连续播放与等待按键两种模式".into()),
+                };
                 if self.state.mode == value { return Ok(serde_json::json!({"ok":true})); }
                 self.panic();
                 self.state.mode = value;
                 self.state.wait = self.state.mode == "wait";
-                self.state.adaptive = false;
-                self.active_expression_goal = None;
                 self.playback.reselect(self.state.position, &self.notes, |n| n.start.as_secs_f64());
                 self.restore_track_sound();
             }
@@ -2336,7 +2099,6 @@ impl Player {
                 let key = self.calibration_key();
                 self.preferences.calibrations.insert(key, milliseconds);
             }
-            Command::Adaptive { enabled } => self.state.adaptive = enabled,
             Command::Load { path, title } => {
                 let file = library::read_midi(&path)?;
                 self.install(file, title, None)?;
@@ -2348,7 +2110,6 @@ impl Player {
                 if file.content_id != content_id {
                     return Err("曲库索引中的文件内容已改变，请重新检查这首曲目".into());
                 }
-                if self.routine.is_some() { self.stop_routine()?; }
                 self.install(file, title, None)?;
                 self.persist()?;
                 return self.command(Command::CurrentSong);
@@ -2370,10 +2131,6 @@ impl Player {
                     return Err("请先选择曲目".into());
                 }
                 self.ensure_audio()?;
-                if is_recital_mode(&self.state.mode) && self.state.status == "ready" {
-                    self.state.passage = None;
-                    self.reset(0.);
-                }
                 if self.state.status == "finished" {
                     self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
                 }
@@ -2390,38 +2147,12 @@ impl Player {
             | Command::ResumeIndex
             | Command::CancelIndex => return Err("请通过后台索引服务执行此命令".into()),
             Command::Tasks | Command::RetrySave | Command::RetrySettingsSave { .. } | Command::ReadStorageStatus | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. } | Command::CancelTask { .. } | Command::CancelHistoryRead { .. } | Command::CurrentSong | Command::Session
-            | Command::SetSongExpressionGoal{..} | Command::EditSongExpressionGoal { .. } | Command::ReadSongExpressionGoal { .. } | Command::ReadHistoryAnnotation { .. }
-            | Command::PassageCatalog{..}|Command::ComposePassages{..}|Command::Routines{..}|Command::SaveRoutine{..}|Command::RemoveRoutine{..}|Command::SaveRoutineItem{..}
-            |Command::MoveRoutineItem{..}|Command::RemoveRoutineItem{..}|Command::OpenRoutineItem{..}
             |Command::PreviewTickRange{..}|Command::ApplyTickRange{..}|Command::SaveTickPassage{..}
-            |Command::SaveRoutineSchedule{..}|Command::StopRoutine|Command::SkipRoutineItem{..}|Command::ResetRoutineItem{..}
-            | Command::LadderPresets
-            | Command::SaveLadder{..}
-            | Command::UpdateLadderName{..}
-            | Command::RemoveLadder{..}
-            | Command::StartLadder{..}
-            | Command::StopLadder
-            | Command::WeakPractice | Command::DueReview{..} | Command::AcceptWeakPractice{..}
-            | Command::History
-            | Command::HistoryQuery { .. }
-            | Command::ReadHistoryPage { .. }
-            | Command::EditRoutine { .. }
-            | Command::AnnotateHistory { .. }
-            | Command::PracticeTime { .. } | Command::PracticeCalendar{..}
-            | Command::HistoryPerformance{..}|Command::ReadHistoryPerformance{..}|Command::ReadHistoryDetail{..}|Command::StartHistoryReplay{..}|Command::StartHistoryReplayRange{..}|Command::PlayHistorySource{..}|Command::HistoryReplayControl{..}|Command::HistoryReplayLoop{..}|Command::HistoryProblemNotes{..}|Command::PreviewProblemCuts{..}|Command::PreviewMultiProblemPlan{..}|Command::SaveMultiProblemPlan{..}|Command::PreviewHistoryProblemPlan{..}|Command::SaveHistoryProblemPlan{..}|Command::HistoryReplayClips{..}|Command::ReadHistoryReplayClips{..}|Command::SaveHistoryReplayClip{..}|Command::DeleteHistoryReplayClip{..}
-            | Command::HistoryDetail { .. }
-            | Command::HistoryOpen { .. }
-            | Command::PerformHistoryAction { .. }
-            | Command::StartHistoryOperation { .. }
-            | Command::ReadHistoryOperation { .. }
-            | Command::CancelHistoryOperation { .. }
-            | Command::ReleaseHistoryOperation { .. }
+            | Command::PracticeTime { .. }
             | Command::StartLibraryOpen { .. }
             | Command::ReadLibraryOpen { .. }
             | Command::CancelLibraryOpen { .. }
             | Command::ReleaseLibraryOpen { .. }
-                    | Command::HistoryPracticeRange { .. }
-                    | Command::HistoryScoreReview { .. }
             | Command::SetLibraryCollection { .. }
             | Command::Collection
             | Command::EditExercisePreset { .. } | Command::DeleteExercisePreset { .. }
@@ -2492,7 +2223,6 @@ impl Player {
                 let paused=self.state.status=="paused";
                 self.state.passage = enabled.then_some(Passage { start, end });
                 self.state.repetitions = 0;
-        self.state.loop_restarts=0;
                 self.reset(if enabled { start } else { position });
                 if playing {self.ensure_audio()?;self.state.status="playing".into();}
                 else if paused {self.state.status="paused".into();}
@@ -2507,9 +2237,7 @@ impl Player {
                 }
             }
             Command::Restart => {
-                if let Some(run)=&mut self.ladder {if run.active {run.progress.success_streak=0;run.progress.failure_streak=0;run.progress.last_result="重新练习当前速度".into();}}
                 self.state.repetitions = 0;
-        self.state.loop_restarts=0;
                 self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
             }
             Command::Seek { position } => {
@@ -2541,13 +2269,6 @@ impl Player {
                 self.panic();
                 self.playback.reselect(self.state.position, &self.notes, |n| n.start.as_secs_f64());
                 self.restore_track_sound();
-            }
-            Command::Save => {
-                if self.pending_saves.is_some() { return Err("请通过后台保存入口保存本轮结果".into()); }
-                if is_recital_mode(&self.state.mode) && self.state.status != "finished" {
-                    return Err("完整演奏结束后自动保存结果".into());
-                }
-                self.save()?;
             }
             Command::Note {
                 pitch,
@@ -2613,7 +2334,7 @@ impl Player {
             Command::PrepareMeasurePart { content_id, measure, part, track_id } => {
                 self.prepare_measure_part(&content_id, measure, part, track_id)?;
             }
-            Command::LoopRestartErrors{..}|Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
+            Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
             Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
             Command::PreviewLegacyExerciseTracks { .. } | Command::ApplyLegacyExerciseTracks { .. }
                 | Command::PreviewLegacyExerciseHistory { .. } | Command::ReviewLegacyExerciseHistory { .. } => unreachable!(),
@@ -2756,21 +2477,6 @@ impl Player {
         if !self.track_routing.lanes.is_empty() && routed[0]<240 {routed[0]&=240;}
         self.send(&routed);
     }
-    fn capture_running_time(&mut self,delta:Duration,now:u64){
-        self.time_fraction=self.time_fraction.saturating_add(delta);let raw=self.time_fraction.as_millis().min(u128::from(u64::MAX)) as u64;self.time_fraction=self.time_fraction.saturating_sub(Duration::from_millis(raw));if raw==0{return}
-        self.state.saved=false;
-        self.state.current_history_id=None;
-        let ms=raw.min(5_000);self.pending_untracked=self.pending_untracked.saturating_add(raw-ms);
-        if now>9_000_000_000_000_000||self.pending_time.len()>=20_000{self.pending_untracked=self.pending_untracked.saturating_add(ms);self.time_connected=false;return}
-        let expected=self.time_last_end.and_then(|last|last.checked_add(ms));
-        let contiguous=self.time_connected&&expected.is_some_and(|end|end.abs_diff(now)<=2_000)&&raw<=5_000;
-        let (mut from,to)=if contiguous{(self.time_last_end.unwrap(),expected.unwrap())}else{(now.saturating_sub(ms),now)};
-        if let Some(last)=self.time_last_end{if from<last{let omitted=last.min(to)-from;self.pending_untracked=self.pending_untracked.saturating_add(omitted);from=last;}}
-        if from>=to{self.time_connected=false;return}
-        let running=to-from;
-        if contiguous&&self.pending_time.last().is_some_and(|s|s.to==from){let last=self.pending_time.last_mut().unwrap();last.to=to;last.running_ms=last.running_ms.saturating_add(running);}else{self.pending_time.push(panthesia_core::practice_history::PracticeTimeSlice{from,to,running_ms:running});}
-        self.time_last_end=Some(to);self.time_connected=true;
-    }
     fn tick(&mut self, delta: Duration) {
         if self.closing.load(Ordering::Acquire) { return; }
         self.tick_song_audition(delta);
@@ -2820,11 +2526,8 @@ impl Player {
     fn snapshot(&self) -> Snapshot {
 
         let mut state = self.state.clone();
-        state.mode = practice_policy::mode(&state.mode).into();
+        state.mode = public_mode(&state.mode).into();
         state.wait = state.mode == "wait";
-        state.adaptive = false;
-        state.loop_restart_errors = 0;
-        state.loop_restarts = 0;
         if let Some(clock) = &self.state_clock {
             state.state_order = Some(clock.next());
         }
@@ -2842,11 +2545,6 @@ impl Player {
         state.content_id = self.file.as_ref().map(|file| file.content_id.clone());
         state.score_revision=self.score_revision;
         state.practice_ms=self.playback.clock.as_millis().min(u128::from(u64::MAX)) as u64;
-        state.ladder = None;
-        state.routine = None;
-        state.song_expression_goal = None;
-        state.song_expression_goal_result = None;
-        state.song_expression_goal_state = None;
         state.output_id = self.output_identity().map(str::to_owned);
         state.input_connected = self.input_connected();
         state.note_epoch = self.audio_stop_epoch;
@@ -2884,6 +2582,7 @@ pub fn probe_audio(soundfont: &std::path::Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use panthesia_core::practice_history::PracticeSessionKind;
     fn player() -> Player {
         static TEST_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
@@ -2920,21 +2619,6 @@ mod tests {
         assert_eq!(before.wrong_notes,after.wrong_notes);
     }
     #[test]
-    fn pause_after_completion_preserves_saved_result_and_goal_editing() {
-        let mut p = player();
-        p.playback.clock = Duration::from_secs(1);
-        p.state.status = "finished".into();
-        p.state.saved = true;
-        p.expression_attempt_started = true;
-        p.command(Command::Pause).unwrap();
-        assert_eq!(p.snapshot().status, "finished");
-        assert!(p.snapshot().saved);
-        p.command(Command::Panic).unwrap();
-        assert_eq!(p.snapshot().status, "finished");
-        assert!(p.snapshot().saved);
-        assert!(p.command(Command::SetSongExpressionGoal { goal: None }).is_ok());
-    }
-    #[test]
     fn session_read_pairs_song_and_state_without_resetting_practice_or_errors() {
         let mut p = player();
         p.command(Command::Play).unwrap();
@@ -2968,33 +2652,6 @@ mod tests {
         assert_eq!(p.state.latency,7);
         assert_eq!(p.state.mode,"flow");
         assert_eq!(p.state.status,before);
-    }
-    #[test]
-    fn passage_practice_restores_transform_and_migrates_legacy_without_mutating_on_failure() {
-        let mut p=player(); let cid=p.file.as_ref().unwrap().content_id.clone();
-        p.command(Command::SavePassage{content_id:Some(cid.clone()),id:None,name:"原始".into(),start:1,end:1,notes:String::new()}).unwrap();
-        let original=p.preferences.passages[&cid][0].id.clone();
-        p.set_variant(&cid,p.score_revision,practice_variant::Variant{transpose:2,quantize:16,..Default::default()}).unwrap();
-        let range=tick_ranges::TickRange{description:String::new(),content_id:cid.clone(),grid:p.grid_signature(),start_tick:120,end_tick:600};
-        let saved=p.save_tick_passage(None,"转调量化".into(),String::new(),range).unwrap();
-        let transformed=saved["passage"]["id"].as_str().unwrap().to_owned();
-        // Simulate the old persisted shape, whose transform was encoded in its grid.
-        p.preferences.passages.get_mut(&cid).unwrap().iter_mut().find(|r|r.id==transformed).unwrap().practice=None;
-        let legacy=p.preferences.passages[&cid].iter().find(|row|row.id==transformed).unwrap();
-        let modern:preferences::PassagePreset=serde_json::from_value(saved["passage"].clone()).unwrap();
-        assert!(finger_practice::same_passage_content(legacy,&modern).unwrap());
-        p.command(Command::OpenPassage{id:original}).unwrap(); assert!(!p.variant().active());
-        p.command(Command::OpenPassage{id:transformed.clone()}).unwrap(); assert_eq!(p.variant().transpose,2); assert_eq!(p.variant().quantize,16);
-        assert!(p.preferences.passages[&cid].iter().find(|r|r.id==transformed).unwrap().practice.is_some());
-        let snapshot:practice_backup::Backup=serde_json::from_value(p.practice_backup_snapshot(&practice_backup::Selection::default()).unwrap()).unwrap();
-        assert_eq!(snapshot.version(),20); practice_backup::Backup::decode(&snapshot.encode().unwrap()).unwrap();
-        let package=p.command(Command::ExportPackage).unwrap(); let bytes:Vec<u8>=serde_json::from_value(package["bytes"].clone()).unwrap();
-        let decoded=piece_package::Package::decode(&bytes).unwrap();assert_eq!(decoded.manifest.version,16);assert!(decoded.manifest.passages.iter().all(|row|row.practice.is_some()));
-        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();
-        let before=p.variant(); let file=p.file.clone(); let state=p.state.status.clone();
-        let row=p.preferences.passages.get_mut(&cid).unwrap().iter_mut().find(|r|r.id==transformed).unwrap();
-        row.grid=Some("changed-grid".into());
-        assert!(p.command(Command::OpenPassage{id:transformed}).is_err()); assert_eq!(p.variant(),before);assert!(p.file.as_ref().unwrap().same_snapshot(file.as_ref().unwrap()));assert_eq!(p.state.status,state);
     }
     #[test]
     fn passage_write_failure_keeps_memory_equal_to_saved_data() {
@@ -3046,36 +2703,6 @@ mod tests {
         player.tick(Duration::from_millis(5));
         assert_eq!(player.state.status, "paused");
         assert!(player.state.pressed.is_empty());
-    }
-    #[test]
-    fn result_is_persisted_and_duplicate_save_is_ignored() {
-        let mut player = player();
-        player.command(Command::Play).unwrap();
-        player.tick(Duration::from_millis(5));
-        player.midi(&[144, 60, 90]);
-        player.command(Command::Save).unwrap();
-        player.command(Command::Save).unwrap();
-        let id = player.file.as_ref().unwrap().content_id.clone();
-        assert_eq!(player.history.song(&id).unwrap().sessions.len(), 1);
-        let recovered = PracticeHistoryStore::load(
-            player
-                .file
-                .as_ref()
-                .unwrap()
-                .source_path
-                .as_ref()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("web-practice-history.ron"),
-        );
-        assert_eq!(
-            recovered.song(&id).unwrap().sessions[0]
-                .summary
-                .overall
-                .matched_notes,
-            1
-        );
     }
     #[test]
     fn loop_saves_each_round_and_excludes_the_end_boundary() {
@@ -3151,20 +2778,6 @@ mod tests {
         assert_eq!(restored.state.position, 0.6);
         assert_eq!(restored.notes.len(), 9);
         assert_eq!(std::fs::read(&restored.preferences_path).unwrap(), before);
-    }
-    #[test]
-    fn recent_and_history_use_verified_indexed_renamed_files_and_reject_replacements(){
-      let mut p=player();let original=p.preferences_path.parent().unwrap().join("renamed-source.mid");
-      std::fs::write(&original,include_bytes!("../assets/five-finger.mid")).unwrap();
-      p.command(Command::Load{path:original.clone(),title:"移动曲目".into()}).unwrap();
-      p.command(Command::CountIn{bars:0}).unwrap();p.command(Command::Play).unwrap();p.tick(Duration::from_millis(1));p.command(Command::Note{pitch:60,velocity:90,active:true}).unwrap();p.command(Command::Save).unwrap();
-      let id=p.file.as_ref().unwrap().content_id.clone();let record=p.history.song(&id).unwrap().sessions.last().unwrap().id.clone().unwrap();
-      let moved=original.with_file_name("relocated-source.mid");std::fs::rename(&original,&moved).unwrap();
-      library_workspace::execute(Command::InspectSong{path:moved.clone(),force:true},&p.data).unwrap();
-      let inventory=p.command(Command::Collection).unwrap();let row=inventory["songs"].as_array().unwrap().iter().find(|r|r["contentId"]==id).unwrap();assert_eq!(row["available"],true);assert_eq!(row["path"],moved.to_string_lossy().to_string());
-      let opened=p.command(Command::OpenRecent{content_id:id.clone()}).unwrap();assert_eq!(opened["contentId"],id);assert_eq!(opened["sourcePath"],moved.to_string_lossy().to_string());
-      p.command(Command::HistoryOpen{content_id:id.clone(),id:record,restore:true}).unwrap();assert_eq!(p.file.as_ref().unwrap().source_path.as_ref(),Some(&moved));
-      std::fs::write(&moved,include_bytes!("../assets/basic-chords.mid")).unwrap();assert!(p.command(Command::OpenRecent{content_id:id}).is_err());
     }
     #[test]
     fn indexed_library_load_rejects_replaced_content_before_switching_song() {
@@ -3787,54 +3400,6 @@ mod tests {
         let preview=p.command(Command::PreviewMeterMap{content_id:id.clone(),value:value.clone()}).unwrap();std::fs::write(path,include_bytes!("../assets/basic-chords.mid")).unwrap();assert!(p.command(Command::SaveMeterMap{content_id:id,value,proof:preview["proof"].as_str().unwrap().into()}).is_err());
     }
     #[test]
-    fn corrected_meter_preserves_notes_changes_scope_and_restores_original() {
-        let mut p = player();
-        let original = p.file.as_ref().unwrap().musical_time.clone();
-        let id = p.file.as_ref().unwrap().content_id.clone();
-        let times: Vec<_> = p.notes.iter().map(|n| (n.start, n.end)).collect();
-        let scope = p.practice_scope();
-        let meter = panthesia_core::library::MeterCorrection {
-            numerator: 3,
-            denominator: 4,
-            pickup_ticks: u64::from(original.ppq),
-        };
-        p.command(Command::Meter { value: Some(meter) }).unwrap();
-        assert_ne!(p.practice_scope(), scope);
-        assert!(p.file.as_ref().unwrap().musical_time.measures[0].partial);
-        assert_eq!(
-            p.file.as_ref().unwrap().musical_time.measures[0].end_tick,
-            u64::from(original.ppq)
-        );
-        assert_eq!(
-            times,
-            p.notes.iter().map(|n| (n.start, n.end)).collect::<Vec<_>>()
-        );
-        assert!(
-            p.command(Command::Meter {
-                value: Some(panthesia_core::library::MeterCorrection {
-                    numerator: 3,
-                    denominator: 4,
-                    pickup_ticks: u64::from(original.ppq) * 3
-                })
-            })
-            .is_err()
-        );
-        let path = p.file.as_ref().unwrap().source_path.clone().unwrap();
-        p.command(Command::Load {
-            path,
-            title: "reopened".into(),
-        })
-        .unwrap();
-        assert_eq!(p.meter_correction, Some(meter));
-        assert_eq!(p.file.as_ref().unwrap().content_id, id);
-        p.command(Command::Meter { value: None }).unwrap();
-        assert_eq!(p.practice_scope(), scope);
-        assert_eq!(
-            p.file.as_ref().unwrap().musical_time.measures.len(),
-            original.measures.len()
-        );
-    }
-    #[test]
     fn score_versions_keep_previous_files_and_switch_without_overwriting() {
         let mut p = player();
         let id = p.file.as_ref().unwrap().content_id.clone();
@@ -4005,298 +3570,9 @@ mod tests {
         assert_eq!(restored.state.status, "ready");
         assert!(restored.state.passage.is_none());
     }
-    #[test]
-    fn history_filters_comparison_and_conditions_survive_restart() {
-        let mut p = player();
-        p.command(Command::Mode { value: "recital".into() }).unwrap();
-        p.command(Command::Speed { value: 0.8 }).unwrap();
-        let content_id = p.file.as_ref().unwrap().content_id.clone();
-        for speed in [0.8, 0.8, 1.0] {
-            p.command(Command::Speed { value: speed }).unwrap();
-            p.command(Command::Restart).unwrap();
-            p.command(Command::Play).unwrap();
-            for _ in 0..1200 {
-                p.tick(Duration::from_millis(20));
-                if p.state.status == "finished" { break; }
-            }
-            assert!(p.state.saved);
-        }
-        let result=p.history_query("五指", "recital", "Both", "whole", 1, 1, 1).unwrap();
-        assert_eq!(result["total"],3);
-        assert_eq!(result["entries"].as_array().unwrap().len(),1);
-        assert_eq!(p.history_query("", "memory", "", "", 0, 0, 50).unwrap()["total"],0);
-        let sessions=&p.history.song(&content_id).unwrap().sessions;
-        let id=sessions[1].id.clone().unwrap();
-        let later=sessions[2].id.clone().unwrap();
-        let data=p.data.clone();drop(p);
-        let mut p=Player::new(data,PathBuf::new(),true);
-        p.restore();
-        let detail=p.history_detail(&content_id,&id).unwrap();
-        assert_eq!(detail["comparison"]["count"],1);
-        assert_eq!(p.history_detail(&content_id,&later).unwrap()["comparison"]["count"],0);
-        assert!(detail["context"].is_object());
-        p.command(Command::HistoryOpen {content_id:content_id.clone(),id:id.clone(),restore:true}).unwrap();
-        assert!((p.state.speed-0.8).abs()<0.0001);
-        assert_eq!(p.state.mode,"recital");
-        assert_eq!(p.state.status,"ready");
-        assert_eq!(p.state.count_in,0);
-        let original=p.file.as_ref().unwrap().source_path.clone().unwrap();
-        let relocated=original.with_file_name("relocated.mid");
-        std::fs::rename(&original,&relocated).unwrap();
-        p.command(Command::Load {path:relocated.clone(),title:"已移动的五指练习".into()}).unwrap();
-        p.command(Command::HistoryOpen {content_id:content_id.clone(),id:id.clone(),restore:true}).unwrap();
-        assert_eq!(p.file.as_ref().unwrap().source_path.as_ref(),Some(&relocated));
-        p.command(Command::Meter {value:Some(panthesia_core::library::MeterCorrection {
-            numerator:3,denominator:4,pickup_ticks:0
-        })}).unwrap();
-        let result=p.command(Command::HistoryOpen {content_id,id,restore:true}).unwrap();
-        assert!(result["restoreWarning"].as_str().unwrap().contains("未恢复"));
-        assert_eq!(p.meter_correction.unwrap().numerator,3);
-    }
-    #[test]
-    fn history_open_refuses_changed_original_file_before_replacing_song() {
-        let mut p=player();
-        p.command(Command::Play).unwrap();p.tick(Duration::from_millis(10));
-        p.command(Command::Note {pitch:60,velocity:90,active:true}).unwrap();
-        p.command(Command::Save).unwrap();
-        let content_id=p.file.as_ref().unwrap().content_id.clone();
-        let id=p.history.song(&content_id).unwrap().sessions.last().unwrap().id.clone().unwrap();
-        let path=p.file.as_ref().unwrap().source_path.clone().unwrap();
-        std::fs::write(path,b"changed").unwrap();
-        assert!(p.command(Command::HistoryOpen {content_id:content_id.clone(),id,restore:true}).is_err());
-        assert_eq!(p.file.as_ref().unwrap().content_id,content_id);
-    }
 
     #[test]fn generated_annotations_keep_task_identity_and_restore_changed_cache(){let mut p=player();let spec=ExerciseSpec{tempo_bpm:75,hands:panthesia_core::exercise::ExerciseHands::Right,..Default::default()};p.command(Command::Generate{spec}).unwrap();let cid=p.file.as_ref().unwrap().content_id.clone();let path=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(panthesia_music::MidiFile::new(&path).unwrap().content_id,cid);let mut metadata=panthesia_core::library::SongMetadata::default();metadata.notes=Some("保留技术练习备注".into());panthesia_core::library::save_song_metadata(&path,&cid,metadata.clone()).unwrap();let sidecar=panthesia_core::library::metadata_sidecar_path(&path);let bytes=std::fs::read(&sidecar).unwrap();p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:160,repetitions:3,hands:panthesia_core::exercise::ExerciseHands::Left,..spec}}).unwrap();assert_eq!(p.file.as_ref().unwrap().content_id,cid);assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),path);assert_eq!(panthesia_core::library::load_song_metadata(&path,&cid).unwrap(),metadata);let foreign=include_bytes!("../assets/basic-chords.mid");std::fs::write(&path,foreign).unwrap();p.command(Command::Generate{spec}).unwrap();let recovered=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(recovered,path);assert_eq!(std::fs::read(&path).unwrap(),foreign);assert_eq!(std::fs::read(&sidecar).unwrap(),bytes);assert_eq!(panthesia_core::library::load_song_metadata(&recovered,&cid).unwrap(),metadata);p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:90,..spec}}).unwrap();assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),recovered);}
 
-    #[test]
-    fn history_restores_original_generated_variant_and_partial_is_not_mastery() {
-        let mut p=player();
-        let spec=ExerciseSpec {tempo_bpm:60,repetitions:1,hands:panthesia_core::exercise::ExerciseHands::Right,..Default::default()};
-        p.command(Command::Generate {spec}).unwrap();
-        p.command(Command::Mode {value:"wait".into()}).unwrap();
-        p.command(Command::CountIn {bars:0}).unwrap();
-        p.command(Command::Play).unwrap();p.tick(Duration::from_millis(10));
-        let pitch=p.snapshot().required[0];
-        p.command(Command::Note {pitch,velocity:90,active:true}).unwrap();
-        p.command(Command::Save).unwrap();
-        let content_id=p.file.as_ref().unwrap().content_id.clone();
-        let history=p.history.song(&content_id).unwrap();
-        let id=history.sessions.last().unwrap().id.clone().unwrap();
-        assert_eq!(history.review_status(u64::MAX).unwrap().mastery_streak,0);
-        let notes=p.notes.len();let duration=p.state.duration;
-        p.command(Command::Generate {spec:ExerciseSpec {tempo_bpm:120,repetitions:2,..spec}}).unwrap();
-        let data=p.data.clone();drop(p);
-        let mut p=Player::new(data,PathBuf::new(),true);p.restore();
-        p.command(Command::HistoryOpen {content_id,id,restore:true}).unwrap();
-        assert_eq!(p.exercise,Some(spec));assert_eq!(p.notes.len(),notes);
-        assert!((p.state.duration-duration).abs()<0.0001);
-        assert_eq!(p.state.status,"ready");
-    }
-    #[test]
-    fn ladder_advances_from_real_wait_rounds_records_stages_and_checkpoints_restart() {
-        let mut p=player();
-        let plan=panthesia_core::speed_ladder::SpeedLadderPlan {start_percent:50,target_percent:60,step_percent:10,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:10};
-        let saved=p.command(Command::SaveLadder {id:None,name:"左手速度阶梯".into(),start:1,end:1,plan,expression:None}).unwrap();
-        let id=saved["id"].as_str().unwrap().to_string();
-        p.command(Command::StartLadder {id:id.clone(),resume:false}).unwrap();
-        assert_eq!(p.state.speed,0.5);assert_eq!(p.state.status,"ready");
-        assert!(p.command(Command::Speed{value:1.}).is_err());
-        assert!(p.command(Command::Save).is_err());
-        assert!(!p.state.adaptive);assert_eq!(p.state.rounds,0);
-        p.command(Command::Play).unwrap();
-        for _ in 0..2000 {
-            p.tick(Duration::from_millis(10));
-            let required=p.snapshot().required;
-            for pitch in required {
-                p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.ladder.as_ref().unwrap().progress.total_rounds>=1{break;}
-        }
-        assert_eq!(p.ladder.as_ref().unwrap().progress.stage,1);
-        assert_eq!(p.state.speed,0.6);
-        p.command(Command::StopLadder).unwrap();
-        let content_id=p.file.as_ref().unwrap().content_id.clone();
-        assert_eq!(p.history.song(&content_id).unwrap().review_status(u64::MAX).unwrap().mastery_streak,0);
-        let plan=p.ladder.as_ref().unwrap().preset.plan.clone();
-        p.command(Command::SaveLadder{id:Some(id.clone()),name:"仅改名保留进度".into(),start:1,end:1,plan,expression:None}).unwrap();
-        assert_eq!(p.ladder.as_ref().unwrap().progress.stage,1);
-        let data=p.data.clone();let content_id=p.file.as_ref().unwrap().content_id.clone();drop(p);
-        let mut p=Player::new(data,PathBuf::new(),true);p.restore();
-        assert!(p.ladder.is_none());assert_eq!(p.state.status,"ready");
-        p.command(Command::StartLadder{id:id.clone(),resume:true}).unwrap();
-        assert_eq!(p.state.speed,0.6);assert_eq!(p.ladder.as_ref().unwrap().progress.total_rounds,1);
-        p.command(Command::Play).unwrap();
-        for _ in 0..2000 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.ladder.as_ref().unwrap().progress.completed{break;}
-        }
-        assert!(p.ladder.as_ref().unwrap().progress.completed);
-        assert!(!p.ladder.as_ref().unwrap().active);assert_eq!(p.state.status,"finished");
-        let history=p.history.song(&content_id).unwrap();assert_eq!(history.sessions.len(),2);
-        assert_eq!(history.sessions[0].context.as_ref().unwrap().ladder.as_ref().unwrap().stage,1);
-        assert_eq!(history.sessions[1].context.as_ref().unwrap().ladder.as_ref().unwrap().stage,2);
-        assert_eq!(history.review_status(u64::MAX).unwrap().mastery_streak,1);
-        assert!(p.command(Command::StartLadder{id:id.clone(),resume:true}).is_err());
-        p.command(Command::Meter{value:Some(panthesia_core::library::MeterCorrection{numerator:3,denominator:4,pickup_ticks:0})}).unwrap();
-        assert!(p.command(Command::StartLadder{id,resume:false}).is_err());
-    }
-    #[test]
-    fn standalone_ladder_expression_grades_resumes_and_exports_with_its_goal() {
-        let mut p=player();
-        let content_id=p.file.as_ref().unwrap().content_id.clone();
-        let plan=panthesia_core::speed_ladder::SpeedLadderPlan{start_percent:70,target_percent:70,step_percent:5,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:5};
-        let goal=expression_goal::ExpressionGoal{velocity_difference:Some(50),..Default::default()};
-        let id=p.command(Command::SaveLadder{id:None,name:"独立力度阶梯".into(),start:1,end:1,plan:plan.clone(),expression:Some(goal.clone())}).unwrap()["id"].as_str().unwrap().to_string();
-        let routine=p.command(Command::SaveRoutine{id:None,day:None,name:"继承阶梯".into(),notes:"".into(),copy_of:None,request_id:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let item=p.command(Command::SaveRoutineItem{content_id:None,routine_id:routine.clone(),day:None,id:None,source:Some("ladder".into()),source_id:Some(id.clone()),title:"同条件日课".into(),notes:"".into(),goal:routine_commands::RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:true,attempt_limit:5}}).unwrap()["id"].as_str().unwrap().to_string();
-        assert_eq!(p.preferences.routines.iter().find(|r|r.id==routine).unwrap().items.iter().find(|i|i.id==item).unwrap().goal.expression,Some(goal.clone()));
-        p.command(Command::StartLadder{id:id.clone(),resume:false}).unwrap();
-        p.command(Command::Play).unwrap();
-        for _ in 0..2500 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note{pitch,velocity:1,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.ladder.as_ref().unwrap().progress.total_rounds>=1 {break;}
-        }
-        let run=p.ladder.as_ref().unwrap();
-        assert_eq!(run.progress.total_rounds,1);
-        assert!(!run.progress.completed);
-        assert!(run.progress.last_result.contains("力度平均差"));
-        assert_eq!(p.history.song(&content_id).unwrap().sessions[0].context.as_ref().unwrap().ladder.as_ref().unwrap().round_passed,Some(false));
-        assert_eq!(p.history.song(&content_id).unwrap().review_status(u64::MAX).unwrap().mastery_streak,0);
-        let root=p.data.clone();
-        p.command(Command::StopLadder).unwrap();drop(p);
-        let mut p=Player::new(root,PathBuf::new(),true);p.restore();
-        assert_eq!(p.preferences.ladder_presets[&content_id][0].expression,Some(goal.clone()));
-        p.command(Command::StartLadder{id:id.clone(),resume:true}).unwrap();
-        assert_eq!(p.ladder.as_ref().unwrap().progress.total_rounds,1);
-        p.command(Command::Play).unwrap();
-        for _ in 0..2500 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.ladder.as_ref().unwrap().progress.completed {break;}
-        }
-        assert!(p.ladder.as_ref().unwrap().progress.completed);
-        let sessions=&p.history.song(&content_id).unwrap().sessions;
-        assert_eq!(sessions.len(),2);
-        assert_eq!(sessions[1].context.as_ref().unwrap().expression.as_ref().unwrap().velocity_difference,Some(50));
-        assert_eq!(sessions[1].context.as_ref().unwrap().ladder.as_ref().unwrap().round_passed,Some(true));
-        assert_eq!(p.history.song(&content_id).unwrap().review_status(u64::MAX).unwrap().mastery_streak,1);
-        let backup:practice_backup::Backup=serde_json::from_value(p.practice_backup_snapshot(&Default::default()).unwrap()).unwrap();
-        let backup=practice_backup::Backup::decode(&backup.encode().unwrap()).unwrap();
-        assert_eq!(backup.ladders[&content_id][0].expression,Some(goal.clone()));
-        let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();
-        let package=piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(package.manifest.ladders[0].expression,Some(goal.clone()));
-        let mut imported=Player::new(p.data.join("isolated-package-target"),PathBuf::new(),true);
-        imported.command(Command::ImportPackage{bytes,policy:"merge".into()}).unwrap();
-        assert_eq!(imported.preferences.ladder_presets[&content_id][0].expression,Some(goal.clone()));
-        p.command(Command::SaveLadder{id:Some(id.clone()),name:"改名".into(),start:1,end:1,plan:plan.clone(),expression:Some(goal.clone())}).unwrap();
-        assert_eq!(p.preferences.ladder_runs[&format!("{content_id}:{id}")].progress.total_rounds,2);
-        p.command(Command::SaveLadder{id:Some(id.clone()),name:"取消专项".into(),start:1,end:1,plan,expression:None}).unwrap();
-        assert!(!p.preferences.ladder_runs.contains_key(&format!("{content_id}:{id}")));
-    }
-    fn finish_routine_rounds(p:&mut Player,attempts:u64) {
-        p.command(Command::Play).unwrap();
-        for _ in 0..2500 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.routine_status().unwrap()["progress"]["attempts"].as_u64().unwrap()>=attempts{break;}
-        }
-    }
-    #[test]
-    fn daily_routines_grade_real_rounds_resume_keep_dates_separate_and_preserve_snapshots() {
-        let mut p=player();
-        p.command(Command::MeasureLoop{start:1,end:1,enabled:true}).unwrap();
-        let rid=p.command(Command::SaveRoutine{id:None,day:None,name:"每日练习".into(),notes:"连奏".into(),copy_of:None,request_id:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let goal=routine_commands::RoutineGoal{expression:None,passes:2,accuracy:90,on_time:None,consecutive:true,attempt_limit:5};
-        let item=p.command(Command::SaveRoutineItem{content_id:None,routine_id:rid.clone(),day:None,id:None,source:Some("current".into()),source_id:None,title:"选段练习".into(),notes:"放松手腕".into(),goal:goal.clone()}).unwrap()["id"].as_str().unwrap().to_string();
-        p.command(Command::OpenRoutineItem{routine_id:rid.clone(),day:"2026-10-02".into(),item_id:item.clone(),resume:true}).unwrap();
-        assert!(p.command(Command::Speed{value:0.6}).is_err());assert!(p.command(Command::Save).is_err());
-        finish_routine_rounds(&mut p,1);
-        assert_eq!(p.routine_status().unwrap()["progress"]["passed"],1);assert_eq!(p.routine_status().unwrap()["progress"]["completed"],false);
-        p.command(Command::StopRoutine).unwrap();let data=p.data.clone();let content=p.file.as_ref().unwrap().content_id.clone();drop(p);
-        let mut p=Player::new(data,PathBuf::new(),true);p.restore();assert!(p.routine.is_none());assert_eq!(p.state.status,"ready");
-        p.command(Command::OpenRoutineItem{routine_id:rid.clone(),day:"2026-10-02".into(),item_id:item.clone(),resume:true}).unwrap();
-        finish_routine_rounds(&mut p,2);assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);assert_eq!(p.state.status,"finished");
-        let h=p.history.song(&content).unwrap();assert_eq!(h.sessions.len(),2);assert_eq!(h.sessions[0].context.as_ref().unwrap().routine.as_ref().unwrap().day,"2026-10-02");
-        p.command(Command::StopRoutine).unwrap();
-        p.command(Command::SaveRoutineItem{content_id:None,routine_id:rid.clone(),day:None,id:Some(item.clone()),source:None,source_id:None,title:"模板新目标".into(),notes:"新要求".into(),goal:routine_commands::RoutineGoal{expression:None,passes:3,..goal.clone()}}).unwrap();
-        assert_eq!(p.routines("2026-10-02").unwrap()["runs"][0]["routine"]["items"][0]["goal"]["passes"],2);
-        let copied=p.command(Command::SaveRoutine{id:None,day:Some("2026-10-04".into()),name:"预览复制".into(),notes:"".into(),copy_of:Some(rid.clone()),request_id:None}).unwrap()["id"].as_str().unwrap().to_string();
-        assert_eq!(p.preferences.routines.iter().find(|r|r.id==copied).unwrap().items.len(),1);
-
-        p.command(Command::OpenRoutineItem{routine_id:rid.clone(),day:"2026-10-03".into(),item_id:item.clone(),resume:true}).unwrap();
-        assert_eq!(p.routine_status().unwrap()["progress"]["passed"],0);assert_eq!(p.routine_status().unwrap()["goal"]["passes"],3);
-        p.command(Command::SkipRoutineItem{routine_id:rid.clone(),day:"2026-10-03".into(),item_id:item.clone(),reason:"今天休息".into()}).unwrap();
-        let result=p.routines("2026-10-03").unwrap();assert_eq!(result["runs"][0]["progress"][&item]["skipped"],true);assert_eq!(result["runs"][0]["progress"][&item]["completed"],false);
-        p.command(Command::RemoveRoutine{id:rid}).unwrap();assert_eq!(p.routines("2026-10-02").unwrap()["runs"][0]["progress"][&item]["completed"],true);
-    }
-    #[test]
-    fn routine_ladder_snapshot_survives_removal_of_original_and_completes_from_actual_grading() {
-        let mut p=player();
-        let ladder=p.command(Command::SaveLadder{id:None,name:"单级阶梯".into(),start:1,end:1,plan:panthesia_core::speed_ladder::SpeedLadderPlan{start_percent:80,target_percent:80,step_percent:5,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:5},expression:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let rid=p.command(Command::SaveRoutine{id:None,day:None,name:"阶梯日课".into(),notes:"".into(),copy_of:None,request_id:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let item=p.command(Command::SaveRoutineItem{content_id:None,routine_id:rid.clone(),day:None,id:None,source:Some("ladder".into()),source_id:Some(ladder.clone()),title:"阶梯项目".into(),notes:"".into(),goal:routine_commands::RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:5}}).unwrap()["id"].as_str().unwrap().to_string();
-        p.command(Command::RemoveLadder{id:ladder}).unwrap();
-        p.command(Command::OpenRoutineItem{routine_id:rid,day:"2026-10-02".into(),item_id:item,resume:true}).unwrap();
-        finish_routine_rounds(&mut p,1);assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);
-        assert!(p.ladder.as_ref().unwrap().progress.completed);assert_eq!(p.state.status,"finished");
-    }
-    #[test]
-    fn daily_ladder_expression_failure_blocks_promotion_and_survives_resume() {
-        let mut p=player();
-        let content_id=p.file.as_ref().unwrap().content_id.clone();
-        let ladder=p.command(Command::SaveLadder{id:None,name:"力度阶梯".into(),start:1,end:1,plan:panthesia_core::speed_ladder::SpeedLadderPlan{start_percent:80,target_percent:80,step_percent:5,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:5},expression:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let rid=p.command(Command::SaveRoutine{id:None,day:None,name:"力度阶梯日课".into(),notes:"".into(),copy_of:None,request_id:None}).unwrap()["id"].as_str().unwrap().to_string();
-        let expression=expression_goal::ExpressionGoal{velocity_difference:Some(50),..Default::default()};
-        let item=p.command(Command::SaveRoutineItem{content_id:None,routine_id:rid.clone(),day:None,id:None,source:Some("ladder".into()),source_id:Some(ladder),title:"力度进阶".into(),notes:"".into(),goal:routine_commands::RoutineGoal{expression:Some(expression.clone()),passes:1,accuracy:90,on_time:None,consecutive:true,attempt_limit:5}}).unwrap()["id"].as_str().unwrap().to_string();
-        assert_eq!(p.preferences.routines[0].items[0].goal.expression,Some(expression.clone()));
-        p.command(Command::OpenRoutineItem{routine_id:rid.clone(),day:"2026-10-02".into(),item_id:item.clone(),resume:true}).unwrap();
-        p.command(Command::Play).unwrap();
-        for _ in 0..2500 {
-            p.tick(Duration::from_millis(10));
-            for pitch in p.snapshot().required {
-                p.command(Command::Note{pitch,velocity:1,active:true}).unwrap();
-                p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();
-            }
-            if p.routine_status().unwrap()["progress"]["attempts"]==1 {break;}
-        }
-        let status=p.routine_status().unwrap();
-        assert_eq!(status["progress"]["attempts"],1);
-        assert_eq!(status["progress"]["completed"],false);
-        assert!(status["progress"]["lastResult"].as_str().unwrap().contains("力度平均差"));
-        assert_eq!(p.ladder.as_ref().unwrap().progress.success_streak,0);
-        let root=p.data.clone();
-        p.command(Command::StopRoutine).unwrap();drop(p);
-        let mut p=Player::new(root,PathBuf::new(),true);p.restore();
-        assert!(!p.preferences.routines.is_empty(), "routines lost after reopening; error={:?}", p.state.error);
-        p.command(Command::OpenRoutineItem{routine_id:rid.clone(),day:"2026-10-02".into(),item_id:item.clone(),resume:true}).unwrap();
-        assert_eq!(p.routine_status().unwrap()["progress"]["attempts"],1);
-        assert_eq!(p.routine_status().unwrap()["goal"]["expression"]["velocityDifference"],50);
-        finish_routine_rounds(&mut p,2);
-        assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);
-        let sessions=&p.history.song(&content_id).unwrap().sessions;
-        assert_eq!(sessions.len(),2);
-        assert_eq!(sessions[1].context.as_ref().unwrap().routine.as_ref().unwrap().expression.as_ref().unwrap().velocity_difference,Some(50));
-        let backup:practice_backup::Backup=serde_json::from_value(p.practice_backup_snapshot(&Default::default()).unwrap()).unwrap();
-        let restored=practice_backup::Backup::decode(&backup.encode().unwrap()).unwrap();
-        assert_eq!(restored.routines.iter().find(|r|r.id==rid).unwrap().items[0].goal.expression,Some(expression));
-    }
     #[test]
     fn beat_navigation_uses_pickup_and_real_tempo_and_rejects_invalid_beats() {
         let mut p = player();
@@ -4345,40 +3621,6 @@ mod tests {
      p.command(Command::UndoFingersFor{content_id:id}).unwrap();assert_eq!(p.saved_hints().unwrap(),before);
     }
 
-    #[test]
-    fn saved_time_ledger_delta_midnight_trim_and_restart(){
-        use panthesia_core::practice_history::{PracticeTimeEntry,PracticeTimeSlice};
-        let mut p=player();let cid=p.file.as_ref().unwrap().content_id.clone();let midnight=20_000*86_400_000u64;
-        p.command(Command::Play).unwrap();p.tick(Duration::from_millis(5));p.midi(&[144,60,90]);p.midi(&[128,60,0]);p.pending_time.clear();p.time_last_end=None;p.time_connected=false;
-        p.capture_running_time(Duration::from_millis(1000),midnight+500);p.command(Command::Pause).unwrap();p.command(Command::Save).unwrap();p.command(Command::Save).unwrap();assert_eq!(p.history.time_ledger()[&cid].len(),1);
-        assert_eq!(p.practice_time(&cid,midnight-1000,midnight).unwrap()["periodMs"],500);
-        assert_eq!(p.practice_time(&cid,midnight,midnight+1000).unwrap()["periodMs"],500);
-        p.command(Command::Play).unwrap();p.capture_running_time(Duration::from_millis(700),midnight+2000);p.command(Command::Pause).unwrap();p.command(Command::Save).unwrap();assert_eq!(p.practice_time(&cid,0,9_000_000_000_000_000).unwrap()["totalMs"],1700);assert_eq!(p.history.time_ledger()[&cid].len(),2);
-        let example=p.history.song(&cid).unwrap().sessions[0].clone();
-        for i in 0..201{let mut record=example.clone();record.id=Some(format!("retention-{i}"));record.recorded_at_unix_ms=midnight+10_000+i*10;let entry=PracticeTimeEntry{saved_at_unix_ms:record.recorded_at_unix_ms,slices:vec![PracticeTimeSlice{from:midnight+10_000+i*10,to:midnight+10_000+i*10+1,running_ms:1}],untracked_ms:0};p.history.record_session_with_time(&cid,"计时",record,entry).unwrap();}
-        assert_eq!(p.history.session_count(&cid),200);assert_eq!(p.history.time_ledger()[&cid].len(),203);assert_eq!(p.practice_calendar(midnight-1000,midnight+100_000,Some(&cid)).unwrap()["totalMs"],1901);
-        let root=p.data.clone();drop(p);let p=Player::new(root,PathBuf::new(),true);assert_eq!(p.practice_time(&cid,0,9_000_000_000_000_000).unwrap()["totalMs"],1901);assert_eq!(p.practice_time(&cid,0,9_000_000_000_000_000).unwrap()["legacySessions"],0);
-        let day=p.history_query_window("","","","",0,0,200,Some(midnight),Some(midnight+86_400_000)).unwrap();assert_eq!(day["total"],200);
-    }
-    #[test]
-    fn saved_practice_time_excludes_pause_count_in_and_survives_reload() {
-        let mut p=player();let cid=p.file.as_ref().unwrap().content_id.clone();
-        p.state.count_in=1;p.command(Command::Play).unwrap();p.tick(Duration::from_secs(5));
-        assert_eq!(p.playback.clock,Duration::ZERO);
-        p.tick(Duration::from_secs(2));assert_eq!(p.state.position,0.);
-        p.command(Command::Pause).unwrap();p.tick(Duration::from_secs(10));
-        p.command(Command::Play).unwrap();p.midi(&[144,60,90]);p.midi(&[128,60,0]);p.tick(Duration::from_millis(100));
-        p.command(Command::Pause).unwrap();p.command(Command::Save).unwrap();p.command(Command::Save).unwrap();
-        let stats=p.practice_time(&cid,0,9_000_000_000_000_000).unwrap();
-        let exact=stats["totalMs"].as_u64().unwrap();assert_eq!(exact+stats["untrackedMs"].as_u64().unwrap(),2100);assert_eq!(stats["periodMs"],exact);assert_eq!(stats["retainedSessions"],1);
-        let path=p.data.clone();drop(p);let mut reloaded=Player::new(path,PathBuf::new(),true);
-        assert_eq!(reloaded.practice_time(&cid,0,9_000_000_000_000_000).unwrap()["totalMs"],exact);
-        let mut legacy=reloaded.history.song(&cid).unwrap().sessions[0].clone();legacy.id=Some("old-untimed".into());legacy.playing_ms=None;
-        reloaded.history.record_session(&cid,"old",legacy).unwrap();
-        let stats=reloaded.practice_time(&cid,0,9_000_000_000_000_000).unwrap();assert_eq!(stats["totalMs"],exact);assert_eq!(stats["unknownSessions"],1);
-        assert_eq!(reloaded.practice_time(&cid,0,1).unwrap()["periodMs"],0);
-        assert!(reloaded.practice_time(&cid,1,0).is_err());
-    }
 
     #[test]
     fn library_collection_does_not_load_other_song_and_guards_content() {
@@ -4436,3 +3678,15 @@ mod notation_source;
 mod notation_reader;
 pub use notation_reader::Request as NotationReadRequest;
 pub use notation_source::{decode as notation_document,Request as NotationDocumentRequest};
+
+/// Mainline plays in two modes only: continuous (`listen`) and wait-for-key (`wait`).
+/// `flow` is accepted as an alias for `listen` because older settings files store it.
+fn normalize_mode(command: Command) -> Result<Command, String> {
+    match command {
+        Command::Mode { value } if value == "flow" => Ok(Command::Mode { value: "listen".into() }),
+        Command::Mode { value } if !["wait", "listen"].contains(&value.as_str()) => {
+            Err(format!("不支持的练习模式：{value}"))
+        }
+        command => Ok(command),
+    }
+}

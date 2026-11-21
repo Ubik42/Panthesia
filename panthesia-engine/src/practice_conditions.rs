@@ -105,105 +105,6 @@ pub(super) fn same_reviewed_left_layout(old: &PracticeSession, current: &Practic
     same_attempt_conditions(&old_copy, &current_copy)
 }
 
-/// Explain why an older attempt cannot be used as evidence for this attempt.
-/// Keep this list aligned with `same_attempt_conditions`; both records belong
-/// to the same song when the caller uses it.
-pub(super) fn attempt_difference_reasons(
-    current: &PracticeSession,
-    older: &PracticeSession,
-) -> Vec<&'static str> {
-    let mut reasons = Vec::new();
-    if current.scope.as_deref().is_none_or(str::is_empty)
-        || older.scope.as_deref().is_none_or(str::is_empty)
-    {
-        reasons.push("练习音符范围缺少完整记录");
-    } else if current.scope != older.scope {
-        reasons.push("练习音符范围不同");
-    }
-    if current.mode.as_deref().is_none_or(str::is_empty)
-        || older.mode.as_deref().is_none_or(str::is_empty)
-    {
-        reasons.push("练习模式缺少完整记录");
-    } else if current.mode != older.mode {
-        reasons.push("练习模式不同");
-    }
-    if current.hands != older.hands {
-        reasons.push("练习手别不同");
-    }
-    if current.kind != older.kind {
-        reasons.push("整曲或练习小节范围不同");
-    }
-    if !current.speed.is_finite() || !older.speed.is_finite() {
-        reasons.push("练习速度记录无效");
-    } else if (current.speed - older.speed).abs() >= 0.0001 {
-        reasons.push("练习速度不同");
-    }
-    if current.effective_tempo_bpm != older.effective_tempo_bpm {
-        reasons.push("实际节拍速度不同");
-    }
-    let (Some(a), Some(b)) = (&current.context, &older.context) else {
-        reasons.push("旧记录缺少完整演奏条件");
-        return reasons;
-    };
-    if a.grid.is_empty() || b.grid.is_empty() {
-        reasons.push("音乐小节网格缺少记录");
-    } else if a.grid != b.grid {
-        reasons.push("音乐小节网格不同");
-    }
-    if matches!(current.kind, PracticeSessionKind::Loop { .. }) && current.kind == older.kind
-        && a.passage_bounds != b.passage_bounds
-    {
-        if a.passage_bounds.is_none() || b.passage_bounds.is_none() {
-            reasons.push("有一轮缺少原选段起止拍位");
-        } else {
-            reasons.push("原选段起止拍位不同");
-        }
-    }
-    if a.hands.is_empty() || b.hands.is_empty() {
-        reasons.push("逐音分手条件缺少记录");
-    } else if a.hands != b.hands {
-        reasons.push("逐音分手条件不同");
-    }
-    if a.target_notes == 0 || b.target_notes == 0 || a.judged_notes == 0 || b.judged_notes == 0 {
-        reasons.push("目标音或判定音缺少有效数量");
-    } else if a.target_notes != b.target_notes || a.judged_notes != b.judged_notes {
-        reasons.push("目标音或实际判定音数量不同");
-    }
-    if a.note_playback != b.note_playback { reasons.push("逐音演奏与伴奏规则不同"); }
-    if a.tracks != b.tracks {
-        reasons.push("音轨演奏与伴奏设置不同");
-    }
-    if a.parts != b.parts {
-        reasons.push("音轨手别设置不同");
-    }
-    if a.exercise_spec != b.exercise_spec {
-        reasons.push("技术练习内容不同");
-    }
-    if a.count_in != b.count_in {
-        reasons.push("预备拍设置不同");
-    }
-    if a.metronome != b.metronome {
-        reasons.push("节拍器设置不同");
-    }
-    if a.latency != b.latency {
-        reasons.push("按键延迟校准不同");
-    }
-    if a.pedal_latency_ms.unwrap_or(a.latency) != b.pedal_latency_ms.unwrap_or(b.latency) {
-        reasons.push("踏板延迟校准不同");
-    }
-    if a.rounds != b.rounds {
-        reasons.push("练习轮数不同");
-    }
-    if a.adaptive != b.adaptive {
-        reasons.push("自适应速度设置不同");
-    }
-    if a.expression.as_ref().or_else(||a.routine.as_ref().and_then(|r| r.expression.as_ref()))
-        != b.expression.as_ref().or_else(||b.routine.as_ref().and_then(|r| r.expression.as_ref()))
-    {
-        reasons.push("力度或踏板专项目标不同");
-    }
-    reasons
-}
 pub(super) fn grid(file: &MidiFile) -> String {
     let mut hash = 0xcbf29ce484222325u64;
     for m in &file.musical_time.measures {
@@ -281,107 +182,14 @@ pub(super) fn scope_checked<E>(
 }
 
 impl Player {
-    pub(super) fn practice_scope_checked<E>(
-        &self, mut check: impl FnMut() -> Result<(), E>,
-    ) -> Result<String, E> {
-        check()?;
-        if let Some(cached) = self.projections.scope.borrow().as_ref()
-            .filter(|cached| cached.matches(self))
-        {
-            return Ok(cached.value.clone());
-        }
-        let value = scope_checked(
-            self.file.as_deref(), &self.notes, &self.config,
-            &self.note_hands, &self.state.hands, &mut check,
-        )?;
-        let old = self.projections.scope.replace(Some(Scope {
-            file: self.file.clone(),
-            notes: self.notes.clone(),
-            config: self.config.clone(),
-            assignments: self.note_hands.clone(),
-            hands: self.state.hands.clone(),
-            value: value.clone(),
-        }.into()));
-        self.retire(old);
-        Ok(value)
-    }
-}
-
-/// Musical identity belongs to a selection, not to one attempt's judgement report.
-/// Retaining exact roots lets short loops avoid rescanning all notes of a long song.
-pub(crate) struct Scope {
-    file: Option<SongFile>,
-    notes: PracticeNotes,
-    config: SongConfig,
-    assignments: HandAssignments,
-    hands: String,
-    value: String,
-}
-impl Scope {
-    pub(super) fn matches(&self, player: &Player) -> bool {
-        let file = match (&self.file, &player.file) {
-            (Some(old), Some(current)) => old.same_snapshot(current),
-            (None, None) => true,
-            _ => false,
-        };
-        file && self.notes.same_snapshot(&player.notes)
-            && self.assignments.same_snapshot(&player.note_hands)
-            && self.hands == player.state.hands
-            && Arc::ptr_eq(&self.config.note_players, &player.config.note_players)
-            && self.config.tracks.len() == player.config.tracks.len()
-            && self.config.tracks.iter().zip(player.config.tracks.iter())
-                .all(|(old, current)| {
-                    old.track_id == current.track_id && old.player == current.player
-                        && old.practice_part == current.practice_part
-                })
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panthesia_core::practice_history::PracticeSessionContext;
+    use panthesia_core::practice_history::{PracticeSessionContext, PracticeSessionKind};
     use std::collections::BTreeMap;
 
-    #[test]
-    fn selection_scope_survives_new_attempts_and_tracks_musical_changes() {
-        let (mut player, _, _) = crate::history_loading::tests::seeded(true, false);
-        let expected = |player: &Player| scope(
-            player.file.as_deref(), &player.notes, &player.config,
-            &player.note_hands, &player.state.hands,
-        );
-        assert_eq!(player.practice_scope(), expected(&player));
-        let original = player.projections.scope.borrow().clone().unwrap();
-        player.reset(0.);
-        assert_eq!(player.practice_scope(), expected(&player));
-        assert!(player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&original));
-        // Speed and range are stored separately in history conditions, not scope.
-        player.state.speed = 1.25;
-        player.state.passage = None;
-        assert_eq!(player.practice_scope(), expected(&player));
-        assert!(player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&original));
-        player.state.hands = "left".into();
-        assert_eq!(player.practice_scope(), expected(&player));
-        let left = player.projections.scope.borrow().clone().unwrap();
-        assert!(!left.same_snapshot(&original));
-        let note = player.notes.first().unwrap();
-        let key = (note.track_id, note.index);
-        Arc::make_mut(&mut player.config.note_players).insert(key, PlayerConfig::Auto);
-        assert_eq!(player.practice_scope(), expected(&player));
-        assert!(!player.projections.scope.borrow().as_ref().unwrap().same_snapshot(&left));
-        // Per-note routing also invalidates assessment target selection.
-        let tasks = background_tasks::TaskPool::new(1, 2).unwrap();
-        let context = player.capture_asset_context(false, true);
-        let report = player.matcher.report();
-        tasks.run("assessment routing identity", None, move |token| {
-            let mut player = context.into_player(true)?;
-            let assessment = round_analysis::Assessment::prepare(&player, &report, &token)?;
-            assert!(assessment.reusable(&player, &report));
-            Arc::make_mut(&mut player.config.note_players).remove(&key);
-            assert!(!assessment.reusable(&player, &report));
-            Ok(serde_json::Value::Null)
-        }).unwrap();
-    }
 
     fn attempt() -> PracticeSession {
         PracticeSession {
@@ -466,36 +274,4 @@ mod tests {
         assert!(!same_attempt_conditions(&altered, &altered));
     }
 
-    #[test]
-    fn excluded_attempt_explains_actual_condition_differences() {
-        let current = attempt();
-        let mut older = current.clone();
-        older.speed = 0.7;
-        older.context.as_mut().unwrap().grid = "grid-previous".into();
-        older.context.as_mut().unwrap().pedal_latency_ms = Some(22);
-        assert!(!same_attempt_conditions(&current, &older));
-        assert_eq!(
-            attempt_difference_reasons(&current, &older),
-            ["练习速度不同", "音乐小节网格不同", "踏板延迟校准不同"]
-        );
-        assert!(attempt_difference_reasons(&current, &current).is_empty());
-        let mut exact = current.clone();
-        exact.context.as_mut().unwrap().passage_bounds = Some(
-            panthesia_core::practice_history::PracticePassageBounds {
-                start_tick: 120, end_tick: 360,
-            },
-        );
-        assert_eq!(attempt_difference_reasons(&exact, &current),
-            ["有一轮缺少原选段起止拍位"]);
-        let mut other = exact.clone();
-        other.context.as_mut().unwrap().passage_bounds.as_mut().unwrap().end_tick = 480;
-        assert_eq!(attempt_difference_reasons(&exact, &other),
-            ["原选段起止拍位不同"]);
-        older = current.clone();
-        older.context = None;
-        assert_eq!(
-            attempt_difference_reasons(&current, &older),
-            ["旧记录缺少完整演奏条件"]
-        );
-    }
 }

@@ -40,7 +40,7 @@ impl Player {
         let settings=preferences::SessionSettings {
             tracks,parts:self.config.tracks.iter().map(|t|(t.track_id,t.practice_part)).collect(),
             mode:Some("wait".into()),count_in:self.state.count_in.max(1),metronome:self.state.metronome,
-            latency:self.state.latency,rounds:1,hands:crate::hands::label(request.hand).into(),adaptive:false,
+            latency:self.state.latency,rounds:1,hands:crate::hands::label(request.hand).into(),
         };
         let mut preferences=self.preferences.clone();
         let content_id=request.content_id;

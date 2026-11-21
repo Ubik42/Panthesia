@@ -63,14 +63,12 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let control = service_lane::Lane::new("neothesia-http-control", 2, 32, Arc::new(AtomicUsize::new(0)),
         move |request| handler(request))?;
     for request in server.incoming_requests() {
-        if request.method() == &Method::Options || ["/api/state", "/api/state-frame", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/practice-backup/read", "/api/practice-backup/cancel", "/api/practice-backup/protocol", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
+        if request.method() == &Method::Options || ["/api/state", "/api/state-frame", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
             control.dispatch(request);
         } else if (request.method() == &Method::Get && ["/api/song", "/api/session"].contains(&request.url()))
             || (request.method() == &Method::Post && ["/api/midi/export", "/api/package/export"].contains(&request.url())) {
             documents.dispatch(request);
-        } else if request.method() == &Method::Get && request.url() == "/api/routines/templates" {
-            reads.dispatch(request);
-        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/notation-document", "/api/notation-read", "/api/history-read", "/api/history-read-scoped", "/api/routines/read", "/api/routines/sources", "/api/routines/options"].contains(&request.url()) {
+        } else if request.method() == &Method::Post && ["/api/practice-read", "/api/practice-demo", "/api/score-map", "/api/notation-document", "/api/notation-read", "/api/history-read", "/api/history-read-scoped"].contains(&request.url()) {
             reads.dispatch(request);
         } else { business.dispatch(request); }
     }
@@ -124,12 +122,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                 .with_header(Header::from_bytes("Content-Type","application/json; charset=utf-8").unwrap());
             if let Some(origin)=origin_header {response.add_header(Header::from_bytes("Access-Control-Allow-Origin",origin).unwrap());}
             let _=request.respond(response);return;
-        }
-        if request.method()==&Method::Post && ["/api/practice-backup/stage","/api/practice-backup/export"].contains(&url.as_str()) {
-          let result=(||->Result<(Vec<u8>,String),String>{if !request.headers().iter().any(|h|h.field.equiv("X-Panthesia-Client")&&h.value.as_str()=="web"){return Err("缺少本地客户端标识".into());}
-           if url.ends_with("/stage"){let mut bytes=vec![];request.as_reader().take(256_000_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;let v=engine.stage_practice_backup(bytes)?;Ok((serde_json::to_vec(&v).unwrap(),"application/json".into()))}
-           else{let mut bytes=vec![];request.as_reader().take(4097).read_to_end(&mut bytes).map_err(|e|e.to_string())?;if bytes.len()>4096{return Err("备份条件请求过大".into());}let selection=serde_json::from_slice(&bytes).map_err(|e|e.to_string())?;let v=engine.command(Command::ExportPracticeBackup{selection})?;let path=std::path::Path::new(v["path"].as_str().ok_or("备份导出路径无效")?);let bytes=panthesia_core::utils::atomic_file::read_limited(path,256_000_000).map_err(|e|e.to_string())?;if path.file_stem().and_then(|value|value.to_str())!=Some(blake3::hash(&bytes).to_hex().as_str()){return Err("备份读取期间内容已改变，请重新制作".into());}Ok((bytes,"application/zip".into()))}
-          })();let(status,bytes,mime)=match result{Ok((b,m))=>(200,b,m),Err(e)=>(400,serde_json::to_vec(&serde_json::json!({"error":e})).unwrap(),"application/json".into())};let mut response=Response::from_data(bytes).with_status_code(status).with_header(Header::from_bytes("Content-Type",mime).unwrap());if let Some(origin)=origin_header{response.add_header(Header::from_bytes("Access-Control-Allow-Origin",origin).unwrap());}let _=request.respond(response);return;
         }
         if request.method()==&Method::Post && ["/api/package/stage","/api/package/export","/api/midi/export"].contains(&url.as_str()) {
             let result=(||->Result<(Vec<u8>,String),String>{
@@ -190,16 +182,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                 return Ok(serde_json::json!({}));
             }
             match (request.method(), url.as_str()) {
-                (&Method::Get, "/api/practice-backup/protocol") => Ok(serde_json::json!(1)),
-                (&Method::Post, "/api/practice-backup/prepare") => {
-                    let input = client_json(&mut request, 4096, "备份导入")?;
-                    serde_json::to_value(engine.prepare_backup_import(input)?).map_err(|error| error.to_string())
-                },
-                (&Method::Post, "/api/practice-backup/read") | (&Method::Post, "/api/practice-backup/cancel") => {
-                    let input:panthesia_engine::backup_operations::BackupImportQuery=client_json(&mut request,1024,"备份请求")?;
-                    let result=if url.ends_with("/cancel") {engine.cancel_backup_import(&input.engine_id,&input.id)}else{engine.read_backup_import(&input.engine_id,&input.id)}?;
-                    serde_json::to_value(result).map_err(|error|error.to_string())
-                },
                 (&Method::Get, "/api/service-status") => Ok(serde_json::json!({
                     "businessActive": activity.business.load(Ordering::Relaxed),
                     "readActive": activity.reads.load(Ordering::Relaxed),
@@ -222,7 +204,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                 }
                 (&Method::Get, "/api/song") => engine.command(Command::CurrentSong),
                 (&Method::Get, "/api/session") => engine.command(Command::Session),
-                (&Method::Get, "/api/routines/templates") => engine.routine_templates(),
                 (&Method::Get, "/api/devices") => engine.devices(false).and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string())),
                 (&Method::Post, "/api/devices/refresh") => {
                     require_client(&request)?;
@@ -239,31 +220,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     let current=rows.lock().map_err(|_|"曲库列表暂不可用")?.clone();
                     Ok(serde_json::json!({"songs":library::enriched(&current,&data)}))
                 },
-                (&Method::Post, "/api/routines/options") => {
-                    engine.routine_options(client_json(&mut request,4096,"计划来源")?)
-                }
-                (&Method::Post, "/api/routines/sources") => {
-                    engine.read_routine_sources(client_json(&mut request,4096,"段落来源查询")?)
-                }
-                (&Method::Post, "/api/routines/read") => {
-                    engine.read_routine_list(client_json(&mut request,4096,"计划查询")?)
-                }
-                (&Method::Post, "/api/history-clips/edit") => {
-                    if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") { return Err("缺少本地客户端标识".into()); }
-                    let mut body = String::new();
-                    request.as_reader().take(512_001).read_to_string(&mut body).map_err(|error| error.to_string())?;
-                    if body.len() > 512_000 { return Err("回放片段请求过大".into()); }
-                    let command: Command = serde_json::from_str(&body).map_err(|error| error.to_string())?;
-                    engine.edit_history_clips(command)
-                }
-                (&Method::Post, "/api/history-annotation") => {
-                    if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") { return Err("缺少本地客户端标识".into()); }
-                    let mut body = String::new();
-                    request.as_reader().take(512_001).read_to_string(&mut body).map_err(|error| error.to_string())?;
-                    if body.len() > 512_000 { return Err("评语请求过大".into()); }
-                    let input: panthesia_engine::HistoryAnnotationRequest = serde_json::from_str(&body).map_err(|error| error.to_string())?;
-                    engine.save_history_annotation(input)
-                }
                 (&Method::Post, "/api/history-read") => {
                     if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") { return Err("缺少本地客户端标识".into()); }
                     let mut body = String::new();

@@ -9,7 +9,6 @@ import {
 } from "react";
 import { api, type CollectionSong } from "../../api";
 import type { Entry } from "./libraryQueryModel";
-import type { SongLearning } from "../../songLearning";
 import { ReadCache, type ReadValue } from "../../engine/readCache";
 import {
   createRepairSessionStore,
@@ -24,7 +23,7 @@ export interface LibraryWorkspace {
   groups: LibraryGroup[];
   entries: Record<string, Entry>;
   revision: number;
-  learning?: Record<string, SongLearning>;
+  learning?: Record<string, unknown>;
 }
 export interface LibraryFolder {
   path: string;

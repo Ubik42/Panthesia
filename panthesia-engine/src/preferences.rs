@@ -14,7 +14,6 @@ pub struct SessionSettings {
     pub latency: i32,
     pub rounds: usize,
     pub hands: String,
-    pub adaptive: bool,
 }
 fn deserialize_parts<'de, D>(deserializer: D) -> Result<BTreeMap<usize, panthesia_core::practice::PracticePart>, D::Error>
 where D: serde::Deserializer<'de> {
@@ -85,6 +84,7 @@ impl<T: Clone + IntoIterator> IntoIterator for Shared<T> {
 #[serde(default, rename_all = "camelCase")]
 pub struct Preferences {
     pub schema_version: PreferencesSchema,
+    /// Keys this version no longer reads (older assessment data included) are kept and written back unchanged.
     #[serde(flatten)]
     pub extensions: BTreeMap<String, serde_json::Value>,
     pub last_content_id: Option<String>,
@@ -101,10 +101,8 @@ pub struct Preferences {
     pub audio_device: Option<String>,
     pub passage: Option<Passage>,
     pub volume: Option<f64>,
-    pub loop_restart_errors:u16,
     pub songs: Shared<BTreeMap<String, SessionSettings>>,
     pub variants: Shared<BTreeMap<String, crate::practice_variant::Variant>>,
-    pub song_expression_goals: Shared<BTreeMap<String, crate::expression_goal::ExpressionGoal>>,
     pub track_appearances: Shared<BTreeMap<String,BTreeMap<usize,crate::track_appearance::TrackAppearance>>>,
     pub track_sounds: Shared<BTreeMap<String, BTreeMap<usize, crate::track_sound::TrackSound>>>,
     pub input_configured: bool,
@@ -112,10 +110,6 @@ pub struct Preferences {
     pub passages: Shared<BTreeMap<String, Vec<PassagePreset>>>,
     pub bookmarks: Shared<BTreeMap<String,Vec<panthesia_core::song_bookmarks::Bookmark>>>,
     pub exercise_presets: Shared<Vec<ExercisePreset>>,
-    pub ladder_presets: Shared<BTreeMap<String,Vec<LadderPreset>>>,
-    pub ladder_runs: Shared<BTreeMap<String,LadderRun>>,
-    pub routines: Shared<Vec<crate::routine_commands::PracticeRoutine>>,
-    pub routine_runs: crate::shared_map::SharedMap<String,crate::routine_commands::RoutineRun>,
     pub score_versions: Shared<BTreeMap<String, Vec<ScoreVersion>>>,
     pub hand_span_defaults: Shared<BTreeMap<
         panthesia_core::practice::PracticePart,
@@ -196,27 +190,4 @@ impl Preferences {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all="camelCase")]
-pub struct LadderPreset {
-    #[serde(default,skip_serializing_if="Option::is_none")]
-    pub practice:Option<panthesia_core::song_project::PracticeEdition>,
-    pub id:String,
-    pub name:String,
-    pub start:usize,
-    pub end:usize,
-    pub grid:String,
-    pub scope:String,
-    pub exercise_spec:Option<panthesia_core::exercise::ExerciseSpec>,
-    pub settings:SessionSettings,
-    pub plan:panthesia_core::speed_ladder::SpeedLadderPlan,
-    #[serde(default,skip_serializing_if="Option::is_none")]
-    pub expression:Option<crate::expression_goal::ExpressionGoal>,
-}
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all="camelCase")]
-pub struct LadderRun {
-    pub preset:LadderPreset,
-    pub progress:panthesia_core::speed_ladder::SpeedLadderProgress,
-    pub active:bool,
-}
+

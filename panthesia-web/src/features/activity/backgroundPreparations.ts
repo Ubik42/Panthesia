@@ -5,11 +5,6 @@ import {
   checkMusicReceipt,
 } from "../imports/musicImportClient";
 import { readPreparedSong } from "../imports/preparationPersistence";
-import {
-  sameBackupRequest,
-  advancesBackupReceipt,
-  backupImportMessage,
-} from "../backups/backupImportClient";
 import type { WorkSources } from "./workProgressStore";
 
 export interface BackgroundRead {
@@ -195,73 +190,5 @@ export function pendingPreparationReads(
           sources.exercise.update({ error: message });
       },
     );
-  const backup = sources.practiceBackup.getSnapshot(),
-    request = backup.request;
-  if (
-    request &&
-    !backup.result &&
-    (!backup.receipt || pending(backup.receipt.phase))
-  ) {
-    const available = () => {
-      const next = sources.practiceBackup.getSnapshot();
-      return (
-        !next.loading &&
-        !next.busy &&
-        !!next.request &&
-        sameBackupRequest(next.request, request) &&
-        !next.result
-      );
-    };
-    reads.push({
-      id: `backup:${request.id}`,
-      engineId,
-      available,
-      issue: (message) => {
-        if (
-          available() &&
-          sources.practiceBackup.getSnapshot().error !== message
-        )
-          sources.practiceBackup.update({ error: message });
-      },
-      read: async (valid) => {
-        const next = await api.readBackupImport({ engineId, id: request.id });
-        if (!valid() || !available()) return;
-        if (!next)
-          throw new Error(
-            "暂未读到原备份请求。原范围与编号保留，可从备份工作台继续核对。",
-          );
-        if (!sameBackupRequest(next.request, request))
-          throw new Error("原备份请求的范围回复不一致，请返回备份工作台核对。");
-        const current = sources.practiceBackup.getSnapshot();
-        if (next.phase === "done" && !next.result)
-          throw new Error("备份导入已结束，结果尚未完整读取。原请求继续保留。");
-        if (advancesBackupReceipt(current.receipt, next))
-          sources.practiceBackup.update({
-            receipt: next,
-            progress: backupImportMessage(next),
-            error:
-              next.phase === "error" || next.phase === "unconfirmed"
-                ? next.error || backupImportMessage(next)
-                : "",
-            ...(next.phase === "done"
-              ? {
-                  result: next.result!,
-                  legacyPending: false,
-                  refreshPending: true,
-                  message:
-                    "原备份已完成导入。打开备份工作台可查看结果并更新界面。",
-                }
-              : {}),
-          });
-        else if (
-          next.phase !== "error" &&
-          next.phase !== "unconfirmed" &&
-          current.error.startsWith("后台进度暂未更新：")
-        )
-          sources.practiceBackup.update({ error: "" });
-        return next.phase === "unconfirmed" ? 15_000 : 1000;
-      },
-    });
-  }
   return reads;
 }

@@ -17,16 +17,6 @@ pub struct PassageCatalog {
 }
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LadderCatalog {
-    pub presets: Vec<preferences::LadderPreset>,
-    pub runs: Vec<preferences::LadderRun>,
-    pub current: Option<preferences::LadderRun>,
-    pub catalog_revision: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub write_settled: Option<bool>,
-}
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ExerciseCatalog {
     pub presets: Vec<preferences::ExercisePreset>,
     pub catalog_revision: String,
@@ -47,7 +37,6 @@ pub struct FingerProfileCatalog {
 }
 fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result<Value, String> {
     match kind {
-        Kind::LoopRules => return Err("循环规则没有独立目录".into()),
         Kind::Bookmarks => return reader.bookmark_catalog(catalog_revision),
         Kind::Passages => {
             let content = &reader.file.as_ref().ok_or("请先选择曲目")?.content_id;
@@ -58,35 +47,6 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
                     if row.practice.is_none() { row.practice = row.practice_edition(content).ok(); }
                     row
                 }).collect(),
-                catalog_revision,
-                write_settled: None,
-            })
-        }
-        Kind::Ladders => {
-            let content = &reader.file.as_ref().ok_or("请先选择曲目")?.content_id;
-            let presets: Vec<_> = reader
-                .preferences
-                .ladder_presets
-                .get(content)
-                .cloned()
-                .unwrap_or_default().into_iter().map(|mut row| {
-                    if row.practice.is_none() {row.practice=panthesia_core::song_project::PracticeEdition::resolve(None,content,&row.grid).ok();}
-                    row
-                }).collect();
-            let runs = presets
-                .iter()
-                .filter_map(|preset| {
-                    reader
-                        .preferences
-                        .ladder_runs
-                        .get(&format!("{content}:{}", preset.id))
-                        .cloned()
-                })
-                .collect();
-            serde_json::to_value(LadderCatalog {
-                presets,
-                runs,
-                current: reader.ladder.clone(),
                 catalog_revision,
                 write_settled: None,
             })
@@ -108,7 +68,6 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
                 write_settled: None,
             })
         }
-        Kind::Expression => return Err("曲目专项要求通过当前会话读取".into()),
         Kind::Exercises => serde_json::to_value(ExerciseCatalog {
             presets: reader.preferences.exercise_presets.materialize(),
             catalog_revision,
@@ -120,28 +79,18 @@ fn read_catalog(reader: &Player, kind: Kind, catalog_revision: String) -> Result
 #[derive(Clone, Copy)]
 pub(crate) enum Kind {
     Bookmarks,
-    LoopRules,
     Passages,
-    Ladders,
     Exercises,
-    Expression,
     Profiles,
 }
 pub(crate) fn edits(command: &Command) -> Option<Kind> {
     Some(match command {
-        Command::LoopRestartErrors{..} => Kind::LoopRules,
         Command::SaveBookmark{..}|Command::RemoveBookmark{..} => Kind::Bookmarks,
         Command::SavePassage { .. }
         | Command::RemovePassage { .. }
         | Command::UpdatePassageDetails { .. }
         | Command::SaveScorePassage { .. }
         | Command::SaveTickPassage { .. } => Kind::Passages,
-        Command::SaveLadder { .. }
-        | Command::UpdateLadderName { .. }
-        | Command::RemoveLadder { .. } => Kind::Ladders,
-        Command::SetSongExpressionGoal { .. } | Command::EditSongExpressionGoal { .. } => {
-            Kind::Expression
-        }
         Command::HandSpanFor { .. } | Command::HandSpanDefault { .. } => Kind::Profiles,
         Command::SaveExercisePreset { .. }
         | Command::RemoveExercisePreset { .. }
@@ -154,7 +103,6 @@ fn read_kind(command: &Command) -> Option<Kind> {
     match command {
         Command::Bookmarks => Some(Kind::Bookmarks),
         Command::Passages => Some(Kind::Passages),
-        Command::LadderPresets => Some(Kind::Ladders),
         Command::ExercisePresets => Some(Kind::Exercises),
         Command::FingerProfiles => Some(Kind::Profiles),
         _ => None,
@@ -166,20 +114,11 @@ fn revision(
     kind: Kind,
 ) -> Result<String, String> {
     let bytes = match kind {
-        Kind::LoopRules => serde_json::to_vec(&preferences.loop_restart_errors),
         Kind::Bookmarks => serde_json::to_vec(&(content, content.and_then(|id|preferences.bookmarks.get(id)))),
         Kind::Passages => {
             serde_json::to_vec(&(content, content.and_then(|id| preferences.passages.get(id))))
         }
-        Kind::Ladders => serde_json::to_vec(&(
-            content,
-            content.and_then(|id| preferences.ladder_presets.get(id)),
-        )),
         Kind::Exercises => serde_json::to_vec(&preferences.exercise_presets),
-        Kind::Expression => serde_json::to_vec(&(
-            content,
-            content.and_then(|id| preferences.song_expression_goals.get(id)),
-        )),
         Kind::Profiles => serde_json::to_vec(&(
             &preferences.hand_span_profiles,
             &preferences.hand_span_defaults,
@@ -199,7 +138,6 @@ pub(super) fn check_open_version(
     };
     let kind = match command {
         Command::OpenPassage { .. } => Kind::Passages,
-        Command::StartLadder { .. } => Kind::Ladders,
         _ => return Err("练习方案打开操作无效".into()),
     };
     let current = revision(
@@ -217,7 +155,6 @@ pub(crate) fn reads(command: &Command) -> bool {
         command,
         Command::Bookmarks | Command::Passages
             | Command::FingerProfiles
-            | Command::LadderPresets
             | Command::ExercisePresets
             | Command::PreviewTickRange { .. }
             | Command::PreviewScoreRange { .. }
@@ -240,7 +177,7 @@ fn needs_source(command: &Command) -> bool {
 fn creation_id(command: &Command, request_id: Option<&str>) -> Result<Option<String>, String> {
     if !matches!(
         command,
-        Command::SavePassage { id: None, .. } | Command::SaveLadder { id: None, .. }
+        Command::SavePassage { id: None, .. }
     ) {
         return Ok(None);
     }
@@ -266,48 +203,23 @@ pub(crate) fn profiles_revision(preferences: &Preferences) -> Result<String, Str
 #[derive(Clone)]
 pub(crate) enum Guard {
     None,
-    LadderSave,
-    LadderRemove(String),
     Idle,
-    Expression,
 }
 impl Guard {
     fn for_command(command: &Command) -> Self {
         match command {
-            Command::SaveLadder { .. } | Command::UpdateLadderName { .. } => Self::LadderSave,
-            Command::RemoveLadder { id } => Self::LadderRemove(id.clone()),
             Command::SaveTickPassage { .. } => Self::Idle,
-            Command::SetSongExpressionGoal { .. } | Command::EditSongExpressionGoal { .. } => {
-                Self::Expression
-            }
             _ => Self::None,
         }
     }
     fn check(&self, player: &Player) -> Result<(), String> {
         match self {
-            Self::Expression => player.check_song_expression_editable(),
-            Self::LadderSave
-                if player.recorder.is_recording()
-                    || player.ladder.as_ref().is_some_and(|run| run.active) =>
-            {
-                Err("请先停止录音或结束速度阶梯，再保存方案".into())
-            }
-            Self::LadderRemove(id)
-                if player
-                    .ladder
-                    .as_ref()
-                    .is_some_and(|run| run.active && run.preset.id == *id) =>
-            {
-                Err("请先结束这个阶梯再移除方案".into())
-            }
             Self::Idle
                 if player.recorder.is_recording()
-                    || player.routine.is_some()
-                    || player.ladder.as_ref().is_some_and(|run| run.active)
                     || matches!(player.state.status.as_str(), "playing" | "countIn")
                     || !player.state.pressed.is_empty() =>
             {
-                Err("请先停止演奏、录音和活动计划，再保存段落".into())
+                Err("请先停止演奏和录音，再保存段落".into())
             }
             _ => Ok(()),
         }
@@ -317,15 +229,12 @@ pub(crate) struct Context {
     source: asset_edit::Context,
     origin: Option<SourceIdentity>,
     preferences: Preferences,
-    ladder: Option<preferences::LadderRun>,
 }
 pub(crate) struct Installation {
     kind: Kind,
     origin: Option<SourceIdentity>,
     before: Preferences,
     after: Preferences,
-    old_ladder: Option<preferences::LadderRun>,
-    ladder: Option<preferences::LadderRun>,
     guard: Guard,
     changed: bool,
 }
@@ -349,11 +258,6 @@ impl Context {
                 Some(Kind::Passages) => self
                     .preferences
                     .passages
-                    .get(content)
-                    .is_some_and(|rows| rows.iter().any(|row| row.id == id)),
-                Some(Kind::Ladders) => self
-                    .preferences
-                    .ladder_presets
                     .get(content)
                     .is_some_and(|rows| rows.iter().any(|row| row.id == id)),
                 _ => false,
@@ -385,15 +289,6 @@ impl Context {
                             .is_some_and(|rows| rows.iter().any(|row| row.id == *id))
                     })
                 }
-                Command::SaveLadder { id: Some(id), .. } => {
-                    content.as_ref().is_none_or(|content| {
-                        !self
-                            .preferences
-                            .ladder_presets
-                            .get(content)
-                            .is_some_and(|rows| rows.iter().any(|row| row.id == *id))
-                    })
-                }
                 _ => false,
             };
             if missing {
@@ -401,15 +296,6 @@ impl Context {
             }
         }
         let command = match command {
-            Command::EditSongExpressionGoal { goal, expected } => {
-                if expected != reader.current_song_expression_goal() {
-                    return Err(
-                        "曲目专项要求已在其他位置修改，当前输入尚未保存，请核对最新目标后再保存"
-                            .into(),
-                    );
-                }
-                Command::SetSongExpressionGoal { goal }
-            }
             Command::EditExercisePreset { name, spec, .. } => {
                 Command::SaveExercisePreset { name, spec }
             }
@@ -446,15 +332,6 @@ impl Context {
                         .ok_or("新练习段保存结果无法核对，输入仍保留")?;
                     row.id = id.into();
                 }
-                Some(Kind::Ladders) => {
-                    let row = reader
-                        .preferences
-                        .ladder_presets
-                        .get_mut(content)
-                        .and_then(|rows| rows.iter_mut().find(|row| row.id == generated))
-                        .ok_or("新速度阶梯保存结果无法核对，输入仍保留")?;
-                    row.id = id.into();
-                }
                 _ => return Err("当前保存操作不接受新建编号".into()),
             }
             result["id"] = serde_json::json!(id);
@@ -469,14 +346,12 @@ impl Context {
         if let Some(revision) = &after_revision {
             result["catalogRevision"] = serde_json::json!(revision);
         }
-        let changed = before_revision != after_revision || self.ladder != reader.ladder;
+        let changed = before_revision != after_revision;
         let patch = kind.map(|kind| Installation {
             kind,
             origin: self.origin,
             before: self.preferences,
             after: reader.preferences,
-            old_ladder: self.ladder,
-            ladder: reader.ladder,
             guard,
             changed,
         });
@@ -499,7 +374,6 @@ impl Player {
             source: self.capture_practice_read_context(),
             origin: source.then(|| SourceIdentity::capture(self)),
             preferences: self.preferences.clone(),
-            ladder: self.ladder.clone(),
         })
     }
     pub(super) fn install_catalog(
@@ -516,26 +390,11 @@ impl Player {
         }
         patch.guard.check(self)?;
         let unchanged = match patch.kind {
-            Kind::LoopRules => self.preferences.loop_restart_errors==patch.before.loop_restart_errors,
             Kind::Bookmarks => self.preferences.bookmarks.same_snapshot(&patch.before.bookmarks),
             Kind::Passages => self
                 .preferences
                 .passages
                 .same_snapshot(&patch.before.passages),
-            Kind::Ladders => {
-                self.preferences
-                    .ladder_presets
-                    .same_snapshot(&patch.before.ladder_presets)
-                    && self
-                        .preferences
-                        .ladder_runs
-                        .same_snapshot(&patch.before.ladder_runs)
-                    && self.ladder == patch.old_ladder
-            }
-            Kind::Expression => self
-                .preferences
-                .song_expression_goals
-                .same_snapshot(&patch.before.song_expression_goals),
             Kind::Profiles => {
                 self.preferences
                     .hand_span_profiles
@@ -565,21 +424,9 @@ impl Player {
         // Keep current playback, device settings, history and unrelated catalogs.
         // The worker retains both roots until the acknowledged save has finished.
         let previous = self.preferences.clone();
-        let old_ladder = self.ladder.clone();
-        let old_expression = self.active_expression_goal.clone();
         match patch.kind {
-            Kind::LoopRules => self.preferences.loop_restart_errors=patch.after.loop_restart_errors,
             Kind::Bookmarks => self.preferences.bookmarks=patch.after.bookmarks.clone(),
             Kind::Passages => self.preferences.passages = patch.after.passages.clone(),
-            Kind::Ladders => {
-                self.preferences.ladder_presets = patch.after.ladder_presets.clone();
-                self.preferences.ladder_runs = patch.after.ladder_runs.clone();
-                self.ladder = patch.ladder.clone();
-            }
-            Kind::Expression => {
-                self.preferences.song_expression_goals = patch.after.song_expression_goals.clone();
-                self.active_expression_goal = None;
-            }
             Kind::Profiles => {
                 self.preferences.hand_span_profiles = patch.after.hand_span_profiles.clone();
                 self.preferences.hand_span_defaults = patch.after.hand_span_defaults.clone();
@@ -590,8 +437,6 @@ impl Player {
         }
         if let Err(error) = self.preferences.save(&self.preferences_path) {
             self.preferences = previous;
-            self.ladder = old_ladder;
-            self.active_expression_goal = old_expression;
             return Err(error);
         }
         Ok(())
@@ -633,14 +478,10 @@ impl Engine {
         }
         storage_control::check_command(&self.storage_busy, &command)?;
         let label = match (&command, kind) {
-            (_, Some(Kind::LoopRules)) => "保存循环练习规则",
             (_, Some(Kind::Bookmarks)) => "保存演奏书签",
             (_, Some(Kind::Passages)) => "保存练习段资料",
-            (_, Some(Kind::Ladders)) => "保存速度阶梯方案",
             (_, Some(Kind::Exercises)) => "保存技术练习方案",
-            (_, Some(Kind::Expression)) => "保存曲目专项要求",
             (_, Some(Kind::Profiles)) => "保存手跨度设置",
-            (Command::LadderPresets, _) => "读取速度阶梯方案",
             (Command::ExercisePresets, _) => "读取技术练习方案",
             (Command::Passages, _) => "读取练习段资料",
             (Command::FingerProfiles, _) => "读取手跨度设置",
@@ -649,7 +490,7 @@ impl Engine {
         let source = needs_source(&command);
         let settled_read = matches!(
             &command,
-            Command::Passages | Command::LadderPresets | Command::FingerProfiles
+            Command::Passages | Command::FingerProfiles
         );
         let guard = Guard::for_command(&command);
         let engine = self.clone();

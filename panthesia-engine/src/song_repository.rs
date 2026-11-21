@@ -274,28 +274,6 @@ impl SongRepository {
         tx.commit().map_err(error)?;
         Ok(DirectorySnapshot { registry, locked })
     }
-    /// Used by the existing restore journal. Assets are immutable and remain available.
-    pub(crate) fn restore_directory(&mut self, snapshot: &DirectorySnapshot) -> Result<(), String> {
-        snapshot.registry.validate()?;
-        if snapshot
-            .locked
-            .iter()
-            .any(|id| !snapshot.registry.performances.contains_key(id))
-        {
-            return Err("歌曲恢复快照的分组记录无效".into());
-        }
-        let tx = self
-            .db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(error)?;
-        tx.execute_batch("DELETE FROM notation_editions;DELETE FROM locations;DELETE FROM performances;DELETE FROM songs;").map_err(error)?;
-        write_registry(&tx, &snapshot.registry)?;
-        for id in &snapshot.locked {
-            tx.execute("UPDATE performances SET group_locked=1 WHERE id=?1", [id])
-                .map_err(error)?;
-        }
-        tx.commit().map_err(error)
-    }
     pub fn save_registry(
         &mut self,
         registry: &RepertoireRegistry,
@@ -791,74 +769,6 @@ mod tests {
             .unwrap(),
             legacy_bytes
         );
-    }
-    #[test]
-    fn backup_restore_updates_sqlite_and_interrupted_publication_restores_directory() {
-        let fixture = Fixture::new();
-        let data = fixture.data();
-        let (source, cid) = fixture.midi(
-            "external/sample.mid",
-            include_bytes!("../assets/five-finger.mid"),
-        );
-        std::fs::create_dir_all(&data).unwrap();
-        let mut legacy = RepertoireRegistry::default();
-        legacy.register(&cid, "Before", "", Some(source.to_string_lossy().into()));
-        std::fs::write(
-            data.join("repertoire.json"),
-            serde_json::to_vec(&legacy).unwrap(),
-        )
-        .unwrap();
-        let mut repository = SongRepository::open(&data).unwrap();
-        let owned = repository
-            .retain(&source, &cid, "Before", "", &|| Ok(()))
-            .unwrap();
-        let before = repository.export_directory().unwrap();
-        let mut changed = before.registry.clone();
-        changed.works.get_mut(&format!("work-{cid}")).unwrap().title = "After".into();
-        let history = panthesia_core::practice_history::PracticeHistoryStore::load_snapshot(
-            data.join("web-practice-history.ron"),
-        )
-        .unwrap();
-        let folder = crate::practice_backup::commit(
-            &data,
-            &crate::preferences::Preferences::default(),
-            &history,
-            &crate::library_workspace::Workspace::default(),
-            None,
-            Some(&serde_json::to_vec(&changed).unwrap()),
-            &std::collections::BTreeMap::new(),
-            &std::collections::BTreeMap::new(),
-            None,
-        )
-        .unwrap();
-        assert_eq!(
-            SongRepository::open(&data)
-                .unwrap()
-                .registry()
-                .unwrap()
-                .works[&format!("work-{cid}")]
-                .title,
-            "After"
-        );
-        // Recreate a crash after SQLite committed but before the journal commit flag.
-        let journal = serde_json::json!({"folder":folder,"prefs":false,"history":false,"workspace":false,"templates":null,"repertoire":true,"performances":{},"metadata_histories":{},"pending_metadata_history":null,"song_directory":true,"committed":false});
-        std::fs::write(
-            data.join("practice-import-journal.json"),
-            serde_json::to_vec(&journal).unwrap(),
-        )
-        .unwrap();
-        crate::practice_backup::recover(&data).unwrap();
-        let restored = SongRepository::open(&data)
-            .unwrap()
-            .export_directory()
-            .unwrap();
-        assert_eq!(
-            registry_revision(&restored.registry).unwrap(),
-            registry_revision(&before.registry).unwrap()
-        );
-        assert_eq!(restored.locked, before.locked);
-        assert!(owned.is_file());
-        assert!(!data.join("practice-import-journal.json").exists());
     }
     #[test]
     fn changed_legacy_registry_adds_records_without_reverting_current_song_edits(){

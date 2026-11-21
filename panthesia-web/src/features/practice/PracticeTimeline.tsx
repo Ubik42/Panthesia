@@ -13,8 +13,6 @@ const fields = [
   "passage",
   "contentId",
   "scoreRevision",
-  "loopRestarts",
-  "loopRestartErrors",
 ] as const;
 const TimelineMarks = memo(function TimelineMarks({
   song,

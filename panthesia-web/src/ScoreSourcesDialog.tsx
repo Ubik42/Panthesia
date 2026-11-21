@@ -673,8 +673,6 @@ export function ScoreSourcesDialog({
             disabled={busy}
             onClick={() =>
               void work(async () => {
-                await client.command({ type: "stopRoutine" });
-                await client.command({ type: "stopLadder" });
                 await client.command({ type: "pause" });
                 setMessage(
                   "已停止当前练习，可重新预览并应用更新。录音需先在录制窗口结束。",

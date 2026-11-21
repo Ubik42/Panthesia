@@ -166,9 +166,6 @@ impl Default for Timeline {
     }
 }
 impl Timeline {
-    pub(crate) fn new(events: &[panthesia_music::MidiEvent]) -> Self {
-        Self::new_checked(events, &|| Ok(())).expect("uncancelled sound timeline")
-    }
     pub(crate) fn new_checked(
         events: &[panthesia_music::MidiEvent],
         check: &impl Fn() -> Result<(), String>,
@@ -333,9 +330,6 @@ impl Player {
         id: usize,
         sound: Option<TrackSound>,
     ) -> Result<serde_json::Value, String> {
-        if self.routine.is_some() || self.ladder.is_some() {
-            return Err("请先结束当前计划项目再调整音轨声音".into());
-        }
         if !self.config.tracks.iter().any(|t| t.track_id == id) {
             return Err("找不到音轨".into());
         }
@@ -431,82 +425,6 @@ mod tests {
 
 #[cfg(test)]
 mod flow_tests {
-    use super::*;
-    use crate::{Command, Player};
-    #[test]
-    fn capacity_persistence_and_portable_settings() {
-        let events: Vec<_> = (0..15)
-            .map(|t| panthesia_music::MidiEvent {
-                source_note:None,
-                order:t,
-                track_id: t,
-                track_color_id: 0,
-                channel: 0,
-                timestamp: std::time::Duration::ZERO,
-                message: panthesia_music::midly::MidiMessage::NoteOn {
-                    key: 60.into(),
-                    vel: 80.into(),
-                },
-            })
-            .collect();
-        assert!(Routing::build(&events).is_err());
-        assert_eq!(Routing::build(&events[..14]).unwrap().lanes.len(), 14);
-        let data = std::env::temp_dir().join(format!(
-            "neothesia-mix-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        let font = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2");
-        let presets = presets(&font);
-        assert!(!presets.is_empty());
-        let mut p = Player::new(data.clone(), font.clone(), true);
-        p.command(Command::Generate {
-            spec: Default::default(),
-        })
-        .unwrap();
-        let id = p
-            .config
-            .tracks
-            .iter()
-            .find(|t| {
-                p.file
-                    .as_ref()
-                    .unwrap()
-                    .tracks
-                    .iter()
-                    .any(|a| a.track_id == t.track_id && !a.notes.is_empty())
-            })
-            .unwrap()
-            .track_id;
-        let sound = TrackSound {
-            volume: 45,
-            pan: Some(32),
-            program: Some(presets[0].program),
-        };
-        p.command(Command::TrackSound {
-            id,
-            sound: Some(sound.clone()),
-        })
-        .unwrap();
-        assert!(!p.track_routing.lanes.is_empty());
-        assert_eq!(p.track_sound_settings()[&id], sound);
-        let package = p.export_piece_package(false).unwrap();
-        let bytes: Vec<u8> = serde_json::from_value(package["bytes"].clone()).unwrap();
-        let decoded = crate::piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(decoded.manifest.track_sounds[&id], sound);
-        let snapshot = p.practice_backup_snapshot(&Default::default()).unwrap();
-        assert!(
-            snapshot["trackSounds"]
-                .as_object()
-                .is_some_and(|m| !m.is_empty())
-        );
-        let mut reopened = Player::new(data, font, true);
-        reopened.restore();
-        assert_eq!(reopened.track_sound_settings()[&id], sound);
-        assert_ne!(reopened.state.status, "playing");
-        p.command(Command::TrackSound { id, sound: None }).unwrap();
-        assert!(p.track_routing.lanes.is_empty());
-    }
+    
+    
 }

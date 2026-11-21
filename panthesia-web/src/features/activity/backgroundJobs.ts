@@ -445,7 +445,6 @@ export function startBackgroundJobs(
     sources.imports,
     sources.piecePackage,
     sources.exercise,
-    sources.practiceBackup,
   ].map((source) =>
     source.subscribe(() => {
       if (!reading && !timer)

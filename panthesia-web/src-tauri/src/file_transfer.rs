@@ -1,3 +1,4 @@
+//! Bounded chunked uploads from the web view: piece packages, score inputs and located paper.
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -13,7 +14,6 @@ const MAX: u64 = 256_000_000;
 const CHUNK: usize = 1_048_576;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TransferKind {
-    Backup,
     Package,
     ScoreInput,
     LocatedPaper,
@@ -115,8 +115,6 @@ struct Transfer {
     temp: Option<PathBuf>,
     size: u64,
     offset: u64,
-    expected_hash: Option<String>,
-    hash: blake3::Hasher,
 }
 impl Drop for Transfer {
     fn drop(&mut self) {
@@ -144,26 +142,6 @@ impl Transfer {
         self.offset += bytes.len() as u64;
         self.touched = Instant::now();
         Ok(())
-    }
-    fn read(&mut self, offset: u64, length: usize) -> Result<Vec<u8>, String> {
-        if self.temp.is_some()
-            || length == 0
-            || length > CHUNK
-            || offset != self.offset
-            || length as u64 > self.size.saturating_sub(offset)
-        {
-            return Err("文件分块位置或大小无效".into());
-        }
-        let mut bytes = vec![0; length];
-        self.file
-            .as_mut()
-            .ok_or("文件传输会话已结束")?
-            .read_exact(&mut bytes)
-            .map_err(|e| e.to_string())?;
-        self.hash.update(&bytes);
-        self.offset += length as u64;
-        self.touched = Instant::now();
-        Ok(bytes)
     }
     fn staged_bytes(&mut self) -> Result<Vec<u8>, String> {
         if self.temp.is_none() || self.offset != self.size {
@@ -211,88 +189,6 @@ fn insert(sessions: &Sessions, transfer: Transfer) -> Result<String, String> {
     Ok(id)
 }
 #[tauri::command]
-pub async fn begin_practice_backup_read(
-    state: tauri::State<'_, crate::State>,
-    sessions: tauri::State<'_, Sessions>,
-    selection: panthesia_engine::practice_backup::Selection,
-) -> Result<serde_json::Value, String> {
-    {
-        let mut all = sessions.0.lock().map_err(|e| e.to_string())?;
-        all.retain(|_, transfer| transfer.touched.elapsed() < Duration::from_secs(300));
-        if all.len() >= 2 {
-            return Err("请等待正在传输的文件完成".into());
-        }
-    }
-    let engine = state.engine.clone();
-    let (file, size, expected_hash) =
-        tauri::async_runtime::spawn_blocking(move || -> Result<_, String> {
-            let result =
-                engine.command(panthesia_engine::Command::ExportPracticeBackup { selection })?;
-            let path = result["path"].as_str().ok_or("备份导出路径缺失")?;
-            let file = File::open(path).map_err(|e| e.to_string())?;
-            let size = file.metadata().map_err(|e| e.to_string())?.len();
-            if size == 0 || size > MAX {
-                return Err("练习备份大小无效，最大支持 256 MB".into());
-            }
-            let hash = std::path::Path::new(path)
-                .file_stem()
-                .and_then(|value| value.to_str())
-                .filter(|value| {
-                    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
-                })
-                .ok_or("备份制作记录无效")?
-                .to_owned();
-            Ok((file, size, hash))
-        })
-        .await
-        .map_err(|e| e.to_string())??;
-    let session = insert(
-        &sessions,
-        Transfer {
-            kind: TransferKind::Backup,
-            touched: Instant::now(),
-            file: Some(file),
-            temp: None,
-            size,
-            offset: 0,
-            expected_hash: Some(expected_hash),
-            hash: blake3::Hasher::new(),
-        },
-    )?;
-    Ok(serde_json::json!({"session":session,"size":size}))
-}
-#[tauri::command]
-pub async fn read_practice_backup_chunk(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-    offset: u64,
-    length: usize,
-) -> Result<Vec<u8>, String> {
-    let sessions = sessions.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut all = sessions.0.lock().map_err(|e| e.to_string())?;
-        let transfer = all.get_mut(&session).ok_or("文件传输会话已结束")?;
-        if transfer.kind != TransferKind::Backup {
-            return Err("文件传输类型不匹配".into());
-        }
-        let result = transfer.read(offset, length);
-        if result.is_err() {
-            all.remove(&session);
-        }
-        result
-    })
-    .await
-    .map_err(|error| error.to_string())?
-}
-#[tauri::command]
-pub fn begin_practice_backup_stage(
-    state: tauri::State<'_, crate::State>,
-    sessions: tauri::State<'_, Sessions>,
-    size: u64,
-) -> Result<String, String> {
-    begin_stage_upload(&state.data, &sessions, size, TransferKind::Backup)
-}
-#[tauri::command]
 pub fn begin_package_stage(
     state: tauri::State<'_, crate::State>,
     sessions: tauri::State<'_, Sessions>,
@@ -327,24 +223,8 @@ fn begin_stage_upload(
             temp: Some(path),
             size,
             offset: 0,
-            expected_hash: None,
-            hash: blake3::Hasher::new(),
         },
     )
-}
-#[tauri::command]
-pub async fn write_practice_backup_chunk(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-    offset: u64,
-    bytes: Vec<u8>,
-) -> Result<(), String> {
-    let sessions = sessions.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        write_stage_chunk(&sessions, &session, offset, &bytes, TransferKind::Backup)
-    })
-    .await
-    .map_err(|error| error.to_string())?
 }
 #[tauri::command]
 pub async fn write_package_stage_chunk(
@@ -377,21 +257,6 @@ fn write_stage_chunk(
         all.remove(session);
     }
     result
-}
-#[tauri::command]
-pub async fn finish_practice_backup_stage(
-    state: tauri::State<'_, crate::State>,
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-) -> Result<serde_json::Value, String> {
-    let mut transfer = take_upload(&sessions, &session, TransferKind::Backup)?;
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let bytes = transfer.staged_bytes()?;
-        engine.stage_practice_backup(bytes)
-    })
-    .await
-    .map_err(|e| e.to_string())?
 }
 fn take_upload(sessions: &Sessions, id: &str, kind: TransferKind) -> Result<Transfer, String> {
     let mut all = sessions.0.lock().map_err(|error| error.to_string())?;
@@ -428,44 +293,6 @@ pub fn cancel_package_stage(
     all.remove(&session);
     Ok(())
 }
-#[tauri::command]
-pub fn finish_practice_backup_read(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-) -> Result<(), String> {
-    let mut all = sessions.0.lock().map_err(|error| error.to_string())?;
-    let transfer = all.get(&session).ok_or("文件传输会话已结束")?;
-    if transfer.kind != TransferKind::Backup || transfer.temp.is_some() {
-        return Err("文件传输类型不匹配".into());
-    }
-    let transfer = all.remove(&session).ok_or("文件传输会话已结束")?;
-    if transfer.temp.is_some() || transfer.offset != transfer.size {
-        return Err("备份文件尚未读取完整".into());
-    }
-    if transfer
-        .expected_hash
-        .as_ref()
-        .is_some_and(|expected| transfer.hash.finalize().to_hex().as_str() != expected)
-    {
-        return Err("练习备份读取期间内容已改变，请重新制作，原练习资料保留。".into());
-    }
-    Ok(())
-}
-#[tauri::command]
-pub fn cancel_practice_backup_transfer(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-) -> Result<(), String> {
-    let mut all = sessions.0.lock().map_err(|error| error.to_string())?;
-    if all
-        .get(&session)
-        .is_some_and(|transfer| transfer.kind != TransferKind::Backup)
-    {
-        return Err("文件传输类型不匹配".into());
-    }
-    all.remove(&session);
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {
@@ -480,14 +307,12 @@ mod tests {
             .open(&path)
             .unwrap();
         let mut transfer = Transfer {
-            kind: TransferKind::Backup,
+            kind: TransferKind::Package,
             touched: Instant::now(),
             file: Some(file),
             temp: Some(path.clone()),
             size: 12,
             offset: 0,
-            expected_hash: None,
-            hash: blake3::Hasher::new(),
         };
         assert!(transfer.write(1, b"bad").is_err());
         assert!(transfer.write(0, &vec![0; CHUNK + 1]).is_err());
@@ -496,22 +321,6 @@ mod tests {
         transfer.write(8, b"test").unwrap();
         assert_eq!(transfer.staged_bytes().unwrap(), b"NEOPRAC1test");
         assert!(transfer.write(12, b"extra").is_err());
-        let mut read = Transfer {
-            kind: TransferKind::Backup,
-            touched: Instant::now(),
-            file: Some(File::open(&path).unwrap()),
-            temp: None,
-            size: 12,
-            offset: 0,
-            expected_hash: None,
-            hash: blake3::Hasher::new(),
-        };
-        assert!(read.read(1, 4).is_err());
-        assert!(read.read(0, CHUNK + 1).is_err());
-        assert_eq!(read.read(0, 8).unwrap(), b"NEOPRAC1");
-        assert_eq!(read.read(8, 4).unwrap(), b"test");
-        drop(read);
-        assert!(path.exists(), "reading must preserve the source backup");
         drop(transfer);
         assert!(!path.exists());
         let sessions = Sessions::default();
@@ -519,14 +328,12 @@ mod tests {
             insert(
                 &sessions,
                 Transfer {
-                    kind: TransferKind::Backup,
+                    kind: TransferKind::Package,
                     touched: Instant::now(),
                     file: None,
                     temp: None,
                     size: 1,
                     offset: 0,
-                    expected_hash: None,
-                    hash: blake3::Hasher::new(),
                 },
             )
             .unwrap();
@@ -535,14 +342,12 @@ mod tests {
             insert(
                 &sessions,
                 Transfer {
-                    kind: TransferKind::Backup,
+                    kind: TransferKind::Package,
                     touched: Instant::now(),
                     file: None,
                     temp: None,
                     size: 1,
                     offset: 0,
-                    expected_hash: None,
-                    hash: blake3::Hasher::new(),
                 }
             )
             .is_err()

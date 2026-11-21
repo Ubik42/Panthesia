@@ -15,9 +15,7 @@ pub(crate) enum Input {
     Exercise(ExerciseSpec),
     File(load_pipeline::Input),
     Recording(PathBuf),
-    History(history_loading::Context),
     LibraryOpen(crate::library_operations::LibraryOpenSource),
-    Routine(routine_loading::Context),
     Library {
         path: PathBuf,
         content_id: String,
@@ -118,17 +116,7 @@ impl Input {
                 )?;
                 token.source(scope.content_id.clone(), scope.score_revision.to_string())?;
             }
-            Self::History(context) => {
-                context.action.validate(reader)?;
-                reader.check_history_open(context)?;
-            }
-            Self::Routine(context) => {
-                reader.check_routine_open(context)?;
-            }
             _ => {}
-        }
-        if !matches!(self, Self::Routine(_)) && reader.routine.is_some() {
-            reader.stop_routine()?;
         }
         let compact_import = !describe_song || matches!(&self, Self::CompactImport(_));
         match self {
@@ -202,7 +190,6 @@ impl Input {
                 reader.state.passage = None;
                 reader.state.metronome = false;
                 reader.state.rounds = 0;
-                reader.state.adaptive = false;
                 reader.state.speed = 1.;
                 reader.persist()?;
                 if describe_song {
@@ -210,72 +197,6 @@ impl Input {
                 } else {
                     Ok(Value::Null)
                 }
-            }
-            Self::History(context) => {
-                let archive = history_actions::Input::read(&reader.data, &context)?;
-                token.check()?;
-                let song = if let Some(spec) = context.exercise {
-                    let prepared = exercise_loading::prepare_checked(spec, &|| token.check())?;
-                    let versions = reader
-                        .preferences
-                        .score_versions
-                        .get(&prepared.file.content_id)
-                        .map(Vec::as_slice)
-                        .unwrap_or_default();
-                    history_loading::Song::Exercise(prepared.read_assets_checked(&reader.data, versions, &|| token.check())?)
-                } else {
-                    let input = load_pipeline::Input::Recent {
-                        content_id: context.content_id.clone(),
-                        title: context.title.clone(),
-                        paths: context.paths.clone(),
-                    };
-                    history_loading::Song::File(input.read(
-                        &reader.data,
-                        |id| {
-                            Ok(reader
-                                .preferences
-                                .score_versions
-                                .get(id)
-                                .cloned()
-                                .unwrap_or_default())
-                        },
-                        || token.check(),
-                    )?)
-                };
-                let fingerprint = blake3::hash(
-                    &serde_json::to_vec(&(
-                        &context.id,
-                        &context.fingerprint,
-                        context
-                            .expected
-                            .as_ref()
-                            .and_then(|source| source.performance_revision.as_deref()),
-                        song.content_id(),
-                    ))
-                    .map_err(|e| e.to_string())?,
-                )
-                .to_hex()
-                .to_string();
-                token.source(context.content_id.clone(), fingerprint)?;
-                let followup =
-                    history_actions::Prepared::prepare_checked(archive, &context, &song, || {
-                        token.check()
-                    })?;
-                token.check()?;
-                let prepared = history_loading::Prepared { song, followup };
-                prepared.check()?;
-                prepared.commit(reader, &context)
-            }
-            Self::Routine(context) => {
-                token.source(
-                    context.item.content_id.clone(),
-                    context.fingerprint()?.to_owned(),
-                )?;
-                let prepared =
-                    routine_loading::Prepared::read(&reader.data, &context, || token.check())?;
-                prepared.check()?;
-                token.check()?;
-                reader.install_routine_item(&context, prepared)
             }
             Self::Library {
                 path,
@@ -330,8 +251,6 @@ pub(crate) struct Playback {
     meter_map: Option<panthesia_core::library::MeterMap>,
     meter: Option<panthesia_core::library::MeterCorrection>,
     revision: u64,
-    routine: Option<ActivePlan>,
-    ladder: Option<preferences::LadderRun>,
 }
 impl Playback {
     pub(super) fn source_descriptor(&self)->Option<(PathBuf,String,String)>{
@@ -362,8 +281,6 @@ impl Playback {
             meter_map: reader.meter_map.take(),
             meter: reader.meter_correction,
             revision: reader.score_revision,
-            routine: reader.routine.take(),
-            ladder: reader.ladder.take(),
         })
     }
     pub(super) fn preserve_undo(&mut self) {
@@ -419,8 +336,6 @@ impl Playback {
             player.retire(old);
         }
         player.coach = self.coach;
-        player.routine = self.routine;
-        player.ladder = self.ladder;
         let old = player.previous_summary.take();
         player.retire(old);
         player.previous_mode = None;
@@ -434,7 +349,6 @@ impl Playback {
         player.state.count_in = self.state.count_in;
         player.state.metronome = self.state.metronome;
         player.state.rounds = self.state.rounds;
-        player.state.adaptive = self.state.adaptive;
         player.state.latency = self.state.latency;
         player.state.passage = self.state.passage;
         player.state.repetitions = self.state.repetitions;

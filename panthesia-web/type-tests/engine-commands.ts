@@ -4,9 +4,8 @@ declare const send: (command: EngineCommand) => void;
 send({ type: "play" });
 send({ type: "speed", value: 0.75 });
 send({ type: "note", pitch: 60, active: true, velocity: 90 });
-send({ type: "saveRoutine", id: null, day: null, name: "每日练习", notes: "", copy_of: null });
 send({ type: "prepareMeasurePart", contentId: "song", measure: 1, part: "RightHand", trackId: 0 });
-const open: CommandOf<"historyOpen"> = { type: "historyOpen", content_id: "song", id: "attempt", restore: true };
+const open: CommandOf<"openRecent"> = { type: "openRecent", content_id: "song" };
 send(open);
 
 // @ts-expect-error Unknown command names must fail at the caller.
@@ -16,9 +15,9 @@ send({ type: "speed", value: "0.75" });
 // @ts-expect-error Indexed songs require a content identity.
 send({ type: "loadIndexed", path: "song.mid", title: "练习曲" });
 // @ts-expect-error A UI-only alias must not replace the wire field name.
-send({ type: "historyOpen", contentId: "song", id: "attempt", restore: true });
+send({ type: "openRecent", contentId: "song" });
 // @ts-expect-error Required identities cannot be null.
-send({ type: "historyOpen", content_id: null, id: "attempt", restore: true });
+send({ type: "openRecent", content_id: null });
 
 const exercise: CommandOf<"generate">["spec"] = {
   tonic: 0, tonality: "Major", pattern: "Scale", direction: "UpAndDown", hands: "Both", octaves: 1, tempo_bpm: 60,

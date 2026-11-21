@@ -5,8 +5,7 @@ use std::path::Path;
 pub(crate) fn supports(command: &Command) -> bool {
     matches!(
         command,
-        Command::SaveSongLearning { .. }
-            | Command::ImportSynthesiaMetadata { .. }
+        Command::ImportSynthesiaMetadata { .. }
             | Command::ImportDiscoveredSynthesiaMetadata { .. }
             | Command::ResetLibraryMetadataDefaults { .. }
             | Command::SaveLibraryMetadata { .. }
@@ -48,8 +47,6 @@ pub(crate) fn label(command: &Command) -> &'static str {
         Command::PreviewSynthesiaMetadata { .. } => "预览 Synthesia 资料",
         Command::PreviewDiscoveredSynthesiaMetadata { .. } => "预览 Synthesia 资料",
         Command::DiscoverSynthesiaMetadata { .. } => "查找 Synthesia 资料",
-        Command::SaveSongLearning { .. } => "保存学习资料",
-        Command::ReadSongLearning { .. } => "读取学习资料",
         Command::SaveLibraryMetadata { .. } | Command::UpdateSongMetadata { .. } => "保存曲库信息",
         Command::ResetLibraryMetadataDefaults { .. } => "恢复来源默认资料",
         Command::RestoreLibraryMetadata { .. } => "恢复曲库信息",
@@ -80,9 +77,7 @@ pub(crate) fn label(command: &Command) -> &'static str {
 }
 pub(crate) fn content(command: &Command) -> Option<String> {
     match command {
-        Command::SaveSongLearning { content_id, .. }
-        | Command::ReadSongLearning { content_id }
-        | Command::SaveLibraryMetadata { content_id, .. }
+        Command::SaveLibraryMetadata { content_id, .. }
         | Command::ResetLibraryMetadataDefaults { content_id, .. }
         | Command::RestoreLibraryMetadata { content_id, .. }
         | Command::LibraryMetadataHistory { content_id, .. }

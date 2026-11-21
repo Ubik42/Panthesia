@@ -1,7 +1,4 @@
 import { collectInterfaceWork } from "../settings/interfaceWork";
-import { getHistoryOperations, historyIntentLabel } from "../review/historyOperationStore";
-import { historyFailure } from "../review/historySource";
-import { hasClipInput, replayEditors } from "../review/replayEditorStore";
 import {
   pendingWorkJobs,
   cancelBackgroundJob,
@@ -18,9 +15,7 @@ import { handEditorSessions, handHasInput } from "../practice/handEditorStore";
 import type { createScoreWorkspaceStore } from "../scores/scoreWorkspaceStore";
 import type { createImportQueueStore } from "../imports/importQueueStore";
 import type { createPackageSessionStore } from "../imports/packageSessionStore";
-import type { createBackupSessionStore } from "../backups/backupSessionStore";
 import type { createExerciseSessionStore } from "../practice/exerciseSessionStore";
-import type { createRoutineWorkbenchStore } from "../routines/routineWorkbenchStore";
 import type { createEditDraftStore } from "../editing/editDraftStore";
 import type { MediaExportKind } from "../../engine/commands.generated";
 import {
@@ -33,21 +28,16 @@ export type WorkPhase = "running" | "attention" | "waiting" | "completed";
 export type WorkTarget =
   | "imports"
   | "package"
-  | "backup"
   | "scores"
   | "score"
   | "media"
   | "exercise"
-  | "routine"
   | "devices"
   | "passage"
-  | "ladder"
   | "hands"
   | "meter"
   | "interface-settings"
-  | "replay"
   | "library-open"
-  | "history-action"
   | "drafts";
 export interface WorkSource {
   contentId: string;
@@ -62,8 +52,6 @@ export interface WorkProblem {
 export interface WorkEntry {
   libraryOpenId?: string;
   libraryOpenWorkspace?: "library" | "practice" | "review";
-  historyOperationId?: string;
-  historyId?: string;
   dismissible?: boolean;
   problem?: WorkProblem;
   id: string;
@@ -89,9 +77,7 @@ export interface WorkSources {
   scores: ReturnType<typeof createScoreWorkspaceStore>;
   imports: ReturnType<typeof createImportQueueStore>;
   piecePackage: ReturnType<typeof createPackageSessionStore>;
-  practiceBackup: ReturnType<typeof createBackupSessionStore>;
   exercise: ReturnType<typeof createExerciseSessionStore>;
-  routineWorkbench: ReturnType<typeof createRoutineWorkbenchStore>;
   edits: ReturnType<typeof createEditDraftStore>;
 }
 export interface ProgressContext {
@@ -245,77 +231,6 @@ export function collectWork(
         piece.refreshPending,
       ]),
     });
-  const backup = sources.practiceBackup.getSnapshot();
-  if (
-    backup.historyClaim ||
-    backup.summary ||
-    backup.request ||
-    backup.result ||
-    backup.preparedExport ||
-    backup.workspace ||
-    backup.error ||
-    backup.storageError ||
-    backup.busy ||
-    backup.saving
-  )
-    add({
-      id: "backup",
-      problem: backup.storageError
-        ? problem(backup.storageError, "input")
-        : problem(
-            backup.error ||
-              (backup.refreshPending
-                ? "资料已处理，练习室与回顾列表仍需更新。"
-                : ""),
-            backup.result ? "refresh" : "processing",
-          ),
-      title: "练习资料备份",
-      target: "backup",
-      subject: backup.preparedExport?.name || "备份与恢复工作台",
-      phase:
-        backup.busy ||
-        backup.saving ||
-        preparationRunning(
-          backup.request ? `backup:${backup.request.id}` : undefined,
-          backup.receipt?.phase,
-        )
-          ? "running"
-          : backup.storageError ||
-              backup.error ||
-              backup.refreshPending ||
-              backup.legacyPending ||
-              (backup.historyClaim && !backup.historyClaim.receipt) ||
-              backup.receipt?.phase === "unconfirmed"
-            ? "attention"
-            : (backup.preparedExport &&
-                  !backup.preparedExport.savedPath &&
-                  !backup.preparedExport.downloaded) ||
-                (backup.request && !backup.result) ||
-                (backup.summary && !backup.result)
-              ? "waiting"
-              : "completed",
-      detail:
-        backup.storageError ||
-        backup.error ||
-        backup.progress ||
-        backup.message ||
-        (backup.preparedExport && !backup.preparedExport.savedPath
-          ? "完整备份已制作，等待另存。"
-          : backup.refreshPending
-            ? "资料已处理，等待重新读取界面。"
-            : "打开后可继续预览、保存或核对原导入结果。"),
-      version: JSON.stringify([
-        backup.historyClaim?.requestId,
-        backup.historyClaim?.receipt?.added,
-        backup.request?.id,
-        backup.receipt?.phase,
-        backup.preparedExport?.createdAt,
-        backup.preparedExport?.savedPath,
-        backup.result,
-        backup.error,
-        backup.storageError,
-      ]),
-    });
   const exercise = sources.exercise.getSnapshot();
   if (
     exercise.busy ||
@@ -367,34 +282,6 @@ export function collectWork(
         exercise.storageError,
       ]),
     });
-  const routines = sources.routineWorkbench.getSnapshot();
-  const routineCount = [
-    routines.metadata,
-    routines.items,
-    routines.schedules,
-    routines.pending,
-  ].reduce((sum, group) => sum + Object.keys(group).length, 0);
-  if (routineCount || routines.busy || routines.storageError)
-    add({
-      id: "routines",
-      problem: problem(routines.storageError, "input"),
-      keywords: [
-        ...Object.values(routines.metadata).map((row) => row.name),
-        ...Object.values(routines.items).map((row) => row.title),
-        ...Object.values(routines.schedules).map((row) => row.title),
-      ].join("\n"),
-      title: "练习计划",
-      target: "routine",
-      subject: `${routineCount} 项编排输入`,
-      phase: routines.busy
-        ? "running"
-        : routines.storageError
-          ? "attention"
-          : "waiting",
-      detail:
-        routines.storageError ||
-        "计划名称、项目与待核对请求保留，可从草稿入口继续编排。",
-    });
   for (const { key, store, state } of practiceEditorSessions()) {
     const count = state.drafts.filter(practiceDraftDirty).length;
     if (!count && !state.receipt && !state.storageError && !state.busy) continue;
@@ -405,9 +292,9 @@ export function collectWork(
       : "输入已暂存，可以返回来源曲目继续编辑。");
     add({
       id: "practice-editor:" + key,
-      title: state.kind === "ladder" ? "速度阶梯输入" : "练习段落输入",
+      title: "练习段落输入",
       subject: state.title || "原曲目",
-      target: state.kind === "ladder" ? "ladder" : "passage",
+      target: "passage",
       phase: state.busy ? "running" : state.storageError || state.receipt ? "attention" : "waiting",
       detail: count + " 份待保存输入。" + detail,
       problem: problem(state.storageError || (state.receipt ? detail : ""), state.storageError ? "input" : "refresh"),
@@ -429,23 +316,6 @@ export function collectWork(
   }
   const interfaceWork = collectInterfaceWork();
   if (interfaceWork) add(interfaceWork);
-  const historyOperations = getHistoryOperations(), historyState = historyOperations.getSnapshot();
-  for (const intent of historyState.entries) {
-    if (intent.disposition === "presented" && !intent.releasePending) continue;
-    const receipt = historyState.receipts[intent.request.id], phase = receipt?.phase ?? intent.lastPhase;
-    const running = historyState.working.includes(intent.request.id) || !!receipt && ["queued", "running", "committing"].includes(phase);
-    const rawError = historyState.errors[intent.request.id] || receipt?.error || intent.error || receipt?.warning;
-    const error = historyState.storageError || (rawError ? historyFailure(rawError).message : "");
-    const detail = error || (phase === "done" ? "曲目和范围已准备，返回原记录后可接续所选界面。" : running ? "后台继续准备历史练习，原请求及所选入口已暂存。" : phase === "cancelled" ? "这次准备已取消，原演奏和当前练习继续保留。" : "原请求及所选入口已保留，可返回原记录读取结果。");
-    add({ id: `history-operation:${intent.request.id}`, historyOperationId: intent.request.id, historyId: intent.request.operation.source.id, title: historyIntentLabel(intent), subject: intent.title || "原演奏记录", target: "history-action", phase: running ? "running" : error || ["error", "unconfirmed", "unknown"].includes(phase) ? "attention" : "waiting", detail, dismissible: intent.disposition === "kept" && !running, problem: problem(error, historyState.storageError ? "input" : "refresh"), source: { contentId: intent.request.operation.source.contentId, title: intent.title, engineId: intent.request.engineId }, version: JSON.stringify([intent, phase, receipt?.stage, receipt?.warning, running, error]), copy: historyOperations.copyInput, cancel: receipt?.cancellable ? () => historyOperations.cancel(intent.request.id, intent.request.engineId).then(() => {}) : undefined });
-  }
-  if (historyState.storageError && !historyState.entries.length) add({ id: "history-operation-recovery", title: "历史操作进度", subject: "保留的原请求", target: "history-action", phase: "attention", detail: historyState.storageError, problem: problem(historyState.storageError, "input"), copy: historyOperations.copyInput });
-  for (const store of replayEditors()) {
-    const state = store.getSnapshot();
-    if (!hasClipInput(state) && !state.storageError && !state.busy) continue;
-    const detail = state.storageError || state.error || (state.receipt ? "原收藏提交和范围已保留，可返回原演奏核对结果。" : "片段名称、备注和范围已暂存，可返回继续编辑。");
-    add({ id: `replay-editor:${state.contentId}:${state.historyId}`, title: "回放片段输入", subject: state.title || state.draft.name || "原演奏记录", target: "replay", historyId: state.historyId, phase: state.busy ? "running" : state.receipt || state.error || state.storageError ? "attention" : "waiting", detail, source: { contentId: state.contentId, title: state.title, engineId: state.receipt?.engineId }, problem: problem(state.storageError || state.error || (state.receipt ? detail : ""), state.storageError ? "input" : "refresh"), version: JSON.stringify([state.draft, state.range, state.receipt, state.busy, detail]), copy: store.copyInput });
-  }
   const edits = sources.edits.getSnapshot();
   if (edits.count || edits.busy || edits.error)
     add({
@@ -958,7 +828,6 @@ export function createWorkProgressStore(sources: WorkSources) {
     getContext: () => context,
     setContext: (next: ProgressContext) => {
       if (JSON.stringify(context) !== JSON.stringify(next)) {
-        if (next.connected && next.engineId && (!context.connected || context.engineId !== next.engineId)) void Promise.all([getHistoryOperations().refreshPending(next.engineId)]);
         context = next;
         deviceTasks.setContext(next);
         schedule();
@@ -968,7 +837,7 @@ export function createWorkProgressStore(sources: WorkSources) {
     getSnapshot: () => snapshot,
     refresh: schedule,
     readNow: async () => {
-      await Promise.all([background?.refresh(), deviceTasks.refresh(), context.engineId ? Promise.all([getHistoryOperations().refreshPending(context.engineId)]) : Promise.resolve()]);
+      await Promise.all([background?.refresh(), deviceTasks.refresh()]);
     },
     subscribe(listener: () => void) {
       listeners.add(listener);
@@ -979,9 +848,7 @@ export function createWorkProgressStore(sources: WorkSources) {
           ...[
             sources.imports,
             sources.piecePackage,
-            sources.practiceBackup,
             sources.exercise,
-            sources.routineWorkbench,
             sources.edits,
           ].map((source) => source.subscribe(schedule)),
         ];

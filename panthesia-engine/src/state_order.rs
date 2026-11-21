@@ -78,9 +78,6 @@ impl PlaybackAdjustment {
         {
             return Err("曲目或练习室已改变，请在当前曲目中重新调节".into());
         }
-        if matches!(self.command, crate::Command::StopLadder) && player.routine.is_some() {
-            return Err("练习计划已改变，请在当前计划中结束练习".into());
-        }
         Ok(())
     }
 }
@@ -119,7 +116,6 @@ impl crate::Engine {
                 | crate::Command::Mode { .. }
                 | crate::Command::MeasureLoop { .. }
                 | crate::Command::Track { .. }
-                | crate::Command::StopLadder
         ) {
             return Err("此入口只接受当前曲目的播放设置、定位与速度阶梯控制".into());
         }

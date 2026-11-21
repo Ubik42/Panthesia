@@ -59,8 +59,8 @@ impl Player {
         scope: Option<practice_edit::Scope>,
         request_id: String,
     ) -> Result<Context, String> {
-        self.validate_history_replay()
-            .map_err(|_| "请先停止练习、录音和活动计划，并松开琴键，再开始示范")?;
+        self.check_demo_idle()
+            .map_err(|_| "请先停止练习和录音，并松开琴键，再开始示范")?;
         self.check_practice_scope(scope.as_ref())?;
         self.check_replay_start(&request_id)?;
         Ok(Context {
@@ -77,7 +77,7 @@ impl Player {
         prepared: Prepared,
         token: &background_tasks::TaskToken,
     ) -> Result<serde_json::Value, String> {
-        self.validate_history_replay()
+        self.check_demo_idle()
             .map_err(|_| "示范准备期间练习状态已变化，请暂停并松开琴键后重试")?;
         self.check_replay_start(&origin.request_id)?;
         if self.audition_origin()? != origin.fingerprint {
@@ -178,4 +178,37 @@ impl Engine {
             receiver.recv().map_err(|_| "示范开始结果通道已关闭")?
         })
     }
+}
+
+impl Player {
+    pub(crate) fn cancel_replay_start(&mut self, id: &str) {
+        if valid_request_id(id) && !self.cancelled_replay_starts.iter().any(|saved| saved == id) {
+            self.cancelled_replay_starts.push_back(id.into());
+            // More than the two workers plus eight queued jobs, with room for reordering.
+            while self.cancelled_replay_starts.len() > 64 {
+                self.cancelled_replay_starts.pop_front();
+            }
+        }
+    }
+    fn check_demo_idle(&self) -> Result<(), String> {
+        if ["playing", "countIn"].contains(&self.state.status.as_str())
+            || self.recorder.is_recording()
+            || !self.state.pressed.is_empty()
+        {
+            return Err("请先停止练习和录音，并松开琴键".into());
+        }
+        Ok(())
+    }
+    pub(crate) fn check_replay_start(&self, id: &str) -> Result<(), String> {
+        if self.cancelled_replay_starts.iter().any(|saved| saved == id) {
+            return Err("这次声音准备已停止，请重新开始".into());
+        }
+        Ok(())
+    }
+}
+fn valid_request_id(id: &str) -> bool {
+    id.starts_with("demo-start-")
+        && id.len() > 11
+        && id.len() <= 96
+        && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }

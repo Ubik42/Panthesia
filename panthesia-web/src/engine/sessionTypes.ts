@@ -1,5 +1,5 @@
 // Shared engine data contracts. This module has no UI or transport dependency.
-import type { EngineCommand, StorageStatus as EngineStorageStatus, RoutineState } from "./commands.generated";
+import type { EngineCommand, StorageStatus as EngineStorageStatus } from "./commands.generated";
 
 export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "finger" | "editFingersFor" | "undoFingers" | "undoFingersFor" | "applyFingers"
@@ -210,8 +210,6 @@ export interface LoadedSong {
     inferred: boolean;
   }[];
 }
-export type { SpeedLadderPlan, LadderPreset, LadderRun } from "./commands.generated";
-import type { LadderRun } from "./commands.generated";
 export interface LiveNoteEvent { pitch: number; velocity: number; active: boolean }
 export interface LiveNoteReceipt {
   engineId?: string | null; epoch?: number; accepted: number; expired: number }
@@ -233,11 +231,6 @@ export interface Snapshot {
   soundfontWarning?: string | null;
   storage?: StorageStatus;
   contentId: string | null;
-  songExpressionGoal: import("./commands.generated").ExpressionGoal | null;
-  songExpressionGoalResult: { passed: boolean; message: string; noteVelocity?: import("./commands.generated").NoteVelocityEvidence; notePedal?: import("./commands.generated").NotePedalEvidence } | null;
-  songExpressionGoalState?: "ready" | "pending" | "unavailable" | null;
-  routine: RoutineState | null;
-  ladder: LadderRun | null;
   status: string;
   position: number;
   duration: number;
@@ -284,10 +277,6 @@ export interface Snapshot {
   countRemaining: number;
   metronome: boolean;
   latency: number;
-  adaptive: boolean;
-  loopRestartErrors:number;
-  loopRestarts:number;
-  loopAbortLimit:number;
   summary: Feedback | null;
 }
 export const emptyState: Snapshot = {
@@ -295,11 +284,6 @@ export const emptyState: Snapshot = {
   contentId: null,
   scoreRevision: 0,
   annotationRevision: 0,
-  songExpressionGoal: null,
-  songExpressionGoalResult: null,
-  songExpressionGoalState: null,
-  routine: null,
-  ladder: null,
   status: "idle",
   position: 0,
   duration: 0,
@@ -339,10 +323,6 @@ export const emptyState: Snapshot = {
   countRemaining: 0,
   metronome: false,
   latency: 0,
-  adaptive: false,
-  loopRestartErrors:0,
-  loopRestarts:0,
-  loopAbortLimit:0,
   summary: null,
 };
 export interface EngineSession {

@@ -1,5 +1,4 @@
 import {
-  ladderBpm,
   passageInitialBpm,
   passageTransformLabel,
 } from "./passagePractice";
@@ -11,11 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { LoadedSong, PracticeEditScope } from "../../api";
-import type {
-  PassagePreset,
-  LadderPreset,
-} from "../../engine/commands.generated";
-import { expressionGoalText } from "./ExpressionGoalControl";
+import type { PassagePreset } from "../../engine/commands.generated";
 import type { ReactNode } from "react";
 import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
 import {
@@ -29,7 +24,7 @@ import {
 import "./practiceEditor.css";
 
 export function usePracticeEditor(
-  kind: "passage" | "ladder",
+  kind: "passage",
   contentId: string,
   source: PracticeEditScope,
   initial: EditorForm,
@@ -234,7 +229,7 @@ export function PracticeEditorDrafts<Row extends { id: string; name: string }>({
           <p>
             当前输入继续保留。请核对小节范围、练习设置和保存版本，再选择如何继续。
           </p>
-          {!saved && current?.id && state.kind === "passage" && (
+          {!saved && current?.id && (
             <p>
               新建小节段采用当前起止小节。拍内或原谱定位可在范围编辑器中重新选择。
             </p>
@@ -265,9 +260,7 @@ export function PracticeEditorDrafts<Row extends { id: string; name: string }>({
             {saved
               ? "保留输入，以当前版本继续编辑"
               : current?.id
-                ? state.kind === "passage"
-                  ? "保留输入，新建小节段"
-                  : "保留输入，新建阶梯方案"
+                ? "保留输入，新建小节段"
                 : "已核对，按当前谱面继续"}
           </button>
         </section>
@@ -282,10 +275,8 @@ export function PracticeEditorDrafts<Row extends { id: string; name: string }>({
 }
 export function PracticeCatalogFilters({
   store,
-  kind,
 }: {
   store: PracticeEditorStore;
-  kind: "passage" | "ladder";
 }) {
   const state = useSyncExternalStore(
     store.subscribe,
@@ -309,13 +300,6 @@ export function PracticeCatalogFilters({
           <option value="all">全部方案</option>
           <option value="drafts">有待保存输入</option>
           <option value="needsReview">小节待核对</option>
-          {kind === "ladder" && (
-            <>
-              <option value="unstarted">尚未练习</option>
-              <option value="progress">已有进度</option>
-              <option value="completed">已完成</option>
-            </>
-          )}
         </select>
       </label>
       <label>
@@ -356,10 +340,9 @@ export function SavedPracticeDetails({
   song,
 }: {
   song: LoadedSong;
-  row: PassagePreset | LadderPreset;
+  row: PassagePreset;
 }) {
-  const ladder = "plan" in row,
-    range =
+  const range =
       "preciseRange" in row && row.preciseRange
         ? row.preciseRange.description
         : "scoreRange" in row && row.scoreRange
@@ -375,9 +358,7 @@ export function SavedPracticeDetails({
         <div>
           <dt>速度</dt>
           <dd>
-            {ladder
-              ? `${ladderBpm(song, row.start, row.plan.startPercent)} → ${ladderBpm(song, row.start, row.plan.targetPercent)} BPM`
-              : `${passageInitialBpm(song, row)} BPM`}
+            {`${passageInitialBpm(song, row)} BPM`}
           </dd>
         </div>
         <div>
@@ -412,19 +393,6 @@ export function SavedPracticeDetails({
           </dd>
         </div>
       </dl>
-      {ladder && (
-        <p>
-          每级增加 {ladderBpm(song, row.start, row.plan.stepPercent)} BPM ·
-          连续达标 {row.plan.passesRequired} 轮 · 正确率 ≥
-          {row.plan.accuracyPercent}%
-          {row.plan.onTimePercent !== null &&
-            ` · 准时率 ≥${row.plan.onTimePercent}%`}{" "}
-          · 本次上限 {row.plan.attemptLimit} 轮
-        </p>
-      )}
-      {"expression" in row && row.expression && (
-        <p>力度/踏板：{expressionGoalText(row.expression)}</p>
-      )}
       {"notes" in row && row.notes && (
         <p className="practice-saved-notes">{row.notes}</p>
       )}

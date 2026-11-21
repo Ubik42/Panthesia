@@ -204,7 +204,6 @@ impl Player {
         self.state.metronome = preset.settings.metronome;
         self.state.latency = preset.settings.latency;
         self.state.rounds = preset.settings.rounds;
-        self.state.adaptive = preset.settings.adaptive;
         self.state.speed = preset.speed;
         if let Some(range) = &preset.score_range {
             return self.apply_score_range(range);

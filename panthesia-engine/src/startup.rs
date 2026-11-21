@@ -229,8 +229,7 @@ impl Data {
             Ok(guard) => guard,
             Err(_) => return Self::failed(data, "曲库资料锁无法使用".into()),
         };
-        let recovery = practice_backup::recover(data)
-            .and_then(|_| round_storage::recover(data))
+        let recovery = round_storage::recover(data)
             .and_then(|_| settings_storage::recover(data))
             .and_then(|_| asset_storage::recover(data))
             .and_then(|_| {

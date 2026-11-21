@@ -1,5 +1,3 @@
-import { parseExpressionInputs } from "../practice/expressionDraft";
-import { parseLearningInputs } from "../library/learningDraft";
 import {
   useEffect,
   useMemo,
@@ -8,17 +6,11 @@ import {
   useSyncExternalStore,
 } from "react";
 import { FilePenLine, X } from "lucide-react";
-import { api } from "../../api";
 import { readLibraryMetadata } from "../library/metadataClient";
 import { LibraryMetadataEditor } from "../../LibraryMetadataEditor";
-import { SongLearningDialog } from "../library/SongLearningDialog";
 import { SavedMetadataReceipt } from "./SavedMetadataReceipt";
-import { ExpressionDraftRecovery } from "./ExpressionDraftRecovery";
-import { expressionGoalText } from "../practice/ExpressionGoalControl";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import type { Metadata } from "../library/metadataTypes";
-import type { HistoryEntry, HistoryDetail } from "../review/historyTypes";
-import { annotationEntry } from "../review/annotationDraft";
 import {
   editDraftValue,
   type EditDraftStore,
@@ -66,9 +58,6 @@ export function EditDraftButton({
 const identity = (key: string) => JSON.parse(key) as [string, string];
 const kindLabels: Record<EditDraftKind, string> = {
   metadata: "曲目信息",
-  annotations: "演奏评语",
-  learning: "学习目标",
-  expressions: "力度与踏板目标",
 };
 const metadataLabels = {
   title: "曲名",
@@ -86,15 +75,11 @@ export function EditDraftCenter({
   close,
   changed,
   resumePractice,
-  resumeAnnotation,
-  resumeExpression,
 }: {
   store: EditDraftStore;
   close: () => void;
   changed: () => Promise<void>;
   resumePractice: (contentId: string, path: string) => Promise<boolean>;
-  resumeAnnotation: (entry: HistoryEntry) => Promise<boolean>;
-  resumeExpression: (contentId: string, path?: string) => Promise<boolean>;
 }) {
   const state = useSyncExternalStore(
     store.subscribe,
@@ -117,33 +102,26 @@ export function EditDraftCenter({
     path: string;
     value: Metadata;
   } | null>(null);
-  const [learning, setLearning] = useState<string | null>(null);
   const [metadataReceipt, setMetadataReceipt] = useState<string | null>(null);
-  const [expressionReceipt, setExpressionReceipt] = useState<string | null>(
-    null,
-  );
   const generation = useRef(0),
     mounted = useRef(true),
     working = useRef(false);
   const root = useRef<HTMLElement>(null);
   const lastOpened = useRef<string | null>(null);
   useEffect(() => {
-    if (learning) return;
-    if (metadata || metadataReceipt || expressionReceipt) {
+    if (metadata || metadataReceipt) {
       root.current
         ?.querySelector<HTMLElement>(
-          ".edit-draft-expression-recovery [data-read-expression], .edit-draft-receipt .primary-button, .edit-draft-editor input:not(:disabled), .edit-draft-editor textarea:not(:disabled)",
+          ".edit-draft-receipt .primary-button, .edit-draft-editor input:not(:disabled), .edit-draft-editor textarea:not(:disabled)",
         )
         ?.focus({ preventScroll: true });
       return;
     }
-  }, [metadata?.key, metadataReceipt, expressionReceipt, learning]);
+  }, [metadata?.key, metadataReceipt]);
   useEffect(() => {
     if (
       metadata ||
       metadataReceipt ||
-      expressionReceipt ||
-      learning ||
       busy ||
       !lastOpened.current
     )
@@ -164,8 +142,6 @@ export function EditDraftCenter({
     state.revision,
     metadata?.key,
     metadataReceipt,
-    expressionReceipt,
-    learning,
     busy,
   ]);
   useEffect(() => {
@@ -209,46 +185,6 @@ export function EditDraftCenter({
             (value.tagsText ?? ""),
         };
       }),
-      ...[...store.annotations].map(([key, value]) => ({
-        kind: "annotations" as const,
-        key,
-        contentId: identity(key)[0],
-        path: value.entry?.path ?? "",
-        title: value.entry?.title ?? "演奏评语",
-        value,
-        preview:
-          (value.pending ? "原评语提交结果待核对。" : "") +
-            brief(
-              value.draft.next || value.draft.note || value.draft.teacher,
-            ) || "评语内容已清空，等待保存。",
-        search: Object.values(value.draft).join(" "),
-      })),
-      ...[...store.learning].map(([key, value]) => ({
-        kind: "learning" as const,
-        key,
-        contentId: key,
-        path: value.path,
-        title: value.title,
-        value,
-        preview:
-          (value.inputs && parseLearningInputs(value.inputs).error) ||
-          brief(value.draft.goal) ||
-          "学习阶段、日期或练习目标等待保存。",
-        search: `${value.draft.goal} ${value.draft.due ?? ""} ${value.draft.weeklyMinutes ?? ""} ${value.draft.targetBpm ?? ""}`,
-      })),
-      ...[...store.expressions].map(([key, value]) => ({
-        kind: "expressions" as const,
-        key,
-        contentId: key,
-        path: value.path ?? "",
-        title: value.title || value.path || "曲目专项要求",
-        value,
-        preview:
-          (value.inputs && parseExpressionInputs(value.inputs).error) ||
-          expressionGoalText(value.draft) ||
-          "清除全部专项要求，等待保存。",
-        search: expressionGoalText(value.draft),
-      })),
     ],
     [state.revision, store],
   );
@@ -266,20 +202,7 @@ export function EditDraftCenter({
       );
       return;
     }
-    switch (removed.kind) {
-      case "metadata":
-        store.metadata.set(removed.key, removed.value);
-        break;
-      case "annotations":
-        store.annotations.set(removed.key, removed.value);
-        break;
-      case "learning":
-        store.learning.set(removed.key, removed.value);
-        break;
-      case "expressions":
-        store.expressions.set(removed.key, removed.value);
-        break;
-    }
+    store.metadata.set(removed.key, removed.value);
     setRemoved(null);
   };
   const matching = rows.filter(
@@ -299,48 +222,8 @@ export function EditDraftCenter({
     setError("");
     const token = ++generation.current;
     try {
-      if (row.kind === "learning") {
-        setLearning(row.key);
-        return;
-      }
-      if (row.kind === "expressions") {
-        if (row.value.pending) {
-          setExpressionReceipt(row.key);
-          return;
-        }
-        if (!(await resumeExpression(row.contentId, row.value.path)))
-          throw new Error(
-            "暂时无法打开原曲目的专项要求，输入继续保留，可先复制。",
-          );
-        close();
-        return;
-      }
-      if (row.kind === "metadata" && row.value.refresh) {
+      if (row.value.refresh) {
         setMetadataReceipt(row.key);
-        return;
-      }
-      if (row.kind === "annotations") {
-        let entry = row.value.entry;
-        if (!entry) {
-          setReading(true);
-          const detail = await api.command<HistoryDetail>({
-            type: "historyDetail",
-            content_id: row.contentId,
-            id: identity(row.key)[1],
-          });
-          if (!mounted.current || token !== generation.current) return;
-          if (
-            detail.contentId !== row.contentId ||
-            detail.id !== identity(row.key)[1]
-          )
-            throw new Error("读取结果与原演奏记录不一致。");
-          entry = annotationEntry(detail);
-          store.annotations.set(row.key, { ...row.value, entry });
-        }
-        setReading(false);
-        if (!(await resumeAnnotation(entry)))
-          throw new Error("暂时无法进入原演奏记录，草稿继续保留。");
-        close();
         return;
       }
       if (row.value.source === "practice") {
@@ -376,10 +259,6 @@ export function EditDraftCenter({
       }
     }
   };
-  const learningDraft = learning ? store.learning.get(learning) : undefined;
-  useEffect(() => {
-    if (learning && !store.learning.has(learning)) setLearning(null);
-  }, [learning, state.revision, store]);
   return (
     <div
       className="modal-backdrop"
@@ -526,9 +405,7 @@ export function EditDraftCenter({
         )}
         {busy &&
           !metadata &&
-          !learning &&
-          !metadataReceipt &&
-          !expressionReceipt && (
+          !metadataReceipt && (
             <div className="edit-draft-loading" role="status">
               <span>正在准备原编辑位置…</span>
               {reading && (
@@ -546,24 +423,7 @@ export function EditDraftCenter({
               )}
             </div>
           )}
-        {expressionReceipt ? (
-          <div className="edit-draft-editor">
-            <ExpressionDraftRecovery
-              key={expressionReceipt}
-              store={store}
-              contentId={expressionReceipt}
-              changed={changed}
-              close={() => setExpressionReceipt(null)}
-              onBusy={setBusy}
-              resume={async () => {
-                const record = store.expressions.get(expressionReceipt);
-                if (!(await resumeExpression(expressionReceipt, record?.path)))
-                  throw new Error("暂时无法打开原曲目，原提交与输入继续保留。");
-                close();
-              }}
-            />
-          </div>
-        ) : metadataReceipt ? (
+        {metadataReceipt ? (
           <div className="edit-draft-editor">
             <SavedMetadataReceipt
               key={metadataReceipt}
@@ -636,20 +496,9 @@ export function EditDraftCenter({
                             ? " · 待读取已保存结果"
                             : row.kind === "metadata" && row.value.submission
                               ? " · 保存结果待核对"
-                              : (row.kind === "learning" ||
-                                    row.kind === "expressions") &&
-                                  row.value.pending
-                                ? " · 提交结果待处理"
-                                : ""}
+                              : ""}
                         </span>
                         <p className="edit-draft-preview">{row.preview}</p>
-                        {row.kind === "annotations" && row.value.entry && (
-                          <small>
-                            {new Date(
-                              row.value.entry.recordedAt,
-                            ).toLocaleString("zh-CN")}
-                          </small>
-                        )}
                         <small>{row.path}</small>
                       </div>
                       <div className="edit-draft-actions">
@@ -688,7 +537,7 @@ export function EditDraftCenter({
                 <p className="edit-draft-empty">
                   {rows.length
                     ? "没有符合当前查找条件的输入。"
-                    : "暂时没有未提交输入。曲目信息、学习目标、专项要求和评语的修改会在这里保留。"}
+                    : "暂时没有未提交输入。曲目信息的修改会在这里保留。"}
                 </p>
               )}
             </div>
@@ -710,18 +559,6 @@ export function EditDraftCenter({
               </button>
             </nav>
           </>
-        )}
-        {learning && learningDraft && (
-          <SongLearningDialog
-            key={learning}
-            path={learningDraft.path}
-            contentId={learning}
-            title={learningDraft.title}
-            previous={learningDraft.base}
-            draftMemory={store.learning}
-            close={() => setLearning(null)}
-            changed={changed}
-          />
         )}
       </section>
     </div>

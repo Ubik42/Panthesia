@@ -53,8 +53,9 @@ pub struct Manifest {
     pub papers: Vec<Paper>,
     #[serde(default)]
     pub active_paper: Option<usize>,
-    #[serde(default)]
-    pub ladders: Vec<crate::preferences::LadderPreset>,
+    /// Speed-ladder plans from the assessment era; older packages may carry them, mainline ignores them.
+    #[serde(default, skip_serializing)]
+    pub ladders: Vec<serde_json::Value>,
     pub fingerings: Vec<FingerHint>,
     #[serde(default)]
     pub finger_actions:Vec<panthesia_core::library::FingerAction>,
@@ -157,13 +158,10 @@ impl std::io::Seek for LimitedArchive {
     fn seek(&mut self, position: std::io::SeekFrom) -> std::io::Result<u64> {std::io::Seek::seek(&mut self.0, position)}
 }
 impl Package {
+    #[cfg(test)]
     pub fn encode(&self) -> Result<Vec<u8>, String> {
-        self.encode_checked(&|| Ok(()))
-    }
-    pub(crate) fn encode_checked(&self, check: &dyn Fn() -> Result<(), String>) -> Result<Vec<u8>, String> {
-        let bytes = self.write_archive(check)?;
-        Self::decode_checked(&bytes, check)?;
-        check()?;
+        let bytes = self.write_archive(&|| Ok(()))?;
+        Self::decode_checked(&bytes, &|| Ok(()))?;
         Ok(bytes)
     }
     pub(crate) fn encode_owned_checked(self, check: &dyn Fn() -> Result<(), String>) -> Result<Vec<u8>, String> {
@@ -391,15 +389,6 @@ impl Package {
                 if note.note!=anchor.pitch||anchor.grid==grid&&measure!=anchor.measure {return Err("曲目包逐音位置与 MIDI 音符或小节网格不符".into());}
             }
         }
-        if manifest
-            .settings
-            .mode
-            .as_deref()
-            .is_some_and(crate::is_recital_mode)
-            && manifest.practice_loop.is_some()
-        {
-            return Err("完整演奏曲目包不能包含当前循环范围".into());
-        }
         let settings_valid = |s: &SessionSettings| {
             (-500..=500).contains(&s.latency)
                 && s.count_in <= 4
@@ -423,10 +412,6 @@ impl Package {
                     || p.notes.len() > 8192
                     || !(0.25..=2.).contains(&p.speed)
                     || !settings_valid(&p.settings)
-                    || p.settings
-                        .mode
-                        .as_deref()
-                        .is_some_and(crate::is_recital_mode)
             })
         {
             return Err("曲目包的练习设置或小节范围无效".into());
@@ -449,31 +434,6 @@ impl Package {
         panthesia_core::song_bookmarks::validate(&manifest.bookmarks)?;
         let last_tick=file.tempo_track.seconds_to_pulses(file.duration.as_secs_f64()).round() as u64;
         if manifest.bookmarks.iter().any(|row|row.tick>last_tick){return Err("曲目包书签超出原演奏范围".into());}
-        let mut ladder_ids = BTreeSet::new();
-        for l in &manifest.ladders {
-            if l.practice.is_some() && manifest.version < 17 {return Err("阶梯练习版本需要第 17 版曲目包".into());}
-            let edition=panthesia_core::song_project::PracticeEdition::resolve(l.practice.as_ref(), &manifest.content_id, &l.grid)?;
-            let ladder_bars=if l.practice.is_some(){crate::practice_variant::transform(&file,&edition.transform)?.musical_time.measures.len()}else{bars};
-            l.plan.validate()?;
-            if let Some(goal)=&l.expression { goal.validate(l.settings.mode.as_deref().unwrap_or("wait"))?; }
-            if l.id.is_empty()
-                || l.id.len() > 160
-                || !ladder_ids.insert(&l.id)
-                || l.name.trim().is_empty()
-                || l.name.chars().count() > 80
-                || l.start == 0
-                || l.end < l.start
-                || l.end > ladder_bars
-                || l.grid.len() > 160
-                || l.scope.len() > 160
-                || l.exercise_spec.is_some()
-                || !settings_valid(&l.settings)
-                || !matches!(l.settings.mode.as_deref(), Some("wait" | "flow"))
-                || (l.settings.mode.as_deref() == Some("wait") && l.plan.on_time_percent.is_some())
-            {
-                return Err("曲目包速度阶梯规则无效".into());
-            }
-        }
         if manifest.groups.len() > 200
             || manifest.groups.iter().any(|g| {
                 g.is_empty()
@@ -491,6 +451,6 @@ impl Package {
         Ok(Self { manifest, files })
     }
     pub fn summary(&self) -> serde_json::Value {
-        serde_json::json!({"title":self.manifest.title,"contentId":self.manifest.content_id,"metadata":self.manifest.metadata,"scores":self.manifest.scores.iter().map(|s|&s.name).collect::<Vec<_>>(),"papers":self.manifest.papers.iter().map(|p|serde_json::json!({"name":p.name,"format":p.format,"pages":p.pages.len(),"annotations":p.annotations.len(),"mappingPoints":p.mapping.as_ref().map_or(0,|m|m.anchors.len()),"autoTurn":p.mapping.as_ref().is_some_and(|m|m.enabled)})).collect::<Vec<_>>(),"ladders":self.manifest.ladders.iter().map(|l|&l.name).collect::<Vec<_>>(),"trackSounds":self.manifest.track_sounds.len(),"trackAppearances":self.manifest.track_appearances.iter().map(|(id,a)|serde_json::json!({"id":id,"name":a.name.clone().unwrap_or_else(||format!("音轨 {}",id+1)),"color":a.color})).collect::<Vec<_>>(),"fingerings":self.manifest.fingerings.len(),"fingerActions":self.manifest.finger_actions.len(),"hands":self.manifest.hands.len(),"notePlayback":self.manifest.note_playback.len(),"bookmarks":self.manifest.bookmarks.iter().map(|row|&row.name).collect::<Vec<_>>(),"passages":self.manifest.passages.iter().map(|p|&p.name).collect::<Vec<_>>(),"groups":self.manifest.groups,"rating":self.manifest.rating,"provenance":self.manifest.provenance})
+        serde_json::json!({"title":self.manifest.title,"contentId":self.manifest.content_id,"metadata":self.manifest.metadata,"scores":self.manifest.scores.iter().map(|s|&s.name).collect::<Vec<_>>(),"papers":self.manifest.papers.iter().map(|p|serde_json::json!({"name":p.name,"format":p.format,"pages":p.pages.len(),"annotations":p.annotations.len(),"mappingPoints":p.mapping.as_ref().map_or(0,|m|m.anchors.len()),"autoTurn":p.mapping.as_ref().is_some_and(|m|m.enabled)})).collect::<Vec<_>>(),"trackSounds":self.manifest.track_sounds.len(),"trackAppearances":self.manifest.track_appearances.iter().map(|(id,a)|serde_json::json!({"id":id,"name":a.name.clone().unwrap_or_else(||format!("音轨 {}",id+1)),"color":a.color})).collect::<Vec<_>>(),"fingerings":self.manifest.fingerings.len(),"fingerActions":self.manifest.finger_actions.len(),"hands":self.manifest.hands.len(),"notePlayback":self.manifest.note_playback.len(),"bookmarks":self.manifest.bookmarks.iter().map(|row|&row.name).collect::<Vec<_>>(),"passages":self.manifest.passages.iter().map(|p|&p.name).collect::<Vec<_>>(),"groups":self.manifest.groups,"rating":self.manifest.rating,"provenance":self.manifest.provenance})
     }
 }

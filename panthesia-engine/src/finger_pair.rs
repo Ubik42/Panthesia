@@ -30,7 +30,7 @@ impl Player {
   let practice_settings=self.finger_pair_settings(parts);
   let bytes=serde_json::to_vec(&serde_json::json!([parts,reviews,unassigned,shared,interactions,self.saved_hints()?,self.saved_actions()?,practice_settings])).map_err(|e|e.to_string())?;let signature=blake3::hash(&bytes).to_hex().to_string();
   if let Some(proof)=proof {
-   if self.state.recording||self.routine.is_some()||self.ladder.as_ref().is_some_and(|l|l.active)||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止演奏、录音和活动计划，并松开按键，再保存双手指法".into());}
+   if self.state.recording||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止演奏、录音和活动计划，并松开按键，再保存双手指法".into());}
    if proof!=signature{return Err("双手审阅已过时，请重新核对".into());}
    if !valid{return Err("一只手的指法存在冲突或超过数量上限，双手均未保存".into());}
    if needs_ack&&!acknowledged{return Err("请确认未选建议、未分手音符和双手同音提示后保存".into());}
@@ -41,7 +41,7 @@ impl Player {
  }
  pub(super) fn start_pair_demo(&mut self,parts:&[PairPart],proof:&str,acknowledged:bool,rate:f64)->Result<serde_json::Value,String>{
   if !rate.is_finite()||!(0.25..=1.).contains(&rate){return Err("示范速度应为原速的 25% 至 100%".into());}
-  if self.recorder.is_recording()||self.routine.is_some()||self.ladder.as_ref().is_some_and(|l|l.active)||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止练习和录音，并松开琴键，再开始双手示范".into());}
+  if self.recorder.is_recording()||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止练习和录音，并松开琴键，再开始双手示范".into());}
   let review=self.finger_pair(parts,None,false)?;
   if review["proof"].as_str()!=Some(proof){return Err("双手审阅已过时，请重新核对".into());}
   if review["valid"]!=true||review["needsAck"]==true&&!acknowledged{return Err("请先完成双手结果审阅与确认，再开始示范".into());}
@@ -76,10 +76,10 @@ impl Player {
   use panthesia_core::practice_history::PracticeTrackMode;
   let targets=parts.iter().flat_map(|p|crate::fingerings::target_tracks(&p.request)).collect::<std::collections::HashSet<_>>();
   let mut tracks=self.config.practice_track_setup();for t in &mut tracks {t.mode=if targets.contains(&t.track_id){PracticeTrackMode::Human}else if t.mode==PracticeTrackMode::Mute{PracticeTrackMode::Mute}else{PracticeTrackMode::Auto};}
-  preferences::SessionSettings{tracks,parts:self.config.tracks.iter().map(|t|(t.track_id,t.practice_part)).collect(),mode:Some("wait".into()),count_in:self.state.count_in.max(1),metronome:self.state.metronome,latency:self.state.latency,rounds:1,hands:"both".into(),adaptive:false}
+  preferences::SessionSettings{tracks,parts:self.config.tracks.iter().map(|t|(t.track_id,t.practice_part)).collect(),mode:Some("wait".into()),count_in:self.state.count_in.max(1),metronome:self.state.metronome,latency:self.state.latency,rounds:1,hands:"both".into()}
  }
  pub(super) fn save_pair_practice(&mut self,parts:&[PairPart],proof:&str,acknowledged:bool,ranges:Vec<crate::finger_practice::PracticeRange>)->Result<serde_json::Value,String>{
-  if self.state.recording||self.routine.is_some()||self.ladder.as_ref().is_some_and(|l|l.active)||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止演奏、录音和活动计划，再保存双手练习段".into());}
+  if self.state.recording||matches!(self.state.status.as_str(),"playing"|"countIn")||!self.state.pressed.is_empty(){return Err("请先停止演奏、录音和活动计划，再保存双手练习段".into());}
   let review=self.finger_pair(parts,None,false)?;
   if review["proof"].as_str()!=Some(proof){return Err("双手条件或指法已改变，请重新核对保存结果".into());}
   if review["valid"]!=true||review["needsAck"]==true&&!acknowledged {return Err("请先完成双手结果审阅与确认，再建立练习段".into());}
@@ -163,13 +163,7 @@ mod tests {
   let mut second=range();second.name="双手分段慢练".into();
   let mixed=p.save_pair_practice(&parts,&proof,true,vec![range(),second]).unwrap();assert_eq!(mixed["saved"],1);assert_eq!(mixed["existing"],1);
   assert_eq!(p.save_pair_practice(&parts,&proof,true,vec![range()]).unwrap()["existing"],1);
-  let id=passage["ids"][0].as_str().unwrap().to_owned();let preset=&p.preferences.passages[&cid][0];assert_eq!(preset.settings.hands,"both");assert_eq!(preset.settings.rounds,3);assert_eq!(preset.speed,0.6);
-  let rid=p.save_routine(None,None,"双手慢练日课".into(),"".into(),None).unwrap()["id"].as_str().unwrap().to_owned();
-  let item=p.save_routine_item(&rid,None,None,Some("passage"),Some(&id),"双手达标".into(),"".into(),crate::routine_commands::RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:3}).unwrap()["id"].as_str().unwrap().to_owned();
-  p.open_routine_item(&rid,"2026-10-02",&item,true).unwrap();assert_eq!(p.state.hands,"both");assert_eq!(p.state.speed,0.6);p.command(Command::Play).unwrap();
-  for _ in 0..1400 {p.tick(Duration::from_millis(10));for pitch in p.snapshot().required {p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();}if p.routine_status().unwrap()["progress"]["completed"]==true {break;}}
-  assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);p.stop_routine().unwrap();p.command(Command::Restart).unwrap();
-  let backup:crate::practice_backup::Backup=serde_json::from_value(p.practice_backup_snapshot(&crate::practice_backup::Selection::default()).unwrap()).unwrap();let decoded=crate::practice_backup::Backup::decode(&backup.encode().unwrap()).unwrap();assert_eq!(decoded.passages[&cid][0].settings.hands,"both");
+  let _id=passage["ids"][0].as_str().unwrap().to_owned();let preset=&p.preferences.passages[&cid][0];assert_eq!(preset.settings.hands,"both");assert_eq!(preset.settings.rounds,3);assert_eq!(preset.speed,0.6);
   p.finger_pair(&parts,Some(&proof),true).unwrap();let saved=p.saved_hints().unwrap();assert!(saved.len()>before.len());assert_eq!(p.finger_undo.len(),1);
   assert!(p.finger_pair(&parts,Some(&proof),true).is_err());assert_eq!(p.saved_hints().unwrap(),saved);
   p.command(Command::UndoFingersFor{content_id:cid.clone()}).unwrap();assert_eq!(p.saved_hints().unwrap(),before);

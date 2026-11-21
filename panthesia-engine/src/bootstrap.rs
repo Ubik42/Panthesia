@@ -1,7 +1,7 @@
 //! Engine composition root: resources are assembled once, then handed to their owners.
 use crate::{Engine, Player, Snapshot};
 use crate::{
-    background_tasks, backup_operations, data_root_lock, device_catalog, history_operations,
+    background_tasks, data_root_lock, device_catalog,
     input_runtime, library_index, library_operations, music_import, pending_save, playback_memory,
     runtime_request, sound_runtime, startup, state_order, storage_control,
 };
@@ -109,8 +109,6 @@ impl Engine {
             catalog_rows:Arc::new(Mutex::new(None)),
             paper_navigation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             music_imports: music_import::Store::new(engine_data.clone()),
-            backup_imports: backup_operations::Store::default(),
-            history_operations: history_operations::Store::default(),
             library_opens: library_operations::Store::default(),
             engine_id,
             startup,

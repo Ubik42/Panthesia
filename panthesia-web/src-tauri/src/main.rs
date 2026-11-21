@@ -12,8 +12,7 @@ mod media_export_bridge;
 mod external_process;
 mod duet_score;
 mod duet_runtime;
-mod backup_operations;
-mod practice_backup_bridge;
+mod file_transfer;
 mod audiveris_paper;
 mod startup_checks;
 mod desktop_close;
@@ -246,31 +245,15 @@ async fn native_startup_check(
         .ok_or("内置练习缺失")?;
     let count = state.songs.lock().map_err(|e| e.to_string())?.len();
     let font = state.font.clone();
-    let data = state.data.clone();
-    let bundled_font = state.bundled_font.clone();
-    let webview_data = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
-    let phase = startup_checks::portable_phase()?;
+    let _data = state.data.clone();
+    let _bundled_font = state.bundled_font.clone();
+    let _webview_data = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         startup_stage("native_worker_started");
         if !pdf_ready {return Err("PDF 谱页渲染器未通过桌面检查".into());}
         if !notation_ready {return Err("桌面乐谱 WASM 渲染器未通过启动检查".into());}
         if !ready { return Err("桌面前端未完成真实引擎连接".into()); }
         startup_stage("frontend_evidence_ready");
-        if let Some(phase) = phase {
-            let mut report = startup_checks::run(&engine, &data, phase)?;
-            panthesia_engine::probe_audio(&font)?;
-            report["frontendReady"] = true.into();
-            report["ipcReady"] = true.into();
-            report["notationWasmReady"] = true.into();
-            report["pdfReady"] = true.into();
-            report["audioProbeReady"] = true.into();
-            report["dataRoot"] = serde_json::json!(data);
-            report["webviewDataRoot"] = serde_json::json!(webview_data);
-            report["fontPath"] = serde_json::json!(bundled_font);
-            let path = panthesia_core::product::env_os("PANTHESIA_STARTUP_CHECK_LOG").ok_or("运行包检查需要报告路径")?;
-            std::fs::write(path, serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-            return Ok(());
-        }
         let song = engine.command(Command::Load { path: row.path, title: row.title })?;
         startup_stage("song_loaded");
         if song["notes"].as_array().map(Vec::len) != Some(9) { return Err("内置练习解析失败".into()); }
@@ -437,13 +420,6 @@ fn cancel_library_score_import(
     Ok(())
 }
 #[tauri::command]
-async fn pick_practice_backup(state:tauri::State<'_,State>)->Result<Option<serde_json::Value>,String>{
-    let _close_lease=score_edit::reserve(&state,"native-pick-practice-backup")?;
-    let _close_worker=_close_lease.clone();
-
- let Some(file)=file_dialog(&state.data,"backup").set_title("预览练习资料备份").add_filter("练习备份", &["neopractice"]).pick_file().await else{return Ok(None)};let path=file.path().to_path_buf();remember_location(&state.data,"backup",file.path(),false);let engine=state.engine.clone();tauri::async_runtime::spawn_blocking(move||{let _close_worker=_close_worker;if std::fs::metadata(&path).map_err(|e|e.to_string())?.len()>256_000_000{return Err("备份超过 256 MB".into());}engine.stage_practice_backup(panthesia_core::utils::atomic_file::read_limited(&path,256_000_000).map_err(|e|e.to_string())?).map(Some)}).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
 async fn export_interface_settings(state:tauri::State<'_,State>,contents:String)->Result<Option<String>,String>{
  let lease=score_edit::reserve(&state,"interface-settings-export")?;
  if contents.len()>1_000_000{return Err("界面设置备份超过 1 MB".into());}
@@ -452,29 +428,6 @@ async fn export_interface_settings(state:tauri::State<'_,State>,contents:String)
  let Some(file)=file_dialog(&state.data,"exportBackup").set_title("导出界面设置").set_file_name("Panthesia-界面设置.neosettings").add_filter("界面设置备份", &["neosettings"]).save_file().await else{return Ok(None)};
  let path=file.path().to_path_buf();remember_location(&state.data,"exportBackup",&path,false);
  tauri::async_runtime::spawn_blocking(move||{let _lease=lease;panthesia_core::utils::atomic_file::write(&path,contents.as_bytes()).map_err(|e|e.to_string())?;Ok(Some(path.to_string_lossy().to_string()))}).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-async fn export_practice_backup(state:tauri::State<'_,State>,selection:panthesia_engine::practice_backup::Selection)->Result<Option<String>,String>{
- let lease=score_edit::reserve(&state,"practice-backup-export")?;
- let engine=state.engine.clone();
- let (source,size,hash)=tauri::async_runtime::spawn_blocking(move||->Result<_,String>{
-   use std::io::Read;
-   let value=engine.command(Command::ExportPracticeBackup{selection})?;
-   let source=PathBuf::from(value["path"].as_str().ok_or("备份导出路径无效")?);
-   let mut file=std::fs::File::open(&source).map_err(|error|error.to_string())?;
-   let size=file.metadata().map_err(|error|error.to_string())?.len();
-   if size==0 || size>256_000_000{return Err("备份文件大小无效".into());}
-   let mut bytes=[0u8;65_536];let mut hash=blake3::Hasher::new();let mut count=0;
-   loop{let n=file.read(&mut bytes).map_err(|error|error.to_string())?;if n==0{break;}count+=n as u64;if count>size{return Err("备份文件正在改变，请重新制作".into());}hash.update(&bytes[..n]);}
-   if count!=size{return Err("备份文件尚未完整保存".into());}
-   let hash=hash.finalize().to_hex().to_string();
-   if source.file_stem().and_then(|value|value.to_str())!=Some(hash.as_str()){return Err("备份缓存内容与制作结果不同，请重新制作".into());}
-   Ok((source,size,hash))
- }).await.map_err(|error|error.to_string())??;
- let Some(file)=file_dialog(&state.data,"exportBackup").set_title("保存练习资料备份").set_file_name("Panthesia-练习资料.neopractice").add_filter("练习备份", &["neopractice"]).save_file().await else{return Ok(None)};
- let destination=file.path().to_path_buf();let data=state.data.clone();
- let saved=tauri::async_runtime::spawn_blocking(move||{let _lease=lease;export_files::copy(&data,&source,&destination,"neopractice",size,&hash,&||Ok(()),&|_|{},&||Ok(()))}).await.map_err(|error|error.to_string())??;
- remember_location(&state.data,"exportBackup",file.path(),false);Ok(Some(saved))
 }
 
 #[tauri::command]
@@ -558,36 +511,6 @@ async fn map_score(state: tauri::State<'_, State>, request: panthesia_engine::Sc
 async fn read_history(state: tauri::State<'_, State>, request: panthesia_engine::HistoryReadRequest) -> Result<serde_json::Value, String> {
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || engine.read_history(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn edit_history_clips(state: tauri::State<'_, State>, request: Command) -> Result<serde_json::Value, String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.edit_history_clips(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn save_history_annotation(state: tauri::State<'_, State>, request: panthesia_engine::HistoryAnnotationRequest) -> Result<serde_json::Value, String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.save_history_annotation(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn routine_options(state: tauri::State<'_, State>, request: panthesia_engine::RoutineOptionsRequest) -> Result<serde_json::Value,String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.routine_options(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn read_routine_sources(state: tauri::State<'_, State>, request: Command) -> Result<serde_json::Value,String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.read_routine_sources(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn read_routines(state: tauri::State<'_, State>, request: panthesia_engine::RoutineReadRequest) -> Result<serde_json::Value,String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.read_routine_list(request)).await.map_err(|error| error.to_string())?
-}
-#[tauri::command]
-async fn routine_templates(state: tauri::State<'_, State>) -> Result<serde_json::Value,String> {
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.routine_templates()).await.map_err(|error| error.to_string())?
 }
 #[tauri::command]
 async fn midi_devices(state: tauri::State<'_, State>, refresh: Option<bool>, target: Option<String>) -> Result<panthesia_engine::DeviceSnapshot,String> {
@@ -1036,13 +959,12 @@ fn main() {
             let (saved,warning)=saved_soundfont(&data);
             let selected_font=saved.unwrap_or_else(||font.clone());
             let status=soundfont_status(&selected_font,&font,warning);
-            let engine = Engine::start_with_soundfont_fallback(data.clone(), data_lock, selected_font.clone(), Some(font.clone()), startup_checks::portable_phase()?.is_some())?;
+            let engine = Engine::start_with_soundfont_fallback(data.clone(), data_lock, selected_font.clone(), Some(font.clone()), false)?;
             let songs=std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
             let monitor=engine.start_library_monitor(root,songs.clone());
             app.manage(score_batch_export::Sessions::default());
             app.manage(score_export_bridge::Cache::default());
-            app.manage(practice_backup_bridge::Sessions::default());
-            app.manage(backup_operations::DraftSaves::default());
+            app.manage(file_transfer::Sessions::default());
             app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), closing:Default::default(), close_allowed:Default::default(), allow_closing_drafts:Default::default(), desktop_close:Default::default(), engine, songs,monitor,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), score_imports:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
             if !headless_check() {
                 if let Some(window) = app.get_webview_window("main") {
@@ -1089,10 +1011,10 @@ fn main() {
             play_live_notes,
             engine_song,
             midi_devices,
-            routine_templates,
-            read_routines,
-            read_routine_sources,
-            routine_options,
+            
+            
+            
+            
             engine_command,
             engine_scoped_command,
             build_info::desktop_build_info,
@@ -1101,8 +1023,8 @@ fn main() {
             read_practice,
             map_score,notation_document,read_notation,music_file_exists,
             read_history,
-            save_history_annotation,
-            edit_history_clips,
+            
+            
             start_practice_demo,
             located_paper_bridge::begin_located_paper_upload,located_paper_bridge::write_located_paper_chunk,located_paper_bridge::finish_located_paper_upload,located_paper_bridge::cancel_located_paper_upload,
             import_midi,
@@ -1126,23 +1048,16 @@ fn main() {
             import_score_attachments,
             pick_paper_source,
             import_library_scores,
-            desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,backup_operations::hold_backup_draft,backup_operations::release_backup_draft,backup_operations::backup_import_protocol,backup_operations::prepare_backup_import,backup_operations::read_backup_import,backup_operations::cancel_backup_import,
-            practice_backup_bridge::begin_practice_backup_read,
-            practice_backup_bridge::read_practice_backup_chunk,
-            practice_backup_bridge::finish_practice_backup_read,
-            practice_backup_bridge::begin_practice_backup_stage,
-            practice_backup_bridge::begin_package_stage,
-            practice_backup_bridge::write_package_stage_chunk,
-            practice_backup_bridge::finish_package_stage,
-            practice_backup_bridge::cancel_package_stage,
-            practice_backup_bridge::begin_score_input,
-            practice_backup_bridge::write_score_input_chunk,
-            practice_backup_bridge::cancel_score_input,
-            practice_backup_bridge::write_practice_backup_chunk,
-            practice_backup_bridge::finish_practice_backup_stage,
-            practice_backup_bridge::cancel_practice_backup_transfer,
-            pick_practice_backup,
-            export_practice_backup,
+            desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,
+            file_transfer::begin_package_stage,
+            file_transfer::write_package_stage_chunk,
+            file_transfer::finish_package_stage,
+            file_transfer::cancel_package_stage,
+            file_transfer::begin_score_input,
+            file_transfer::write_score_input_chunk,
+            file_transfer::cancel_score_input,
+            
+            
             export_interface_settings,
             cancel_library_score_import,
             import_folder,

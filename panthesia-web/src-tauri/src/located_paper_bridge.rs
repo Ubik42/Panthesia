@@ -1,5 +1,5 @@
 //! Located score pages use the same owned file transfer as other large score inputs.
-use crate::practice_backup_bridge::{self, Sessions};
+use crate::file_transfer::{self, Sessions};
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +18,7 @@ pub async fn begin_located_paper_upload(
     let sessions = sessions.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
-        practice_backup_bridge::begin_located_input(&data, &sessions, size)
+        file_transfer::begin_located_input(&data, &sessions, size)
     })
     .await
     .map_err(|error| format!("纸谱传输准备中断：{error}"))?
@@ -35,7 +35,7 @@ pub async fn write_located_paper_chunk(
     let sessions = sessions.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
-        practice_backup_bridge::write_located_input(&sessions, &session, offset, &bytes)
+        file_transfer::write_located_input(&sessions, &session, offset, &bytes)
     })
     .await
     .map_err(|error| format!("纸谱分块传输中断：{error}"))?
@@ -47,7 +47,7 @@ pub async fn finish_located_paper_upload(
     session: String,
 ) -> Result<LocatedPaperSaved, String> {
     let lease = crate::score_edit::reserve(&state, &format!("located-paper-input-{session}"))?;
-    let input = practice_backup_bridge::take_located_input(&sessions, &session)?;
+    let input = file_transfer::take_located_input(&sessions, &session)?;
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
@@ -85,7 +85,7 @@ pub async fn cancel_located_paper_upload(
 ) -> Result<(), String> {
     let sessions = sessions.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        practice_backup_bridge::cancel_located_input(&sessions, &session)
+        file_transfer::cancel_located_input(&sessions, &session)
     })
     .await
     .map_err(|error| error.to_string())?

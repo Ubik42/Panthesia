@@ -371,9 +371,6 @@ impl Player {
         if self.recorder.is_recording() {
             return Err("请先停止录音，再导入曲目".into());
         }
-        if self.routine.is_some() {
-            self.stop_routine()?;
-        }
         self.panic();
         self.state.error = None;
         let lock = library_workspace::lock_for(&self.data)?;

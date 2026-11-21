@@ -16,22 +16,14 @@ pub(crate) enum Request {
     ScopedImportContext { origin: crate::import_pipeline::Origin, cancelled: Arc<std::sync::atomic::AtomicBool>, received: std::time::Instant, reply: mpsc::SyncSender<Result<crate::import_pipeline::Origin, String>> },
     PlaybackAdjustment(crate::state_order::PlaybackAdjustment, std::time::Instant, Reply),
     LiveNotes(crate::live_notes::Input,std::time::Instant,mpsc::SyncSender<Result<crate::live_notes::Acknowledgement,String>>),
-    FeedbackContext(mpsc::SyncSender<Result<crate::feedback_reader::Context,String>>),
     InputContext{name:Option<String>,reply:mpsc::SyncSender<Result<u64,String>>},
     InputCommit{revision:u64,prepared:crate::input_runtime::Prepared,token:TaskToken,reply:Reply},
     SoundChangeBegin{id:String,font:bool,target:Option<String>,reply:mpsc::SyncSender<Result<u64,String>>},
     SoundChangeAbort(String),
     SoundOutputCommit{id:String,revision:u64,prepared:crate::sound_runtime::Prepared,token:TaskToken,reply:Reply},
     SoundFontLiveCommit{id:String,revision:u64,prepared:crate::soundfont_loading::LivePrepared,token:TaskToken,reply:Reply},
-    RoutineEditContext {source:bool,expected:Option<String>,reply:mpsc::SyncSender<Result<crate::routine_edit::Context,String>>},
-    RoutineEditCommit {prepared:crate::routine_edit::Installation,token:TaskToken,reply:mpsc::SyncSender<Result<bool,String>>},
     CatalogContext {source:bool,guard:crate::practice_catalog::Guard,scope:Option<crate::practice_edit::Scope>,reply:mpsc::SyncSender<Result<crate::practice_catalog::Context,String>>},
     CatalogCommit {patch:Arc<crate::practice_catalog::Installation>,token:TaskToken,reply:mpsc::SyncSender<Result<(),String>>},
-    RoutineReadContext(mpsc::SyncSender<Result<crate::routine_reader::Context,String>>),
-    RoutineDaysCommit {prepared:crate::routine_reader::Installation,token:TaskToken,reply:mpsc::SyncSender<Result<bool,String>>},
-    ClipEditContext(mpsc::SyncSender<Result<crate::history_clip_edit::Context,String>>),
-    ClipEditCommit {prepared:crate::history_clip_edit::Prepared,token:TaskToken,reply:Reply},
-    HistoryAnnotation{input:crate::history_reader::AnnotationInput,with_detail:bool,reply:mpsc::SyncSender<Result<(crate::history_reader::Context,crate::history_reader::AnnotationSaved),String>>},
     HistoryQueryContext{current_song:bool,reply:mpsc::SyncSender<Result<crate::history_reader::Context,String>>},
     ScoreMappingContext {content_id:String,revision:Option<u64>,fingerprint:Option<String>,reply:mpsc::SyncSender<Result<crate::score_mapping::Context,String>>},
     ScoreMappingInstall {prepared:crate::score_mapping::Installation,token:TaskToken,reply:mpsc::SyncSender<Result<(),String>>},
@@ -53,59 +45,10 @@ pub(crate) enum Request {
     StorageFence(mpsc::SyncSender<Result<crate::storage_close::Fence,String>>),
     StorageRecoveryObserved(mpsc::SyncSender<Result<crate::pending_save::StorageStatus,String>>),
     SaveFinished { result: Result<(), String>, replies: Vec<crate::pending_save::Completion> },
-    BackupImportBegin { id: String, reply: mpsc::SyncSender<Result<crate::practice_backup_import::Context, String>> },
-    BackupImportFinish { id: String, result: Result<crate::practice_backup_import::Outcome, String>, reply: Option<Reply> },
     Command(Command, Reply),
-    BackupSnapshot {
-        selection: crate::practice_backup::Selection,
-        created_at: Option<u64>,
-        reply: mpsc::SyncSender<Result<crate::practice_backup::Seed, String>>,
-    },
-    RoutineContext {routine_id:String,day:String,item_id:String,resume:bool,
-        reply:mpsc::SyncSender<Result<(crate::import_pipeline::Origin,crate::routine_loading::Context),String>>},
-    #[cfg(test)]
-    RoutineCommit(crate::import_pipeline::Origin,crate::routine_loading::Context,crate::routine_loading::Prepared,TaskToken,Reply),
-    ReplayContext {
-        content_id: String, id: String, source: String, rate: f64, request_id: Option<String>,
-        reply: mpsc::SyncSender<Result<crate::history_replay_loading::Context, String>>,
-    },
-    ReplayCommit(crate::history_replay_loading::Context, crate::history_replay_loading::Prepared, TaskToken, Reply),
     ImportContext(mpsc::SyncSender<Result<crate::import_pipeline::Origin, String>>),
     PreparationContext { current: crate::operation_journal::PreparationOrigin, reply: mpsc::SyncSender<Result<crate::import_pipeline::Origin, String>> },
     RecentSource(String, mpsc::SyncSender<Result<RecentSource, String>>),
-    HistoryReadContext {
-        content_id: String,
-        id: String,
-        reply: mpsc::SyncSender<Result<crate::history_loading::Context, String>>,
-    },
-    HistoryReadCheck(
-        crate::history_loading::Context,
-        mpsc::SyncSender<Result<(), String>>,
-    ),
-    HistoryContext {
-        content_id: String,
-        id: String,
-        action: crate::history_actions::Action,
-        expected: Option<crate::history_source::HistorySource>,
-        current: Option<crate::history_operations::HistoryOperationOrigin>,
-        reply: mpsc::SyncSender<
-            Result<
-                (
-                    crate::import_pipeline::Origin,
-                    crate::history_loading::Context,
-                ),
-                String,
-            >,
-        >,
-    },
-    #[cfg(test)]
-    HistoryCommit(
-        crate::import_pipeline::Origin,
-        crate::history_loading::Context,
-        crate::history_loading::Prepared,
-        TaskToken,
-        Reply,
-    ),
     #[cfg(test)]
     ExerciseCommit(crate::import_pipeline::Origin, crate::exercise_loading::Prepared, TaskToken, Reply),
     #[cfg(test)]
@@ -122,12 +65,6 @@ pub(crate) enum Request {
         TaskToken,
         Reply,
     ),
-    #[cfg(test)]
-    BasicContext(
-        fingerings::BasicRequest,
-        TaskToken,
-        mpsc::SyncSender<Result<fingerings::BasicPrepared, String>>,
-    ),
     BasicCommit(
         fingerings::BasicPrepared,
         Vec<fingerings::Proposal>,
@@ -142,9 +79,9 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
             let barrier=match &request {
                 Request::PlaybackAdjustment(..) => true,
                 Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
-                Request::InputCommit{..}|Request::SoundOutputCommit{..}|Request::SoundFontLiveCommit{..}|Request::CatalogCommit{..}|Request::RoutineEditCommit{..}|Request::RoutineDaysCommit{..}|Request::ClipEditCommit{..}|Request::HistoryAnnotation{..}|Request::AssetEditFinish{..}|Request::RegisterImportedScore{..}|Request::RecordingSaveFinish {..}|Request::BasicCommit(..)=>true,
+                Request::InputCommit{..}|Request::SoundOutputCommit{..}|Request::SoundFontLiveCommit{..}|Request::CatalogCommit{..}|Request::AssetEditFinish{..}|Request::RegisterImportedScore{..}|Request::RecordingSaveFinish {..}|Request::BasicCommit(..)=>true,
                 #[cfg(test)]
-                Request::RoutineCommit(..)|Request::LoadCommit(..)|Request::ExerciseCommit(..)|Request::HistoryCommit(..)|Request::ImportCommit(..)=>true,
+                Request::LoadCommit(..)|Request::ExerciseCommit(..)|Request::ImportCommit(..)=>true,
                 _=>false,
             };
             let (writes,replies)=crate::pending_save::capture(&pipeline,||handle_inner(player,request,shared));
@@ -157,10 +94,9 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
-        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::FeedbackContext(_) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::BackupImportFinish { .. } | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
+        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
         Request::RegisterImportedScore{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         Request::ScoreMappingContext{..} | Request::ScoreMappingInstall{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
-        Request::BackupImportBegin { .. } if player.closing.load(std::sync::atomic::Ordering::Acquire) && !player.storage_busy.load(std::sync::atomic::Ordering::Acquire) => true,
         _ => false,
     };
     if (player.storage_busy.load(std::sync::atomic::Ordering::Acquire)||player.closing.load(std::sync::atomic::Ordering::Acquire)) && !allowed {
@@ -202,26 +138,18 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::state_projection::publish(&player, &shared);
             crate::pending_save::respond(reply, result);
         }
-        Request::FeedbackContext(reply) => {crate::pending_save::respond(reply,Ok(player.capture_feedback()));}
         Request::InputContext{name,reply}=>{crate::pending_save::respond(reply,player.input_context(name.as_deref()));}
         Request::InputCommit{revision,prepared,token,reply}=>{let result=player.install_input(revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
         Request::SoundChangeBegin{id,font,target,reply}=>{crate::pending_save::respond(reply,player.begin_sound_change(id,font,target));}
         Request::SoundChangeAbort(id)=>{player.abort_sound_change(&id);}
         Request::SoundOutputCommit{id,revision,prepared,token,reply}=>{let result=player.install_output(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
         Request::SoundFontLiveCommit{id,revision,prepared,token,reply}=>{let result=player.install_live_soundfont(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
-        Request::RoutineEditContext {source,expected,reply} => {crate::pending_save::respond(reply,player.capture_routine_edit(source,expected.as_deref()));}
-        Request::RoutineEditCommit {prepared,token,reply} => {crate::pending_save::respond(reply,player.install_routine_edit(&prepared,&token));}
         Request::CatalogContext {source,guard,scope,reply} => {crate::pending_save::respond(reply,player.capture_catalog(source,&guard,scope.as_ref()));}
         Request::CatalogCommit {patch,token,reply} => {
             let result=player.install_catalog(&patch,&token);
             crate::state_projection::publish(&player,&shared);
             crate::pending_save::respond(reply,result);
         }
-        Request::RoutineReadContext(reply) => {crate::pending_save::respond(reply,Ok(player.capture_routine_reader()));}
-        Request::RoutineDaysCommit {prepared,token,reply} => {crate::pending_save::respond(reply,player.install_routine_days(&prepared,&token));}
-        Request::ClipEditContext(reply) => {crate::pending_save::respond(reply,Ok(player.capture_clip_edit()));}
-        Request::ClipEditCommit{prepared,token,reply} => {crate::pending_save::respond(reply,player.install_clip_edit(prepared,Some(&token)));}
-        Request::HistoryAnnotation{input,with_detail,reply}=>{crate::pending_save::respond(reply,player.apply_history_annotation(input,with_detail));}
         Request::HistoryQueryContext{current_song,reply}=>{crate::pending_save::respond(reply,Ok(player.capture_history_reader(current_song)));}
         Request::ScoreMappingContext{content_id,revision,fingerprint,reply} => {crate::pending_save::respond(reply,player.capture_score_mapping(&content_id,revision,fingerprint.as_deref()));}
         Request::ScoreMappingInstall{prepared,token,reply} => {crate::pending_save::respond(reply,player.install_score_mapping(prepared,&token));}
@@ -281,7 +209,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         Request::StorageFence(reply) => {
             let notes=player.matcher.snapshot();
             let round_pending=!player.state.saved&&player.file.is_some()&&(notes.matched_notes+notes.wrong_notes+notes.missed_notes>0);
-            let incomplete_recital=round_pending&&crate::is_recital_mode(&player.state.mode)&&player.state.status!="finished";
+            let incomplete_recital=false;
             let unsaved_round=player.save_error.is_some()&&round_pending&&!crate::storage_control::recovery(player).round;
             let storage=crate::storage_control::status(player);
             crate::pending_save::respond(reply,Ok(crate::storage_close::Fence {
@@ -301,98 +229,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             player.finish_settings_save(&result);
             crate::state_projection::publish(&player, &shared);
             for reply in replies { reply(result.clone()); }
-        }
-        Request::BackupImportBegin { id, reply } => {
-            let result = player.begin_backup_import(id.clone());
-            if reply.send(result).is_err() {
-                let _ = player.finish_backup_import(&id, Err("导入调用已关闭".into()));
-            }
-            crate::state_projection::publish(&player, &shared);
-        }
-        Request::BackupImportFinish { id, result, reply } => {
-            let result = player.finish_backup_import(&id, result);
-            crate::state_projection::publish(&player, &shared);
-            if let Some(reply) = reply { crate::pending_save::respond(reply,result); }
-        }
-        Request::BackupSnapshot { selection, created_at, reply } => {
-            crate::pending_save::respond(reply,player.capture_practice_backup(selection, created_at));
-        }
-        Request::RoutineContext {routine_id,day,item_id,resume,reply} => {
-            let result=player.prepare_routine_open(&routine_id,&day,&item_id,resume)
-                .and_then(|context|player.begin_import().map(|origin|(origin,context)));
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
-        }
-        #[cfg(test)]
-        Request::RoutineCommit(origin,context,prepared,token,reply) => {
-            let result=player.check_switch_origin(&origin,"打开计划项目")
-                .and_then(|_|player.check_routine_open(&context))
-                .and_then(|_|prepared.check())
-                .and_then(|_|token.begin_commit())
-                .and_then(|_|prepared.commit(player,&context));
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
-        }
-        Request::ReplayContext { content_id, id, source, rate, request_id, reply } => {
-            crate::pending_save::respond(reply,player.prepare_history_replay_request(&content_id, &id, &source, rate, request_id));
-        }
-        Request::ReplayCommit(context, prepared, token, reply) => {
-            let result = player.check_history_replay(&context)
-                .and_then(|_| prepared.check())
-                .and_then(|_| token.begin_commit())
-                .and_then(|_| prepared.install(player, &context));
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
-        }
-        Request::HistoryReadContext {
-            content_id,
-            id,
-            reply,
-        } => {
-            crate::pending_save::respond(reply,player.prepare_history_open(&content_id, &id, false));
-        }
-        Request::HistoryReadCheck(context, reply) => {
-            crate::pending_save::respond(reply,player.check_history_open(&context));
-        }
-        Request::HistoryContext {
-            content_id,
-            id,
-            action,
-            expected,
-            current,
-            reply,
-        } => {
-            let result = action
-                .validate(player)
-                .and_then(|_| current.as_ref().map_or(Ok(()), |origin| origin.check(player)))
-                .and_then(|_| player.prepare_history_open(&content_id, &id, action.restore()))
-                .and_then(|mut context| {
-                    if let Some(source) = &expected { source.check_context(&context)?; }
-                    context.expected = expected;
-                    context.action = action;
-                    Ok(context)
-                })
-                .and_then(|context| player.begin_import().map(|origin| (origin, context)));
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
-        }
-        #[cfg(test)]
-        Request::HistoryCommit(origin, context, prepared, token, reply) => {
-            let result = context
-                .action
-                .validate(player)
-                .and_then(|_| player.check_switch_origin(&origin, "恢复历史练习"))
-                .and_then(|_| player.check_history_open(&context))
-                .and_then(|_| prepared.check())
-                .and_then(|_| token.begin_commit())
-                .and_then(|_| {
-                    if player.routine.is_some() {
-                        player.stop_routine()?;
-                    }
-                    prepared.commit(player, &context)
-                });
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
         }
         Request::RecentSource(id, reply) => {
             let result = player
@@ -428,7 +264,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
                 .and_then(|_| prepared.check())
                 .and_then(|_| token.begin_commit())
                 .and_then(|_| {
-                    if player.routine.is_some() { player.stop_routine()?; }
                     prepared.install(player)?;
                     player.persist()?;
                     player.command(Command::CurrentSong)
@@ -443,9 +278,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
                 .and_then(|_| prepared.check())
                 .and_then(|_| token.begin_commit())
                 .and_then(|_| {
-                    if player.routine.is_some() {
-                        player.stop_routine()?;
-                    }
                     player.install_prepared(
                         prepared.file,
                         prepared.title,
@@ -509,13 +341,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::state_projection::publish(&player, &shared);
             crate::pending_save::respond(reply,result);
         }
-        #[cfg(test)]
-        Request::BasicContext(request, token, reply) => {
-            let result = token
-                .check()
-                .and_then(|_| player.prepare_basic_fingers(&request));
-            crate::pending_save::respond(reply,result);
-        }
         Request::BasicCommit(prepared, proposals, token, reply) => {
             let result = token
                 .begin_commit()
@@ -534,24 +359,16 @@ impl Request {
             Self::SongAuditionCommit{reply,..} => {fail!(reply);}
             Self::SongAuditionAbort(_) => {}
             Self::LiveNotes(_,_,reply) => {fail!(reply);}
-            Self::FeedbackContext(reply) => {fail!(reply);}
             Self::InputContext{reply,..}=>{fail!(reply);}
             Self::InputCommit{reply,..}=>{fail!(reply);}
             Self::SoundChangeBegin{reply,..}=>{fail!(reply);}
             Self::SoundChangeAbort(_)=>{}
             Self::SoundOutputCommit{reply,..}|Self::SoundFontLiveCommit{reply,..}=>{fail!(reply);}
-            Self::ClipEditContext(reply)=>{fail!(reply);}
-            Self::ClipEditCommit{reply,..}=>{fail!(reply);}
-            Self::RoutineEditContext{reply,..}=>{fail!(reply);}
-            Self::RoutineEditCommit{reply,..}=>{fail!(reply);}
             Self::CatalogContext{reply,..}=>{fail!(reply);}
             Self::CatalogCommit{reply,..}=>{fail!(reply);}
-            Self::RoutineReadContext(reply)=>{fail!(reply);}
             Self::RegisterImportedScore{reply,..}=>{fail!(reply);}
-            Self::RoutineDaysCommit{reply,..}=>{fail!(reply);}
             Self::PaperNavigationContext { reply, .. } => { fail!(reply); }
             Self::PaperNavigationInstall { reply, .. } => { fail!(reply); }
-            Self::HistoryAnnotation{reply,..}=>{fail!(reply);}
             Self::HistoryQueryContext{reply,..}=>{fail!(reply);}
             Self::ScoreMappingContext{reply,..}=>{fail!(reply);}
             Self::ScoreMappingInstall{reply,..}=>{fail!(reply);}
@@ -572,24 +389,13 @@ impl Request {
             Self::StorageFence(reply) => { fail!(reply); }
             Self::StorageRecoveryObserved(reply) => { fail!(reply); }
             Self::SaveFinished { result: _, replies } => { for reply in replies { reply(Err(message.into())); } }
-            Self::PlaybackAdjustment(_, _, reply) | Self::Command(_, reply) | Self::ReplayCommit(_, _, _, reply) | Self::BasicCommit(_, _, _, reply) => { fail!(reply); }
+            Self::PlaybackAdjustment(_, _, reply) | Self::Command(_, reply) | Self::BasicCommit(_, _, _, reply) => { fail!(reply); }
             #[cfg(test)]
-            Self::RoutineCommit(_, _, _, _, reply) | Self::HistoryCommit(_, _, _, _, reply)
-            | Self::ExerciseCommit(_, _, _, reply) | Self::LoadCommit(_, _, _, reply)
+            Self::ExerciseCommit(_, _, _, reply) | Self::LoadCommit(_, _, _, reply)
             | Self::ImportCommit(_, _, _, reply) => { fail!(reply); }
-            Self::BackupImportBegin { reply, .. } => { fail!(reply); }
-            Self::BackupImportFinish { reply, .. } => { if let Some(reply) = reply { fail!(reply); } }
-            Self::BackupSnapshot { reply, .. } => { fail!(reply); }
-            Self::RoutineContext { reply, .. } => { fail!(reply); }
-            Self::ReplayContext { reply, .. } => { fail!(reply); }
             Self::SongSwitchBegin {reply,..} => { fail!(reply); }
             Self::ImportContext(reply) | Self::ScopedImportContext { reply, .. } | Self::PreparationContext { reply, .. } => { fail!(reply); }
             Self::RecentSource(_, reply) => { fail!(reply); }
-            Self::HistoryReadContext { reply, .. } => { fail!(reply); }
-            Self::HistoryReadCheck(_, reply) => { fail!(reply); }
-            Self::HistoryContext { reply, .. } => { fail!(reply); }
-            #[cfg(test)]
-            Self::BasicContext(_, _, reply) => { fail!(reply); }
         }
     }
 }

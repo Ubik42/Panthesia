@@ -255,10 +255,8 @@ export function usePerformanceKeyboard({
             "metronome",
             "loop",
           ].includes(shortcut.id) &&
-          (!!c.routine ||
-            !!c.ladder?.active ||
-            (shortcut.id !== "metronome" &&
-              ["recital", "memory"].includes(c.mode)));
+          shortcut.id !== "metronome" &&
+          ["recital", "memory"].includes(c.mode);
         if (disallowed(current)) {
           setError("当前完整演奏、计划或阶梯中，请用该练习的控制操作。");
           return;
@@ -302,8 +300,6 @@ export function usePerformanceKeyboard({
         };
         if (shortcut.id.startsWith("bookmark")) {
           if (
-            !current.routine &&
-            !current.ladder?.active &&
             !["recital", "memory"].includes(current.mode)
           )
             bookmarkNavigation.current?.jump(Number(shortcut.id.slice(8)) - 1);

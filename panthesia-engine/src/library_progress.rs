@@ -23,9 +23,6 @@ pub(crate) struct Attempt {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Progress {
     last: Option<Attempt>,
-    whole: Option<Attempt>,
-    whole_count: usize,
-    comparable_whole_count: usize,
 }
 impl Attempt {
     fn from_session(s: &PracticeSession) -> Self {
@@ -61,6 +58,13 @@ impl Attempt {
         }
     }
 }
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
+}
 fn progress(
     history: &PracticeHistoryStore,
     cid: &str,
@@ -72,8 +76,6 @@ fn progress(
         .map(|h| h.sessions.as_slice())
         .unwrap_or(&[]);
     let mut last = None;
-    let mut whole = None;
-    let mut whole_count = 0;
     for session in sessions {
         check()?;
         if session.recorded_at_unix_ms > now {
@@ -84,31 +86,9 @@ fn progress(
         {
             last = Some(session);
         }
-        if crate::song_learning_evidence::complete_whole_attempt(session, now) {
-            whole_count += 1;
-            if whole.is_none_or(|s: &PracticeSession| {
-                s.recorded_at_unix_ms <= session.recorded_at_unix_ms
-            }) {
-                whole = Some(session);
-            }
-        }
-    }
-    let mut comparable_whole_count = 0;
-    if let Some(anchor) = whole {
-        for session in sessions {
-            check()?;
-            if crate::song_learning_evidence::complete_whole_attempt(session, now)
-                && crate::practice_conditions::same_attempt_conditions(anchor, session)
-            {
-                comparable_whole_count += 1;
-            }
-        }
     }
     Ok(Progress {
         last: last.map(Attempt::from_session),
-        whole: whole.map(Attempt::from_session),
-        whole_count,
-        comparable_whole_count,
     })
 }
 impl Player {
@@ -118,7 +98,7 @@ impl Player {
     ) -> Result<Value, String> {
         check()?;
         let index = library_workspace::Workspace::load(&self.data)?;
-        let now = crate::song_learning_evidence::now_ms();
+        let now = now_ms();
         let mut songs = Vec::new();
         for s in self.history.recent_songs(usize::MAX) {
             check()?;
@@ -139,84 +119,5 @@ impl Player {
         }
         check()?;
         Ok(json!({"songs":songs}))
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use panthesia_core::practice::{AttemptSummary, PracticeHands, PracticeSnapshot};
-    #[test]
-    fn library_distinguishes_recent_passages_and_full_condition_scoped_attempts() {
-        let (player, cid, _) = crate::history_loading::tests::seeded(false, false);
-        let mut history = PracticeHistoryStore::load(player.data.join("projection-history.ron"));
-        let now = crate::song_learning_evidence::now_ms();
-        let mut condition = player.history_context();
-        condition.exercise_spec = None;
-        condition.target_notes = 10;
-        condition.judged_notes = 10;
-        condition.passage_bounds = None;
-        condition.hands = "both".into();
-        condition.rounds = 0;
-        let session = |id: &str, at: u64| {
-            let mut s = PracticeSession::new(
-                PracticeSessionKind::WholeSong,
-                PracticeHands::Both,
-                1.,
-                AttemptSummary {
-                    overall: PracticeSnapshot {
-                        matched_notes: 10,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            )
-            .with_context(condition.clone())
-            .with_mode("flow");
-            s.id = Some(id.into());
-            s.recorded_at_unix_ms = at;
-            s.scope = Some("same-condition".into());
-            s.effective_tempo_bpm = Some(120);
-            s
-        };
-        let mut cases = vec![
-            session("whole-a", now - 9000),
-            session("whole-b", now - 8000),
-        ];
-        let mut right = session("whole-right", now - 7000);
-        right.hands = PracticeHands::Right;
-        right.context.as_mut().unwrap().hands = "right".into();
-        cases.push(right);
-        let mut old = session("old-whole", now - 91 * 86_400_000);
-        old.effective_tempo_bpm = Some(180);
-        cases.push(old);
-        let mut partial = session("partial-whole", now - 5000);
-        partial.context.as_mut().unwrap().judged_notes = 5;
-        cases.push(partial);
-        let mut wait = session("wait-whole", now - 4000);
-        wait.mode = Some("wait".into());
-        cases.push(wait);
-        let mut failed = session("aborted-whole", now - 3000);
-        failed.context.as_mut().unwrap().loop_restart = Some(1);
-        cases.push(failed);
-        let mut passage = session("latest-passage", now - 2000);
-        passage.kind = PracticeSessionKind::Loop {
-            start_measure: 3,
-            end_measure: 4,
-        };
-        cases.push(passage);
-        cases.push(session("future", now + 86_400_000));
-        for s in cases {
-            history.record_session(&cid, "练习投影", s).unwrap();
-        }
-        let result = progress(&history, &cid, now, &|| Ok(())).unwrap();
-        assert_eq!(result.last.as_ref().unwrap().id, "latest-passage");
-        assert_eq!(result.last.as_ref().unwrap().range, Some((3, 4)));
-        assert_eq!(result.whole.as_ref().unwrap().id, "whole-right");
-        assert_eq!(result.whole.as_ref().unwrap().hands, "right");
-        assert_eq!(result.whole_count, 3);
-        assert_eq!(result.comparable_whole_count, 1);
-        let before = std::fs::read(history.path()).unwrap();
-        assert!(progress(&history, &cid, now, &|| Err("cancelled".into())).is_err());
-        assert_eq!(std::fs::read(history.path()).unwrap(), before);
     }
 }

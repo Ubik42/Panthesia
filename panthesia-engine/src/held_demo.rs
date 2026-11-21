@@ -26,7 +26,7 @@ impl Player{
   Ok(HeldContext{baseline:current["fingerActionRevision"].as_str().ok_or("换指资料已变化")?.to_string(),content_id,source_track:track,source_index:index,start,end,notes,actions})
  }
  pub(super) fn start_held_demo(&mut self,content_id:String,track:usize,index:usize,baseline:String,rate:f64)->Result<serde_json::Value,String>{
-  if matches!(self.state.status.as_str(),"playing"|"countIn")||self.recorder.is_recording()||self.routine.is_some()||self.ladder.as_ref().is_some_and(|r|r.active)||!self.state.pressed.is_empty(){return Err("请先停止练习和录音，并松开琴键，再开始换指示范".into());}
+  if matches!(self.state.status.as_str(),"playing"|"countIn")||self.recorder.is_recording()||!self.state.pressed.is_empty(){return Err("请先停止练习和录音，并松开琴键，再开始换指示范".into());}
   let context=self.prepare_held_demo(content_id,track,index,rate)?;
   if context.baseline!=baseline{return Err("音符、分手、指法或动作已变化，请重新打开示范".into());}
   let file=self.file.as_ref().unwrap();let mut events=Vec::new();

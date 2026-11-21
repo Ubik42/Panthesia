@@ -61,8 +61,6 @@ export interface RecoveryContext {
     | "input"
     | "inputConnected"
     | "output"
-    | "routine"
-    | "ladder"
   >;
 }
 export const recoveryActionLabels: Record<RecoveryAction, string> = {
@@ -553,9 +551,7 @@ export function recoveryActionDisabled(
       : "原录音的保存状态已经改变，请查看最新结果。";
   if (
     action === "openRecording" &&
-    (context.state.recording ||
-      context.state.routine ||
-      context.state.ladder?.active)
+    context.state.recording
   )
     return "请先完成录音或当前练习计划，再打开这份录音。";
   return null;

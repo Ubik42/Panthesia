@@ -103,7 +103,7 @@ pub(crate) fn retain_from(
 mod tests {
     use super::*;
     use panthesia_core::{
-        library::{self, FingerHint, SongSidecar},
+        library::{FingerHint, SongSidecar},
         practice::PracticePart,
     };
     fn root() -> PathBuf {

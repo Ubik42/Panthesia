@@ -179,9 +179,6 @@ impl Pipeline {
     pub fn targets(&self) -> Arc<[PathBuf]> {
         self.targets.clone()
     }
-    pub fn sender(&self) -> mpsc::Sender<Request> {
-        self.tx.clone()
-    }
     pub fn new(
         data: PathBuf,
         tasks: TaskPool,

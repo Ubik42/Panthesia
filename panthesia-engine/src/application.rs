@@ -1,12 +1,10 @@
 //! Public command routing and worker admission; playback cadence belongs to the driver.
 use crate::{Command, DeviceSnapshot, Engine, Preferences, Snapshot, is_control_command};
 use crate::{
-    asset_edit, audio, demo_loading, file_locations, fingerings, history_actions,
-    history_clip_edit, history_loading, history_operations, history_reader, history_replay_loading,
-    history_source, import_pipeline, library, library_monitor, library_repairs, library_scores,
+    asset_edit, audio, demo_loading, file_locations, fingerings, history_reader,
+    import_pipeline, library, library_monitor, library_repairs, library_scores,
     library_workspace, load_pipeline, metadata_templates, package_loading,
-    practice_backup_import, practice_backup_preview, practice_catalog, practice_edit, routine_edit,
-    runtime_request, score_attachments, score_mapping, score_sources, song_switch, storage_control,
+    practice_catalog, practice_edit, runtime_request, score_attachments, score_mapping, score_sources, song_switch, storage_control,
 };
 use panthesia_core::exercise::ExerciseSpec;
 use std::{
@@ -35,11 +33,7 @@ impl Engine {
             self._data_lock.clone(),
         )
     }
-    pub fn stage_practice_backup(&self, bytes: Vec<u8>) -> Result<serde_json::Value, String> {
-        self.practice_backup_preview_task(practice_backup_preview::PreviewInput::Bytes(bytes))
-    }
     pub fn command(&self, command: Command) -> Result<serde_json::Value, String> {
-        let command = crate::practice_policy::normalize(command)?;
         let recording_note = matches!(command, Command::Note { .. })
             && self.state.lock().is_ok_and(|state| state.recording);
         if !recording_note {
@@ -55,9 +49,6 @@ impl Engine {
                 | Command::InspectNotation { .. }
         ) {
             return self.repertoire_task(command);
-        }
-        if matches!(&command, Command::Feedback) {
-            return self.feedback_task();
         }
         if matches!(
             &command,
@@ -161,42 +152,8 @@ impl Engine {
                 notes,
             });
         }
-        if let Command::AnnotateHistory {
-            content_id,
-            id,
-            note,
-            teacher,
-            next,
-            expected,
-        } = command
-        {
-            return self.annotate_history_background(history_reader::AnnotationInput {
-                engine_id: None,
-                content_id,
-                id,
-                note,
-                teacher,
-                next,
-                expected,
-            });
-        }
-        if matches!(&command, Command::PassageCatalog { .. }) {
-            return self.read_routine_sources(command);
-        }
         if practice_catalog::edits(&command).is_some() || practice_catalog::reads(&command) {
             return self.catalog_task(command, None, None);
-        }
-        if routine_edit::supports(&command) {
-            return self.edit_routine_registry(command);
-        }
-        if let Command::EditRoutine { request } = command {
-            return self.edit_routine_checked(request);
-        }
-        if let Command::Routines { day } = command {
-            return self.read_routines(day);
-        }
-        if history_clip_edit::supports(&command) {
-            return self.history_clip_task(command);
         }
         if history_reader::supports(&command) {
             return self.history_read_task(command, None);
@@ -233,22 +190,6 @@ impl Engine {
                 return serde_json::to_value(self.release_library_open(&id)?)
                     .map_err(|error| error.to_string());
             }
-            Command::StartHistoryOperation { request } => {
-                return serde_json::to_value(self.start_history_operation(request)?)
-                    .map_err(|error| error.to_string());
-            }
-            Command::ReadHistoryOperation { id, metadata_only } => {
-                return serde_json::to_value(self.read_history_operation(&id, metadata_only)?)
-                    .map_err(|error| error.to_string());
-            }
-            Command::CancelHistoryOperation { id } => {
-                return serde_json::to_value(self.cancel_history_operation(&id)?)
-                    .map_err(|error| error.to_string());
-            }
-            Command::ReleaseHistoryOperation { id } => {
-                return serde_json::to_value(self.release_history_operation(&id)?)
-                    .map_err(|error| error.to_string());
-            }
             Command::ExportMidi => return self.export_midi_task(),
             Command::DismissStartupWarning { id } => {
                 let dismissed = self.startup.dismiss_warning(&id)?;
@@ -282,57 +223,16 @@ impl Engine {
             Command::ExportPackage => return self.export_package_task(false),
             Command::ExportPackageFile => return self.export_package_task(true),
             Command::Recording { active: false } => return self.save_recording_task(),
-            Command::Save => return Err("评分保存已移至独立分支".into()),
             Command::RetrySave => return self.retry_settings_save(None),
             Command::RetrySettingsSave { expected } => {
                 return self.retry_settings_save(Some(expected));
             }
             Command::ReadStorageStatus => return self.read_storage_status(),
-            Command::ApplyPracticeBackup {
-                backup,
-                selection,
-                policy,
-            } => {
-                return self.practice_backup_import_task(
-                    practice_backup_import::Input::Decoded(backup),
-                    selection,
-                    policy,
-                );
-            }
-            Command::ImportStagedPracticeBackup {
-                token,
-                selection,
-                policy,
-            } => {
-                return self.practice_backup_import_task(
-                    practice_backup_import::Input::Staged(token),
-                    selection,
-                    policy,
-                );
-            }
-            Command::InspectPracticeBackup { backup } => {
-                return self.practice_backup_preview_task(
-                    practice_backup_preview::PreviewInput::Decoded(backup),
-                );
-            }
-            Command::PracticeBackupSnapshot { selection } => {
-                return self.practice_backup_task(selection, false);
-            }
-            Command::ExportPracticeBackup { selection } => {
-                return self.practice_backup_task(selection, true);
-            }
             Command::Generate { spec } => return self.exercise_task(spec),
             Command::OpenPassage { id } => {
                 return self.song_switch_task(
                     song_switch::Input::Practice(Command::OpenPassage { id }),
                     "打开保存的练习段",
-                    None,
-                );
-            }
-            Command::StartLadder { id, resume } => {
-                return self.song_switch_task(
-                    song_switch::Input::Practice(Command::StartLadder { id, resume }),
-                    "打开速度阶梯",
                     None,
                 );
             }
@@ -342,99 +242,6 @@ impl Engine {
                 kind,
                 id,
             } => return self.open_library_score_task(path, content_id, kind, id),
-            Command::OpenRoutineItem {
-                routine_id,
-                day,
-                item_id,
-                resume,
-            } => return self.routine_task(routine_id, day, item_id, resume),
-            Command::StartHistoryReplay {
-                content_id,
-                id,
-                source,
-                rate,
-                request_id,
-            } => {
-                return self
-                    .history_replay_task(content_id, id, source, rate, request_id, None, None);
-            }
-            Command::StartHistoryReplayRange {
-                content_id,
-                id,
-                source,
-                rate,
-                start,
-                end,
-                request_id,
-            } => {
-                return self.history_replay_task(
-                    content_id,
-                    id,
-                    source,
-                    rate,
-                    request_id,
-                    Some((start, end)),
-                    None,
-                );
-            }
-            Command::PlayHistorySource { request } => {
-                request.source.require_performance()?;
-                let range = request
-                    .selection
-                    .map(|selection| (selection.start, selection.end));
-                return self.history_replay_task(
-                    request.source.content_id.clone(),
-                    request.source.id.clone(),
-                    request.sound.name().into(),
-                    request.rate,
-                    Some(request.request_id),
-                    range,
-                    Some(request.source),
-                );
-            }
-            Command::PerformHistoryAction { request } => {
-                request.source.validate()?;
-                if matches!(
-                    request.action,
-                    history_source::HistoryActionKind::PracticeRange { .. }
-                ) {
-                    request.source.require_performance()?;
-                }
-                let action = request.action.action();
-                return self.history_task_checked(
-                    request.source.content_id.clone(),
-                    request.source.id.clone(),
-                    action,
-                    Some(request.source),
-                );
-            }
-            Command::HistoryOpen {
-                content_id,
-                id,
-                restore,
-            } => {
-                return self.history_task(content_id, id, history_actions::Action::Open { restore });
-            }
-            Command::HistoryScoreReview { content_id, id } => {
-                return self.history_task(content_id, id, history_actions::Action::ScoreReview);
-            }
-            Command::HistoryPracticeRange {
-                content_id,
-                id,
-                reference,
-                before,
-                after,
-            } => {
-                return self.history_task(
-                    content_id,
-                    id,
-                    history_actions::Action::PracticeRange {
-                        reference,
-                        before,
-                        after,
-                    },
-                );
-            }
             Command::Load { path, title } => {
                 return self.load_task(load_pipeline::Input::File {
                     path,
@@ -535,133 +342,6 @@ impl Engine {
             }
             command => return self.dispatch(command),
         }
-    }
-    pub(super) fn routine_task(
-        &self,
-        routine_id: String,
-        day: String,
-        item_id: String,
-        resume: bool,
-    ) -> Result<serde_json::Value, String> {
-        let (reply, receiver) = mpsc::sync_channel(1);
-        self.tx
-            .send(runtime_request::Request::RoutineContext {
-                routine_id,
-                day,
-                item_id,
-                resume,
-                reply,
-            })
-            .map_err(|_| "音乐引擎已关闭")?;
-        let (origin, context) = receiver
-            .recv_timeout(Duration::from_secs(15))
-            .map_err(|_| "读取计划项目超时")??;
-        let engine = self.clone();
-        self.tasks.run(
-            "准备计划练习项目",
-            Some(context.item.content_id.clone()),
-            move |token| {
-                engine.commit_song_switch(origin, song_switch::Input::Routine(context), token)
-            },
-        )
-    }
-    pub(super) fn history_replay_task(
-        &self,
-        content_id: String,
-        id: String,
-        source: String,
-        rate: f64,
-        request_id: Option<String>,
-        range: Option<(f64, f64)>,
-        expected: Option<history_source::HistorySource>,
-    ) -> Result<serde_json::Value, String> {
-        let (reply, receiver) = mpsc::sync_channel(1);
-        self.tx
-            .send(runtime_request::Request::ReplayContext {
-                content_id: content_id.clone(),
-                id,
-                source,
-                rate,
-                request_id,
-                reply,
-            })
-            .map_err(|_| "音乐引擎已关闭")?;
-        let mut context = receiver
-            .recv_timeout(Duration::from_secs(15))
-            .map_err(|_| "读取历史回放条件超时")??;
-        if let Some(source) = &expected {
-            source.check_context(&context.history)?;
-        }
-        context.history.expected = expected;
-        context.range = range;
-        let engine = self.clone();
-        self.tasks
-            .run("准备历史声音回放", Some(content_id), move |token| {
-                let fingerprint = blake3::hash(
-                    &serde_json::to_vec(&(&context.history.id, &context.history.fingerprint))
-                        .map_err(|e| e.to_string())?,
-                )
-                .to_hex()
-                .to_string();
-                token.source(context.history.content_id.clone(), fingerprint)?;
-                token.stage("computing")?;
-                let prepared = history_replay_loading::Prepared::read(&engine.data, &context)?;
-                token.check()?;
-                let (reply, receiver) = mpsc::sync_channel(1);
-                engine
-                    .tx
-                    .send(runtime_request::Request::ReplayCommit(
-                        context, prepared, token, reply,
-                    ))
-                    .map_err(|_| "音乐引擎已关闭")?;
-                receiver.recv().map_err(|_| "音乐引擎已关闭")?
-            })
-    }
-    pub(super) fn history_task(
-        &self,
-        content_id: String,
-        id: String,
-        action: history_actions::Action,
-    ) -> Result<serde_json::Value, String> {
-        self.history_task_checked(content_id, id, action, None)
-    }
-    pub(super) fn history_task_checked(
-        &self,
-        content_id: String,
-        id: String,
-        action: history_actions::Action,
-        expected: Option<history_source::HistorySource>,
-    ) -> Result<serde_json::Value, String> {
-        let (origin, context) =
-            self.capture_history_action(content_id.clone(), id, action, expected, None)?;
-        let engine = self.clone();
-        self.tasks
-            .run(action.label(), Some(content_id), move |token| {
-                engine.commit_song_switch(origin, song_switch::Input::History(context), token)
-            })
-    }
-    pub(crate) fn capture_history_action(
-        &self,
-        content_id: String,
-        id: String,
-        action: history_actions::Action,
-        expected: Option<history_source::HistorySource>,
-        current: Option<history_operations::HistoryOperationOrigin>,
-    ) -> Result<(import_pipeline::Origin, history_loading::Context), String> {
-        let (reply, receiver) = mpsc::sync_channel(1);
-        self.tx
-            .send(runtime_request::Request::HistoryContext {
-                content_id,
-                id,
-                action,
-                expected,
-                current,
-                reply,
-            })
-            .map_err(|_| "音乐引擎已关闭")?;
-        receiver
-            .recv_timeout(Duration::from_secs(15))
-            .map_err(|_| "读取历史练习条件超时".to_owned())?
     }
     pub(super) fn exercise_task(&self, spec: ExerciseSpec) -> Result<serde_json::Value, String> {
         self.song_switch_task(
@@ -1086,9 +766,6 @@ impl Engine {
                 | Command::ImportPackage { .. }
                 | Command::ExportPackage
                 | Command::ExportPackageFile
-                | Command::PracticeBackupSnapshot { .. }
-                | Command::InspectPracticeBackup { .. }
-                | Command::ApplyPracticeBackup { .. }
                 | Command::PendingMetadataHistory
                 | Command::ClaimPendingMetadataHistory { .. }
                 | Command::ManageLibraryScore { .. }

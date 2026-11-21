@@ -217,11 +217,7 @@ export async function performRecoveryAction(
         fresh.recordingUnsaved ||
         fresh.recordingPath !== origin.state.recordingPath ||
         fresh.recording ||
-        live.recording ||
-        fresh.routine ||
-        live.routine ||
-        fresh.ladder?.active ||
-        live.ladder?.active
+        live.recording
       )
         throw new Error(
           "录音或当前练习的状态已经改变，请查看最新结果后再打开回放。",
@@ -234,8 +230,6 @@ export async function performRecoveryAction(
         beforeOpen.stateOrder?.engineId !== fresh.stateOrder?.engineId ||
         beforeOpen.recording ||
         beforeOpen.recordingUnsaved ||
-        beforeOpen.routine ||
-        beforeOpen.ladder?.active ||
         destination.commandPending()
       )
         throw new Error(

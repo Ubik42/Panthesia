@@ -222,7 +222,7 @@ impl Engine {
             return Err("正在保存并关闭程序，请等待完成".into());
         }
         storage_control::check_command(&self.storage_busy, &request.command)?;
-        if matches!(request.command, Command::OpenPassage { .. } | Command::StartLadder { .. }) {
+        if matches!(request.command, Command::OpenPassage { .. }) {
             let label = if matches!(request.command, Command::OpenPassage { .. }) {"打开保存的练习段"} else {"打开速度阶梯"};
             return self.song_switch_task(crate::song_switch::Input::ScopedPractice {
                 command:request.command,scope:Scope{engine_id:request.engine_id.clone(),content_id:request.content_id,score_revision:request.score_revision,annotation_revision:request.annotation_revision},
@@ -492,17 +492,12 @@ impl Player {
     ) -> Result<asset_edit::Context, String> {
         self.check_practice_scope(scope.as_ref())?;
         if strict
-            && (self.routine.is_some()
-                || self.ladder.as_ref().is_some_and(|run| run.active)
-                || matches!(self.state.status.as_str(), "playing" | "countIn")
+            && (matches!(self.state.status.as_str(), "playing" | "countIn")
                 || !self.state.pressed.is_empty())
         {
             return Err("请先暂停演奏、结束活动计划并松开琴键，再保存这项指法编辑".into());
         }
         if kind.resets() {
-            if self.routine.is_some() || self.ladder.as_ref().is_some_and(|run| run.active) {
-                return Err("请先结束当前计划项目或速度阶梯，再修改练习条件".into());
-            }
             self.check_unsaved_switch()?;
         }
         let mut context = self.begin_asset_edit(id, false, true, true)?;

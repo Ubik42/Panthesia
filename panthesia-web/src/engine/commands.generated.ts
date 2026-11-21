@@ -206,15 +206,6 @@ export interface PreparationOrigin {
 export const PreparationPhaseValues = ["queued", "running", "committing", "done", "released", "cancelled", "error", "unconfirmed"] as const;
 export type PreparationPhase = typeof PreparationPhaseValues[number];
 
-export interface HistoryOperationRequest {
-  "engineId": string;
-  "id": string;
-  "createdAtMs": number;
-  "operation": HistoryActionRequest;
-  "origin": PreparationOrigin;
-  "measure"?: number | null;
-}
-
 export interface LibraryOpenRequest {
   "engineId": string;
   "id": string;
@@ -277,190 +268,6 @@ export interface LibraryOpenReceipt {
   "error": string | null;
   "warning": string | null;
   "cancellable": boolean;
-}
-
-export interface HistoryOperationResult {
-  "historyPrepared": HistoryPrepared;
-  "restoreWarning": string | null;
-  "scoreReview": HistoryScoreReview | null;
-  "scoreFocus": HistoryScoreTarget | null;
-  "paperFocus": HistoryPaperTarget | null;
-}
-
-export interface HistoryOperationReceipt {
-  "request": HistoryOperationRequest;
-  "phase": PreparationPhase;
-  "stage": string;
-  "taskId": string | null;
-  "result": HistoryOperationResult | null;
-  "hasResult": boolean;
-  "error": string | null;
-  "warning": string | null;
-  "cancellable": boolean;
-}
-
-export interface HistoryScoreTarget {
-  "contentId": string;
-  "scoreRevision": number;
-  "historyId": string;
-  "reference": number;
-  "track": number;
-  "index": number;
-  "pitch": number;
-  "measure": number;
-  "kind": string;
-}
-
-export interface HistoryReviewNote {
-  "reference": number;
-  "track": number;
-  "index": number | null;
-  "pitch": number;
-  "measure": number;
-  "songTime": number;
-  "at": number;
-  "end": number;
-  "kind": string;
-  "timingKind": string | null;
-  "velocityDifference": number | null;
-  "velocityLimit": number | null;
-  "offsetMs": number | null;
-  "referenceVelocity": number;
-  "actualVelocity": number | null;
-}
-
-export interface HistoryScoreReview {
-  "source"?: HistorySource;
-  "contentId": string;
-  "historyId": string;
-  "scoreRevision": number;
-  "duration": number;
-  "recordedAt": number;
-  "title": string;
-  "truncated": boolean;
-  "exact": boolean;
-  "wrongNotes": number | null;
-  "notes": Array<HistoryReviewNote>;
-  "measures": Array<PerformanceMeasureSpan> | null;
-}
-
-export interface HistoryPaperTarget {
-  "contentId": string;
-  "historyId": string;
-  "reference": number;
-  "measure": number;
-  "track": number;
-  "pitch": number;
-  "songTime": number;
-  "startMeasure": number;
-  "endMeasure": number;
-  "index"?: number;
-  "noteAnchor"?: NoteAnchor;
-}
-
-export interface PerformanceInput {
-  "at": number;
-  "judgedAt": number;
-  "songTime": number;
-  "bytes": [number, number, number];
-  "synthetic": boolean;
-}
-
-export interface PerformanceReference {
-  "at": number;
-  "end": number;
-  "pitch": number;
-  "velocity": number;
-  "measure": number;
-  "songTime": number;
-  "track": number;
-}
-
-export interface PerformanceMeasureSpan {
-  "measure": number;
-  "occurrence": number;
-  "at": number;
-  "end": number;
-  "songStart": number;
-  "songEnd": number;
-  "measureStart": number;
-  "measureEnd": number;
-}
-
-export interface PerformanceDecision {
-  "reference": number | null;
-  "input": number | null;
-  "kind": string;
-  "offsetMs": number | null;
-  "measure": number | null;
-}
-
-export interface PerformanceArchive {
-  "version": number;
-  "contentId": string;
-  "id": string;
-  "duration": number;
-  "inputs": Array<PerformanceInput>;
-  "references": Array<PerformanceReference>;
-  "referencePedals": Array<PerformanceInput>;
-  "truncated": boolean;
-  "judgments"?: Array<PerformanceDecision>;
-  "measures"?: Array<PerformanceMeasureSpan>;
-}
-
-export const PerformancePedalEvidenceValues = ["paired", "noReferenceEvents", "noActualEvents", "beforeReferenceEvent", "beforeActualEvent"] as const;
-export type PerformancePedalEvidence = typeof PerformancePedalEvidenceValues[number];
-
-export interface PerformanceNoteExpression {
-  "velocityDelta": number;
-  "referencePedalDown": boolean | null;
-  "actualPedalDown": boolean | null;
-  "pedalSame": boolean | null;
-  "pedalEvidence": PerformancePedalEvidence;
-}
-
-export interface HistoryPerformanceRead extends PerformanceArchive {
-  "source": HistorySource;
-  "expressionReview": Array<PerformanceNoteExpression | null>;
-}
-
-export interface HistorySource {
-  "contentId": string;
-  "id": string;
-  "conditionsRevision": string;
-  "performanceRevision"?: string | null;
-}
-
-export type HistoryActionKind =
-  | { "kind": "open"; "restore": boolean; }
-  | { "kind": "scoreReview" }
-  | { "kind": "practiceRange"; "reference": number; "before": number; "after": number; };
-
-export interface HistoryActionRequest {
-  "source": HistorySource;
-  "action": HistoryActionKind;
-}
-
-export interface HistoryPrepared {
-  "source": HistorySource;
-  "contentId": string;
-  "scoreRevision": number;
-}
-
-export interface ReplaySelection {
-  "start": number;
-  "end": number;
-}
-
-export const ReplaySoundValues = ["actual", "reference"] as const;
-export type ReplaySound = typeof ReplaySoundValues[number];
-
-export interface HistoryReplayRequest {
-  "source": HistorySource;
-  "sound": ReplaySound;
-  "rate": number;
-  "selection"?: ReplaySelection | null;
-  "requestId": string;
 }
 
 export interface StorageRecovery {
@@ -839,106 +646,9 @@ export interface PendingMetadataPage {
   "limit": number;
 }
 
-export interface RoutineVersion {
-  "id": string;
-  "day": string | null;
-  "revision": string;
-}
-
-export interface RoutineEditRequest {
-  "routineId": string;
-  "day"?: string | null;
-  "expected": string;
-  "change": RoutineChange;
-}
-
-export type RoutineChange =
-  | { "kind": "metadata"; "name": string; "notes": string; }
-  | { "kind": "item"; "id": string; "contentId"?: string | null; "source"?: string | null; "sourceId"?: string | null; "title": string; "notes": string; "goal": RoutineGoal; }
-  | { "kind": "moveItem"; "itemId": string; "direction": number; }
-  | { "kind": "removeItem"; "itemId": string; }
-  | { "kind": "schedule"; "schedule"?: RoutineSchedule | null; }
-  | { "kind": "remove" }
-  | { "kind": "copy"; "requestId": string; "name": string; "notes": string; };
-
-export interface HistoryPageRequest {
-  "contentId"?: string | null;
-  "query"?: string;
-  "mode"?: string;
-  "hands"?: string;
-  "range"?: string;
-  "days"?: number;
-  "from"?: number | null;
-  "to"?: number | null;
-  "offset"?: number;
-  "limit"?: number;
-}
-
 export interface ReadScope {
   "channel": string;
   "sequence": number;
-}
-
-export interface HistoryCalendar {
-  "from": number;
-  "to": number;
-  "contentId"?: string;
-  "intervals": Array<CalendarInterval>;
-  "saves": Array<CalendarSave>;
-  "totalMs": number;
-  "legacySessions": number;
-  "legacyTimedMs": number;
-  "untrackedMs": number;
-  "earliestIntervalAt": number | null;
-  "coverage": string;
-}
-
-export interface CalendarInterval {
-  "contentId": string;
-  "title": string;
-  "saveId": string;
-  "from": number;
-  "to": number;
-  "runningMs": number;
-}
-
-export interface CalendarSave {
-  "contentId": string;
-  "saveId": string;
-  "savedAt": number;
-}
-
-export interface HistoryPage {
-  "entries": Array<HistoryListEntry>;
-  "total": number;
-  "offset": number;
-  "contentId"?: string;
-}
-
-export interface HistoryListEntry {
-  "id": string;
-  "contentId": string;
-  "title": string;
-  "path": string | null;
-  "recordedAt": number;
-  "playingMs": number | null;
-  "speed": number;
-  "hands": PracticeHands;
-  "annotation": PracticeAnnotation | null;
-  "mode": string | null;
-  "scope": string | null;
-  "range": [number, number] | null;
-  "loop": boolean;
-  "exactPassage": boolean;
-  "score": PracticeSnapshot;
-  "tempo": number | null;
-  "restorable": boolean;
-  "coverage": HistoryCoverage | null;
-}
-
-export interface HistoryCoverage {
-  "target": number;
-  "judged": number;
 }
 
 export const PracticeHandsValues = ["Both", "Right", "Left", "Custom", "Unspecified"] as const;
@@ -970,73 +680,6 @@ export interface ReplayClip {
   "updatedAtUnixMs": number;
   "performanceRevision"?: string;
 }
-
-export interface ReplayClipRead {
-  "source": HistorySource;
-  "contentId": string;
-  "id": string;
-  "clips": Array<ReplayClip>;
-  "revision": string;
-  "writeSettled": boolean;
-}
-
-export interface BackupImportRequest {
-  "engineId": string;
-  "id": string;
-  "createdAtMs": number;
-  "token": string;
-  "selection": BackupSelection;
-  "policy": BackupPolicy;
-}
-
-export interface BackupImportQuery {
-  "engineId": string;
-  "id": string;
-}
-
-export const BackupPolicyValues = ["keep", "backup"] as const;
-export type BackupPolicy = typeof BackupPolicyValues[number];
-
-export interface BackupSelection {
-  "plans": boolean;
-  "records": boolean;
-  "presets": boolean;
-  "days": number;
-}
-
-export interface BackupImportResult {
-  "metadataHistoryAdded": number;
-  "metadataHistoryDuplicates": number;
-  "metadataHistoryUnmatched": number;
-  "metadataHistoryAmbiguous": number;
-  "metadataHistoryPendingAdded": number;
-  "addedTimeEntries": number;
-  "importedPerformances": number;
-  "duplicatePerformances": number;
-  "keptPerformances": number;
-  "replacedPerformances": number;
-  "trimmedPerformances": number;
-  "learningChanged": number;
-  "addedRecords": number;
-  "duplicateRecords": number;
-  "renamedRecords": number;
-  "trimmedRecords": number;
-  "restorePoint": string;
-}
-
-export interface BackupImportReceipt {
-  "request": BackupImportRequest;
-  "phase": BackupImportPhase;
-  "stage": string;
-  "taskId": string | null;
-  "result": BackupImportResult | null;
-  "error": string | null;
-  "warning": string | null;
-  "cancellable": boolean;
-}
-
-export const BackupImportPhaseValues = ["queued", "running", "committing", "done", "cancelled", "error", "unconfirmed"] as const;
-export type BackupImportPhase = typeof BackupImportPhaseValues[number];
 
 export const MediaExportKindValues = ["midi", "practiceMidi", "package"] as const;
 export type MediaExportKind = typeof MediaExportKindValues[number];
@@ -1943,30 +1586,6 @@ export interface TrackSound {
   "program"?: number | null;
 }
 
-export interface SpeedLadderPlan {
-  "startPercent": number;
-  "targetPercent": number;
-  "stepPercent": number;
-  "passesRequired": number;
-  "accuracyPercent": number;
-  "onTimePercent": number | null;
-  "failuresBeforeStepBack": number;
-  "attemptLimit": number;
-}
-
-export interface SpeedLadderProgress {
-  "stage": number;
-  "successStreak": number;
-  "failureStreak": number;
-  "totalRounds": number;
-  "batchRounds": number;
-  "completed": boolean;
-  "limited": boolean;
-  "lastResult": string;
-  "lastAccuracy": number | null;
-  "lastOnTime": number | null;
-}
-
 export const PracticeTrackModeValues = ["Mute", "Auto", "Human"] as const;
 export type PracticeTrackMode = typeof PracticeTrackModeValues[number];
 
@@ -1974,131 +1593,6 @@ export interface PracticeTrackSetup {
   "track_id": number;
   "mode": PracticeTrackMode;
   "visible": boolean;
-}
-
-export interface ExpressionGoal {
-  "velocityDifference"?: number | null;
-  "noteVelocityDifference"?: number | null;
-  "notePedalMismatchCount"?: number | null;
-  "contourPercent"?: number | null;
-  "pedalOffsetMs"?: number | null;
-}
-
-export interface ExpressionGoalSnapshot {
-  "contentId": string;
-  "goal": ExpressionGoal | null;
-  "writeSettled": boolean;
-}
-
-export interface AnnotationRead {
-  "contentId": string;
-  "id": string;
-  "annotation": PracticeAnnotation | null;
-  "writeSettled": boolean;
-}
-
-export interface Draft {
-  "stage": string;
-  "goal": string;
-  "due": string | null;
-  "weeklyMinutes": number | null;
-  "targetBpm": number | null;
-}
-
-export interface Learning extends Draft {
-  "updatedAt": number;
-  "title": string;
-  "transitions": Array<Transition>;
-}
-
-export interface Transition {
-  "stage": string;
-  "at": number;
-  "plan"?: Draft;
-  "evidence"?: Evidence;
-}
-
-export interface LearningRead {
-  "contentId": string;
-  "value": Learning | null;
-  "writeSettled": boolean;
-}
-
-export interface NoteVelocityEvidence {
-  "referenceNotes": number;
-  "matchedNotes": number;
-  "missingNotes": number;
-  "maxAbsDifference": number | null;
-}
-
-export interface NotePedalEvidence {
-  "referenceNotes": number;
-  "matchedNotes": number;
-  "pairedStateNotes": number;
-  "missingNotes": number;
-  "unknownStateNotes": number;
-  "mismatchCount": number;
-}
-
-export interface WeekEvidence {
-  "from": number;
-  "to": number;
-  "runningMs": number;
-  "targetMinutes": number | null;
-  "met": boolean;
-  "reasons": Array<string>;
-}
-
-export interface WholeAttempt {
-  "sessionId": string;
-  "recordedAt": number;
-  "scope": string;
-  "accuracyPercent": number;
-  "effectiveBpm": number | null;
-  "meetsTargetBpm": boolean;
-  "readable": boolean;
-}
-
-export interface WholeEvidence {
-  "recent": Array<WholeAttempt>;
-  "comparableCount": number;
-  "targetBpmMet": boolean;
-  "reasons": Array<string>;
-}
-
-export interface RoutineItemEvidence {
-  "routineId": string;
-  "day": string;
-  "itemId": string;
-  "title": string;
-  "targetKind": string;
-  "completed": boolean;
-  "skipped": boolean;
-  "sessionIds": Array<string>;
-  "readableSessionIds": Array<string>;
-}
-
-export interface RoutineEvidence {
-  "items": Array<RoutineItemEvidence>;
-  "totalCount": number;
-  "completedCount": number;
-  "reasons": Array<string>;
-}
-
-export interface HistoricalRef {
-  "sessionId": string;
-  "readable": boolean;
-}
-
-export interface Evidence {
-  "contentId": string;
-  "generatedAt": number;
-  "targetBpm": number | null;
-  "week": WeekEvidence;
-  "wholeSong": WholeEvidence;
-  "routines": RoutineEvidence;
-  "historicalRefs"?: Array<HistoricalRef>;
-  "reasons": Array<string>;
 }
 
 export interface TickRange {
@@ -2156,7 +1650,6 @@ export interface SessionSettings {
   "latency": number;
   "rounds": number;
   "hands": string;
-  "adaptive": boolean;
 }
 
 export interface PassagePreset {
@@ -2179,38 +1672,10 @@ export interface ExercisePreset {
   "spec": ExerciseSpec;
 }
 
-export interface LadderPreset {
-  "practice"?: PracticeEdition;
-  "id": string;
-  "name": string;
-  "start": number;
-  "end": number;
-  "grid": string;
-  "scope": string;
-  "exerciseSpec": ExerciseSpec | null;
-  "settings": SessionSettings;
-  "plan": SpeedLadderPlan;
-  "expression"?: ExpressionGoal;
-}
-
-export interface LadderRun {
-  "preset": LadderPreset;
-  "progress": SpeedLadderProgress;
-  "active": boolean;
-}
-
 export interface PassageCatalog {
   "contentId": string;
   "grid": string;
   "passages": Array<PassagePreset>;
-  "catalogRevision": string;
-  "writeSettled"?: boolean;
-}
-
-export interface LadderCatalog {
-  "presets": Array<LadderPreset>;
-  "runs": Array<LadderRun>;
-  "current": LadderRun | null;
   "catalogRevision": string;
   "writeSettled"?: boolean;
 }
@@ -2280,199 +1745,6 @@ export interface HandSuggestionRead {
   "undoAvailable": boolean;
 }
 
-export interface RoutineGoal {
-  "expression"?: ExpressionGoal | null;
-  "passes": number;
-  "accuracy": number;
-  "onTime"?: number | null;
-  "consecutive": boolean;
-  "attemptLimit": number;
-}
-
-export interface PassageSequenceEntry {
-  "id": string;
-  "copies": number;
-  "contentId"?: string | null;
-}
-
-export interface RoutineSchedule {
-  "enabled": boolean;
-  "weekdays": Array<number>;
-  "start": string;
-  "end"?: string | null;
-  "skipDates"?: Array<string>;
-  "extraDates"?: Array<string>;
-}
-
-export type RoutineTarget =
-  | { "kind": "whole" }
-  | { "kind": "passage"; "start": number; "end": number; }
-  | { "kind": "precisePassage"; "range": TickRange; }
-  | { "kind": "scorePassage"; "range": ScoreRange; }
-  | { "kind": "ladder"; "preset": LadderPreset; };
-
-export interface RoutineItem {
-  "practice"?: PracticeEdition;
-  "id": string;
-  "title": string;
-  "notes": string;
-  "contentId": string;
-  "songTitle": string;
-  "path": string | null;
-  "exercise": ExerciseSpec | null;
-  "grid": string;
-  "scope": string;
-  "settings": SessionSettings;
-  "speed": number;
-  "target": RoutineTarget;
-  "goal": RoutineGoal;
-}
-
-export interface PracticeRoutine {
-  "schedule"?: RoutineSchedule;
-  "id": string;
-  "name": string;
-  "notes": string;
-  "items": Array<RoutineItem>;
-}
-
-export interface RoutineProgress {
-  "passed": number;
-  "attempts": number;
-  "batchAttempts": number;
-  "streak": number;
-  "completed": boolean;
-  "skipped": boolean;
-  "limited": boolean;
-  "lastResult": string;
-  "bestAccuracy": number | null;
-  "sessionIds": Array<string>;
-  "ladder": SpeedLadderProgress | null;
-}
-
-export interface RoutineRun {
-  "day": string;
-  "routine": PracticeRoutine;
-  "progress": Record<string, RoutineProgress>;
-  "lastItem": string | null;
-}
-
-export const RoutineKindValues = ["whole", "passage", "ladder"] as const;
-export type RoutineKind = typeof RoutineKindValues[number];
-
-export interface RoutineState {
-  "routineId": string;
-  "day": string;
-  "itemId": string;
-  "title": string;
-  "itemTitle": string;
-  "notes": string;
-  "index": number;
-  "total": number;
-  "kind": RoutineKind;
-  "goal": RoutineGoal;
-  "progress": RoutineProgress;
-  "nextItemId": string | null;
-}
-
-export interface RoutineList {
-  "versions": Array<RoutineVersion>;
-  "plans": Array<PracticeRoutine>;
-  "runs": Array<RoutineRun>;
-  "due": Array<string>;
-  "active": RoutineState | null;
-}
-
-export interface RoutineSummary {
-  "id": string;
-  "name": string;
-}
-
-export interface RoutineSourceEntry {
-  "id": string;
-  "name": string;
-}
-
-export interface RoutineSourceOptions {
-  "contentId": string;
-  "passages": Array<RoutineSourceEntry>;
-  "ladders": Array<LadderPreset>;
-}
-
-export interface ExpressionMetric {
-  "contourPercent": number | null;
-  "contourSteps": number;
-  "samples": number;
-  "meanDifference": number | null;
-  "pedalOffsetMs": number | null;
-  "pedalAbsoluteOffsetMs": number | null;
-  "pedalDeviationMs": number | null;
-  "referenceTransitions": number;
-  "correspondenceFailures": number;
-  "calibratedLegacy": number;
-}
-
-export const SuggestionKindValues = ["accuracy", "rhythm", "dynamics", "pedal", "review", "passageReview"] as const;
-export type SuggestionKind = typeof SuggestionKindValues[number];
-
-export interface Suggestion {
-  "id": string;
-  "title": string;
-  "measure": number;
-  "accuracy": number;
-  "kind": SuggestionKind;
-  "timing": RhythmMetric | null;
-  "attempts": number;
-  "judged": number;
-  "sourceAt": number;
-  "sourceSpeed": number;
-  "sourceMode": string;
-  "item": RoutineItem;
-  "expression": ExpressionMetric | null;
-  "range": string | null;
-}
-
-export interface RhythmMetric {
-  "onTime": number;
-  "samples": number;
-  "offsetMs": number;
-  "deviationMs": number;
-}
-
-export interface RecommendationPage {
-  "suggestions": Array<Suggestion>;
-  "note": string;
-  "dueTotal"?: number;
-  "eligibleTotal"?: number;
-  "missingTotal"?: number;
-  "passageDueTotal"?: number;
-  "passageUnavailableTotal"?: number;
-  "revision"?: string;
-  "nextOffset"?: number;
-  "hasMore"?: boolean;
-}
-
-export interface RecommendationAccepted {
-  "id": string;
-  "added": number;
-  "skipped": number;
-  "existing"?: boolean;
-}
-
-export interface WeakPracticeEdit {
-  "id": string;
-  "speed": number;
-  "passes": number;
-  "accuracy": number;
-  "onTime"?: number | null;
-}
-
-export type HistoryOperationOrigin = PreparationOrigin;
-
-export type HistoryOperationPhase = PreparationPhase;
-
-export const HistoryOperationPhaseValues = PreparationPhaseValues;
-
 export type EngineCommand =
   | { type: "practiceVariant"; "content_id": string; "score_revision": number; "value": Variant }
   | { type: "exportPracticeVariant" }
@@ -2491,10 +1763,6 @@ export type EngineCommand =
   | { type: "readLibraryOpen"; "id": string; "metadata_only"?: boolean }
   | { type: "cancelLibraryOpen"; "id": string }
   | { type: "releaseLibraryOpen"; "id": string }
-  | { type: "startHistoryOperation"; "request": HistoryOperationRequest }
-  | { type: "readHistoryOperation"; "id": string; "metadata_only"?: boolean }
-  | { type: "cancelHistoryOperation"; "id": string }
-  | { type: "releaseHistoryOperation"; "id": string }
   | { type: "previewLegacyExerciseTracks"; "content_id": string }
   | { type: "applyLegacyExerciseTracks"; "content_id": string; "fingerprint": string; "restore_conditions"?: boolean }
   | { type: "previewLegacyExerciseHistory"; "content_id": string }
@@ -2518,22 +1786,14 @@ export type EngineCommand =
   | { type: "seekBeat"; "measure": number; "beat": number }
   | { type: "stepBeat"; "direction": number }
   | { type: "countIn"; "bars": number }
-  | { type: "loopRestartErrors"; "count": number }
   | { type: "rounds"; "count": number }
   | { type: "calibration" }
   | { type: "metronome"; "enabled": boolean }
   | { type: "latency"; "milliseconds": number }
-  | { type: "adaptive"; "enabled": boolean }
   | { type: "generate"; "spec": ExerciseSpec }
-  | { type: "feedback" }
   | { type: "panic" }
   | { type: "recording"; "active": boolean }
   | { type: "exportMidi" }
-  | { type: "practiceBackupSnapshot"; "selection": unknown }
-  | { type: "exportPracticeBackup"; "selection": unknown }
-  | { type: "inspectPracticeBackup"; "backup": unknown }
-  | { type: "applyPracticeBackup"; "backup": unknown; "selection": unknown; "policy": string }
-  | { type: "importStagedPracticeBackup"; "token": string; "selection": unknown; "policy": string }
   | { type: "pendingMetadataHistory" }
   | { type: "pendingMetadataHistoryPage"; "query": string; "offset": number; "limit": number }
   | { type: "readLibraryPath"; "content_id": string; "path": string }
@@ -2661,9 +1921,6 @@ export type EngineCommand =
   | { type: "saveExercisePreset"; "name": string; "spec": ExerciseSpec }
   | { type: "removeExercisePreset"; "id": string }
   | { type: "libraryWorkspace" }
-  | { type: "saveSongLearning"; "path": string; "content_id": string; "value"?: Draft | null; "expected"?: Learning | null }
-  | { type: "readSongLearning"; "content_id": string }
-  | { type: "songLearningEvidence"; "content_id": string }
   | { type: "inspectSong"; "path": string; "force"?: boolean }
   | { type: "inspectSongs"; "paths": Array<string>; "force"?: boolean }
   | { type: "libraryGroup"; "id"?: string | null; "name": string; "parent"?: string | null }
@@ -2718,65 +1975,10 @@ export type EngineCommand =
   | { type: "dismissStartupWarning"; "id": string }
   | { type: "cancelTask"; "id": string }
   | { type: "cancelHistoryRead"; "channel": string; "sequence": number }
-  | { type: "editSongExpressionGoal"; "goal"?: ExpressionGoal | null; "expected"?: ExpressionGoal | null }
-  | { type: "readSongExpressionGoal"; "content_id": string }
-  | { type: "readHistoryAnnotation"; "content_id": string; "id": string }
-  | { type: "setSongExpressionGoal"; "goal"?: ExpressionGoal | null }
-  | { type: "routines"; "day": string }
-  | { type: "editRoutine"; "request": RoutineEditRequest }
-  | { type: "saveRoutine"; "id"?: string | null; "day"?: string | null; "name": string; "notes": string; "copy_of"?: string | null; "request_id"?: string | null }
-  | { type: "saveRoutineSchedule"; "id": string; "schedule"?: RoutineSchedule | null }
-  | { type: "removeRoutine"; "id": string }
-  | { type: "passageCatalog"; "content_id"?: string | null; "query": string; "offset": number }
-  | { type: "composePassages"; "routine_id": string; "day"?: string | null; "content_id": string; "entries": Array<PassageSequenceEntry>; "goal": RoutineGoal; "proof"?: string | null }
-  | { type: "saveRoutineItem"; "content_id"?: string | null; "routine_id": string; "day"?: string | null; "id"?: string | null; "source"?: string | null; "source_id"?: string | null; "title": string; "notes": string; "goal": RoutineGoal }
-  | { type: "moveRoutineItem"; "routine_id": string; "day"?: string | null; "item_id": string; "direction": number }
-  | { type: "removeRoutineItem"; "routine_id": string; "day"?: string | null; "item_id": string }
-  | { type: "openRoutineItem"; "routine_id": string; "day": string; "item_id": string; "resume": boolean }
-  | { type: "stopRoutine" }
-  | { type: "skipRoutineItem"; "routine_id": string; "day": string; "item_id": string; "reason": string }
-  | { type: "resetRoutineItem"; "routine_id": string; "day": string; "item_id": string }
   | { type: "bookmarks" }
   | { type: "saveBookmark"; "content_id": string; "id"?: string | null; "name": string; "tick": number }
   | { type: "removeBookmark"; "content_id": string; "id": string }
-  | { type: "ladderPresets" }
-  | { type: "saveLadder"; "id"?: string | null; "name": string; "start": number; "end": number; "plan": SpeedLadderPlan; "expression"?: ExpressionGoal | null }
-  | { type: "updateLadderName"; "id": string; "name": string }
-  | { type: "removeLadder"; "id": string }
-  | { type: "startLadder"; "id": string; "resume": boolean }
-  | { type: "stopLadder" }
-  | { type: "weakPractice" }
-  | { type: "dueReview"; "offset"?: number; "expected"?: string | null }
-  | { type: "acceptWeakPractice"; "ids": Array<string>; "edits"?: Array<WeakPracticeEdit>; "routine_id"?: string | null; "day"?: string | null; "name": string; "request_id"?: string | null }
-  | { type: "history" }
-  | { type: "historyQuery"; "query"?: string; "mode"?: string; "hands"?: string; "range"?: string; "days"?: number; "from"?: number | null; "to"?: number | null; "offset"?: number; "limit"?: number }
-  | { type: "readHistoryPage"; "request": HistoryPageRequest }
-  | { type: "annotateHistory"; "content_id": string; "id": string; "note": string; "teacher": string; "next": string; "expected"?: PracticeAnnotation | null }
   | { type: "practiceTime"; "content_id": string; "from": number; "to": number }
-  | { type: "practiceCalendar"; "from": number; "to": number; "content_id"?: string | null }
-  | { type: "historyPerformance"; "content_id": string; "id": string }
-  | { type: "startHistoryReplay"; "content_id": string; "id": string; "source": string; "rate": number; "request_id"?: string | null }
-  | { type: "startHistoryReplayRange"; "content_id": string; "id": string; "source": string; "rate": number; "start": number; "end": number; "request_id"?: string | null }
-  | { type: "historyReplayControl"; "id": string; "action": string; "position"?: number | null; "rate"?: number | null }
-  | { type: "historyReplayLoop"; "id": string; "start": number; "end": number; "enabled": boolean }
-  | { type: "historyReplayClips"; "content_id": string; "id": string }
-  | { type: "readHistoryReplayClips"; "content_id": string; "id": string }
-  | { type: "saveHistoryReplayClip"; "content_id": string; "id": string; "clip_id"?: string | null; "request_id"?: string | null; "source"?: HistorySource | null; "name": string; "start": number; "end": number; "notes": string; "expected": string }
-  | { type: "deleteHistoryReplayClip"; "content_id": string; "id": string; "clip_id": string; "expected": string }
-  | { type: "historyDetail"; "content_id": string; "id": string }
-  | { type: "historyOpen"; "content_id": string; "id": string; "restore": boolean }
-  | { type: "readHistoryDetail"; "content_id": string; "id": string }
-  | { type: "readHistoryPerformance"; "content_id": string; "id": string }
-  | { type: "performHistoryAction"; "request": HistoryActionRequest }
-  | { type: "playHistorySource"; "request": HistoryReplayRequest }
-  | { type: "historyProblemNotes"; "content_id": string; "id": string; "offset": number }
-  | { type: "previewProblemCuts"; "single"?: unknown | null; "multi"?: unknown | null; "expected": string; "edits": Array<unknown> }
-  | { type: "previewMultiProblemPlan"; "spec": unknown }
-  | { type: "saveMultiProblemPlan"; "spec": unknown; "expected": string; "name": string; "notes": string; "goal": RoutineGoal; "edits": Array<unknown> }
-  | { type: "previewHistoryProblemPlan"; "spec": unknown }
-  | { type: "saveHistoryProblemPlan"; "spec": unknown; "expected": string; "name": string; "notes": string; "goal": RoutineGoal; "edits": Array<unknown> }
-  | { type: "historyPracticeRange"; "content_id": string; "id": string; "reference": number; "before": number; "after": number }
-  | { type: "historyScoreReview"; "content_id": string; "id": string }
   | { type: "setLibraryCollection"; "path": string; "content_id": string; "favorite"?: boolean | null; "queued"?: boolean | null }
   | { type: "collection" }
   | { type: "favorite"; "enabled": boolean }
@@ -2788,7 +1990,6 @@ export type EngineCommand =
   | { type: "play" }
   | { type: "pause" }
   | { type: "restart" }
-  | { type: "save" }
   | { type: "seek"; "position": number }
   | { type: "speed"; "value": number }
   | { type: "wait"; "enabled": boolean }

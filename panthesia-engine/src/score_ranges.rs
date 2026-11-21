@@ -33,8 +33,6 @@ fn is_zero(n:&u64)->bool{*n==0}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::practice_backup::{Backup, Selection};
-    use crate::routine_commands::{RoutineGoal, RoutineTarget};
     use std::path::PathBuf;
 
     const XML: &str = r#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time></attributes><direction><sound tempo="60"/></direction><note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration></note><sound segno="S"><offset>-1</offset></sound><sound fine="yes"/></measure><measure number="2"><direction><sound tempo="120"/></direction><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration></note><sound dalsegno="S"/></measure></part></score-partwise>"#;
@@ -57,39 +55,6 @@ mod tests {
         })
         .unwrap();
         p
-    }
-    #[test]
-    fn planned_editions_restore_routine_ladder_and_named_score_passage() {
-        let mut p=player();let cid=p.file.as_ref().unwrap().content_id.clone();
-        let source=p.file.as_ref().unwrap().source_path.clone().unwrap();let original=std::fs::read(&source).unwrap();
-        let transform=crate::practice_variant::Variant{transpose:2,quantize:16,..Default::default()};
-        p.set_variant(&cid,p.score_revision,transform.clone()).unwrap();
-        let range:ScoreRange=serde_json::from_value(p.preview_score_range(0,0).unwrap()["range"].clone()).unwrap();
-        let saved=p.save_score_passage(None,"谱面段落".into(),"".into(),range).unwrap();
-        let passage=saved["passage"]["id"].as_str().unwrap();
-        let ladder=p.save_ladder(None,"提速",1,1,panthesia_core::speed_ladder::SpeedLadderPlan{start_percent:50,target_percent:100,step_percent:25,passes_required:1,accuracy_percent:90,on_time_percent:None,failures_before_step_back:0,attempt_limit:20},None).unwrap();
-        let lid=ladder["id"].as_str().unwrap();
-        let rid=p.save_routine(None,None,"统一条件日课".into(),"".into(),None).unwrap()["id"].as_str().unwrap().to_owned();
-        let goal=RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:20};
-        p.set_variant(&cid,p.score_revision,crate::practice_variant::Variant{transpose:-3,quantize:8,..Default::default()}).unwrap();
-        p.command(Command::PairScore{bytes:XML.replace("Piano</part-name>","Alternate</part-name>").into_bytes(),name:"另一谱面.musicxml".into(),content_id:cid.clone(),expected:None}).unwrap();
-        let alternative=p.notation.as_ref().unwrap().source_fingerprint.clone();
-        let item=p.save_routine_item(&rid,None,None,Some("passage"),Some(passage),"原段落".into(),"".into(),goal.clone()).unwrap()["id"].as_str().unwrap().to_owned();
-        assert_eq!(p.variant().transpose,-3);assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,alternative);
-        let litem=p.save_routine_item(&rid,None,None,Some("ladder"),Some(lid),"提速项目".into(),"".into(),goal).unwrap()["id"].as_str().unwrap().to_owned();
-        p.open_routine_item(&rid,"2026-11-19",&item,true).unwrap();
-        assert_eq!(p.variant(),transform);assert_eq!(p.state.passage.as_ref().unwrap().end,2.);
-        assert_eq!(p.notation.as_ref().unwrap().source_fingerprint,saved["passage"]["scoreRange"]["scoreIdentity"].as_str().unwrap());
-        p.stop_routine().unwrap();p.set_variant(&cid,p.score_revision,Default::default()).unwrap();
-        p.start_ladder(lid,false).unwrap();assert_eq!(p.variant(),transform);assert_eq!(p.state.speed,0.5);p.stop_ladder().unwrap();
-        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();p.open_routine_item(&rid,"2026-11-19",&litem,true).unwrap();assert_eq!(p.variant(),transform);assert_eq!(p.state.speed,0.5);p.stop_routine().unwrap();
-        let backup:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(backup.version(),21);Backup::decode(&backup.encode().unwrap()).unwrap();
-        let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,17);
-        let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.start_ladder(lid,false).unwrap();assert_eq!(target.variant(),transform);
-        p.preferences.ladder_presets.get_mut(&cid).unwrap().iter_mut().find(|row|row.id==lid).unwrap().practice=None;
-        p.set_variant(&cid,p.score_revision,Default::default()).unwrap();p.start_ladder(lid,false).unwrap();assert_eq!(p.variant(),transform);p.stop_ladder().unwrap();
-        let mut invalid:Backup=serde_json::from_value(serde_json::to_value(&backup).unwrap()).unwrap();invalid.routines[0].items[0].practice.as_mut().unwrap().performance_id="another-performance".into();assert!(invalid.encode().is_err());
-        assert_eq!(std::fs::read(source).unwrap(),original);
     }
     #[test]
     fn saved_score_passage_restores_registered_notation_and_rejects_changed_source() {
@@ -120,179 +85,13 @@ mod tests {
         assert_eq!(std::fs::read(&source).unwrap(),source_bytes);
     }
     #[test]
-    fn written_beat_trim_repeat_partial_visit_and_portable_daily() {
-        let mut p=player();let ppq=u64::from(p.file.as_ref().unwrap().musical_time.ppq);
-        let v=p.preview_score_range_trim(0,2,ppq/2,ppq/4).unwrap();assert_eq!(v["start"],0.5);assert_eq!(v["end"],3.75);assert_eq!(v["crossings"],1);assert_eq!(v["rows"][0]["startBeat"],1.5);assert_eq!(v["rows"][2]["endBeat"],2.75);
-        let r:ScoreRange=serde_json::from_value(v["range"].clone()).unwrap();p.apply_score_range(&r).unwrap();assert_eq!(p.score_range_for_current_loop(),Some(r.clone()));
-        let saved=p.save_score_passage(None,"反复拍内".into(),"保持连接".into(),r.clone()).unwrap();let id=saved["passage"]["id"].as_str().unwrap().to_string();p.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(p.state.passage.as_ref().unwrap().end,3.75);
-        let plan=p.save_routine(None,None,"短句日课".into(),"".into(),None).unwrap();let rid=plan["id"].as_str().unwrap();let goal=RoutineGoal{expression:None,passes:1,accuracy:90,on_time:None,consecutive:false,attempt_limit:4};let item=p.save_routine_item(rid,None,None,Some("passage"),Some(&id),"反复连接".into(),"".into(),goal.clone()).unwrap();p.save_routine_item(rid,None,None,Some("current"),None,"当前原谱".into(),"".into(),goal).unwrap();assert!(matches!(&p.preferences.routines[0].items[1].target,RoutineTarget::ScorePassage{range}if range==&r));
-        let b:Backup=serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap()).unwrap();assert_eq!(b.version(),21);let b=Backup::decode(&b.encode().unwrap()).unwrap();assert_eq!(b.passages.values().next().unwrap()[0].score_range,Some(r.clone()));let bytes:Vec<u8>=serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap();let package=crate::piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,16);let mut target=player();target.command(Command::ImportPackage{bytes,policy:"replace".into()}).unwrap();target.command(Command::OpenPassage{id:id.clone()}).unwrap();assert_eq!(target.state.passage.as_ref().unwrap().start,0.5);
-        let data=p.data.clone();let path=p.file.as_ref().unwrap().source_path.clone().unwrap();drop(p);let mut p=Player::new(data,PathBuf::new(),true);p.command(Command::Load{path,title:"reopen".into()}).unwrap();p.command(Command::OpenPassage{id}).unwrap();p.open_routine_item(rid,"2026-10-02",item["id"].as_str().unwrap(),true).unwrap();p.command(Command::Play).unwrap();for _ in 0..600{p.tick(std::time::Duration::from_millis(10));for pitch in p.snapshot().required{p.command(Command::Note{pitch,velocity:90,active:true}).unwrap();p.command(Command::Note{pitch,velocity:0,active:false}).unwrap();}if p.routine_status().unwrap()["progress"]["completed"]==true{break}}assert_eq!(p.routine_status().unwrap()["progress"]["completed"],true);assert_eq!(p.matcher.snapshot().matched_notes,2);
-    }
-    #[test]
     fn written_trim_cannot_leave_visit_or_overwrite_route_identity() {
         let p=player();let ppq=u64::from(p.file.as_ref().unwrap().musical_time.ppq);let v=p.preview_score_range_trim(2,2,ppq/4,ppq/4).unwrap();assert_eq!(v["firstLimits"]["minBeat"],2.);assert_eq!(v["lastLimits"]["maxBeat"],3.);assert_eq!(v["rows"][0]["startBeat"],2.25);assert_eq!(v["rows"][0]["endBeat"],2.75);
         for (a,b) in [(ppq,0),(0,ppq),(ppq/2,ppq/2),(u64::MAX,0)]{assert!(p.preview_score_range_trim(2,2,a,b).is_err())}
         let mut r:ScoreRange=serde_json::from_value(v["range"].clone()).unwrap();r.start_tick-=1;assert!(p.validate_score_range(&r).is_err());r.start_tick+=1;r.start_trim+=1;assert!(p.validate_score_range(&r).is_err());assert!(p.score_range_context(&p.file.as_ref().unwrap().content_id,p.score_revision+1).is_err());
     }
 
-    #[test]
-    fn score_range_exact_save_reopen_context_and_path_guards() {
-        let mut p = player();
-        let whole = p.preview_score_range(0, 2).unwrap();
-        assert_eq!(whole["crossings"], 1);
-        assert_eq!(whole["rows"].as_array().unwrap().len(), 3);
-        let range: ScoreRange =
-            serde_json::from_value(p.preview_score_range(2, 2).unwrap()["range"].clone()).unwrap();
-        assert!(range.description.contains("第 2 次"));
-        p.state.speed = 0.7;
-        let saved = p
-            .save_score_passage(None, "中途返回".into(), "保持音".into(), range.clone())
-            .unwrap();
-        let id = saved["passage"]["id"].as_str().unwrap().to_string();
-        p.state.speed = 1.;
-        p.command(Command::OpenPassage { id: id.clone() }).unwrap();
-        assert_eq!(
-            (
-                p.state.passage.as_ref().unwrap().start,
-                p.state.passage.as_ref().unwrap().end
-            ),
-            (3., 4.)
-        );
-        assert_eq!(p.state.speed, 0.7);
-        assert_eq!(p.score_range_for_current_loop(), Some(range.clone()));
-        let context = p.file.as_ref().unwrap().content_id.clone();
-        assert!(
-            p.score_range_context(&context, p.score_revision + 1)
-                .is_err()
-        );
-        let mut tampered = range.clone();
-        tampered.start_tick -= 1;
-        assert!(
-            p.apply_score_range(&tampered)
-                .unwrap_err()
-                .contains("路径已改变")
-        );
-        assert_eq!(p.state.passage.as_ref().unwrap().start, 3.);
-        p.command(Command::UpdatePassageDetails {
-            content_id: context.clone(),
-            id: id.clone(),
-            name: "改名".into(),
-            notes: "教师备注".into(),
-        })
-        .unwrap();
-        assert_eq!(
-            p.preferences.passages[&context][0].score_range,
-            Some(range.clone())
-        );
-        let data = p.data.clone();
-        let path = p.file.as_ref().unwrap().source_path.clone().unwrap();
-        drop(p);
-        let mut restarted = Player::new(data, PathBuf::new(), true);
-        restarted
-            .command(Command::Load {
-                path,
-                title: "reopened".into(),
-            })
-            .unwrap();
-        restarted
-            .command(Command::OpenPassage { id: id.clone() })
-            .unwrap();
-        assert_eq!(restarted.state.passage.as_ref().unwrap().start, 3.);
-        std::sync::Arc::make_mut(restarted.notation.as_mut().unwrap()).bytes.push(b' ');
-        assert!(
-            restarted
-                .command(Command::OpenPassage { id })
-                .unwrap_err()
-                .contains("谱面版本")
-        );
-        assert_eq!(restarted.state.passage.as_ref().unwrap().start, 3.);
-    }
 
-    #[test]
-    fn score_range_plan_snapshot_backup_and_piece_package_roundtrip() {
-        let mut p = player();
-        let range: ScoreRange =
-            serde_json::from_value(p.preview_score_range(2, 2).unwrap()["range"].clone()).unwrap();
-        let saved = p
-            .save_score_passage(None, "返回练习".into(), "".into(), range.clone())
-            .unwrap();
-        let id = saved["passage"]["id"].as_str().unwrap();
-        let plan = p
-            .save_routine(None, None, "日课".into(), "".into(), None)
-            .unwrap();
-        let routine_id = plan["id"].as_str().unwrap();
-        let item = p
-            .save_routine_item(
-                routine_id,
-                None,
-                None,
-                Some("passage"),
-                Some(id),
-                "原谱片段".into(),
-                "".into(),
-                RoutineGoal {
-                    expression: None,
-                    passes: 1,
-                    accuracy: 80,
-                    on_time: None,
-                    consecutive: true,
-                    attempt_limit: 3,
-                },
-            )
-            .unwrap();
-        assert!(
-            matches!(&p.preferences.routines[0].items[0].target,RoutineTarget::ScorePassage{range:r} if *r==range)
-        );
-        let snapshot: Backup =
-            serde_json::from_value(p.practice_backup_snapshot(&Selection::default()).unwrap())
-                .unwrap();
-        assert_eq!(snapshot.version(), 21);
-        let decoded = Backup::decode(&snapshot.encode().unwrap()).unwrap();
-        assert_eq!(
-            decoded.passages.values().next().unwrap()[0].score_range,
-            Some(range.clone())
-        );
-        let bytes: Vec<u8> =
-            serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone())
-                .unwrap();
-        let package = crate::piece_package::Package::decode(&bytes).unwrap();
-        assert_eq!(package.manifest.version, 16);
-        assert_eq!(
-            package.manifest.passages[0].score_range,
-            Some(range.clone())
-        );
-        let mut target = player();
-        target
-            .command(Command::ImportPackage {
-                bytes,
-                policy: "replace".into(),
-            })
-            .unwrap();
-        let restored_id = target.preferences.passages.values().next().unwrap()[0]
-            .id
-            .clone();
-        target
-            .command(Command::OpenPassage { id: restored_id })
-            .unwrap();
-        assert_eq!(
-            (
-                target.state.passage.as_ref().unwrap().start,
-                target.state.passage.as_ref().unwrap().end
-            ),
-            (3., 4.)
-        );
-        let item_id = item["id"].as_str().unwrap();
-        p.open_routine_item(routine_id, "2026-10-02", item_id, false)
-            .unwrap();
-        assert_eq!(
-            (
-                p.state.passage.as_ref().unwrap().start,
-                p.state.passage.as_ref().unwrap().end
-            ),
-            (3., 4.)
-        );
-    }
 }
 impl ScoreRange {
     pub(crate) fn validate(&self) -> Result<(), String> {
@@ -473,23 +272,6 @@ impl Player {
         }
         Ok(())
     }
-    pub(super) fn score_range_for_current_loop(&self) -> Option<ScoreRange> {
-        let passage = self.state.passage.as_ref()?;
-        let file = self.file.as_ref()?;
-        let payload = self.notation.as_deref()?.route_payload(Some(file));
-        if payload["route"]["complete"] != true {
-            return None;
-        }
-        let rows = payload["route"]["visits"].as_array()?;
-        let first=rows.iter().find(|v|v["start"].as_f64().is_some_and(|s|s<=passage.start+0.000001)&&v["end"].as_f64().is_some_and(|e|e>passage.start+0.000001))?;
-        let last=rows.iter().find(|v|v["start"].as_f64().is_some_and(|s|s<passage.end-0.000001)&&v["end"].as_f64().is_some_and(|e|e>=passage.end-0.000001))?;
-        let ticks=|sec:f64|file.tempo_track.seconds_to_pulses(sec).round()as u64;
-        let a=ticks(passage.start).checked_sub(ticks(first["start"].as_f64()?))?;
-        let b=ticks(last["end"].as_f64()?).checked_sub(ticks(passage.end))?;
-        let preview=self.preview_score_range_trim(first["ordinal"].as_u64()?as u32,last["ordinal"].as_u64()?as u32,a,b).ok()?;
-        if (preview["start"].as_f64()?-passage.start).abs()>0.000001 || (preview["end"].as_f64()?-passage.end).abs()>0.000001{return None}
-        serde_json::from_value(preview["range"].clone()).ok()
-    }
 
     pub(super) fn apply_score_range(&mut self, range: &ScoreRange) -> Result<Value, String> {
         let preview = self.validate_score_range(range)?;
@@ -544,7 +326,6 @@ impl Player {
                 metronome: self.state.metronome,
                 latency: self.state.latency,
                 rounds: self.state.rounds,
-                adaptive: self.state.adaptive,
             },
         };
         if updating

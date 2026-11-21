@@ -21,13 +21,8 @@ const domains = [
   ["../../panthesia-engine/src/startup.rs", ["StartupStatus", "StartupWarning", "StartupWarningKind"], "output"],
   ["../../panthesia-engine/src/operation_journal.rs", ["PreparationOrigin"]],
   ["../../panthesia-engine/src/operation_journal.rs", ["PreparationPhase"], "output"],
-  ["../../panthesia-engine/src/history_operations.rs", ["HistoryOperationRequest"]],
   ["../../panthesia-engine/src/library_operations.rs", ["LibraryOpenRequest", "LibraryOpenSource", "LibraryScoreKind", "LibraryRangeMode", "LibraryRouteVisit", "LibraryScoreSelection"]],
   ["../../panthesia-engine/src/library_operations.rs", ["LibraryOpenView", "LibraryPrepared", "LibraryOpenResult", "LibraryOpenReceipt"], "output"],
-  ["../../panthesia-engine/src/history_operations.rs", ["HistoryOperationResult", "HistoryOperationReceipt"], "output"],
-  ["../../panthesia-engine/src/history_review.rs", ["HistoryScoreTarget", "HistoryReviewNote", "HistoryScoreReview", "HistoryPaperTarget"], "output"],
-  ["../../panthesia-engine/src/performance_archive.rs", ["PerformanceInput", "PerformanceReference", "PerformanceMeasureSpan", "PerformanceDecision", "PerformanceArchive", "PerformancePedalEvidence", "PerformanceNoteExpression", "HistoryPerformanceRead"], "output"],
-  ["../../panthesia-engine/src/history_source.rs", ["HistorySource", "HistoryActionKind", "HistoryActionRequest", "HistoryPrepared", "ReplaySelection", "ReplaySound", "HistoryReplayRequest"]],
   ["../../panthesia-engine/src/storage_recovery.rs", ["StorageRecovery"], "output"],
   ["../../panthesia-engine/src/pending_save.rs", ["StorageOperation", "StorageStatus"], "output"],
   ["../src-tauri/src/located_paper_bridge.rs", ["LocatedPaperSaved"], "output"],
@@ -48,17 +43,9 @@ const domains = [
   ["../../panthesia-engine/src/library_repairs.rs", ["ReplacementReview", "MidiReplacementRow", "MidiReplacementPage", "ReplacementComparison", "MidiReplacementPreview", "RepairLocation", "RepairGroup", "RepairInventory", "LibraryRepairResult", "LibraryRelinkResult"], "output"],
   ["../../panthesia-engine/src/metadata_claims.rs", ["MetadataHistoryClaim"], "output"],
   ["../../panthesia-engine/src/metadata_history.rs", ["PendingMetadataRow", "PendingMetadataPage"], "output"],
-  ["../../panthesia-engine/src/routine_protocol.rs", ["RoutineVersion"], "output"],
-  ["../../panthesia-engine/src/routine_protocol.rs", ["RoutineEditRequest", "RoutineChange"]],
-  ["../../panthesia-engine/src/history_reader.rs", ["HistoryPageRequest"]],
   ["../../panthesia-engine/src/history_reader.rs", ["ReadScope"]],
-  ["../../panthesia-engine/src/history_calendar.rs", ["HistoryCalendar", "CalendarInterval", "CalendarSave"], "output"],
-  ["../../panthesia-engine/src/history_list.rs", ["HistoryPage", "HistoryListEntry", "HistoryCoverage"], "output"],
   ["../../panthesia-core/src/practice.rs", ["PracticeHands", "PracticeSnapshot"], "output"],
   ["../../panthesia-core/src/practice_history.rs", ["PracticeAnnotation", "ReplayClip"], "output"],
-  ["../../panthesia-engine/src/replay_clips.rs", ["ReplayClipRead"], "output"],
-  ["../../panthesia-engine/src/backup_operations.rs", ["BackupImportRequest", "BackupImportQuery", "BackupPolicy", "BackupSelection"]],
-  ["../../panthesia-engine/src/backup_operations.rs", ["BackupImportResult", "BackupImportReceipt", "BackupImportPhase"], "output"],
   ["../../panthesia-engine/src/media_export.rs", ["MediaExportKind", "MediaExportInput"]],
   ["../../panthesia-engine/src/media_export.rs", ["MediaExportSummary"], "output"],
   ["../../panthesia-engine/src/media_export_cache.rs", ["MediaExportDraft", "MediaExportListing"], "output"],
@@ -94,29 +81,16 @@ const domains = [
   ["../../panthesia-core/src/library.rs", ["SongMetadata", "FingerHint", "NoteHandHint", "FingerAction", "MeterCorrection", "MeterSegment", "MeasureLength", "MeterMap"]],
   ["../../panthesia-engine/src/track_appearance.rs", ["TrackAppearance", "PartColor"]],
   ["../../panthesia-engine/src/track_sound.rs", ["TrackSound"]],
-  ["../../panthesia-core/src/speed_ladder.rs", ["SpeedLadderPlan", "SpeedLadderProgress"], "output"],
   ["../../panthesia-core/src/practice_history.rs", ["PracticeTrackMode", "PracticeTrackSetup"], "output"],
-  ["../../panthesia-engine/src/expression_goal.rs", ["ExpressionGoal"]],
-  ["../../panthesia-engine/src/expression_goal.rs", ["ExpressionGoalSnapshot"], "output"],
-  ["../../panthesia-engine/src/history_reader.rs", ["AnnotationRead"], "output"],
-  ["../../panthesia-engine/src/song_learning.rs", ["Draft", "Learning", "Transition", "LearningRead"], "output"],
-  ["../../panthesia-engine/src/expression_goal.rs", ["NoteVelocityEvidence", "NotePedalEvidence"], "output"],
-  ["../../panthesia-engine/src/song_learning_evidence.rs", ["WeekEvidence", "WholeAttempt", "WholeEvidence", "RoutineItemEvidence", "RoutineEvidence", "HistoricalRef", "Evidence"], "output"],
   ["../../panthesia-engine/src/tick_ranges.rs", ["TickRange", "BeatPoint"], "output"],
   ["../../panthesia-engine/src/score_ranges.rs", ["ScoreRange"], "output"],
   ["../../panthesia-core/src/song_bookmarks.rs", ["Bookmark"], "output"],
   ["../../panthesia-engine/src/bookmarks.rs", ["BookmarkEntry", "BookmarkCatalog"], "output"],
-  ["../../panthesia-engine/src/preferences.rs", ["SessionSettings", "PassagePreset", "ExercisePreset", "LadderPreset", "LadderRun"], "output"],
-  ["../../panthesia-engine/src/practice_catalog.rs", ["PassageCatalog", "LadderCatalog", "ExerciseCatalog", "FingerProfileCatalog"], "output"],
+  ["../../panthesia-engine/src/preferences.rs", ["SessionSettings", "PassagePreset", "ExercisePreset"], "output"],
+  ["../../panthesia-engine/src/practice_catalog.rs", ["PassageCatalog", "ExerciseCatalog", "FingerProfileCatalog"], "output"],
   ["../../panthesia-engine/src/hands.rs", ["HandProposal"], "output"],
   ["../../panthesia-engine/src/meter_map.rs", ["MeterEditorState"], "output"],
   ["../../panthesia-engine/src/hand_annotations.rs", ["HandUndoState", "HandAssignmentValue", "HandAssignmentRead", "HandSuggestionRead"], "output"],
-  ["../../panthesia-engine/src/routine_commands.rs", ["RoutineGoal", "PassageSequenceEntry", "RoutineSchedule"]],
-  ["../../panthesia-engine/src/routine_commands.rs", ["RoutineTarget", "RoutineItem", "PracticeRoutine", "RoutineProgress", "RoutineRun", "RoutineKind", "RoutineState", "RoutineList", "RoutineSummary"], "output"],
-  ["../../panthesia-engine/src/routine_edit.rs", ["RoutineSourceEntry", "RoutineSourceOptions"], "output"],
-  ["../../panthesia-engine/src/expression_review.rs", ["ExpressionMetric"], "output"],
-  ["../../panthesia-engine/src/weak_practice.rs", ["SuggestionKind", "Suggestion", "RhythmMetric", "RecommendationPage", "RecommendationAccepted"], "output"],
-  ["../../panthesia-engine/src/weak_practice.rs", ["WeakPracticeEdit"]],
 ];
 const domainNames = new Map();
 for (const [path, names] of domains) {
@@ -162,7 +136,6 @@ const declarations = domains.flatMap(([path, names, direction]) => {
   const source = readFileSync(new URL(path, import.meta.url), "utf8");
   return names.map(name => domainDeclaration(source, name, typeOf, direction));
 });
-declarations.push("export type HistoryOperationOrigin = PreparationOrigin;", "export type HistoryOperationPhase = PreparationPhase;", "export const HistoryOperationPhaseValues = PreparationPhaseValues;");
 
 const enumStart = source.indexOf("pub enum Command {");
 if (enumStart < 0) throw Error("Command enum missing");

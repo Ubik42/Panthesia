@@ -25,9 +25,6 @@ impl Player {
             Ok(serde_json::json!({"bytes":bytes,"title":title,"summary":summary}))
         }
     }
-    pub(super) fn prepare_piece_package(&mut self) -> Result<(Vec<u8>,serde_json::Value),String> {
-        self.prepare_piece_package_checked(&|| Ok(()))
-    }
     pub(crate) fn prepare_piece_package_checked(&mut self, check: &dyn Fn() -> Result<(), String>) -> Result<(Vec<u8>,serde_json::Value),String> {
         check()?;
         self.remember_active_score()?;
@@ -144,7 +141,6 @@ impl Player {
             latency: 0,
             rounds: self.state.rounds,
             hands: self.state.hands.clone(),
-            adaptive: self.state.adaptive,
         };
         let mut hand_profiles = self
             .preferences
@@ -174,16 +170,6 @@ impl Player {
         }
         let (papers, active_paper) =
             score_attachments::export_package_checked(&self.data, &id, &mut files, check)?;
-        let mut ladders = self
-            .preferences
-            .ladder_presets
-            .get(&id)
-            .cloned()
-            .unwrap_or_default();
-        for l in &mut ladders {
-            l.exercise_spec = None;
-            l.settings.latency = 0;
-        }
         let mut manifest = Manifest {
             format: "panthesia-piece".into(),
             practice_variant:if file.source_path.is_some(){self.variant()}else{Default::default()},
@@ -198,7 +184,7 @@ impl Player {
             active_score,
             papers,
             active_paper,
-            ladders,
+            ladders: Vec::new(),
             note_playback: self.config.note_playback_rules(),
             fingerings: fingers,
             finger_actions:self.saved_actions()?,
@@ -441,59 +427,6 @@ impl Player {
                     .entry(*key)
                     .or_insert(*value);
             }
-        }
-        if imported_settings {
-            preferences.ladder_presets.insert(
-                id.clone(),
-                m.ladders
-                    .iter()
-                    .cloned()
-                    .map(|mut l| {
-                        l.settings.latency = self.state.latency;
-                        l
-                    })
-                    .collect(),
-            );
-            preferences
-                .ladder_runs
-                .retain(|key, _| !key.starts_with(&format!("{id}:")));
-        } else if policy == "merge" {
-            let ladders = preferences.ladder_presets.entry(id.clone()).or_default();
-            for l in &m.ladders {
-                if !ladders.iter().any(|old| {
-                    old.name == l.name
-                        && old.start == l.start
-                        && old.end == l.end
-                        && serde_json::to_value(&old.plan).ok()
-                            == serde_json::to_value(&l.plan).ok()
-                        && old.expression == l.expression
-                        && {
-                            let mut settings = old.settings.clone();
-                            settings.latency = 0;
-                            serde_json::to_value(&settings).ok()
-                        } == {
-                            let mut settings = l.settings.clone();
-                            settings.latency = 0;
-                            serde_json::to_value(&settings).ok()
-                        }
-                }) {
-                    let mut l = l.clone();
-                    l.settings.latency = self.state.latency;
-                    l.id = format!(
-                        "package-{}-{}",
-                        &blake3::hash(&bytes).to_hex().as_str()[..12],
-                        ladders.len()
-                    );
-                    ladders.push(l);
-                }
-            }
-        }
-        if preferences
-            .ladder_presets
-            .get(id)
-            .is_some_and(|v| v.len() > 200)
-        {
-            return Err("合并后速度阶梯超过上限".into());
         }
         let versions = preferences.score_versions.entry(id.clone()).or_default();
         for (i, a) in m.scores.iter().enumerate() {
@@ -869,41 +802,6 @@ mod tests {
         serde_json::from_value(p.command(Command::ExportPackage).unwrap()["bytes"].clone()).unwrap()
     }
     #[test]
-    fn extended_metadata_survives_packages_and_backup_with_explicit_versions() {
-        let mut source = prepared();
-        let file = source.file.as_ref().unwrap();
-        let cid = file.content_id.clone();
-        let path = source.annotation_path(file).unwrap();
-        let before = source.current_metadata().unwrap();
-        let mut after = before.clone();
-        after.subtitle = Some("第二乐章".into());
-        after.arranger = Some("练习改编".into());
-        after.copyright = Some("作者保留权利".into());
-        after.license = Some("个人练习资料".into());
-        panthesia_core::library::save_song_metadata(&path, &cid, after.clone()).unwrap();
-        let bytes = exported(&mut source);
-        let mut package = Package::decode(&bytes).unwrap();
-        assert_eq!(package.manifest.version, 13);
-        assert_eq!(package.manifest.metadata, after);
-        package.manifest.version = 12;
-        assert!(package.encode().is_err());
-
-        let record = crate::metadata_history::Record {
-            id: blake3::hash(b"extended-metadata-record").to_hex().to_string(),
-            content_id: cid.clone(), time_ms: 1, before, after: after.clone(),
-            state: "applied".into(), restored_from: None,
-        };
-        let backup = crate::practice_backup::Backup {
-            metadata_history: vec![crate::metadata_history::Portable {
-                source_path: path, content_id: cid, records: vec![record],
-            }],
-            ..Default::default()
-        };
-        assert_eq!(backup.version(), 17);
-        let decoded = crate::practice_backup::Backup::decode(&backup.encode().unwrap()).unwrap();
-        assert_eq!(decoded.metadata_history[0].records[0].after, after);
-    }
-    #[test]
     fn failed_workspace_save_restores_imported_files_and_allows_retry() {
         let mut source = prepared();
         let cid = source.file.as_ref().unwrap().content_id.clone();
@@ -1013,136 +911,6 @@ mod tests {
         let bytes=exported(&mut source);let mut package=Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,9);let mut target=blank();target.command(Command::ImportPackage{bytes,policy:"merge".into()}).unwrap();let imported=score_attachments::list(&target.data,&cid).unwrap();assert_eq!(imported["attachments"][0]["annotations"][0]["ink"]["points"],serde_json::json!([[0.,0.],[1.,1.]]));
         package.manifest.version=8;assert!(package.encode().is_err());
         package.manifest.papers[0].annotations[0].ink=None;package.manifest.version=4;assert!(Package::decode(&package.encode().unwrap()).is_ok());
-    }
-    #[test]
-    fn package_paper_ladder_portability_and_policy() {
-        let mut source = prepared();
-        let cid = source.file.as_ref().unwrap().content_id.clone();
-        let pdf = b"%PDF-1.4\nportable score".to_vec();
-        let page =
-            score_attachments::add(&source.data, &cid, "教师谱.pdf".into(), pdf.clone(), None)
-                .unwrap();
-        score_attachments::update(
-            &source.data,
-            &cid,
-            Some(page["active"].as_str().unwrap()),
-            "view",
-            None,
-            Some(score_attachments::View {
-                page: 3,
-                zoom: 150,
-                fit: false,
-                rotation: 90,
-            }),
-            0,
-            0,
-        )
-        .unwrap();
-        source.command(Command::SetPaperMapping{score_revision:None,expected:None,content_id:cid.clone(),id:page["active"].as_str().unwrap().into(),mapping:Some(score_attachments::Mapping{grid:source.grid_signature(),enabled:true,anchors:vec![score_attachments::PageAnchor{measure:1,page:1,region:None},score_attachments::PageAnchor{measure:2,page:3,region:None}]})}).unwrap();
-        let plan = panthesia_core::speed_ladder::SpeedLadderPlan {
-            start_percent: 50,
-            target_percent: 100,
-            step_percent: 10,
-            passes_required: 2,
-            accuracy_percent: 90,
-            on_time_percent: None,
-            failures_before_step_back: 2,
-            attempt_limit: 20,
-        };
-        source
-            .command(Command::SaveLadder {
-                id: None,
-                name: "连音提速".into(),
-                start: 1,
-                end: 2,
-                plan,
-                expression: None,
-            })
-            .unwrap();
-        let bytes = exported(&mut source);
-        let package = Package::decode(&bytes).unwrap();
-        assert_eq!(package.manifest.version, 3);
-        source.command(Command::EditPaperAnnotation{content_id:cid.clone(),book:page["active"].as_str().unwrap().into(),id:None,expected:None,draft:Some(score_attachments::AnnotationDraft{asset_id:page["attachments"][0]["pages"][0]["id"].as_str().unwrap().into(),page:2,x:0.25,y:0.5,text:"踏板换在和声变化处".into(),color:"blue".into(),width:None,height:None,ink:None})}).unwrap();
-        let bytes=exported(&mut source);let package=Package::decode(&bytes).unwrap();assert_eq!(package.manifest.version,4);
-        assert_eq!(package.manifest.papers.len(), 1);
-        assert_eq!(package.manifest.ladders.len(), 1);
-        let mut target = blank();
-        target
-            .command(Command::Latency { milliseconds: 32 })
-            .unwrap();
-        target
-            .command(Command::ImportPackage {
-                bytes: bytes.clone(),
-                policy: "merge".into(),
-            })
-            .unwrap();
-        let cid = target.file.as_ref().unwrap().content_id.clone();
-        let sheets = score_attachments::list(&target.data, &cid).unwrap();
-        assert_eq!(sheets["attachments"][0]["annotations"][0]["text"],"踏板换在和声变化处");
-        assert_eq!(sheets["attachments"][0]["mapping"]["anchors"][1]["page"],3);
-        assert_eq!(sheets["attachments"][0]["mapping"]["grid"],target.grid_signature());
-        assert_eq!(sheets["attachments"][0]["view"]["page"], 3);
-        let id = sheets["active"].as_str().unwrap();
-        assert_eq!(
-            score_attachments::read(&target.data, &cid, id, 0)
-                .unwrap()
-                .0,
-            pdf
-        );
-        score_attachments::update(
-            &target.data,
-            &cid,
-            Some(id),
-            "view",
-            None,
-            Some(score_attachments::View::default()),
-            0,
-            0,
-        )
-        .unwrap();
-        target
-            .command(Command::ImportPackage {
-                bytes: bytes.clone(),
-                policy: "merge".into(),
-            })
-            .unwrap();
-        assert_eq!(
-            score_attachments::list(&target.data, &cid).unwrap()["attachments"]
-                .as_array()
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            score_attachments::list(&target.data, &cid).unwrap()["attachments"][0]["view"]["page"],
-            1
-        );
-        assert_eq!(target.preferences.ladder_presets[&cid].len(), 1);
-        let lid = target.preferences.ladder_presets[&cid][0].id.clone();
-        target
-            .command(Command::StartLadder {
-                id: lid,
-                resume: false,
-            })
-            .unwrap();
-        assert_eq!(target.state.latency, 32);
-        target.command(Command::StopLadder).unwrap();
-        target
-            .command(Command::ImportPackage {
-                bytes,
-                policy: "replace".into(),
-            })
-            .unwrap();
-        assert_eq!(
-            score_attachments::list(&target.data, &cid).unwrap()["attachments"][0]["view"]["page"],
-            3
-        );
-        let mut corrupted = package;
-        corrupted.manifest.papers[0].view.zoom = 999;
-        assert!(corrupted.encode().is_err());
-        let mut legacy = Package::decode(&exported(&mut prepared())).unwrap();
-        legacy.manifest.version = 1;
-        assert!(Package::decode(&legacy.encode().unwrap()).is_ok());
     }
     #[test]
     fn package_roundtrip_restores_scores_annotations_passages_and_restart() {
@@ -1256,66 +1024,6 @@ mod tests {
             target.preferences.passages.values().next().unwrap().len(),
             1
         );
-    }
-    #[test]
-    fn generated_exercise_exports_exact_midi_variant_with_its_fingers() {
-        let mut p = blank();
-        p.command(Command::Generate {
-            spec: ExerciseSpec::default(),
-        })
-        .unwrap();
-        let mut variant = ExerciseSpec::default();
-        variant.repetitions = 2;
-        variant.tempo_bpm = 80;
-        p.command(Command::Generate { spec: variant }).unwrap();
-        p.command(Command::SaveLadder {
-            id: None,
-            name: "固定练习提速".into(),
-            start: 1,
-            end: 2,
-            plan: panthesia_core::speed_ladder::SpeedLadderPlan {
-                start_percent: 50,
-                target_percent: 100,
-                step_percent: 10,
-                passes_required: 2,
-                accuracy_percent: 90,
-                on_time_percent: None,
-                failures_before_step_back: 2,
-                attempt_limit: 20,
-            },
-            expression: None,
-        })
-        .unwrap();
-        let expected_notes = p.notes.len();
-        let expected_duration = p.state.duration;
-        let count = p.fingers.len();
-        let bytes = exported(&mut p);
-        let parsed = Package::decode(&bytes).unwrap();
-        assert_eq!(parsed.manifest.fingerings.len(), count);
-        let mut target = blank();
-        target
-            .command(Command::ImportPackage {
-                bytes,
-                policy: "merge".into(),
-            })
-            .unwrap();
-        let cid = target.file.as_ref().unwrap().content_id.clone();
-        let lid = target.preferences.ladder_presets[&cid][0].id.clone();
-        assert!(
-            target.preferences.ladder_presets[&cid][0]
-                .exercise_spec
-                .is_none()
-        );
-        target
-            .command(Command::StartLadder {
-                id: lid,
-                resume: false,
-            })
-            .unwrap();
-        target.command(Command::StopLadder).unwrap();
-        assert_eq!(target.fingers.len(), count);
-        assert_eq!(target.notes.len(), expected_notes);
-        assert!((target.state.duration - expected_duration).abs() < 0.00001);
     }
 }
 

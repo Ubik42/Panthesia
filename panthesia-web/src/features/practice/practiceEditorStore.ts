@@ -7,17 +7,14 @@ import {
 import { activitySignal } from "../activity/activitySignal";
 
 export type EditorForm = Record<string, string>;
-export type PracticeEditorKind = "passage" | "ladder";
+export type PracticeEditorKind = "passage";
 type CatalogMutation = Extract<
   PracticeEditCommand,
   {
     type:
       | "savePassage"
       | "updatePassageDetails"
-      | "removePassage"
-      | "saveLadder"
-      | "updateLadderName"
-      | "removeLadder";
+      | "removePassage";
   }
 >;
 export interface PracticeDraft {
@@ -185,24 +182,7 @@ function createSession(kind: PracticeEditorKind, contentId: string) {
           !["source", "name", "range"].includes(String(value.sort))
         )
           throw new Error("列表浏览位置无法读取，原文已保留。");
-        const keys =
-          kind === "passage"
-            ? ["name", "first", "last", "notes"]
-            : [
-                "name",
-                "first",
-                "last",
-                "startPercent",
-                "targetPercent",
-                "stepPercent",
-                "passesRequired",
-                "accuracyPercent",
-                "onTimeEnabled",
-                "onTimePercent",
-                "failuresBeforeStepBack",
-                "attemptLimit",
-                "expression",
-              ];
+        const keys = ["name", "first", "last", "notes"];
         if (
           ![...value.drafts, ...value.discarded].every((row) =>
             [row.form, row.original].every(
@@ -213,15 +193,6 @@ function createSession(kind: PracticeEditorKind, contentId: string) {
           )
         )
           throw new Error("草稿字段不完整，原文已保留。");
-        if (
-          kind === "ladder" &&
-          ![...value.drafts, ...value.discarded].every((row) =>
-            [row.form, row.original].every((form) =>
-              ["yes", "no"].includes(form.onTimeEnabled),
-            ),
-          )
-        )
-          throw new Error("准时率开关记录无法读取，原文已保留。");
         return {
           ...initial,
           title: value.title,
@@ -505,15 +476,8 @@ function createSession(kind: PracticeEditorKind, contentId: string) {
         current.scope !== practiceScopeKey(source)
       )
         throw new Error("当前草稿来源已改变，请核对后重新保存。");
-      const removing =
-        command.type === "removePassage" || command.type === "removeLadder";
-      if (
-        removing !== (operation === "remove") ||
-        (kind === "ladder") !==
-          (command.type === "saveLadder" ||
-            command.type === "updateLadderName" ||
-            command.type === "removeLadder")
-      )
+      const removing = command.type === "removePassage";
+      if (removing !== (operation === "remove"))
         throw new Error("当前草稿与保存操作不匹配。");
       const target = current.id ?? `editor-${current.requestId}`;
       const receipt: Receipt = {

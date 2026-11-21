@@ -234,7 +234,7 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Command, Engine, data_root_lock::DataRootLock, history_loading::tests::seeded};
+    use crate::{Command, Engine, data_root_lock::DataRootLock, test_fixtures::seeded};
     use panthesia_core::{
         exercise::{ExerciseHands, ExerciseSpec},
         practice::PracticePart,
