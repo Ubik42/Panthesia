@@ -13,7 +13,7 @@ export interface ScoreCatalog {
   originals: { versionId: string; status: string; path: string }[];
   originalIssue?: string;
 }
-import type { ScoreRouteEvidence } from "../../ScoreRoutePreview";
+import type { ScoreRouteEvidence } from "./ScoreRoutePreview";
 export interface ScoreWorkspaceSource {
   engineId?: string;
   contentId: string;

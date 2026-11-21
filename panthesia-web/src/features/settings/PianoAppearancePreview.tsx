@@ -1,7 +1,7 @@
-import { productLabel } from "../../displayPreferences";
+import { productLabel } from "./displayPreferences";
 import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
-import type { DisplayPreferences } from "../../displayPreferences";
+import type { DisplayPreferences } from "./displayPreferences";
 import { PianoKeyboard } from "../practice/pianoKeyboard";
 import { PianoEffects, effectPalettes } from "../practice/pianoEffects";
 import "./pianoAppearance.css";

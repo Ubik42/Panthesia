@@ -1,7 +1,7 @@
 import {
   normalizeDisplayPreferences,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "./displayPreferences";
 export const layoutKeys = [
   "uiScale",
   "practiceFocus", "practiceView", "practiceSplitAxis", "practiceSplitRatio",

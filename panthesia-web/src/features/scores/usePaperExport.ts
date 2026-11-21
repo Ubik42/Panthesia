@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api } from "../../api";
 import type { PaperAttachment, PaperView } from "./paperTypes";
-import { annotatedBookPdf } from "../../PaperBookExport";
+import { annotatedBookPdf } from "./PaperBookExport";
 import { annotatedRasterPng } from "./annotatedRaster";
 import { createPaperExportFeedback } from "./PaperExportFeedback";
 import { useCloseParticipant } from "../../app/closePreparation";

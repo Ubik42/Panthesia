@@ -1,5 +1,5 @@
 import { PreviewBarsControl } from "./PreviewBarsControl";
-import type { DisplayPreferences } from "../../displayPreferences";
+import type { DisplayPreferences } from "../settings/displayPreferences";
 import { pitchName } from "../../engine/musicFormatting";
 import {
   panKeyboardViewport,

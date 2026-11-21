@@ -3,7 +3,7 @@ import {
   handColor,
   productLabel,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "./displayPreferences";
 import { effectPalettes } from "../practice/pianoEffects";
 
 const whites = [60, 62, 64, 65, 67, 69, 71, 72];

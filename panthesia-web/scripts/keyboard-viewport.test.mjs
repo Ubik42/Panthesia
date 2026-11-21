@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import{bu
 const result=await build({entryPoints:[fileURLToPath(new URL('../src/features/practice/keyboardViewport.ts',import.meta.url))],bundle:true,write:false,format:'esm',platform:'node'});
 const v=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
 test('saved camera accepts old backups and preserves explicit shortcut assignments',async()=>{
- const bundled=await build({stdin:{contents:"export * from './src/features/settings/interfaceBackupModel'; export * from './src/displayPreferences'; export * from './src/shortcuts';",resolveDir:fileURLToPath(new URL('..',import.meta.url))},bundle:true,write:false,format:'esm',platform:'node'});
+ const bundled=await build({stdin:{contents:"export * from './src/features/settings/interfaceBackupModel'; export * from './src/features/settings/displayPreferences'; export * from './src/app/shortcuts';",resolveDir:fileURLToPath(new URL('..',import.meta.url))},bundle:true,write:false,format:'esm',platform:'node'});
  const m=await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
  const prefs=m.normalizeDisplayPreferences({...m.displayDefaults,range:'custom',keyboardViewport:{start:12.125,span:28.75},previewBars:2.25});
  const raw={format:'neothesia-interface-settings',version:1,createdAt:new Date().toISOString(),preferences:prefs,layouts:[]};

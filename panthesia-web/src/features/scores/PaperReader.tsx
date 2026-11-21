@@ -39,7 +39,7 @@ import {
 import { api, pitchName, type LoadedSong, type Note } from "../../api";
 import { usePaperExport } from "./usePaperExport";
 import { PaperExportFeedback } from "./PaperExportFeedback";
-import { PaperPracticeBuilder } from "../../PaperPracticeBuilder";
+import { PaperPracticeBuilder } from "./PaperPracticeBuilder";
 import type {
   PaperView,
   PaperAttachment,
@@ -60,9 +60,9 @@ import {
   type PaperRegion,
   type PaperAnnotation,
   type PaperAnnotationDraft,
-} from "../../PaperAnnotations";
-import "../../paper-navigation.css";
-import "../../paper-note-regions.css";
+} from "./PaperAnnotations";
+import "./paper-navigation.css";
+import "./paper-note-regions.css";
 import "./scoreConversion.css";
 import "./paperReaderWorkspace.css";
 const noReadingSubscription = () => () => {};

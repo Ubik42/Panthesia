@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { reviewInkMerge, applyInkMerge } from "../src/paperInkMerge";
-import type { PaperAnnotation } from "../src/PaperAnnotations";
+import { reviewInkMerge, applyInkMerge } from "../src/features/scores/paperInkMerge";
+import type { PaperAnnotation } from "../src/features/scores/PaperAnnotations";
 const mark = (
   id: string,
   patch: Partial<PaperAnnotation> = {},

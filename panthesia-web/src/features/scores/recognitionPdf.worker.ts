@@ -1,6 +1,6 @@
 import { PDFDocument } from "pdf-lib";
-import { annotatedPageCanvas } from "../../PaperPageExport";
-import type { PaperAnnotation } from "../../PaperAnnotations";
+import { annotatedPageCanvas } from "./PaperPageExport";
+import type { PaperAnnotation } from "./PaperAnnotations";
 
 export type RecognitionPdfRequest =
   | {

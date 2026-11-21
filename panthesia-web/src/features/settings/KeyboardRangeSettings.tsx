@@ -1,4 +1,4 @@
-import type { DisplayPreferences } from "../../displayPreferences";
+import type { DisplayPreferences } from "./displayPreferences";
 import { pitchName } from "../../engine/musicFormatting";
 import {
   keyboardRangeOptions,

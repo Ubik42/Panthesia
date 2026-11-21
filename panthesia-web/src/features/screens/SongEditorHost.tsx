@@ -1,8 +1,8 @@
 import { SongOptionsDialog } from "./SongOptionsDialog";
 import { PracticeVariantPanel } from "../practice/PracticeVariantPanel";
-import { ScoresDialog } from "../../ScoresDialog";
-import { MeterDialog } from "../../MeterDialog";
-import { HandsDialog } from "../../HandsDialog";
+import { ScoresDialog } from "../scores/ScoresDialog";
+import { MeterDialog } from "../practice/MeterDialog";
+import { HandsDialog } from "../practice/HandsDialog";
 import type { LoadedSong, EngineCommand } from "../../api";
 import type { Variant } from "../../engine/commands.generated";
 import type { createScoreWorkspaceStore } from "../scores/scoreWorkspaceStore";

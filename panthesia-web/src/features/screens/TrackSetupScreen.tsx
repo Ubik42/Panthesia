@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { type LoadedSong, type EngineCommand } from "../../api";
 import { trackColors } from "./partPalette";
-import { Dialog } from "../../Dialog";
+import { Dialog } from "../../app/Dialog";
 import { ScreenHeader } from "./ScreenHeader";
 const groups = [
   "钢琴",

@@ -2,7 +2,7 @@ import { scoreJobProgress } from "./scoreJobProgress";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api } from "../../api";
 import type { PaperAttachment } from "./paperTypes";
-import type { ScoreRouteEvidence } from "../../ScoreRoutePreview";
+import type { ScoreRouteEvidence } from "./ScoreRoutePreview";
 import type {
   ScoreDraft,
   DraftSummary,

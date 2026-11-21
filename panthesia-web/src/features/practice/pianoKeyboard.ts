@@ -1,6 +1,6 @@
 import {
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "../settings/displayPreferences";
 
 type Geometry = (pitch: number, width: number) => { x: number; w: number };
 type Frame = {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
-import { Dialog } from "../../Dialog";
+import { Dialog } from "../../app/Dialog";
 import "./songFiles.css";
 
 type Version = { id: string; label: string | null; path: string | null; missing?: boolean; current: boolean; default: boolean };

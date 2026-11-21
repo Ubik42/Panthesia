@@ -3,7 +3,7 @@ import {
   productLabel,
   type LabelMode,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "../settings/displayPreferences";
 const modes: [LabelMode, string][] = [
   ["none", "不显示"],
   ["octaves", "八度编号"],

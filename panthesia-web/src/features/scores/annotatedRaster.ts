@@ -1,5 +1,5 @@
-import { annotatedPagePng } from "../../PaperPageExport";
-import type { PaperAnnotation } from "../../PaperAnnotations";
+import { annotatedPagePng } from "./PaperPageExport";
+import type { PaperAnnotation } from "./PaperAnnotations";
 import { createPdfWorker } from "./pdfWorkerClient";
 export async function annotatedRasterPng(
   source: HTMLCanvasElement,

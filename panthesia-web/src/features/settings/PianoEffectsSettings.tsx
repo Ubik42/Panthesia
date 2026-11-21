@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import type { DisplayPreferences } from "../../displayPreferences";
+import type { DisplayPreferences } from "./displayPreferences";
 
 export function PianoEffectsSettings({ value, change, compact = false, openAppearance }: {
   value: DisplayPreferences; change: (patch: Partial<DisplayPreferences>) => void; compact?: boolean; openAppearance?:()=>void;

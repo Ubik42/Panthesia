@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Dialog } from "../../Dialog";
+import { Dialog } from "../../app/Dialog";
 export function SongOptionsDialog({
   close,
   children,

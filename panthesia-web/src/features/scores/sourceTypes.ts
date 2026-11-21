@@ -1,5 +1,5 @@
 import type { LoadedSong } from "../../api";
-import type { ScoreRouteEvidence } from "../../ScoreRoutePreview";
+import type { ScoreRouteEvidence } from "./ScoreRoutePreview";
 export type SourceStatus =
   "ready" | "changed" | "acknowledged" | "missing" | "unreadable";
 export interface ScoreSource {

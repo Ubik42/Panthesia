@@ -3,7 +3,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ScoreRoutePreview,
   type ScoreRouteEvidence,
-} from "../../ScoreRoutePreview";
+} from "./ScoreRoutePreview";
 import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
 import { PaperListPager } from "./PaperListPager";
 import type {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FileText, Loader2, RefreshCw, X } from "lucide-react";
-import { ScoreFilePreview } from "../../ScoreFilePreview";
+import { ScoreFilePreview } from "./ScoreFilePreview";
 import type { usePdfConversion } from "./usePdfConversion";
 import "./scoreConversion.css";
 export function PdfConversionPanel({

@@ -26,7 +26,7 @@ import type { SongWorkspaceRequest,SongWorkspaceTarget } from "./app/songWorkspa
 import { StartupNotice } from "./app/StartupNotice";
 import { useDialogFocus } from "./app/useDialogFocus";
 import { useWorkspaceSessions } from "./app/useWorkspaceSessions";
-import type { DisplayPreferences } from "./displayPreferences";
+import type { DisplayPreferences } from "./features/settings/displayPreferences";
 import type { MediaExportKind } from "./engine/commands.generated";
 import { pathKey } from "./engine/pathIdentity";
 import { TaskActivity } from "./engine/TaskActivity";
@@ -87,15 +87,15 @@ import { FingeringWorkbench } from "./features/fingering/FingeringWorkbench";
 import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
 import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { usePracticeRange } from "./features/practice/usePracticeRange";
-import { FingeringDialog } from "./FingeringDialog";
-import { Notation } from "./Notation";
-import { PaperScore } from "./PaperScore";
-import { PassageDialog } from "./PassageDialog";
-import { Piano } from "./Piano";
+import { FingeringDialog } from "./features/fingering/FingeringDialog";
+import { Notation } from "./features/scores/Notation";
+import { PaperScore } from "./features/scores/PaperScore";
+import { PassageDialog } from "./features/practice/PassageDialog";
+import { Piano } from "./stage/Piano";
 import { ExerciseDialog } from "./features/practice/ExerciseDialog";
 import { MetadataDialog } from "./features/library/SongMetadataDialog";
-import { ScoreRangeDialog } from "./ScoreRangeDialog";
-import { shortcutLabel } from "./shortcuts";
+import { ScoreRangeDialog } from "./features/scores/ScoreRangeDialog";
+import { shortcutLabel } from "./app/shortcuts";
 const normalize = pathKey;
 
 export default function App() {

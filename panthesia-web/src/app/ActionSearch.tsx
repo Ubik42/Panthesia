@@ -15,7 +15,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { eventShortcut, shortcutLabel } from "../shortcuts";
+import { eventShortcut, shortcutLabel } from "./shortcuts";
 import {
   searchCommands,
   type ApplicationCommand,

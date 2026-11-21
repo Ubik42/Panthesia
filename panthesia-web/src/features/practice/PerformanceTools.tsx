@@ -8,8 +8,8 @@ import {
 import type { Dispatch, SetStateAction, RefObject } from "react";
 import { ToolbarMore } from "../../app/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
-import type { DisplayPreferences } from "../../displayPreferences";
-import { shortcutLabel } from "../../shortcuts";
+import type { DisplayPreferences } from "../settings/displayPreferences";
+import { shortcutLabel } from "../../app/shortcuts";
 import { LabelSettings } from "../screens/LabelSettings";
 import { KeyboardRangeControls } from "./KeyboardRangeControls";
 import type { KeyboardRange, KeyboardViewport } from "./keyboardViewport";

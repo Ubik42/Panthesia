@@ -3,8 +3,8 @@ import {
   displayDefaults,
   normalizeDisplayPreferences,
   type DisplayPreferences,
-} from "../../displayPreferences";
-import { shortcutActions } from "../../shortcuts";
+} from "./displayPreferences";
+import { shortcutActions } from "../../app/shortcuts";
 import {
   canonicalSetting,
   decodeLayouts,

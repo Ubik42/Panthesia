@@ -2,9 +2,9 @@ import { getInterfaceSettings } from "./interfaceSettingsStore";
 import {
   normalizeDisplayPreferences,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "./displayPreferences";
 import { layoutKeys, extractLayout, type SavedLayout } from "./layoutModel";
-import { normalizeShortcuts, shortcutActions } from "../../shortcuts";
+import { normalizeShortcuts, shortcutActions } from "../../app/shortcuts";
 import { canonicalSetting } from "./layoutModel";
 export const settingsGroups = {
   display: [

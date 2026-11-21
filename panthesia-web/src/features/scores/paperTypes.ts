@@ -1,5 +1,5 @@
 import type { PaperReadingTicket } from "./paperViewStore";
-import type { PaperAnnotation } from "../../PaperAnnotations";
+import type { PaperAnnotation } from "./PaperAnnotations";
 
 export type PaperView = import("../../engine/commands.generated").View;
 export interface PaperAttachment {

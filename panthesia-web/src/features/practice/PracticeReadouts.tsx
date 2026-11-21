@@ -2,7 +2,7 @@ import { clock, type EngineCommand, type LoadedSong } from "../../api";
 import {
   displayPitch,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "../settings/displayPreferences";
 import { usePlaybackFields } from "./PlaybackView";
 import type { PlaybackStore } from "./playbackStore";
 import {

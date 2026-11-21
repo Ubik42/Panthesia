@@ -8,8 +8,8 @@ import {
   shortcutError,
   shortcutLabel,
   type ShortcutAction,
-} from "../../shortcuts";
-import type { DisplayPreferences } from "../../displayPreferences";
+} from "../../app/shortcuts";
+import type { DisplayPreferences } from "./displayPreferences";
 const shortcutGroups: {
   id: string;
   label: string;

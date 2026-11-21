@@ -29,7 +29,7 @@ import {
   codeLabel,
   displayDefaults,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "./displayPreferences";
 export function DisplaySettingsDialog({
   value,
   input = null,

@@ -1,5 +1,5 @@
 import type { LoadedSong } from "../../api";
-import { handColor, type DisplayPreferences } from "../../displayPreferences";
+import { handColor, type DisplayPreferences } from "../settings/displayPreferences";
 import { effectPalettes } from "./pianoEffects";
 
 export function PracticeLegend({

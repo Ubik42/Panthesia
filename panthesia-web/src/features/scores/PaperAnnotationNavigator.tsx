@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { PaperAnnotation } from "../../PaperAnnotations";
+import type { PaperAnnotation } from "./PaperAnnotations";
 import { PaperListPager } from "./PaperListPager";
 export interface PaperAnnotationLocation {
   note: PaperAnnotation;

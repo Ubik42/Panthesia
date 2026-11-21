@@ -7,7 +7,7 @@ import {
 import {
   normalizeDisplayPreferences,
   type DisplayPreferences,
-} from "../../displayPreferences";
+} from "./displayPreferences";
 import {
   canonicalSetting,
   decodeLayouts,

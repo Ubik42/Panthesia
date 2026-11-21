@@ -13,9 +13,9 @@ import {
   type EngineCommand,
   type LoadedSong,
 } from "../../api";
-import type { DisplayPreferences } from "../../displayPreferences";
-import { keyboardMap } from "../../displayPreferences";
-import { eventShortcut, shortcutActions } from "../../shortcuts";
+import type { DisplayPreferences } from "../settings/displayPreferences";
+import { keyboardMap } from "../settings/displayPreferences";
+import { eventShortcut, shortcutActions } from "../../app/shortcuts";
 import {
   isCapturingKeys,
   isComposingKey,

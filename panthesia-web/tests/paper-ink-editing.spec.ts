@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { paperPoint } from "../src/PaperGeometry";
-import { moveInk } from "../src/paperInkEditing";
+import { paperPoint } from "../src/features/scores/PaperGeometry";
+import { moveInk } from "../src/features/scores/paperInkEditing";
 function pdf() {
   const body = (n: number) =>
     `BT /F1 24 Tf 50 750 Td (Piano Study - Page ${n}) Tj ET\n0.5 w\n50 650 m 550 650 l S\n50 660 m 550 660 l S\n50 670 m 550 670 l S\n50 680 m 550 680 l S\n50 690 m 550 690 l S\n`;
