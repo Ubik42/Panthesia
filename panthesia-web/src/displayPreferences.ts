@@ -24,6 +24,8 @@ export type DisplayPreferences = {
   beatOpacity: number;
   subdivisionOpacity: number;
   gridSubdivision: 4 | 8 | 16 | 32;
+  virtualHands: boolean;
+  virtualHandOpacity: number;
   effectsEnabled: boolean;
   effectsPreset: "practice" | "performance";
   effectsPalette: "aurora" | "ember" | "violet";
@@ -92,6 +94,7 @@ export const displayDefaults: DisplayPreferences = {
   practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55,
   skin: "studio", pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
+  virtualHands: false, virtualHandOpacity: 100,
   effectsEnabled: true,
   effectsPreset: "practice",
   effectsPalette: "aurora",
@@ -162,6 +165,8 @@ export function normalizeDisplayPreferences(
     beatOpacity: size(raw.beatOpacity, 0, 100, 18),
     subdivisionOpacity: size(raw.subdivisionOpacity, 0, 100, 12),
     gridSubdivision: raw.gridSubdivision === 4 || raw.gridSubdivision === 16 || raw.gridSubdivision === 32 ? raw.gridSubdivision : 8,
+    virtualHands: raw.virtualHands === true,
+    virtualHandOpacity: size(raw.virtualHandOpacity,20,100,100),
     effectsEnabled: typeof raw.effectsEnabled === "boolean" ? raw.effectsEnabled : true,
     effectsPreset: raw.effectsPreset === "performance" ? "performance" : "practice",
     effectsPalette: raw.effectsPalette === "ember" || raw.effectsPalette === "violet" ? raw.effectsPalette : "aurora",

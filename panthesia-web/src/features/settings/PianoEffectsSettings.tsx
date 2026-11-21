@@ -18,6 +18,12 @@ export function PianoEffectsSettings({ value, change, compact = false, openAppea
         {value.effectsEnabled ? "已开启" : "已关闭"}
       </button>
     </div>
+    {!compact&&<section className="virtual-hands-settings" aria-label="虚拟双手设置">
+      <h4>虚拟双手</h4>
+      <label><input type="checkbox" aria-label="虚拟双手演示" checked={value.virtualHands} onChange={e=>change({virtualHands:e.target.checked})}/>演示当前歌曲的左右手与指法</label>
+      <label className="effects-intensity">手部不透明度 <output>{value.virtualHandOpacity}%</output><input aria-label="手部不透明度" type="range" min="20" max="100" value={value.virtualHandOpacity} onChange={e=>change({virtualHandOpacity:Number(e.target.value)})}/></label>
+      <p className="parameter-help">按已保存的左右手、指法和换指动作演示，包含穿指与双手交叉。缺少指法的音符可先在歌曲设置中补充。演示随播放、等待、定位和速度同步。</p>
+    </section>}
     <div className="effects-presets" aria-label="光效预设">
       <button type="button" aria-pressed={value.effectsPreset === "practice"} onClick={() => change({ effectsPreset: "practice", effectsEnabled: true })}>练习光效</button>
       <button type="button" aria-pressed={value.effectsPreset === "performance"} onClick={() => change({ effectsPreset: "performance", effectsEnabled: true })}>演出光效</button>

@@ -371,6 +371,7 @@ export function DisplaySettingsDialog({
           )}
           {section === "appearance" && <button type="button" onClick={()=>update({
             skin:displayDefaults.skin,pianoMaterial:displayDefaults.pianoMaterial,effectStyle:displayDefaults.effectStyle,
+            virtualHands:displayDefaults.virtualHands,virtualHandOpacity:displayDefaults.virtualHandOpacity,
             effectsEnabled:displayDefaults.effectsEnabled,effectsPreset:displayDefaults.effectsPreset,
             effectsPalette:displayDefaults.effectsPalette,effectsIntensity:displayDefaults.effectsIntensity,reduceMotion:displayDefaults.reduceMotion,
             gridSubdivision:displayDefaults.gridSubdivision,barOpacity:displayDefaults.barOpacity,beatOpacity:displayDefaults.beatOpacity,subdivisionOpacity:displayDefaults.subdivisionOpacity,

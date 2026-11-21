@@ -182,6 +182,7 @@ export function PerformanceTools({
             谱页
           </button>
         </div>
+        <label><input type="checkbox" aria-label="虚拟双手演示" checked={display.virtualHands} onChange={event=>{setDisplay(previous=>({...previous,virtualHands:event.target.checked}));if(event.target.checked&&view!=="keyboard"&&view!=="combined")setView("keyboard");}}/>虚拟双手演示</label>
         <PracticeLegend song={song} display={display} />
         <button aria-label="界面与按键设置" onClick={() => open.display()}>
           界面与按键

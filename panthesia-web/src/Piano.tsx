@@ -1,3 +1,4 @@
+import {VirtualHands} from "./features/practice/virtualHands";
 import {practiceKeyAt} from "./features/practice/practiceKey";
 import { tickAtSeconds } from "./features/practice/practicePresentation";
 import {
@@ -142,6 +143,7 @@ export function Piano({
   }, [song?.notes]);
   const canvas = useRef<HTMLCanvasElement>(null);
   const effectsCanvas = useRef<HTMLCanvasElement>(null);
+  const handCanvas = useRef<HTMLCanvasElement>(null);
   const clock = useRef(new WaterfallClock());
   const latest = useRef({
     song,
@@ -237,6 +239,7 @@ export function Piano({
       Number(element.dataset.renderGeneration ?? 0) + 1,
     );
     const effects = new PianoEffects(effectsCanvas.current!,()=>requestPaint.current());
+    const virtualHands = new VirtualHands(handCanvas.current!,()=>requestPaint.current());
     const sprites = new WaterfallSprites();
     const ctx = element.getContext("2d", { alpha: false })!;
     const surface = { width: 0, height: 0, dpr: 1 };
@@ -310,7 +313,7 @@ export function Piano({
         note: LoadedSong["notes"][number];
         action: NonNullable<LoadedSong["fingerActions"]>[number];
       }[] = [];
-      const keyboardHeight = Math.min(display.keyboardHeight, height * 0.45),
+      const keyboardHeight = Math.min(display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight, height * 0.45),
         baseline = height - keyboardHeight;
       const position = clock.current.sample(now);
       sprites.backdrop(
@@ -742,6 +745,13 @@ export function Piano({
           );
         }
       }
+      virtualHands.configure(song,state.speed,display.virtualHands);
+      const handState=virtualHands.paint(position,baseline,keyboardHeight,width,pitch=>keyLayout.has(pitch)?geometry(pitch,width):undefined,display.virtualHandOpacity/100);
+      element.dataset.virtualHands=display.virtualHands?(virtualHands.ready?"ready":"preparing"):"off";
+      element.dataset.handPoses=String(handState.hands);
+      element.dataset.thumbUnder=String(handState.thumbUnder);
+      element.dataset.fingerSubstitutions=String(handState.substitution);
+      element.dataset.handsCrossed=String(handState.crossed);
       ctx.textAlign = "left";
       element.dataset.effectParticles = String(effects.particleCount);
       element.dataset.effectRenderer = effects.renderer;
@@ -788,6 +798,7 @@ export function Piano({
     return () => {
       cancelAnimationFrame(frame);
       effects.dispose();
+      virtualHands.dispose();
       resize.disconnect();
       window.removeEventListener("resize", resized);
       document.removeEventListener("visibilitychange", visibility);
@@ -834,7 +845,7 @@ export function Piano({
     canvas,
     viewport,
     previewBars,
-    keyboardHeight: display.keyboardHeight,
+    keyboardHeight: display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight,
     onViewportChange,
     onPreviewBarsChange,
     canInteract,
@@ -865,7 +876,7 @@ export function Piano({
             ((e.clientY - bounds.top) * e.currentTarget.clientHeight) /
             Math.max(1, bounds.height);
         const keyboardHeight = Math.min(
-          display.keyboardHeight,
+          display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight,
           e.currentTarget.clientHeight * 0.45,
         );
         if (y < e.currentTarget.clientHeight - keyboardHeight) {
@@ -916,6 +927,7 @@ export function Piano({
       }}
     />
     <canvas ref={effectsCanvas} className="piano-gpu-effects" aria-hidden="true" />
+    <canvas ref={handCanvas} className="piano-hands" aria-hidden="true" />
     </div>
   );
 }
