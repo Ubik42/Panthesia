@@ -61,9 +61,9 @@ impl Prepared {
         let id = blake3::hash(&bytes).to_hex().to_string();
         let mut watches = Vec::new();
         let _ = id;
-        // Generated exercises are cached under the data root: `library/assets/exercises/<cid>.mid`
-        // keeps their hand and finger edits in the owned annotation document.
-        let destination = data.join("library/assets/exercises").join(format!("{}.mid", file.content_id));
+        // Generated exercises are cached under the data root, `exercises/<cid>.mid`, with their
+        // hand and finger edits in the manifest beside it.
+        let destination = data.join("exercises").join(format!("{}.mid", file.content_id));
         let source = destination.clone();
         watches.push(Watch::capture(&destination)?);
         watches.push(Watch::capture(&library::metadata_sidecar_path(&destination))?);

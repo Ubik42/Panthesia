@@ -200,7 +200,7 @@ impl Player {
             return Ok(path.clone());
         }
         let spec=self.exercise.ok_or("曲目缺少可保存的内容")?;
-        let path=self.data.join("library/assets/exercises").join(format!("{}.mid",file.content_id));
+        let path=self.data.join("exercises").join(format!("{}.mid",file.content_id));
         if !panthesia_core::utils::atomic_file::is_file(&path){
             let bytes=exercise_assets::canonical_bytes(spec)?;
             if let Some(parent)=path.parent(){std::fs::create_dir_all(parent).map_err(|e|e.to_string())?;}

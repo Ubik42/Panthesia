@@ -190,6 +190,12 @@ pub fn document_path(midi: &Path) -> Option<PathBuf> {
         return None;
     }
     let directory = midi.parent()?;
+    // Generated exercises cached in the data folder: `exercises/<cid>.mid` keeps its
+    // annotations in `exercises/annotations/<cid>.json`.
+    let library_layout = directory.parent().and_then(Path::file_name).is_some_and(|v| v == "assets");
+    if directory.file_name().is_some_and(|v| v == "exercises") && !library_layout {
+        return Some(directory.join("annotations").join(format!("{id}.json")));
+    }
     if !["midi", "exercises"]
         .iter()
         .any(|name| directory.file_name().is_some_and(|v| v == *name))
