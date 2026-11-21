@@ -1,6 +1,6 @@
 # 长期目标
 
-把 Panthesia 做成"打开一首歌就能练"的钢琴练习程序：曲库由 Ouro 管理并按文件类型打开 Panthesia；歌曲数据写在文件旁的 `.panthesia` 清单中；演奏舞台、分层歌曲模型、谱面、和声分析、伴奏、虚拟双手按计划逐步完成。技术栈 Rust + Tauri + React。
+把 Panthesia 做成"打开一首歌就能练"的钢琴练习程序：曲库由 Keel 管理并按文件类型打开 Panthesia；歌曲数据写在文件旁的 `.panthesia` 清单中；演奏舞台、分层歌曲模型、谱面、和声分析、伴奏、虚拟双手按计划逐步完成。技术栈 Rust + Tauri + React。
 
 计划与阶段：[docs/development/current-plan.md](docs/development/current-plan.md) 第 4 节。进度记录：[docs/development/progress.md](docs/development/progress.md)。
 

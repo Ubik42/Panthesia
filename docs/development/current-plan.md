@@ -6,7 +6,7 @@
 
 Panthesia 是开源的 Windows 钢琴练习软件。核心是好的练琴体验，数据有什么用什么。
 
-**定位（2026-11-21 用户决定）**：Panthesia 是"打开一首歌就能练"的专用程序，不做曲库管理。曲库的浏览、整理、标签、规则由通用文件库 Ouro（`D:\Manage\_tools\Serpent`，原 Serpent）承担；Ouro 把 MIDI、MusicXML 与 `.panthesia` 的打开方式指向 Panthesia。歌曲数据跟着文件走，写在文件旁边的 `.panthesia` 清单中（3.7）。技术栈保持 Rust + Tauri + React。
+**定位（2026-11-21 用户决定）**：Panthesia 是"打开一首歌就能练"的专用程序，不做曲库管理。曲库的浏览、整理、标签、规则由通用文件库 Keel（`D:\Manage\_tools\Keel`，原 Serpent）承担；Keel 把 MIDI、MusicXML 与 `.panthesia` 的打开方式指向 Panthesia。歌曲数据跟着文件走，写在文件旁边的 `.panthesia` 清单中（3.7）。技术栈保持 Rust + Tauri + React。
 
 1. **练琴体验**：打开文件即进入演奏；演奏舞台参照 Synthesia，视觉质量高于参照。瀑布、琴键、光效、虚拟双手、和弦级数、歌词在一个流畅的舞台中，每个图层可以分别开关。
 2. **分层歌曲模型**：一首歌只要有一份可播放的演奏就能练。谱面、量化版本、转调、段落、和弦级数、指法、歌词、伴奏音频都是可选图层；有就显示，没有就隐藏，需要时由算法或 AI 在后台生成。
@@ -180,7 +180,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 **放置**
 
-| 情况 | 位置 | Ouro 中的行为 |
+| 情况 | 位置 | Keel 中的行为 |
 | --- | --- | --- |
 | 单个 MIDI / MusicXML | 主文件旁边，同名：`七里香.mid` → `七里香.panthesia` | 伴生文件，随主文件移动、改名、删除 |
 | 歌曲文件夹 | 文件夹根目录 `song.panthesia` | 随文件夹移动 |
@@ -201,7 +201,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 **`.neopiece` 的新定位**：只用于导出与分享：把清单和它引用的文件打成一个包，路径改写为包内路径。导入 `.neopiece` 时解包到用户选择的文件夹，生成文件夹清单。
 
-**与 Ouro 的配合**：Ouro 的 PF 阶段提供伴生文件与按类型打开方式（见 Ouro `docs/进度.md` 3.6）。Panthesia 提供一个 Ouro 插件，放在本仓库 `integrations/ouro-plugin/`。插件只做转接：调用 `panthesia probe` 取得时长、BPM、调、轨道数、清单中的标题与已有图层，以及钢琴卷帘缩略图；登记 `.panthesia` 为伴生扩展名；注册"用 Panthesia 练习"打开方式。MIDI 与清单的解析只在 Rust 中实现一次。
+**与 Keel 的配合**：Keel 的 PF 阶段提供伴生文件与按类型打开方式（见 Keel `docs/进度.md` 3.6）。Panthesia 提供一个 Keel 插件，放在本仓库 `integrations/keel-plugin/`。插件只做转接：调用 `panthesia probe` 取得时长、BPM、调、轨道数、清单中的标题与已有图层，以及钢琴卷帘缩略图；登记 `.panthesia` 为伴生扩展名；注册"用 Panthesia 练习"打开方式。MIDI 与清单的解析只在 Rust 中实现一次。
 
 ## 4. 阶段
 
@@ -209,9 +209,9 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | --- | --- | --- | --- |
 | R0 基线清理 | 删除死 crate、旧原生应用、前端不可达代码、重复文档；重写计划；磁盘清理 | 构建通过；文档只有一套计划 | 已完成 |
 | R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造与 `lib.rs` 拆分移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
-| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Ouro 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`panthesia-engine` ≤ 3 万行（R1 后约 5 万行，删除集中曲库、导入流水线、目录缓存与五套存储机制后继续下降）；`cargo test --workspace` 能跑完且全部通过 | 待开始 |
+| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Keel 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`panthesia-engine` ≤ 3 万行（R1 后约 5 万行，删除集中曲库、导入流水线、目录缓存与五套存储机制后继续下降）；`cargo test --workspace` 能跑完且全部通过 | 待开始 |
 | RF 前端基础 | **先删后改**：列出 `src/` 根目录约 120 个对话框与 86 个全局 CSS 文件，删除随曲库、选曲、导入、评分、历史一起失去用途的部分，再动剩下的；然后建立 tokens、基础组件、zustand store（song、playback、settings）、单一 `send()`、状态推送替代 80 ms 轮询；启动页与歌曲设置按新结构重写；留下的对话框归入 `src/screens` | 不再使用的对话框与 CSS 已删除（删除清单记入 progress.md）；`App.tsx` < 300 行；CSS 全部基于 token，无硬编码颜色与 `!important`；不再轮询；Playwright 关键流程通过 | 待开始 |
-| RO Ouro 插件 | `integrations/ouro-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Ouro 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Ouro 中移动 MIDI 时清单一起移动 | 待开始（依赖 Ouro PF 阶段） |
+| RO Keel 插件 | `integrations/keel-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Keel 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Keel 中移动 MIDI 时清单一起移动 | 待开始（依赖 Keel PF 阶段） |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 待开始 |
 | R4 分层歌曲模型与统一导入 | `panthesia-notation`；Song 图层与来源信息；ABC 导入；MIDI meta（歌词、标记、调号）读入；歌曲包识别；元数据收敛；语料回归 | 第 3.6 节样本全部可导入；同一首歌从 MIDI / MusicXML / ABC 进入后都能播放、显示谱面、转调、量化 | 待开始（可与 R2 并行） |
 | R5 谱面显示 | 谱面窗口化、跟随、只读阅读器；从 Score IR 生成 | 长谱流畅翻页与跟随；转调后谱面与演奏一致 | 待开始 |
@@ -221,7 +221,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R9 自由演奏与录音 | UI08：录音、量化保存、重开 | 录音保存为歌曲后可正常练习 | 待开始 |
 | R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 待开始 |
 
-顺序：R1 → R2 → RF → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 R2 的 `probe` 子命令与 Ouro 的 PF 阶段。单会话连续执行时按 R1 → R2 → RF → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Ouro PF 完成前跳过，完成后插入。
+顺序：R1 → R2 → RF → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 R2 的 `probe` 子命令与 Keel 的 PF 阶段。单会话连续执行时按 R1 → R2 → RF → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Keel PF 完成前跳过，完成后插入。
 
 ### R1 任务分解
 
@@ -254,7 +254,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 ## 5. 固定约束（用户决定）
 
-- 曲库管理由 Ouro 承担，Panthesia 不做曲库界面（2026-11-21 起，取代同日"Serpent 式三栏工作台"的决定）。Panthesia 只有启动页、歌曲设置与演奏舞台；演奏舞台保留 Synthesia 式布局（参考图 `work/original-product-reset/references`，不随包分发），美术自行设计。Panthesia 品牌、简体中文。
+- 曲库管理由 Keel 承担，Panthesia 不做曲库界面（2026-11-21 起，取代同日"Serpent 式三栏工作台"的决定）。Panthesia 只有启动页、歌曲设置与演奏舞台；演奏舞台保留 Synthesia 式布局（参考图 `work/original-product-reset/references`，不随包分发），美术自行设计。Panthesia 品牌、简体中文。
 - 数据跟随文件：歌曲数据写在文件旁的 `.panthesia` 清单中（3.7）；本地只保存练习历史、最近打开与缓存。技术栈保持 Rust + Tauri + React。
 - 速度单位为 BPM。
 - 删除"入门练习"分类与八秒试听。

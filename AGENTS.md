@@ -2,7 +2,7 @@
 
 开源 Windows 钢琴练习软件。Tauri 2（Rust）+ React 19 + Vite。GPL-3.0，部分初始代码来自 Neothesia（见 NOTICE.md）。
 
-定位（2026-11-21）：打开一首歌就能练的专用程序，不做曲库管理。曲库由 Ouro（`D:\Manage\_tools\Serpent`）管理并按文件类型打开 Panthesia。歌曲数据写在文件旁的 `.panthesia` 清单中（`current-plan.md` 3.7）；本地只保存练习历史、最近打开与缓存。
+定位（2026-11-21）：打开一首歌就能练的专用程序，不做曲库管理。曲库由 Keel（`D:\Manage\_tools\Keel`）管理并按文件类型打开 Panthesia。歌曲数据写在文件旁的 `.panthesia` 清单中（`current-plan.md` 3.7）；本地只保存练习历史、最近打开与缓存。
 
 ## 先读
 

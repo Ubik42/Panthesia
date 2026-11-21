@@ -116,4 +116,4 @@ Rust 生态没有可直接用的符号域和声分析库（`kord` 只解析和�
 - 做法：把上述纯模块复制进 Panthesia `src/workbench/`，类型泛化为 `Item` / `Location`，用 zustand store 承接状态，组件按 Panthesia 领域重写。NOTICE 记录来源提交。等 Panthesia 的 `src/workbench/` 稳定、有第三个应用要用时，再抽成独立包（`@ubik/workbench`），并让 Serpent 反向接入。
 - 估计工作量 3–4 周（纯模块移植 3–5 天；外壳与结构 CSS 1 周；侧栏、筛选、Inspector 按曲库领域重写 1–2 周）。
 
-**2026-11-21 更新**：本节"复制模块到 Panthesia `src/workbench/`"的建议已作废。Serpent 已脱离上游并改名为 Ouro，作为通用文件库管理曲库；Panthesia 不做曲库界面，作为外部演奏程序由 Ouro 按文件类型打开，歌曲数据写在文件旁的 `.panthesia` 清单中。见 current-plan.md 第 1、3.7 节与 Ouro 的 `docs/进度.md` 3.6 节。
+**2026-11-21 更新**：本节"复制模块到 Panthesia `src/workbench/`"的建议已作废。Serpent 已脱离上游并改名为 Keel（曾定名 Keel），作为通用文件库管理曲库；Panthesia 不做曲库界面，作为外部演奏程序由 Keel 按文件类型打开，歌曲数据写在文件旁的 `.panthesia` 清单中。见 current-plan.md 第 1、3.7 节与 Keel 的 `docs/进度.md` 3.6 节。
