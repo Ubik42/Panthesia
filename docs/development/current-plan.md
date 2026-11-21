@@ -209,7 +209,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | --- | --- | --- | --- |
 | R0 基线清理 | 删除死 crate、旧原生应用、前端不可达代码、重复文档；重写计划；磁盘清理 | 构建通过；文档只有一套计划 | 已完成 |
 | R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造与 `lib.rs` 拆分移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 已完成（2026-11-21；`library_repairs` 移到 R2） |
-| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Keel 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`panthesia-engine` ≤ 3 万行（R1 后约 5 万行，删除集中曲库、导入流水线、目录缓存与五套存储机制后继续下降）；`cargo test --workspace` 能跑完且全部通过 | 下一步 |
+| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Keel 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；每个职责只有一条实现路径，模块边界清楚（`lib.rs` 只声明模块与引擎入口，播放状态、命令分派、存储、谱面各自成模块），没有只为旧机制保留的代码；`cargo test --workspace` 能跑完且全部通过 | 下一步 |
 | RF 前端基础 | **先删后改**：列出 `src/` 根目录约 120 个对话框与 86 个全局 CSS 文件，删除随曲库、选曲、导入、评分、历史一起失去用途的部分，再动剩下的；然后建立 tokens、基础组件、zustand store（song、playback、settings）、单一 `send()`、状态推送替代 80 ms 轮询；启动页与歌曲设置按新结构重写；留下的对话框归入 `src/screens` | 不再使用的对话框与 CSS 已删除（删除清单记入 progress.md）；`App.tsx` < 300 行；CSS 全部基于 token，无硬编码颜色与 `!important`；不再轮询；Playwright 关键流程通过 | 待开始 |
 | RO Keel 插件 | `integrations/keel-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Keel 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Keel 中移动 MIDI 时清单一起移动 | 待开始（依赖 Keel PF 阶段） |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 待开始 |
@@ -235,7 +235,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 6. **拆分 `lib.rs`**：移到 R2 第 5 项，在删除集中曲库之后进行，避免先拆出 library、annotations 模块再删除。
 7. **前端残留**：删除对已删命令的调用、`api.ts` 中对应函数、生成协议后不再存在的类型；`npm run protocol:generate` 重新生成。
 8. **后台工具**：DuET 使用独立 venv；`duet_runtime.rs` 中 Python 与模型路径改为设置项，删除 `D:\cs\...` 硬编码默认值。
-9. **收尾**：engine 目标 < 5 万行（R2 结束时 ≤ 3 万行）；清除全部 dead-code 警告；更新 `architecture-decisions.md` 中与已删模块相关的条目。
+9. **收尾**：清除全部 dead-code 警告；更新 `architecture-decisions.md` 中与已删模块相关的条目。
 
 ### R2 任务分解
 
@@ -268,6 +268,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 - 浏览器调试模式保留，收在单一 `send()` 之后。
 - 用户 MIDI、谱面、标注、设置、录音必须保护；迁移可回退。15 个未匹配的旧身份保留，不按标题合并。
 - 不推送、不发布，除非用户明确要求。
+- 验收看软件质量：架构清楚、职责单一、代码好读、行为正确。行数、文件数等数字只用来发现可能的冗余，不作为目标，不为凑数字删除有用的功能或压缩可读性（2026-11-21 用户决定）。
 
 ## 6. 待核对
 

@@ -2,6 +2,15 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 5 项（三）：拆分 `lib.rs`，谱面副本跟随歌曲（提交 df49b02、f297b95、e7d6087）
+
+- `lib.rs` 3.2k → 246 行：`Player` 与播放状态移到 `player.rs`，命令分派移到 `player_commands.rs`，测试移到 `player_tests.rs`；`lib.rs` 只声明模块与 `Engine` 入口。
+- 配对谱面：有清单的歌曲，谱面副本放在歌曲旁（原来引用资料目录副本，跨磁盘时清单无法写相对路径）；其余副本放在资料目录 `scores/`。
+- 技术练习移出 `library/`：`exercises/<cid>.mid`，标注在 `exercises/annotations/<cid>.json`（练习 cid 由参数决定，与字节哈希不同，所以不用清单）。
+- 计划调整：去掉"engine ≤ 3 万行"的验收条件，改为架构判断（每个职责一条路径、模块边界清楚、不留只为旧机制存在的代码）。行数只作为发现冗余的信号（用户决定，见计划第 5 节）。当前 engine 约 3.1 万行（其中测试 3.6k）。
+
+下一入口：R2 第 6 项，迁移真实资料。
+
 ## 2026-11-21 · R2 第 5 项（二）：删除存储机制，测试全部通过（提交 fa95f79、73fc0b3、c61af8f）
 
 - 删除：`operation_journal`、`pending_save`（合并延迟写入的设置写入线程）、`round_storage` / `settings_storage`（保存意图与恢复）、`asset_storage`（谱面与标注的延迟发布与恢复日志）、`storage_recovery`，以及后台读取器外的只读捕获。设置、历史、标注、谱面、谱页一律由修改者直接原子写入；分离的编辑仍在播放线程外准备，`prepare*` 直接返回结果。真实资料中没有遗留的保存意图文件（已核对备份）。
