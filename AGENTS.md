@@ -45,7 +45,7 @@ cd panthesia-web; npm run build          # 协议校验 + tsc + vite
 
 1. **开始**：读 `current-plan.md` 第 4 节与 `progress.md` 最新一条，看 `git status` 与当前分支。工作分支为 `refactor/cleanup-baseline`，不切回 `main`、不合并、不推送。
 2. **每批**：取当前阶段的下一组关联任务，完整做完（实现 → 接入 → 删除旧路径）。一批约 1–3 小时的实际改动量，不把拆一个文件当作一批。
-3. **检查**：`cargo check --workspace --all-targets` 与 `npm run build` 必须通过；改到的 crate 跑 `cargo test -p <crate>`（engine 在 R1 第 5 项完成前加 `-- --skip package_commands`，已知失败基线见 `progress.md`；不允许新增失败）；前端行为改动用浏览器调试模式（`Open-Web.cmd`）或桌面构建实际看一次。
+3. **检查**（2026-11-21 用户决定减少门禁，快速推进）：每批只要求 `cargo check --workspace --all-targets` 与 `npm run build` 通过。阶段结束时再跑改到的 crate 的 `cargo test -p <crate>`（engine 在 R2 删除集中曲库前加 `-- --skip package_commands`，已知失败基线见 `progress.md`；不允许新增失败）并实际打开一次桌面构建。不为检查写新脚本，不额外补测试。
 4. **提交**：每批一个或几个提交，信息写清做了什么、为什么。随后在 `progress.md` 追加记录（日期、提交、完成内容、未完成、下一入口）；阶段完成时更新 `current-plan.md` 第 4 节状态。
 5. **继续**：直接开始下一批。阶段完成后按第 4 节顺序进入下一阶段。
 6. **停下来问用户的情况只有**：要删除或改写用户数据而无法回退；要做计划外的产品范围变化；要推送、发布或调用付费服务；同一问题连续三次方案失败。其他技术决定自行判断，并在 `progress.md` 写明理由。
