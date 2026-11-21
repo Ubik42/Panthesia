@@ -2,6 +2,21 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 3 项：歌曲设置接入清单（提交 573f758）
+
+- 不在旧集中曲库中的歌曲（没有 `library/assets/midi/<cid>.mid`）从原位置直接加载，`retain_assets` 不再把它复制进曲库。已在曲库中的歌曲行为不变，数据仍在集中存储，等第 6 项迁移。
+- 标注：`library::load_song_sidecar` / `save_song_sidecar` 对外部 MIDI 改为读写清单（`panthesia-core::manifest_sidecar`）：手别（轨道与逐音）、指法与持音换指、逐音演奏者、小节（含旧式整体修正）、谱面配对（`files` 中 `score` 引用 + `scores[]`，分析快照写在 `analysis`）、元数据；元数据来源层写在 `extensions.panthesia`。音符引用在兼容序号与 `[track, onset, pitch]` 之间按演奏的音符映射转换；无法对应的旧条目移入图层 `unmatched`，不删除。旧 `.neothesia.ron` 仍可读取（读取时投影到当前音符序号），保存一律进清单。`D:\Music\MIDI` 中没有旧 RON 文件。
+- 偏好中按歌曲保存的数据（`manifest_settings.rs`）：练习段、书签 → 图层 `passages` / `bookmarks`；轨道外观与音色、变调量化、手型、练习设置 → `settings`。加载时用清单内容替换该曲的偏好项；每个改变状态的运行时请求结束后比较投影，有变化才写回。练习段等歌曲数据第一次出现时创建同名清单；只改练习设置不创建。
+- 选择在运行时请求出口统一同步：偏好的保存点有二十余处，且书签、练习段走 `practice_catalog` 的独立提交通道，挂在 `Player::command` 上会漏掉。分离的读取器（后台准备）不写清单。
+- `manifest_store` 移到 `panthesia-core`（标注读写在 core 中，需要它），新增进程内读改写锁 `edit()`，标注保存与设置同步不会互相覆盖。core 的"纯函数、无 IO"边界在 `library.rs` 中本来就不成立，第 5 项拆分时一并整理。
+- 文件夹清单中的多个演奏：非默认演奏的图层键为 `名称:演奏id`，设置在 `settings.performances.<id>`。格式文档已补充。
+- 清单输出：一行能写下（≤100 字符）的数组与对象写成一行，每条音符引用一行，便于阅读和 Git 对比。
+- 新命令 `SongFiles` / `EditSongFile`（添加、移除、命名）；歌曲设置页"更多"菜单新增"歌曲文件与版本…"：列出版本（切换、命名、移除非默认版本、添加 MIDI 版本）、伴奏与人声及原音频（登记、移除）、文件缺失与未匹配标注数量。桌面端新增 `pick_song_file`。打开文件后若清单有缺失文件或未匹配标注，提示一次。
+- 检查：`cargo check --workspace --all-targets`、`npm run build` 通过；`file_open` 测试扩展为：第一次加书签创建同名清单、改元数据写入同一清单且保留书签、重新打开恢复标题与书签、文件未复制进曲库、登记与移除伴奏。标注往返（手别、指法、换指、逐音演奏者、小节、元数据）用临时测试核对一致后删除。
+- 未完成：MusicXML 仍经 `ImportScoreOriginal` 生成曲库内 MIDI，数据不进清单（第 5 项处理）；登记的伴奏不播放（R7）；分离读取器中的标注保存直接写清单，不经过可恢复提交（第 5 项删除存储机制时统一）；未实际打开桌面构建（阶段结束时做）。
+
+下一入口：R2 第 4 项（`probe` 子命令）。
+
 ## 2026-11-21 · R2 第 2 项：打开文件
 
 - 引擎新增 `OpenFile { path }`（`file_open.rs`）：接受 MIDI / MusicXML / `.panthesia`；按 3.7 查找清单，校验引用并在目录树内找回（有改动且非只读时写回）；打开清单中列出的那个演奏，否则打开默认演奏；演奏文件内容变化时用 `reconcile_notes` 核对音符引用、更新记录的哈希并写回；结果附 `opened`（清单路径、演奏列表、变化 / 缺失 / 找回 / 未匹配数量）。没有清单时直接演奏，打开不创建清单。MusicXML 暂走 `ImportScoreOriginal`。
