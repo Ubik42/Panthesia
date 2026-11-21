@@ -184,14 +184,12 @@ impl Patch {
     }
 }
 struct Lease {
-    pipeline: pending_save::Pipeline,
     tx: mpsc::Sender<runtime_request::Request>,
     id: String,
     done: bool,
 }
 impl Lease {
     fn finish(mut self, result: Result<asset_edit::Outcome, String>) -> Result<Value, String> {
-        self.pipeline.observe_recovery();
         let (reply, receiver) = mpsc::sync_channel(1);
         self.tx
             .send(runtime_request::Request::AssetEditFinish {
@@ -207,7 +205,6 @@ impl Lease {
 impl Drop for Lease {
     fn drop(&mut self) {
         if !self.done {
-            self.pipeline.observe_recovery();
             let _ = self.tx.send(runtime_request::Request::AssetEditFinish {
                 id: self.id.clone(),
                 result: Err("练习编辑未完成，请重新读取当前标注后重试".into()),
@@ -267,19 +264,13 @@ impl Engine {
                 let observation = self.observe_writers();
                 let settled_read = matches!(&command, Command::HandUndoState | Command::ReadHandAssignments { .. } | Command::ReadMeterEditorState);
                 let context = self.practice_read_context(scope)?;
-                let data = self.data.clone();
                 let engine = self.clone();
                 self.tasks.run(
                     if matches!(command, Command::Metadata) {"读取曲目信息"} else {"读取练习标注"},
                     Some(request.content_id),
                     move |token| {
                         token.stage("preparingPractice")?;
-                        let mut result = panthesia_core::utils::atomic_file::capture_readonly(
-                            Arc::new(move |path: &std::path::Path| {
-                                asset_storage::captures(&data, path)
-                            }),
-                            || context.into_player(false)?.command(command),
-                        )?;
+                        let mut result = (|| context.into_player(false)?.command(command))()?;
                         token.check()?;
                         if settled_read {
                             result["writeSettled"] = serde_json::json!(engine.writers_settled(&observation));
@@ -314,7 +305,6 @@ impl Engine {
         scope: Option<Scope>,
     ) -> Result<Value, String> {
         let context = self.practice_read_context(scope)?;
-        let data = self.data.clone();
         self.tasks.run(
             if held {
                 "生成持音换指方案"
@@ -324,9 +314,7 @@ impl Engine {
             Some(request.content_id.clone()),
             move |token| {
                 token.stage("computing")?;
-                let result = panthesia_core::utils::atomic_file::capture_readonly(
-                    Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path)),
-                    || {
+                let result = (|| {
                         let reader = context.into_player(false)?;
                         let file = reader.file.as_ref().ok_or("请先打开曲目")?;
                         let prepared = fingerings::prepare(
@@ -347,8 +335,7 @@ impl Engine {
                         } else {
                             fingerings::plans(prepared)
                         }
-                    },
-                )?;
+                    })()?;
                 token.check()?;
                 Ok(result)
             },
@@ -380,12 +367,10 @@ impl Engine {
             .map_err(|_| "音乐引擎已关闭")?;
         let context = receiver.recv().map_err(|_| "练习编辑准备通道已关闭")??;
         let lease = Lease {
-            pipeline: self.pending_saves.clone(),
             tx: self.tx.clone(),
             id,
             done: false,
         };
-        let engine = self.clone();
         let label = match kind {
             Kind::Fingers => "保存指法与换指",
             Kind::Hands => "保存逐音分手",
@@ -406,22 +391,9 @@ impl Engine {
                     if let Some((id, revision)) = source {
                         token.source(id, revision.to_string())?;
                     }
-                    let flush = engine.pending_saves.clone();
-                    engine
-                        .storage_tasks
-                        .run_owned("准备练习编辑保存", move |_| {
-                            flush.flush()?;
-                            Ok(serde_json::json!({"ok":true}))
-                        })?;
-                    let (outcome, writes, observed) =
-                        context.prepare_practice(command, kind, &token)?;
+                    let outcome = context.prepare_practice(command, kind, &token)?;
                     token.check()?;
                     token.begin_commit()?;
-                    let data = engine.data.clone();
-                    engine.storage_tasks.run_owned("提交练习标注", move |_| {
-                        asset_storage::commit(&data, writes, observed)?;
-                        Ok(serde_json::json!({"ok":true}))
-                    })?;
                     Ok(outcome)
                 })();
                 lease.finish(result)

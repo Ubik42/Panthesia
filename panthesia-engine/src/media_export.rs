@@ -2,7 +2,6 @@
 use crate::*;
 use panthesia_core::utils::atomic_file;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 
 #[derive(Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -69,10 +68,7 @@ impl Engine {
             .map_err(|_| "音乐引擎已关闭")?;
         let context = receiver.recv().map_err(|_| "导出快照通道已关闭")??;
         check()?;
-        let data = self.data.clone();
-        let (prepared, _, observed) = atomic_file::capture_matching(
-            Arc::new(move |path: &Path| asset_storage::captures(&data, path)),
-            || {
+        let prepared = (|| {
                 let reader = context.into_player(false)?;
                 if reader
                     .file
@@ -100,11 +96,8 @@ impl Engine {
                     content_id: input.content_id.clone(),
                     summary,
                 })
-            },
-        );
+        })();
         let result = prepared?;
-        check()?;
-        asset_storage::validate_observations(&observed)?;
         check()?;
         Ok(result)
     }

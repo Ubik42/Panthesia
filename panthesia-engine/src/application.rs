@@ -166,11 +166,6 @@ impl Engine {
             }
             Command::SoundFont { path } => return self.soundfont_task(path),
             Command::Recording { active: false } => return self.save_recording_task(),
-            Command::RetrySave => return self.retry_settings_save(None),
-            Command::RetrySettingsSave { expected } => {
-                return self.retry_settings_save(Some(expected));
-            }
-            Command::ReadStorageStatus => return self.read_storage_status(),
             Command::Generate { spec } => return self.exercise_task(spec),
             Command::OpenPassage { id } => {
                 return self.song_switch_task(

@@ -20,13 +20,10 @@ mod runtime_request;
 mod meter_map;
 mod finger_pair;
 mod finger_pair_interactions;
-mod round_storage;
-mod pending_save;
-mod settings_storage;
+mod storage_status;
 mod storage_control;
-mod storage_recovery;
-pub use pending_save::{StorageOperation, StorageStatus};
-pub use storage_recovery::StorageRecovery;
+pub use storage_status::{StorageOperation, StorageStatus};
+pub use storage_status::StorageRecovery;
 mod storage_close;
 pub use storage_close::CloseInput;
 mod startup;
@@ -37,7 +34,6 @@ mod midi_packet;
 mod sound_change;
 mod input_runtime;
 mod input_change;
-mod asset_storage;
 mod asset_edit;
 mod practice_edit;
 mod practice_catalog;
@@ -174,7 +170,6 @@ pub struct Engine {
     control_tx: mpsc::Sender<runtime_request::Request>,
     tasks: background_tasks::TaskPool,
     storage_tasks: background_tasks::TaskPool,
-    pending_saves: pending_save::Pipeline,
     state: Arc<Mutex<Snapshot>>,
     data: PathBuf,
     _data_lock: Arc<data_root_lock::DataRootLock>,
@@ -246,11 +241,8 @@ struct Player {
     recording_saved: bool,
     recording_path: Option<PathBuf>,
     closing: Arc<AtomicBool>,
-    pending_saves: Option<pending_save::Pipeline>,
     save_error: Option<String>,
     settings_save_error: Option<String>,
-    storage_recovery_error: Option<String>,
-    asset_recovery_error:Option<String>,
     storage_busy: Arc<AtomicBool>,
     storage_id: Option<String>,
     state: Snapshot,
@@ -344,11 +336,8 @@ impl Player {
             recording_saved: false,
             recording_path: None,
             closing: Arc::new(AtomicBool::new(false)),
-            pending_saves: None,
             save_error: None,
             settings_save_error: None,
-            storage_recovery_error: None,
-            asset_recovery_error:None,
             storage_busy: Arc::new(AtomicBool::new(import_recovery_pending)),
             storage_id: None,
             state: Snapshot {
@@ -2004,7 +1993,7 @@ impl Player {
                 }
                 self.begin_play();
             }
-            Command::Tasks | Command::RetrySave | Command::RetrySettingsSave { .. } | Command::ReadStorageStatus | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. } | Command::CancelTask { .. } | Command::CancelHistoryRead { .. } | Command::CurrentSong | Command::Session
+            Command::Tasks | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. } | Command::CancelTask { .. } | Command::CancelHistoryRead { .. } | Command::CurrentSong | Command::Session
             |Command::PreviewTickRange{..}|Command::ApplyTickRange{..}|Command::SaveTickPassage{..}
             | Command::PracticeTime { .. }
             | Command::EditExercisePreset { .. } | Command::DeleteExercisePreset { .. }
@@ -2358,7 +2347,7 @@ impl Player {
         state.storage=storage_control::status(self);
         state.storage.pending |= self.storage_id.is_some();
         state.storage.pending |= self.closing.load(Ordering::Acquire);
-        state.storage.operation=pending_save::StorageOperation::current(self.storage_id.as_deref(), self.closing.load(Ordering::Acquire));
+        state.storage.operation=storage_status::StorageOperation::current(self.storage_id.as_deref(), self.closing.load(Ordering::Acquire));
         state.content_id = self.file.as_ref().map(|file| file.content_id.clone());
         state.score_revision=self.score_revision;
         state.practice_ms=self.playback.clock.as_millis().min(u128::from(u64::MAX)) as u64;

@@ -283,14 +283,12 @@ impl Playback {
 }
 
 struct Lease {
-    pipeline: pending_save::Pipeline,
     tx: mpsc::Sender<runtime_request::Request>,
     id: String,
     done: bool,
 }
 impl Lease {
     fn finish(mut self, result: Result<asset_edit::Outcome, String>) -> Result<Value, String> {
-        self.pipeline.observe_recovery();
         let (reply, receiver) = mpsc::sync_channel(1);
         self.tx
             .send(runtime_request::Request::AssetEditFinish {
@@ -306,7 +304,6 @@ impl Lease {
 impl Drop for Lease {
     fn drop(&mut self) {
         if !self.done {
-            self.pipeline.observe_recovery();
             let _ = self.tx.send(runtime_request::Request::AssetEditFinish {
                 id: self.id.clone(),
                 result: Err("曲目切换未完成，已保留当前曲目，请重试".into()),
@@ -340,26 +337,15 @@ impl Engine {
         // Ownership must not expire before the actor acknowledges the lease.
         let context = receiver.recv().map_err(|_| "曲目切换准备通道已关闭")??;
         let lease = Lease {
-            pipeline: self.pending_saves.clone(),
             tx: self.tx.clone(),
             id,
             done: false,
         };
         let result = (|| {
             token.check()?;
-            let flush = self.pending_saves.clone();
-            self.storage_tasks.run_owned("准备曲目保存", move |_| {
-                flush.flush()?;
-                Ok(serde_json::json!({"ok":true}))
-            })?;
-            let (outcome, writes, observed) = context.prepare_switch(prepared, &token)?;
+            let outcome = context.prepare_switch(prepared, &token)?;
             token.check()?;
             token.begin_commit()?;
-            let data = self.data.clone();
-            self.storage_tasks.run_owned("提交曲目与谱面", move |_| {
-                asset_storage::commit(&data, writes, observed)?;
-                Ok(serde_json::json!({"ok":true}))
-            })?;
             Ok(outcome)
         })();
         lease.finish(result)

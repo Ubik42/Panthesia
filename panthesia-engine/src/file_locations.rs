@@ -275,7 +275,6 @@ impl crate::Engine {
                     clear,
                     expected,
                 } => {
-                    engine.pending_saves.flush()?;
                     update_checked(
                         &engine.data,
                         &kind,

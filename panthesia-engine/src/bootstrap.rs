@@ -2,7 +2,7 @@
 use crate::{Engine, Player, Snapshot};
 use crate::{
     background_tasks, data_root_lock, device_catalog,
-    input_runtime, pending_save, playback_memory,
+    input_runtime, playback_memory,
     runtime_request, sound_runtime, startup, state_order, storage_control,
 };
 use std::{
@@ -64,20 +64,11 @@ impl Engine {
         let closing = Arc::new(AtomicBool::new(false));
         let worker_closing = closing.clone();
         let import_busy = storage_busy.clone();
-        let pending_saves = pending_save::Pipeline::new(
-            engine_data.clone(),
-            storage_tasks.clone(),
-            tx.clone(),
-            storage_busy.clone(),
-            data_lock.clone(),
-            reclaimer.clone(),
-        );
         let runtime_stop = Arc::new(AtomicBool::new(false));
         let runtime = Arc::new(storage_control::RuntimeLifetime {
             stop: runtime_stop.clone(),
             tx: tx.clone(),
         });
-        let saves = pending_saves.clone();
         let worker_lock = data_lock.clone();
         thread::spawn(move || {
             let _data_lock = worker_lock;
@@ -92,7 +83,6 @@ impl Engine {
             player.storage_busy = import_busy;
             player.startup = Some(worker_startup);
             player.closing = worker_closing;
-            player.pending_saves = Some(saves);
             crate::state_projection::publish(&player, &shared);
             crate::playback_driver::Driver {
                 commands: rx,
@@ -123,7 +113,6 @@ impl Engine {
             control_tx,
             tasks,
             storage_tasks,
-            pending_saves,
             state,
             data: engine_data,
             _data_lock: data_lock,

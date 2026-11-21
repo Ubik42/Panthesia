@@ -90,7 +90,6 @@ impl Encoded {
     }
 }
 struct Guard {
-    pipeline: pending_save::Pipeline,
     tx: mpsc::Sender<runtime_request::Request>,
     id: String,
     finished: bool,
@@ -101,7 +100,6 @@ impl Guard {
         result: Result<Outcome, String>,
         reply: Option<runtime_request::Reply>,
     ) -> Result<(), String> {
-        self.pipeline.observe_recovery();
         self.tx
             .send(runtime_request::Request::RecordingSaveFinish {
                 id: self.id.clone(),
@@ -116,7 +114,6 @@ impl Guard {
 impl Drop for Guard {
     fn drop(&mut self) {
         if !self.finished {
-            self.pipeline.observe_recovery();
             let _ = self.tx.send(runtime_request::Request::RecordingSaveFinish {
                 id: self.id.clone(),
                 result: Err("录音保存未完成，原始演奏仍保留在本次运行中，请重试保存录音".into()),
@@ -143,7 +140,6 @@ impl Engine {
             .map_err(|_| "音乐引擎已关闭")?;
         let context = receiver.recv().map_err(|_| "停止录音结果通道已关闭")??;
         let guard = Guard {
-            pipeline: self.pending_saves.clone(),
             tx: self.tx.clone(),
             id,
             finished: false,
@@ -155,12 +151,10 @@ impl Engine {
                 let (encoded, replay) = context.encode(&token)?;
                 let path = encoded.path.clone();
                 token.begin_commit()?;
-                let pipeline = engine.pending_saves.clone();
                 engine
                     .storage_tasks
                     .run_owned("写入录音文件", move |child| {
                         child.begin_commit()?;
-                        pipeline.flush()?;
                         encoded.publish()?;
                         Ok(serde_json::json!({"ok":true}))
                     })?;
@@ -168,16 +162,7 @@ impl Engine {
                 let replay = replay
                     .filter(|_| !engine.closing.load(Ordering::Acquire))
                     .map(|context| {
-                        let (outcome, writes, observed) = context
-                            .prepare_switch(song_switch::Input::Recording(path.clone()), &token)?;
-                        let data = engine.data.clone();
-                        engine
-                            .storage_tasks
-                            .run_owned("保存录音回放设置", move |_| {
-                                asset_storage::commit(&data, writes, observed)?;
-                                Ok(serde_json::json!({"ok":true}))
-                            })?;
-                        Ok(outcome)
+                        context.prepare_switch(song_switch::Input::Recording(path.clone()), &token)
                     });
                 Ok(Outcome { path, replay })
             })();

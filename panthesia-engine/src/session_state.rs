@@ -1,7 +1,7 @@
 //! Read-only public projections. No runtime ownership or command execution lives here.
 use crate::preferences::Passage;
 use crate::{
-    audio, document, pending_save, preferences,
+    audio, document, preferences,
     sound_runtime, startup, state_order,
 };
 use panthesia_core::practice::{AttemptSummary, PracticeSnapshot};
@@ -64,7 +64,7 @@ pub struct Snapshot {
     pub startup: startup::Status,
     pub recording_unsaved: bool,
     pub recording_path: Option<PathBuf>,
-    pub storage: pending_save::Status,
+    pub storage: crate::storage_status::Status,
     pub content_id: Option<String>,
     pub score_revision: u64,
     pub annotation_revision: u64,
@@ -123,7 +123,7 @@ impl Default for Snapshot {
             startup: startup::Status::default(),
             recording_unsaved: false,
             recording_path: None,
-            storage: pending_save::Status::default(),
+            storage: crate::storage_status::Status::default(),
             content_id: None,
             score_revision: 0,
             annotation_revision: 0,

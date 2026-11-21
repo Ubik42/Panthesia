@@ -1,7 +1,6 @@
 //! Saved practice definitions prepare on workers and merge only their owning collections.
 use crate::practice_source::SourceIdentity;
 use crate::*;
-use panthesia_core::utils::atomic_file;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -309,11 +308,7 @@ impl Context {
                 before_revision.clone().ok_or("方案列表版本缺失")?,
             )?
         } else {
-            let data = reader.data.clone();
-            atomic_file::capture_readonly(
-                Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path)),
-                || reader.command(command),
-            )?
+            (|| reader.command(command))()?
         };
         token.check()?;
         if let Some(id) = creation {

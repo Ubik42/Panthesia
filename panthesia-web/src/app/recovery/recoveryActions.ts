@@ -150,35 +150,6 @@ export async function performRecoveryAction(
       host().close();
       return "上次曲目的打开请求已保留，可从曲目打开进度继续查看。";
     }
-    if (action === "readStorage") {
-      await api.commandForEngine(origin.engineId, {
-        type: "readStorageStatus",
-      });
-      await host().refresh("session");
-      return "当前保存与恢复状态已重新核对。待恢复资料和未保存内容继续保留。";
-    }
-    if (action === "retrySave") {
-      const version = origin.state.storage?.version;
-      if (
-        !fresh.storage?.canRetry ||
-        !live.storage?.canRetry ||
-        fresh.storage.error !== origin.state.storage?.error ||
-        live.storage.error !== origin.state.storage?.error ||
-        (version &&
-          (fresh.storage.version !== version ||
-            live.storage.version !== version))
-      )
-        throw new Error("原保存状态已经更新，请查看最新结果后再操作。");
-      if (
-        !(await current.command(
-          version
-            ? { type: "retrySettingsSave", expected: version }
-            : { type: "retrySave" },
-        ))
-      )
-        throw failure("原保存尚未确认完成，请查看当前状态。");
-      return "原保存请求已处理。保存状态与需要继续的工作会分别更新。";
-    }
     if (action === "retryStartup" || action === "skipStartup") {
       if (fresh.startup?.ready) return "练习资料已恢复，可以查看当前练习室。";
       if (

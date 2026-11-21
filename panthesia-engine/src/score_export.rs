@@ -116,12 +116,7 @@ impl crate::Engine {
             .map_err(|_| "音乐引擎已关闭")?;
         let context = receiver.recv().map_err(|_| "个人标记谱快照通道已关闭")??;
         check()?;
-        let data = self.data.clone();
-        panthesia_core::utils::atomic_file::capture_readonly(
-            std::sync::Arc::new(move |path: &std::path::Path| {
-                crate::asset_storage::captures(&data, path)
-            }),
-            || {
+        (|| {
                 let mut reader = context.into_player(false)?;
                 if input
                     .annotation_revision
@@ -136,8 +131,7 @@ impl crate::Engine {
                     input.finger_action_revision.as_deref(),
                     check,
                 )
-            },
-        )
+            })()
     }
 }
 impl crate::Player {

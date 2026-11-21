@@ -379,7 +379,6 @@ fn prepare(
             label: input.label().into(),
             detail: input.detail().into(),
             kind: Some(match input {
-                panthesia_engine::CloseInput::StorageRecovery => DesktopCloseIssueKind::Recovery,
                 panthesia_engine::CloseInput::StorageProblem
                 | panthesia_engine::CloseInput::SoundUnavailable => DesktopCloseIssueKind::Problem,
                 _ => DesktopCloseIssueKind::Temporary,

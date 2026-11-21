@@ -338,18 +338,9 @@ impl Context {
         command: Command,
         kind: crate::practice_edit::Kind,
         token: &background_tasks::TaskToken,
-    ) -> Result<
-        (
-            Outcome,
-            Vec<atomic_file::DeferredWrite>,
-            Vec<atomic_file::Observation>,
-        ),
-        String,
-    > {
+    ) -> Result<Outcome, String> {
         token.stage(if matches!(kind, crate::practice_edit::Kind::Sound) { "preparingSound" } else { "preparingPractice" })?;
-        let data = self.data.clone();
-        let selector = Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path));
-        let (result, writes, observed) = atomic_file::capture_matching(selector, || {
+        let result = (|| {
             self.validate_registry()?;
             if let Some(file) = &self.file {
                 if let Some(path) = &file.source_path {
@@ -407,25 +398,16 @@ impl Context {
                 revision,
                 switch: replacement,
             })
-        });
-        Ok((result?, writes, observed))
+        })();
+        result
     }
     pub(super) fn prepare_switch(
         self,
         input: crate::song_switch::Input,
         token: &background_tasks::TaskToken,
-    ) -> Result<
-        (
-            Outcome,
-            Vec<atomic_file::DeferredWrite>,
-            Vec<atomic_file::Observation>,
-        ),
-        String,
-    > {
+    ) -> Result<Outcome, String> {
         token.stage("preparingSong")?;
-        let data = self.data.clone();
-        let selector = Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path));
-        let (result, writes, observed) = atomic_file::capture_matching(selector, || {
+        let result = (|| {
             self.validate_registry()?;
             let base_revision = self.revision;
             let same_song_practice = input.needs_current_timeline();
@@ -462,28 +444,17 @@ impl Context {
                 revision: Some(playback.revision()),
                 switch: Some(playback),
             })
-        });
-        Ok((result?, writes, observed))
+        })();
+        result
     }
     fn prepare(
         self,
         command: Command,
         token: &background_tasks::TaskToken,
-    ) -> Result<
-        (
-            Outcome,
-            Vec<atomic_file::DeferredWrite>,
-            Vec<atomic_file::Observation>,
-        ),
-        String,
-    > {
+    ) -> Result<Outcome, String> {
         token.stage("preparingScore")?;
         let registry = needs_registry(&command);
-        let data = self.data.clone();
-        let selected = data.clone();
-        let selector =
-            Arc::new(move |path: &std::path::Path| asset_storage::captures(&selected, path));
-        let (prepared, writes, observed) = atomic_file::capture_matching(selector, || {
+        let prepared = (|| {
             if registry {
                 if affects_current(
                     &command,
@@ -587,12 +558,11 @@ impl Context {
                 revision,
                 switch: replacement,
             })
-        });
-        Ok((prepared?, writes, observed))
+        })();
+        prepared
     }
 }
 struct Guard {
-    pipeline: pending_save::Pipeline,
     tx: mpsc::Sender<runtime_request::Request>,
     id: String,
     done: bool,
@@ -604,7 +574,6 @@ impl Guard {
         result: Result<Outcome, String>,
         reply: Option<runtime_request::Reply>,
     ) -> Result<(), String> {
-        self.pipeline.observe_recovery();
         self.tx
             .send(runtime_request::Request::AssetEditFinish {
                 id: self.id.clone(),
@@ -619,7 +588,6 @@ impl Guard {
 impl Drop for Guard {
     fn drop(&mut self) {
         if !self.done {
-            self.pipeline.observe_recovery();
             let _ = self.tx.send(runtime_request::Request::AssetEditFinish {
                 id: self.id.clone(),
                 result: Err(format!("{}保存未完成，请重新读取资料后重试", self.subject)),
@@ -646,7 +614,7 @@ impl Engine {
             None,
             move |token| {
                 let check_receipt_ready = || -> Result<(), String> {
-                    if paper_receipt && (engine.imports_in_flight.load(Ordering::Acquire) > 0 || engine.pending_saves.status().pending) {
+                    if paper_receipt && engine.imports_in_flight.load(Ordering::Acquire) > 0 {
                         return Err("原资料保存或恢复仍未结束，请稍后重新核对保存结果。原请求继续保留。".into());
                     }
                     Ok(())
@@ -681,12 +649,7 @@ impl Engine {
                         .map_err(|_| "音乐引擎已关闭")?;
                     let context = wait_preparation(receiver, &token, "资料读取")?;
                     check_receipt_ready()?;
-                    let data = engine.data.clone();
-                    atomic_file::capture_readonly(
-                        Arc::new(move |path: &std::path::Path| {
-                            asset_storage::captures(&data, path)
-                        }),
-                        || {
+                    (|| {
                             let lightweight = paper_receipt || matches!(
                                 command,
                                 Command::PreviewScoreBytesRoute { .. }
@@ -699,8 +662,7 @@ impl Engine {
                             );
                             let mut reader = context.into_player(!editor && !lightweight)?;
                             reader.command(command)
-                        },
-                    )?
+                    })()?
                 } else {
                     engine.dispatch(command)?
                 };
@@ -738,7 +700,6 @@ impl Engine {
             })?;
             // Own cleanup before sending Begin: cancellation can race with its queued reply.
             let guard = Guard {
-                pipeline: engine.pending_saves.clone(),
                 tx: engine.tx.clone(),
                 id: id.clone(),
                 done: false,
@@ -764,35 +725,10 @@ impl Engine {
             };
             let result = (|| {
                 token.check()?;
-                let flush = engine.pending_saves.clone();
-                engine.storage_tasks.run_owned(
-                    if library {
-                        "准备曲库保存"
-                    } else {
-                        "准备谱面保存"
-                    },
-                    move |child| {
-                        child.check()?;
-                        flush.flush()?;
-                        Ok(serde_json::json!({"ok":true}))
-                    },
-                )?;
-                let (outcome, writes, observed) = context.prepare(command, &token)?;
+                let outcome = context.prepare(command, &token)?;
                 token.check()?;
                 token.begin_commit()?;
-                let data = engine.data.clone();
-                engine.storage_tasks.run_owned(
-                    if library {
-                        "提交曲库资料"
-                    } else {
-                        "提交谱面资料"
-                    },
-                    move |child| {
-                        child.begin_commit()?;
-                        asset_storage::commit(&data, writes, observed)?;
-                        Ok(serde_json::json!({"ok":true}))
-                    },
-                )?;
+                let _ = library;
                 Ok(outcome)
             })();
             let (reply, receiver) = mpsc::sync_channel(1);
@@ -902,23 +838,14 @@ impl Player {
             Ok(outcome) => outcome,
             Err(error) => {
                 storage_control::unblock(self);
-                let pending = storage_control::recovery(self).assets;
-                if !pending && error == "后台任务已取消" {
+                if error == "后台任务已取消" {
                     return Err(error);
                 }
-                let message = if pending {
-                    format!(
-                        "{subject}保存尚待恢复，已保留保存副本。请关闭并重新启动练习室恢复：{error}"
-                    )
-                } else {
-                    error.clone()
-                };
-                self.asset_recovery_error = pending.then(|| message.clone());
-                self.state.error = Some(message);
+                let _ = subject;
+                self.state.error = Some(error.clone());
                 return Err(error);
             }
         };
-        self.asset_recovery_error = None;
         if let Some(preferences) = outcome.preferences {
             let old = std::mem::replace(&mut self.preferences, preferences);
             self.retire(old);

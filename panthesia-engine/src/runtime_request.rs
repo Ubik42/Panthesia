@@ -33,8 +33,6 @@ pub(crate) enum Request {
     RecordingSaveFinish {id:String,result:Result<crate::recording_save::Outcome,String>,reply:Option<Reply>},
     Shutdown,
     StorageFence(mpsc::SyncSender<Result<crate::storage_close::Fence,String>>),
-    StorageRecoveryObserved(mpsc::SyncSender<Result<crate::pending_save::StorageStatus,String>>),
-    SaveFinished { result: Result<(), String>, replies: Vec<crate::pending_save::Completion> },
     Command(Command, Reply),
     ImportContext(mpsc::SyncSender<Result<crate::song_switch::Origin, String>>),
     #[cfg(test)]
@@ -64,18 +62,17 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
         _=>false,
     };
     // Per-song preferences of a song at its own location go back to its manifest.
-    let run=|player:&mut Player|{handle_inner(player,request,shared);if barrier{player.sync_manifest_settings();}};
-    if let Some(pipeline)=player.pending_saves.clone() {
-        let (writes,replies)=crate::pending_save::capture(&pipeline,||run(player));
-        pipeline.enqueue(writes,replies,barrier);
-        return;
-    }
-    run(player);
+    handle_inner(player,request,shared);
+    if barrier { player.sync_manifest_settings(); }
+}
+/// Send a runtime reply; a caller that gave up waiting is ignored.
+pub(crate) fn respond<T>(reply: mpsc::SyncSender<Result<T, String>>, result: Result<T, String>) {
+    let _ = reply.send(result);
 }
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
-        Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
+        Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::StorageFence(_) => true,
         Request::ScoreMappingContext{..} | Request::ScoreMappingInstall{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         _ => false,
     };
@@ -85,7 +82,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
     }
     match request {
         Request::PaperNavigationContext { content_id, reply } => {
-            crate::pending_save::respond(reply, player.capture_paper_navigation(&content_id));
+            respond(reply, player.capture_paper_navigation(&content_id));
         }
         Request::PaperNavigationInstall { prepared, sequence, latest, received, token, reply } => {
             let result = player.install_paper_navigation(prepared, sequence, &latest, received, &token);
@@ -95,9 +92,9 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         }
         Request::PlaybackAdjustment(request, received, reply) => {
             if received.elapsed() > std::time::Duration::from_secs(2) {
-                crate::pending_save::respond(reply, Err("调节请求已过期，请在当前曲目中重新调节".into()));
+                respond(reply, Err("调节请求已过期，请在当前曲目中重新调节".into()));
             } else if let Err(error) = request.check(player) {
-                crate::pending_save::respond(reply, Err(error));
+                respond(reply, Err(error));
             } else {
                 handle_inner(player, Request::Command(request.command, reply), shared);
             }
@@ -105,40 +102,40 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         Request::LiveNotes(input, received, reply) => {
             let result = player.apply_live_notes(input, received);
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply, result);
+            respond(reply, result);
         }
-        Request::InputContext{name,reply}=>{crate::pending_save::respond(reply,player.input_context(name.as_deref()));}
-        Request::InputCommit{revision,prepared,token,reply}=>{let result=player.install_input(revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
-        Request::SoundChangeBegin{id,font,target,reply}=>{crate::pending_save::respond(reply,player.begin_sound_change(id,font,target));}
+        Request::InputContext{name,reply}=>{respond(reply,player.input_context(name.as_deref()));}
+        Request::InputCommit{revision,prepared,token,reply}=>{let result=player.install_input(revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}
+        Request::SoundChangeBegin{id,font,target,reply}=>{respond(reply,player.begin_sound_change(id,font,target));}
         Request::SoundChangeAbort(id)=>{player.abort_sound_change(&id);}
-        Request::SoundOutputCommit{id,revision,prepared,token,reply}=>{let result=player.install_output(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
-        Request::SoundFontLiveCommit{id,revision,prepared,token,reply}=>{let result=player.install_live_soundfont(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);crate::pending_save::respond(reply,result);}
-        Request::CatalogContext {source,guard,scope,reply} => {crate::pending_save::respond(reply,player.capture_catalog(source,&guard,scope.as_ref()));}
+        Request::SoundOutputCommit{id,revision,prepared,token,reply}=>{let result=player.install_output(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}
+        Request::SoundFontLiveCommit{id,revision,prepared,token,reply}=>{let result=player.install_live_soundfont(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}
+        Request::CatalogContext {source,guard,scope,reply} => {respond(reply,player.capture_catalog(source,&guard,scope.as_ref()));}
         Request::CatalogCommit {patch,token,reply} => {
             let result=player.install_catalog(&patch,&token);
             crate::state_projection::publish(&player,&shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
-        Request::HistoryQueryContext{current_song,reply}=>{crate::pending_save::respond(reply,Ok(player.capture_history_reader(current_song)));}
-        Request::ScoreMappingContext{content_id,revision,fingerprint,reply} => {crate::pending_save::respond(reply,player.capture_score_mapping(&content_id,revision,fingerprint.as_deref()));}
-        Request::ScoreMappingInstall{prepared,token,reply} => {crate::pending_save::respond(reply,player.install_score_mapping(prepared,&token));}
-        Request::AuditionContext {scope,request_id,reply} => {crate::pending_save::respond(reply, player.prepare_audition(scope, request_id));}
+        Request::HistoryQueryContext{current_song,reply}=>{respond(reply,Ok(player.capture_history_reader(current_song)));}
+        Request::ScoreMappingContext{content_id,revision,fingerprint,reply} => {respond(reply,player.capture_score_mapping(&content_id,revision,fingerprint.as_deref()));}
+        Request::ScoreMappingInstall{prepared,token,reply} => {respond(reply,player.install_score_mapping(prepared,&token));}
+        Request::AuditionContext {scope,request_id,reply} => {respond(reply, player.prepare_audition(scope, request_id));}
         Request::AuditionCommit {origin,prepared,token,reply} => {
             let result=player.install_audition(origin,prepared,&token);
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::BasicReadContext{request,reply}=>{
             let result=player.basic_origin(&request).map(|origin|{let context=player.capture_practice_read_context();(context,origin)});
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::PracticeEditBegin{id,kind,strict,scope,reply}=>{let result=player.begin_practice_edit(id.clone(),kind,strict,scope);if reply.send(result).is_err(){let _=player.finish_asset_edit(&id,Err("练习编辑调用已关闭".into()));}crate::state_projection::publish(&player, &shared);}
-        Request::DocumentContext(reply)=>{crate::pending_save::respond(reply,Ok((player.capture_document_context(),player.snapshot(),!player.finger_undo.is_empty())));}
+        Request::DocumentContext(reply)=>{respond(reply,Ok((player.capture_document_context(),player.snapshot(),!player.finger_undo.is_empty())));}
         Request::CurrentSource{content_id,reply}=>{
             let result=player.file.as_ref().filter(|file|file.content_id==content_id)
                 .ok_or_else(|| "曲目已切换，请重新打开谱面管理".to_string())
                 .map(|file|file.source_path.clone());
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::SongSwitchBegin {id,origin,reply} => {
             let result=player.begin_song_switch(id.clone(),&origin);
@@ -147,7 +144,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         }
         Request::AssetReadContext{registry,export,editor,scope,reply}=>{
             let result=player.check_practice_scope(scope.as_ref()).and_then(|_| if export&&player.recorder.is_recording() {Err("请先停止并保存录音，再导出曲目".into())} else {Ok(if editor {player.capture_practice_read_context()} else {player.capture_asset_context(registry,true)})});
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::AssetEditBegin{id,apply,registry,runtime,reply}=>{
             let result=player.begin_asset_edit(id.clone(),apply,registry,runtime);
@@ -157,7 +154,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         Request::AssetEditFinish{id,result,reply}=>{
             let result=player.finish_asset_edit(&id,result);
             crate::state_projection::publish(&player, &shared);
-            if let Some(reply)=reply{crate::pending_save::respond(reply,result);}
+            if let Some(reply)=reply{respond(reply,result);}
         }
         Request::RecordingSaveBegin {id,reply} => {
             let result=player.begin_recording_save(id.clone());
@@ -167,7 +164,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         Request::RecordingSaveFinish {id,result,reply} => {
             let result=player.finish_recording_save(&id,result);
             crate::state_projection::publish(&player, &shared);
-            if let Some(reply)=reply {crate::pending_save::respond(reply,result);}
+            if let Some(reply)=reply {respond(reply,result);}
         }
         Request::StartupFinished(result) => {
             player.install_startup(result);
@@ -175,28 +172,12 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         }
         Request::Shutdown => { player.panic(); }
         Request::StorageFence(reply) => {
-            let notes=player.matcher.snapshot();
-            let round_pending=!player.state.saved&&player.file.is_some()&&(notes.matched_notes+notes.wrong_notes+notes.missed_notes>0);
-            let incomplete_recital=false;
-            let unsaved_round=player.save_error.is_some()&&round_pending&&!crate::storage_control::recovery(player).round;
             let storage=crate::storage_control::status(player);
-            crate::pending_save::respond(reply,Ok(crate::storage_close::Fence {
+            respond(reply,Ok(crate::storage_close::Fence {
                 recording: player.recorder.is_recording(), recording_unsaved: player.recorder.has_take()&&!player.recording_saved,
-                unsaved_round, round_pending, incomplete_recital,
-                progress_pending: false,
                 exclusive: player.storage_id.is_some()||player.sound_change.is_some(),
-                error: storage.error.clone(), storage,
+                error: storage.error,
             }));
-        }
-        Request::StorageRecoveryObserved(reply) => {
-            crate::storage_control::unblock(player);
-            crate::state_projection::publish(player, shared);
-            crate::pending_save::respond(reply, Ok(crate::storage_control::status(player)));
-        }
-        Request::SaveFinished { result, replies } => {
-            player.finish_settings_save(&result);
-            crate::state_projection::publish(&player, &shared);
-            for reply in replies { reply(result.clone()); }
         }
         #[cfg(test)]
         Request::ExerciseCommit(origin, prepared, token, reply) => {
@@ -214,7 +195,7 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
                     player.command(Command::CurrentSong)
                 });
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         #[cfg(test)]
         Request::LoadCommit(origin, prepared, token, reply) => {
@@ -235,12 +216,12 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
                     player.command(Command::CurrentSong)
                 });
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::ImportContext(reply) => {
             let result = player.begin_import();
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::Command(command, reply) => {
             if matches!(
@@ -257,14 +238,14 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             }
             let result = player.command(command);
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
         Request::BasicCommit(prepared, proposals, token, reply) => {
             let result = token
                 .begin_commit()
                 .and_then(|_| player.commit_basic_fingers(&prepared, proposals));
             crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply,result);
+            respond(reply,result);
         }
     }
 }
@@ -300,8 +281,6 @@ impl Request {
             Self::StartupFinished(_) => {}
             Self::Shutdown => {}
             Self::StorageFence(reply) => { fail!(reply); }
-            Self::StorageRecoveryObserved(reply) => { fail!(reply); }
-            Self::SaveFinished { result: _, replies } => { for reply in replies { reply(Err(message.into())); } }
             Self::PlaybackAdjustment(_, _, reply) | Self::Command(_, reply) | Self::BasicCommit(_, _, _, reply) => { fail!(reply); }
             #[cfg(test)]
             Self::ExerciseCommit(_, _, _, reply) | Self::LoadCommit(_, _, _, reply) => { fail!(reply); }

@@ -36,12 +36,8 @@ impl Engine {
             move |token| {
                 let _operation = operation;
                 token.stage("readingScore")?;
-                engine.pending_saves.flush()?;
                 let lock = data_locks::lock_for(&engine.data)?;
                 let guard = data_locks::wait_for(&lock, &|| token.check())?;
-                if storage_control::recovery_pending(&engine.data) {
-                    return Err("练习资料尚待恢复，阅读位置仍可暂存，请恢复后重试保存".into());
-                }
                 let saved = score_attachments::save_view_locked(
                     &engine.data,
                     &content_id,

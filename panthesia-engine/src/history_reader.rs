@@ -1,6 +1,5 @@
 //! Background reads (practice time, collection, file locations) use a snapshot and never block MIDI scheduling.
 use crate::*;
-use panthesia_core::utils::atomic_file;
 
 fn wait_read_context<T>(
     receiver: mpsc::Receiver<Result<T, String>>,
@@ -65,10 +64,7 @@ impl Context {
         check: impl Fn() -> Result<(), String>,
     ) -> Result<serde_json::Value, String> {
         check()?;
-        let data = self.data.clone();
-        atomic_file::capture_readonly(
-            Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path)),
-            || {
+        (|| {
                 let mut reader = Player::empty(self.data, PathBuf::new(), true);
                 reader.history = self.history;
                 reader.file = self.file;
@@ -80,8 +76,7 @@ impl Context {
                     }
                     _ => Err("读取命令无效".into()),
                 }
-            },
-        )
+            })()
     }
 }
 impl Player {

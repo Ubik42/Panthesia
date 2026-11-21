@@ -1,9 +1,6 @@
 //! One exclusion boundary for data-changing operations and unresolved recovery files.
 use crate::{Command, Player};
-use std::{
-    path::Path,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 pub(crate) struct RuntimeLifetime {
     pub stop: std::sync::Arc<AtomicBool>,
     pub tx: std::sync::mpsc::Sender<crate::runtime_request::Request>,
@@ -27,9 +24,6 @@ pub(super) fn allowed(command: &Command) -> bool {
             | Command::Tasks
             | Command::CancelTask { .. }
             | Command::CancelHistoryRead { .. }
-            | Command::RetrySave
-            | Command::RetrySettingsSave { .. }
-            | Command::ReadStorageStatus
             | Command::SkipStartupSong
             | Command::RetryStartup
             | Command::DismissStartupWarning { .. }
@@ -42,28 +36,16 @@ pub(super) fn check_command(busy: &AtomicBool, command: &Command) -> Result<(), 
         Ok(())
     }
 }
-pub(super) fn recovery_pending(data: &Path) -> bool {
-    crate::storage_recovery::Status::read(data).blocked()
-}
-pub(super) fn recovery(player: &Player) -> crate::storage_recovery::Status {
-    player.pending_saves.as_ref().map_or_else(
-        || crate::storage_recovery::Status::read(&player.data),
-        |pipeline| pipeline.recovery(),
-    )
-}
-pub(super) fn status(player: &Player) -> crate::pending_save::Status {
-    let mut status = player
-        .pending_saves
-        .as_ref()
-        .map_or_else(Default::default, |pipeline| pipeline.status());
+/// Save state shown to the interface: the last write error, if any.
+pub(super) fn status(player: &Player) -> crate::storage_status::Status {
+    let mut status = crate::storage_status::Status::default();
     if let Some(error) = player
-        .asset_recovery_error
+        .settings_save_error
         .as_deref()
+        .or(player.save_error.as_deref())
         .or_else(|| player.history.write_block_reason())
     {
-        status.pending = true;
         status.error = Some(error.to_owned());
-        status.can_retry = false;
     }
     status
 }
@@ -72,69 +54,33 @@ impl Player {
         self.save_error.is_some() || self.settings_save_error.is_some()
     }
     pub(super) fn has_storage_error(&self) -> bool {
-        self.has_save_error() || self.storage_recovery_error.is_some()
+        self.has_save_error()
     }
 }
+/// Leave the busy state once startup and the current storage operation are done.
 pub(super) fn unblock(player: &mut Player) {
-    if player
-        .startup
-        .as_ref()
-        .is_some_and(|control| !control.status().ready)
-    {
+    if player.startup.as_ref().is_some_and(|control| !control.status().ready) || player.storage_id.is_some() {
         return;
     }
-    if player.storage_id.is_some() {
-        return;
-    }
-    let recovery = recovery(player);
-    let blocked = recovery.blocked()
-        || player.history.write_block_reason().is_some()
-        || player.asset_recovery_error.is_some()
-        || player
-            .pending_saves
-            .as_ref()
-            .is_some_and(|pipeline| pipeline.excludes_playback());
-    if blocked {
-        if matches!(player.state.status.as_str(), "playing" | "countIn") {
-            player.panic();
-            player.state.status = "paused".into();
-            player.time_connected = false;
-        }
-        player.storage_busy.store(true, Ordering::Release);
-        if player.state.error.is_none() || player.state.error == player.storage_recovery_error {
-            let error = recovery.message().map(str::to_owned).or_else(|| {
-                (!recovery.checked).then(|| {
-                    "资料恢复状态尚未确认，已暂停修改。请等待后台读取或重新启动后继续。".into()
-                })
-            });
-            player.state.error = error.clone();
-            player.storage_recovery_error = error;
-        }
-    } else {
-        if player.state.error == player.storage_recovery_error {
-            player.state.error = None;
-        }
-        player.storage_recovery_error = None;
-        if player.storage_busy.load(Ordering::Acquire) && !player.recorder.is_recording() {
-            // Attacks were monitored while storage was frozen. Never replay old
-            // attacks into a new assessment, but deliver queued releases so a
-            // held key or pedal cannot become stuck at the storage boundary.
-            for _ in 0..4096 {
-                let Ok(event)=player.input_rx.try_recv() else {break};
-                let bytes=event.bytes();
-                if bytes.len()>=3 && (bytes[0]&240==128 || bytes[0]&240==144 && bytes[2]==0 || bytes[0]&240==176 && bytes[1]==64 && bytes[2]==0) {player.input_event(event);}
+    if player.storage_busy.load(Ordering::Acquire) && !player.recorder.is_recording() {
+        // Attacks were monitored while busy. Never replay old attacks, but deliver queued
+        // releases so a held key or pedal cannot become stuck.
+        for _ in 0..4096 {
+            let Ok(event) = player.input_rx.try_recv() else { break };
+            let bytes = event.bytes();
+            if bytes.len() >= 3 && (bytes[0] & 240 == 128 || bytes[0] & 240 == 144 && bytes[2] == 0 || bytes[0] & 240 == 176 && bytes[1] == 64 && bytes[2] == 0) {
+                player.input_event(event);
             }
-            player.input_overflow.store(false, Ordering::Release);
         }
-        player.storage_busy.store(false, Ordering::Release);
+        player.input_overflow.store(false, Ordering::Release);
     }
+    player.storage_busy.store(false, Ordering::Release);
 }
 
 /// Register work before checking shutdown, so the close fence cannot miss an admitted writer.
 pub(crate) struct PendingOperation(std::sync::Arc<std::sync::atomic::AtomicUsize>);
 pub(crate) struct WriterObservation {
     epoch: u64,
-    storage_version: String,
     quiet: bool,
 }
 impl Drop for PendingOperation {
@@ -144,21 +90,19 @@ impl Drop for PendingOperation {
 }
 impl crate::Engine {
     fn writers_quiet(&self) -> bool {
-        self.imports_in_flight.load(Ordering::Acquire) == 0 && !self.pending_saves.status().pending
+        self.imports_in_flight.load(Ordering::Acquire) == 0
     }
     pub(crate) fn observe_writers(&self) -> WriterObservation {
         // Capture admission order before reading data, including writers that
         // finish too quickly to appear in both pending-count observations.
         WriterObservation {
             epoch: self.operation_epoch.load(Ordering::Acquire),
-            storage_version: self.pending_saves.status().version,
             quiet: self.writers_quiet(),
         }
     }
     pub(crate) fn writers_settled(&self, observation: &WriterObservation) -> bool {
         observation.quiet
             && self.writers_quiet()
-            && self.pending_saves.status().version == observation.storage_version
             && self.operation_epoch.load(Ordering::Acquire) == observation.epoch
     }
     pub(super) fn pending_operation(&self) -> Result<PendingOperation, String> {

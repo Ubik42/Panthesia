@@ -76,7 +76,6 @@ export function usePlaybackActions({
           "panic",
           "retryStartup",
           "skipStartupSong",
-          "retrySave",
         ].includes(value.type)
       ) {
         setError("正在读取当前练习，请等待完成后再操作。");

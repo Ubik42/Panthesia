@@ -244,18 +244,8 @@ impl Data {
             Ok(guard) => guard,
             Err(_) => return Self::failed(data, "曲库资料锁无法使用".into()),
         };
-        let recovery = round_storage::recover(data)
-            .and_then(|_| settings_storage::recover(data))
-            .and_then(|_| asset_storage::recover(data))
-            .and_then(|_| {
-                if storage_control::recovery_pending(data) {
-                    Err("资料恢复记录尚待处理，请重新启动".into())
-                } else {
-                    Ok(())
-                }
-            });
         let loaded = Preferences::load(&data.join("web-preferences.json"));
-        let mut error = recovery.err().or_else(|| loaded.as_ref().err().cloned());
+        let mut error = loaded.as_ref().err().cloned();
         let mut blocked = error.is_some();
         let history = if let Some(error) = &error {
             PracticeHistoryStore::load_read_only(
@@ -464,15 +454,10 @@ impl Prepared {
 fn publish_restored_registry(root:&std::path::Path,before:&Preferences,after:&Preferences)->Result<(),String> {
     let before=serde_json::to_value(before).map_err(|e|e.to_string())?;
     if before==serde_json::to_value(after).map_err(|e|e.to_string())? {return Ok(());}
-    let path=root.join("web-preferences.json");let selected=root.to_path_buf();
-    let (result,writes,observed)=panthesia_core::utils::atomic_file::capture_matching(
-        Arc::new(move|path|asset_storage::captures(&selected,path)),||{
-            let current=Preferences::load(&path)?;
-            if serde_json::to_value(current).map_err(|e|e.to_string())?!=before {return Err("恢复期间设置已改变，请重新读取资料".into());}
-            after.save(&path)
-        });
-    result?;
-    asset_storage::commit(root,writes,observed)
+    let path=root.join("web-preferences.json");
+    let current=Preferences::load(&path)?;
+    if serde_json::to_value(current).map_err(|e|e.to_string())?!=before {return Err("恢复期间设置已改变，请重新读取资料".into());}
+    after.save(&path)
 }
 struct Completion {
     tx: mpsc::Sender<runtime_request::Request>,
@@ -544,7 +529,6 @@ impl Engine {
                 }
             }
             let prepared = Prepared::read(data, &engine.data, &engine.startup);
-            engine.pending_saves.observe_recovery();
             completion.send(Ok(prepared))?;
             Ok(serde_json::json!({"ok":true}))
         })
@@ -581,8 +565,6 @@ impl Player {
                     soundfont_warning,
                     device_warnings,
                 } = data;
-                self.asset_recovery_error = None;
-                self.storage_recovery_error = None;
                 if input_boot.is_none() {
                     if let Some((_, detail)) = device_warnings
                         .iter()

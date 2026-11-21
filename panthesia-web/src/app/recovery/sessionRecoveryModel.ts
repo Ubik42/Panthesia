@@ -5,12 +5,10 @@ import type { SessionHealth } from "../../features/practice/sessionHealthStore";
 
 export type RecoveryAction =
   | "readSession"
-  | "readStorage"
   | "readLibrary"
   | "readCollection"
   | "retryStartup"
   | "skipStartup"
-  | "retrySave"
   | "saveRecording"
   | "openRecording"
   | "devices"
@@ -66,12 +64,10 @@ export interface RecoveryContext {
 export const recoveryActionLabels: Record<RecoveryAction, string> = {
   openWork: "返回对应工作台",
   readSession: "重新读取练习室",
-  readStorage: "重新核对保存状态",
   readLibrary: "重新读取曲库",
   readCollection: "重新读取收藏与队列",
   retryStartup: "重新恢复资料",
   skipStartup: "跳过上次曲目",
-  retrySave: "重试原保存",
   saveRecording: "保存这份录音",
   openRecording: "打开录音回放",
   devices: "查看声音与键盘",
@@ -328,8 +324,6 @@ export function projectRecovery(
             ? "请保留现有文件和恢复资料。关闭并重新启动练习室后，由启动流程接续恢复；单独刷新界面会继续显示当前恢复状态。"
             : "请保留当前窗口，并查看资料文件夹或复制问题说明。完成资料处理后可重新读取练习室。",
       actions: [
-        ...(state.storage.canRetry ? ["retrySave" as const] : []),
-        "readStorage",
         "dataFolder",
         "workProgress",
         "readSession",
@@ -503,13 +497,6 @@ export function recoveryActionDisabled(
     return null;
   if (action === "readSession")
     return context.reading ? "正在读取原请求，请等待本次读取结束。" : null;
-  if (action === "readStorage") {
-    if (!context.connected) return "请先重新连接练习室。";
-    if (context.commandPending) return "正在处理当前操作，结束后可重新核对。";
-    return context.state.storage?.writing || context.state.storage?.operation
-      ? "当前保存仍在处理，完成后可重新核对。"
-      : null;
-  }
   if (action === "readLibrary" || action === "readCollection")
     return context.connected ? null : "连接恢复后可重新读取这项资料。";
   if (!context.connected) return "请先重新连接练习室。";
@@ -542,8 +529,6 @@ export function recoveryActionDisabled(
         : "启动恢复的状态已经改变，请查看最新说明。";
   if (context.busy) return "当前保存或资料处理尚未结束，请等待原操作完成。";
   if (context.reading) return "正在读取练习状态，完成后可以继续。";
-  if (action === "retrySave")
-    return context.state.storage?.canRetry ? null : "当前没有可重试的原保存。";
   if (context.binding) return "正在交接曲目资料，完成后可以继续。";
   if (action === "saveRecording")
     return context.state.recordingUnsaved

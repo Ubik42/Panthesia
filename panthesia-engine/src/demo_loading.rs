@@ -1,6 +1,5 @@
 //! Build and validate finger auditions without sorting or reading annotations on the playback thread.
 use crate::*;
-use panthesia_core::utils::atomic_file;
 
 pub(crate) fn supports(command: &Command) -> bool {
     matches!(
@@ -148,18 +147,14 @@ impl Engine {
         let engine = self.clone();
         self.tasks.run("准备指法声音示范", source, move |token| {
             token.stage("preparingPlayback")?;
-            let data = engine.data.clone();
             // Retain the lightweight origin for admission; only the detached musical state is consumed.
             let Context { source, origin } = context;
-            let mut reader = atomic_file::capture_readonly(
-                Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path)),
-                || {
+            let mut reader = (|| {
                     let mut reader = source.into_player(false)?;
                     reader.validate_practice_annotations()?;
                     reader.command(command)?;
                     Ok::<_, String>(reader)
-                },
-            )?;
+                })()?;
             token.check()?;
             let prepared = Prepared {
                 demo: reader.finger_demo.take().ok_or("示范准备结果缺失")?,

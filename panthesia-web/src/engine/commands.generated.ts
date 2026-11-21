@@ -133,16 +133,6 @@ export type SongSource =
   | { "kind": "file"; "path": string; "title": string; "contentId": string | null; }
   | { "kind": "recent"; "contentId": string; };
 
-export interface PreparationOrigin {
-  "contentId"?: string | null;
-  "scoreRevision": number;
-  "midiEvents": number;
-  "status": string;
-}
-
-export const PreparationPhaseValues = ["queued", "running", "committing", "done", "released", "cancelled", "error", "unconfirmed"] as const;
-export type PreparationPhase = typeof PreparationPhaseValues[number];
-
 export interface StorageRecovery {
   "checked": boolean;
   "backupImport": boolean;
@@ -1504,9 +1494,6 @@ export type EngineCommand =
   | { type: "currentSong" }
   | { type: "session" }
   | { type: "tasks" }
-  | { type: "retrySave" }
-  | { type: "retrySettingsSave"; "expected": string }
-  | { type: "readStorageStatus" }
   | { type: "skipStartupSong" }
   | { type: "retryStartup" }
   | { type: "dismissStartupWarning"; "id": string }
