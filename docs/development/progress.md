@@ -2,6 +2,18 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 4 项：`probe` 子命令（提交 f4b8205）
+
+- `Panthesia.exe probe <文件> [--json] [--thumbnail <png>] [--size 宽x高]`：在桌面程序 `main` 最前面处理，不启动窗口、不锁资料目录、不经过单实例转交。实现在 `panthesia-engine::probe`，输出字段写在 `panthesia-format.md` 末节。
+- MusicXML 走与打开相同的"谱面生成演奏"路径后再分析；`.panthesia` 分析默认演奏。
+- 调：清单 `keys` 图层 → MIDI 调号 → 文件名中的 `Gmajor` / `F#minor` → Krumhansl–Kessler 估计。拍速：清单 `tempo` 图层 → 持续最久的拍速；文件没有拍速事件（默认 120）且文件名含 `BPM76` 时取文件名。文件名解析只是 R4 导入器（文件名写入图层）之前的补充。
+- 缩略图：钢琴卷帘 PNG（新增 `png 0.18` 依赖，锁文件中已有），清单分配手别时右手绿、左手蓝，否则按轨道着色。
+- 程序为 GUI 子系统：只有没有继承输出句柄时才附着父控制台，管道与重定向（Keel 的调用方式）不受影响。
+- 实测（debug 构建，语料只读）：KAIRCI《Oz》76 BPM / G 大调（文件名）；《七里香》75 BPM / C 大调（MIDI）；POP909 001 估计 F# 大调，与数据集 `key_audio.txt` 的 Gb:maj 一致；SNH48《海砂》.mxl 120 BPM / Eb 大调、94 次拍速变化；带清单的副本取到清单中的调、图层与缺失的人声文件；不存在的文件输出 `{"error": …}` 并返回 1。每个文件约 0.2 秒（首次 2.7 秒为冷启动）。
+- 注意：在 Git Bash 中用 Python 解析输出时需按 UTF-8 读取（默认按 GBK 解码会把中文后的 `\` 吞掉）。
+
+下一入口：R2 第 5 项（删除集中曲库与五套存储机制，拆分 `lib.rs`）。先列出 `song_repository`、`import_storage`、`song_catalog` / `catalog_rows`、`library_workspace`、`library_monitor`、`locations` 与五套存储机制的全部调用方，按"打开文件 → 练习"主线保留所需部分；MusicXML 打开改为不经曲库；同时处理分离读取器直接写清单的问题。
+
 ## 2026-11-21 · R2 第 3 项：歌曲设置接入清单（提交 573f758）
 
 - 不在旧集中曲库中的歌曲（没有 `library/assets/midi/<cid>.mid`）从原位置直接加载，`retain_assets` 不再把它复制进曲库。已在曲库中的歌曲行为不变，数据仍在集中存储，等第 6 项迁移。
