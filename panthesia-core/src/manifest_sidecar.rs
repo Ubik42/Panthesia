@@ -153,6 +153,19 @@ pub fn read(manifest: &Manifest, performance: &str, source: &Performance, manife
         }
         sidecar.score_analysis = score.rest.get("analysis").and_then(|v| serde_json::from_value(v.clone()).ok());
     }
+    // Entries kept from earlier writes whose note is not in the performance.
+    for name in ["hands", "fingering", "playback"] {
+        for row in layer(name).map_or(&[][..], |l| l.unmatched.as_slice()) {
+            let Some(entry) = row.get("entry").cloned() else { continue };
+            match row.get("kind").and_then(Value::as_str) {
+                Some("hands") => sidecar.hands.extend(serde_json::from_value::<NoteHandHint>(entry).ok()),
+                Some("fingerings") => sidecar.fingerings.extend(serde_json::from_value::<FingerHint>(entry).ok()),
+                Some("finger_actions") => sidecar.finger_actions.extend(serde_json::from_value::<FingerAction>(entry).ok()),
+                Some("note_playback") => sidecar.note_playback.extend(serde_json::from_value::<NotePlaybackRule>(entry).ok()),
+                _ => {}
+            }
+        }
+    }
     sidecar.metadata_layers = manifest
         .extensions
         .get(EXTENSION)
@@ -286,10 +299,23 @@ impl From<CorrectionJson> for MeterCorrection {
 
 /// Replace one layer's payload. Existing note rows that no longer resolve move to `unmatched`;
 /// the layer is removed when it ends up empty; provenance becomes `human` when content changes.
-fn put_layer(manifest: &mut Manifest, name: &str, performance: &str, body: Map<String, Value>, notes: &Notes, note_keys: &[&str]) {
+fn put_layer(
+    manifest: &mut Manifest,
+    name: &str,
+    performance: &str,
+    body: Map<String, Value>,
+    notes: &Notes,
+    note_keys: &[&str],
+    orphans: Vec<Value>,
+) {
     let default = manifest.default.performance.clone();
     let key = manifest.layer_key(name, performance);
     let mut layer = manifest.layers.remove(&key).unwrap_or_default();
+    for orphan in orphans {
+        if !layer.unmatched.contains(&orphan) {
+            layer.unmatched.push(orphan);
+        }
+    }
     for (key, value) in &layer.body {
         let Some(old) = value.as_array() else { continue };
         if !["notes", "changes"].contains(&key.as_str()) {
@@ -342,6 +368,10 @@ pub fn write(
 ) -> Result<(), String> {
     let notes = Notes::new(source);
     let note = |track: usize, index: usize| notes.reference(track, index);
+    // Entries whose note is not in this performance are kept, never dropped.
+    let orphan = |kind: &str, entry: &dyn erased::Entry| {
+        json!({"kind": kind, "entry": entry.value(), "reason": "音符不在当前演奏中"})
+    };
 
     let mut hands = Map::new();
     let tracks: Map<String, Value> =
@@ -349,55 +379,64 @@ pub fn write(
     if !tracks.is_empty() {
         hands.insert("tracks".into(), Value::Object(tracks));
     }
-    let hand_notes: Vec<Value> = sidecar
-        .hands
-        .iter()
-        .filter_map(|h| Some(json!({"note": note(h.track_id, h.note_index)?, "part": part_name(h.part)})))
-        .collect();
+    let mut lost = Vec::new();
+    let mut hand_notes = Vec::new();
+    for h in &sidecar.hands {
+        match note(h.track_id, h.note_index) {
+            Some(n) => hand_notes.push(json!({"note": n, "part": part_name(h.part)})),
+            None => lost.push(orphan("hands", h)),
+        }
+    }
     if !hand_notes.is_empty() {
         hands.insert("notes".into(), Value::Array(hand_notes));
     }
-    put_layer(manifest, "hands", performance, hands, &notes, &["note"]);
+    put_layer(manifest, "hands", performance, hands, &notes, &["note"], lost);
 
     let mut fingering = Map::new();
-    let finger_notes: Vec<Value> = sidecar
-        .fingerings
-        .iter()
-        .filter_map(|f| Some(json!({"note": note(f.track_id, f.note_index)?, "finger": f.finger})))
-        .collect();
+    let mut lost = Vec::new();
+    let mut finger_notes = Vec::new();
+    for f in &sidecar.fingerings {
+        match note(f.track_id, f.note_index) {
+            Some(n) => finger_notes.push(json!({"note": n, "finger": f.finger})),
+            None => lost.push(orphan("fingerings", f)),
+        }
+    }
     if !finger_notes.is_empty() {
         fingering.insert("notes".into(), Value::Array(finger_notes));
     }
-    let changes: Vec<Value> = sidecar
-        .finger_actions
-        .iter()
-        .filter_map(|a| {
-            let mut row = json!({
-                "note": note(a.track_id, a.note_index)?,
-                "before": note(a.before_track, a.before_index)?,
-                "atTick": a.at_tick, "from": a.from, "to": a.to, "hand": part_name(a.hand),
-            });
-            if a.rate_milli != 1000 {
-                row["rateMilli"] = json!(a.rate_milli);
-            }
-            Some(row)
-        })
-        .collect();
+    let mut changes = Vec::new();
+    for a in &sidecar.finger_actions {
+        let (Some(at), Some(before)) = (note(a.track_id, a.note_index), note(a.before_track, a.before_index)) else {
+            lost.push(orphan("finger_actions", a));
+            continue;
+        };
+        let mut row = json!({
+            "note": at, "before": before,
+            "atTick": a.at_tick, "from": a.from, "to": a.to, "hand": part_name(a.hand),
+        });
+        if a.rate_milli != 1000 {
+            row["rateMilli"] = json!(a.rate_milli);
+        }
+        changes.push(row);
+    }
     if !changes.is_empty() {
         fingering.insert("changes".into(), Value::Array(changes));
     }
-    put_layer(manifest, "fingering", performance, fingering, &notes, &["note", "before"]);
+    put_layer(manifest, "fingering", performance, fingering, &notes, &["note", "before"], lost);
 
     let mut playback = Map::new();
-    let rules: Vec<Value> = sidecar
-        .note_playback
-        .iter()
-        .filter_map(|r| Some(json!({"note": note(r.track_id, r.note_index)?, "player": player_name(r.mode)})))
-        .collect();
+    let mut lost = Vec::new();
+    let mut rules = Vec::new();
+    for r in &sidecar.note_playback {
+        match note(r.track_id, r.note_index) {
+            Some(n) => rules.push(json!({"note": n, "player": player_name(r.mode)})),
+            None => lost.push(orphan("note_playback", r)),
+        }
+    }
     if !rules.is_empty() {
         playback.insert("notes".into(), Value::Array(rules));
     }
-    put_layer(manifest, "playback", performance, playback, &notes, &["note"]);
+    put_layer(manifest, "playback", performance, playback, &notes, &["note"], lost);
 
     let mut meter = match &sidecar.meter_map {
         Some(map) => match serde_json::to_value(MeterMapJson::from(map)) {
@@ -412,7 +451,7 @@ pub fn write(
             json!({"numerator": c.numerator, "denominator": c.denominator, "pickupTicks": c.pickup_ticks}),
         );
     }
-    put_layer(manifest, "meter", performance, meter, &notes, &[]);
+    put_layer(manifest, "meter", performance, meter, &notes, &[], Vec::new());
 
     set_metadata(manifest, &sidecar.metadata);
     write_score(manifest, performance, sidecar, music, manifest_dir)?;
@@ -517,4 +556,16 @@ fn unique_file_id(manifest: &Manifest, base: &str) -> String {
         return base.into();
     }
     (2..).map(|n| format!("{base}{n}")).find(|id| !taken(id)).unwrap()
+}
+
+mod erased {
+    /// Serializable sidecar entries recorded as unmatched layer rows.
+    pub trait Entry {
+        fn value(&self) -> serde_json::Value;
+    }
+    impl<T: serde::Serialize> Entry for T {
+        fn value(&self) -> serde_json::Value {
+            serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+        }
+    }
 }

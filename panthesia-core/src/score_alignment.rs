@@ -1153,11 +1153,11 @@ mod tests {
         assert_eq!(projection.events[0].id.kind, ScoreEventKind::Note);
         assert_eq!(
             projection.events[0].duration,
-            Some(Duration::from_micros(166_666))
+            Some(Duration::from_nanos(166_666_666))
         );
         assert_eq!(
             projection.events[1].timestamp,
-            Duration::from_micros(166_666)
+            Duration::from_nanos(166_666_666)
         );
         assert_eq!(projection.events[1].id.kind, ScoreEventKind::Direction);
         assert!(

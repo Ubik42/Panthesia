@@ -40,10 +40,6 @@ impl Prepared {
         &self.destination
     }
 
-    #[cfg(test)]
-    pub(crate) fn destination_for_test(&self) -> PathBuf {
-        self.destination.clone()
-    }
     pub fn read(
         data: &Path,
         file: &panthesia_music::MidiFile,

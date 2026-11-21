@@ -18,6 +18,17 @@ impl Engine {
     pub fn refresh_devices(&self, target: Option<&str>) -> Result<DeviceSnapshot, String> {
         self.devices.refresh(target)
     }
+    /// Wait until the startup restore has finished and commands are accepted.
+    pub fn wait_until_ready(&self, timeout: std::time::Duration) -> Result<(), String> {
+        let deadline = std::time::Instant::now() + timeout;
+        while !(self.snapshot().startup.ready && !self.storage_busy.load(Ordering::Acquire)) {
+            if std::time::Instant::now() >= deadline {
+                return Err("启动恢复未在限定时间内完成".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        Ok(())
+    }
     pub fn command(&self, command: Command) -> Result<serde_json::Value, String> {
         let recording_note = matches!(command, Command::Note { .. })
             && self.state.lock().is_ok_and(|state| state.recording);

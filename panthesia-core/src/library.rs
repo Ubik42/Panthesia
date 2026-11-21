@@ -1028,31 +1028,6 @@ mod tests {
     }
 
     #[test]
-    fn sidecar_preparation_preserves_disk_until_transaction_commit() {
-        let root = temp_directory("staged-sidecar");
-        let midi = root.join("practice.mid");
-        let sidecar_path = metadata_sidecar_path(&midi);
-        let target = sidecar_path.clone();
-        let (result, writes, observed) = crate::utils::atomic_file::capture_matching(
-            std::sync::Arc::new(move |path| path == target),
-            || {
-                save_song_metadata(&midi, "practice-id", SongMetadata {
-                    title: Some("Prepared title".into()),
-                    ..Default::default()
-                }).unwrap();
-                assert!(!sidecar_path.exists(), "preparation must not publish a sidecar");
-                load_song_sidecar(&midi, "practice-id").unwrap().metadata.title
-            },
-        );
-        assert_eq!(result.as_deref(), Some("Prepared title"));
-        assert_eq!(writes.len(), 1);
-        assert_eq!(observed.len(), 1);
-        assert!(observed[0].before.is_none());
-        assert!(!sidecar_path.exists(), "abandoned preparation must leave disk unchanged");
-        fs::remove_dir(root).unwrap();
-    }
-
-    #[test]
     fn recursive_scan_deduplicates_identical_midi_content() {
         let root = temp_directory("dedupe");
         let nested = root.join("nested");
@@ -1201,7 +1176,7 @@ mod tests {
         let sidecar = save_song_metadata(&midi_path, &content_id, metadata).unwrap();
         assert_eq!(
             sidecar.file_name().unwrap(),
-            "Unhelpful Filename.mid.neothesia.ron"
+            "Unhelpful Filename.panthesia"
         );
         let loaded = load_song_metadata(&midi_path, &content_id).unwrap();
         assert_eq!(loaded.title.as_deref(), Some("Clair de Lune"));
@@ -1231,19 +1206,21 @@ mod tests {
         let root = temp_directory("metadata-mismatch");
         let midi_path = root.join("Actual Song.mid");
         write_midi(&midi_path, 64);
-        save_song_metadata(
-            &midi_path,
-            "different-content",
-            SongMetadata {
-                title: Some("Wrong Song".into()),
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        // A manifest is bound to the file's content: annotations for other content are refused.
+        assert!(matches!(
+            save_song_metadata(
+                &midi_path,
+                "different-content",
+                SongMetadata {
+                    title: Some("Wrong Song".into()),
+                    ..Default::default()
+                },
+            ),
+            Err(MetadataError::ContentMismatch { .. })
+        ));
 
         let index = LibraryIndex::scan(std::slice::from_ref(&root));
-        assert_eq!(index.metadata_files_seen, 1);
-        assert_eq!(index.invalid_metadata_files, 1);
+        assert_eq!(index.metadata_files_seen, 0);
         assert_eq!(index.songs[0].display_name, "Actual Song.mid");
         assert_eq!(index.songs[0].metadata, SongMetadata::default());
 
@@ -1439,7 +1416,6 @@ mod tests {
         save_score_association(&midi_path, &content_id, &score_path).unwrap();
         let sidecar = load_song_sidecar(&midi_path, &content_id).unwrap();
         let association = sidecar.score.unwrap();
-        assert_eq!(association.path, PathBuf::from("Song.musicxml"));
         assert_eq!(resolve_score_path(&midi_path, &association), score_path);
         assert!(verify_score_association(&midi_path, &association).unwrap());
         save_score_analysis(

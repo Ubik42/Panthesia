@@ -97,10 +97,9 @@ impl Player {
         self.manifest_settings = None;
         let found = match manifest_store::locate(path) {
             Ok(Some(found)) => found,
-            Ok(None) => {
-                self.manifest_settings = Some((cid.into(), self.settings_projection(cid)));
-                return;
-            }
+            // No manifest: nothing to apply. The next sync compares against the (absent)
+            // manifest itself, so song data already in the preferences creates it.
+            Ok(None) => return,
             Err(error) => {
                 self.state.error = Some(error);
                 return;

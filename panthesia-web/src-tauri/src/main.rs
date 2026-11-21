@@ -67,6 +67,7 @@ fn saved_soundfont(data:&std::path::Path)->(Option<PathBuf>,Option<String>){
         return (None,Some("已保存的音源设置无效，已使用随包钢琴音源".into()))
     };
     if !path.is_absolute(){return (None,Some("已保存的音源路径不是绝对路径，已使用随包钢琴音源".into()))}
+    if !path.is_file(){return (None,Some(format!("已保存的音源文件已找不到（{}），已使用随包钢琴音源",path.display())))}
     (Some(path),None)
 }
 
@@ -869,6 +870,7 @@ mod musescore_tests {
         let data=std::env::temp_dir().join(format!("neothesia-musescore-preview-{}",std::process::id()));
         let data_lock=DataRootLock::acquire(&data).unwrap();
         let engine=Engine::start(data.clone(),data_lock,PathBuf::new(),true).unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
         let song=engine.command(Command::OpenFile{path:input.clone()}).unwrap();
         let preview=engine.command(Command::PreviewScoreBytesRoute{
             bytes,name:"MuseScore 转谱初稿.musicxml".into(),

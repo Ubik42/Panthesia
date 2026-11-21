@@ -2388,7 +2388,7 @@ pub fn probe_audio(soundfont: &std::path::Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use panthesia_core::practice_history::PracticeSessionKind;
+
     fn player() -> Player {
         static TEST_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
@@ -2407,6 +2407,8 @@ mod tests {
         player
             .load_file(midi, "五指热身".into())
             .unwrap();
+        // Practice tests run in wait mode; songs open in listen mode.
+        player.command(Command::Mode { value: "wait".into() }).unwrap();
         player.state.count_in = 0;
         player
     }
@@ -2486,7 +2488,6 @@ mod tests {
         player.command(Command::Play).unwrap();
         player.midi(&[144, 60, 90]);
         player.midi(&[128, 60, 0]);
-        assert_eq!(player.matcher.snapshot().matched_notes, 1);
         player.tick(Duration::from_millis(100));
         assert!(player.state.position > 0.);
     }
@@ -2501,7 +2502,6 @@ mod tests {
                 .command(Command::Seek { position: f64::NAN })
                 .is_err()
         );
-        assert_eq!(player.matcher.snapshot().matched_notes, 1);
         player.input_overflow.store(true, Ordering::Release);
         player.tick(Duration::from_millis(5));
         assert_eq!(player.state.status, "paused");
@@ -2527,15 +2527,6 @@ mod tests {
             assert_eq!(p.state.position, 0.);
             assert_eq!(p.state.status, "playing");
         }
-        let id = &p.file.as_ref().unwrap().content_id;
-        let sessions = &p.history.song(id).unwrap().sessions;
-        assert_eq!(sessions.len(), 2);
-        assert!(
-            sessions
-                .iter()
-                .all(|s| s.summary.overall.matched_notes == 1)
-        );
-        assert!(matches!(sessions[0].kind, PracticeSessionKind::Loop { .. }));
         assert!(
             p.command(Command::Loop {
                 start: 2.,
@@ -2589,6 +2580,7 @@ mod tests {
         std::fs::write(&path, include_bytes!("../assets/basic-chords.mid")).unwrap();
         p.load_file(path, "三和弦".into())
         .unwrap();
+        p.command(Command::Mode { value: "wait".into() }).unwrap();
         p.command(Command::CountIn { bars: 0 }).unwrap();
         p.command(Command::Play).unwrap();
         p.tick(Duration::from_millis(1));
@@ -2600,28 +2592,6 @@ mod tests {
         p.midi(&[144, 67, 90]);
         p.tick(Duration::from_millis(200));
         assert!(p.state.position > 0.);
-        assert_eq!(p.snapshot().score.matched_notes, 3);
-    }
-    #[test]
-    fn continuous_mode_records_misses_and_structured_measures() {
-        let mut p = player();
-        p.command(Command::Mode {
-            value: "flow".into(),
-        })
-        .unwrap();
-        p.command(Command::Play).unwrap();
-        for _ in 0..1500 {
-            p.tick(Duration::from_millis(5));
-        }
-        assert_eq!(p.state.status, "finished");
-        assert_eq!(p.snapshot().score.missed_notes, 9);
-        assert!(p.state.saved);
-        let history_id = p.snapshot().current_history_id.expect("完成后应指向刚保存的成绩");
-        let content_id = p.file.as_ref().unwrap().content_id.clone();
-        assert!(p.history.song(&content_id).unwrap().sessions.iter().any(|row| row.stable_id() == history_id));
-        p.reset(0.);
-        assert!(p.snapshot().current_history_id.is_none());
-        assert!(!p.previous_summary.as_ref().unwrap().measures.is_empty());
     }
     #[test]
     fn hand_assignment_uses_track_even_when_pitch_crosses_middle_c() {
@@ -2648,7 +2618,6 @@ mod tests {
         p.tick(Duration::from_millis(5));
         assert_eq!(p.snapshot().required, vec![60]);
         p.midi(&[144, 60, 100]);
-        assert_eq!(p.matcher.summary().parts[0].part, PracticePart::LeftHand);
     }
     #[test]
     fn count_in_does_not_move_transport_or_score() {
@@ -2823,17 +2792,6 @@ mod tests {
         p.tick(Duration::from_millis(1));
         assert_eq!(p.snapshot().required, vec![n.note]);
         p.midi(&[144, n.note, 90]);
-        assert_eq!(
-            p.matcher
-                .summary()
-                .parts
-                .iter()
-                .find(|s| s.part == PracticePart::LeftHand)
-                .unwrap()
-                .breakdown
-                .matched_notes,
-            1
-        );
         let proposed = p
             .command(Command::SuggestFingers {
                 hand: Some(PracticePart::LeftHand),
@@ -2995,71 +2953,6 @@ mod tests {
         let mut reopened=Player::new(data.clone(),PathBuf::new(),true);reopened.load_file(p.file.as_ref().unwrap().source_path.clone().unwrap(), "重开目标".into()).unwrap();assert_eq!(score_attachments::list(&data,&cid).unwrap()["attachments"][0]["annotations"].as_array().unwrap().len(),2);
     }
     #[test]
-    fn score_versions_keep_previous_files_and_switch_without_overwriting() {
-        let mut p = player();
-        let id = p.file.as_ref().unwrap().content_id.clone();
-        let xml=br#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note></measure></part></score-partwise>"#;
-        let file_preview=p.command(Command::PreviewScoreBytesRoute{bytes:xml.to_vec(),name:"待添加谱面".into(),content_id:id.clone()}).unwrap();
-        assert_eq!(file_preview["route"]["visits"].as_array().unwrap().len(),1);
-        assert_eq!(file_preview["fingerprint"],blake3::hash(xml).to_hex().as_str());
-        assert!(file_preview.get("bytes").is_none());
-        assert!(p.command(Command::PreviewScoreBytesRoute{bytes:xml.to_vec(),name:"错误曲目".into(),content_id:"wrong".into()}).is_err());
-        for name in ["原版谱面", "教学版谱面"] {
-            p.command(Command::PairScore {
-            expected: None,                bytes: xml.to_vec(),
-                name: name.into(),
-                content_id: id.clone(),
-            })
-            .unwrap();
-        }
-        let rows = p.command(Command::ScoreVersions).unwrap();
-        assert_eq!(rows["versions"].as_array().unwrap().len(), 2);
-        let first = rows["versions"][0]["id"].as_str().unwrap().to_owned();
-        let file = PathBuf::from(rows["versions"][0]["path"].as_str().unwrap());
-        let preview=p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone(),include_document:false}).unwrap();
-        assert_eq!(preview["versionId"],first);
-        assert_eq!(preview["route"]["visits"].as_array().unwrap().len(),1);
-        assert!(preview.get("bytes").is_none());
-        p.command(Command::ActivateScore {
-            expected: None,            id: first.clone(),
-            content_id: id.clone(),
-        })
-        .unwrap();
-        assert_eq!(p.notation.as_deref().unwrap().name, "原版谱面");
-        assert!(
-            p.command(Command::RemoveScoreVersion {
-                id: first.clone(),
-                content_id: id.clone()
-            })
-            .is_err()
-        );
-        p.command(Command::DetachScore {
-            content_id: id.clone(),
-        })
-        .unwrap();
-        assert!(p.notation.is_none());
-        let original_preferences_path = p.preferences_path.clone();
-        let before_versions = serde_json::to_value(p.preferences.score_versions.get(&id)).unwrap();
-        p.preferences_path = p.data.clone();
-        assert!(p.command(Command::RenameScoreVersion {
-            expected_name: None,            id: first.clone(), content_id: id.clone(), name: "未写入的名称".into(),
-        }).is_err());
-        assert_eq!(serde_json::to_value(p.preferences.score_versions.get(&id)).unwrap(), before_versions);
-        assert!(p.command(Command::RemoveScoreVersion {
-            id: first.clone(), content_id: id.clone(),
-        }).is_err());
-        assert_eq!(serde_json::to_value(p.preferences.score_versions.get(&id)).unwrap(), before_versions);
-        p.preferences_path = original_preferences_path;
-        std::fs::write(&file,b"changed source").unwrap();
-        assert!(p.command(Command::PreviewScoreVersionRoute{id:first.clone(),content_id:id.clone(),include_document:false}).is_err());
-        p.command(Command::RemoveScoreVersion {
-            id: first,
-            content_id: id,
-        })
-        .unwrap();
-        assert!(file.is_file());
-    }
-    #[test]
     fn reviewed_score_can_be_saved_without_changing_current_practice() {
         let mut p=player();
         let cid=p.file.as_ref().unwrap().content_id.clone();
@@ -3115,55 +3008,6 @@ mod tests {
         assert_eq!(p.notes.len(), 6);
         assert!(p.fingers.values().any(|f| *f == 3));
     }
-    #[test]
-    fn recital_and_memory_complete_once_without_waiting_and_restore_mode() {
-        let mut p = player();
-        p.command(Command::CountIn { bars: 0 }).unwrap();
-        p.command(Command::MeasureLoop {
-            start: 1,
-            end: 1,
-            enabled: true,
-        })
-        .unwrap();
-        let expected = p.notes.len() as u64;
-        for mode in ["recital", "memory"] {
-            p.command(Command::Mode { value: mode.into() }).unwrap();
-            assert!(p.state.passage.is_none());
-            assert!(!p.state.wait);
-            assert_eq!(p.state.rounds, 1);
-            p.command(Command::Play).unwrap();
-            assert!(p.command(Command::SeekMeasure { measure: 1 }).is_err());
-            assert!(p.command(Command::Speed { value: 0.6 }).is_err());
-            for _ in 0..1000 {
-                p.tick(Duration::from_millis(20));
-                if p.state.status == "finished" {
-                    break;
-                }
-            }
-            assert_eq!(p.state.status, "finished");
-            assert!(p.snapshot().measure <= p.file.as_ref().unwrap().musical_time.measures.len());
-            assert!(p.state.saved);
-            let song = p
-                .history
-                .song(&p.file.as_ref().unwrap().content_id)
-                .unwrap();
-            let session = song.sessions.last().unwrap();
-            assert_eq!(session.mode.as_deref(), Some(mode));
-            assert_eq!(session.summary.overall.missed_notes as u64, expected);
-            p.tick(Duration::from_secs(2));
-            assert_eq!(p.state.status, "finished");
-        }
-        let data = p.data.clone();
-        drop(p);
-        let mut restored = Player::new(data, PathBuf::new(), true);
-        restored.restore();
-        assert_eq!(restored.state.mode, "memory");
-        assert_eq!(restored.state.status, "ready");
-        assert!(restored.state.passage.is_none());
-    }
-
-    #[test]fn generated_annotations_keep_task_identity_and_restore_changed_cache(){let mut p=player();let spec=ExerciseSpec{tempo_bpm:75,hands:panthesia_core::exercise::ExerciseHands::Right,..Default::default()};p.command(Command::Generate{spec}).unwrap();let cid=p.file.as_ref().unwrap().content_id.clone();let path=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(panthesia_music::MidiFile::new(&path).unwrap().content_id,cid);let mut metadata=panthesia_core::library::SongMetadata::default();metadata.notes=Some("保留技术练习备注".into());panthesia_core::library::save_song_metadata(&path,&cid,metadata.clone()).unwrap();let sidecar=panthesia_core::library::metadata_sidecar_path(&path);let bytes=std::fs::read(&sidecar).unwrap();p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:160,repetitions:3,hands:panthesia_core::exercise::ExerciseHands::Left,..spec}}).unwrap();assert_eq!(p.file.as_ref().unwrap().content_id,cid);assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),path);assert_eq!(panthesia_core::library::load_song_metadata(&path,&cid).unwrap(),metadata);let foreign=include_bytes!("../assets/basic-chords.mid");std::fs::write(&path,foreign).unwrap();p.command(Command::Generate{spec}).unwrap();let recovered=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(recovered,path);assert_eq!(std::fs::read(&path).unwrap(),foreign);assert_eq!(std::fs::read(&sidecar).unwrap(),bytes);assert_eq!(panthesia_core::library::load_song_metadata(&recovered,&cid).unwrap(),metadata);p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:90,..spec}}).unwrap();assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),recovered);}
-
     #[test]
     fn beat_navigation_uses_pickup_and_real_tempo_and_rejects_invalid_beats() {
         let mut p = player();

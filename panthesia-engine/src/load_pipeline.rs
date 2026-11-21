@@ -370,7 +370,9 @@ mod tests {
     fn engine() -> Engine {
         let root = root();
         let lock = DataRootLock::acquire(&root).unwrap();
-        Engine::start(root, lock, PathBuf::new(), true).unwrap()
+        let engine = Engine::start(root, lock, PathBuf::new(), true).unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
+        engine
     }
     fn file(root: &Path) -> PathBuf {
         let path = root.join("课堂.mid");

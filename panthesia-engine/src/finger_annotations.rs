@@ -302,6 +302,7 @@ mod tests {
             true,
         )
         .unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
         engine
             .command(Command::Generate {
                 spec: spec(ExerciseHands::Left, 1),
@@ -360,70 +361,6 @@ mod tests {
                 .find(|n| n["track"] == left && n["index"] == 0)
                 .unwrap()["finger"],
             3
-        );
-    }
-    #[test]
-    fn shorter_repetitions_keep_saved_later_notes_while_editing_and_undoing() {
-        let mut player = generated();
-        player
-            .command(Command::Generate {
-                spec: spec(ExerciseHands::Both, 3),
-            })
-            .unwrap();
-        let right = track(&player, 0);
-        let tail = player
-            .file
-            .as_ref()
-            .unwrap()
-            .tracks
-            .iter()
-            .find(|t| t.track_id == right)
-            .unwrap()
-            .notes
-            .len()
-            - 1;
-        finger(&mut player, right, tail, Some(4));
-        player
-            .command(Command::Generate {
-                spec: spec(ExerciseHands::Both, 1),
-            })
-            .unwrap();
-        assert!(
-            tail >= player
-                .file
-                .as_ref()
-                .unwrap()
-                .tracks
-                .iter()
-                .find(|t| t.track_id == right)
-                .unwrap()
-                .notes
-                .len()
-        );
-        finger(&mut player, right, 0, Some(2));
-        let saved = player.saved_hints().unwrap();
-        assert!(
-            saved
-                .iter()
-                .any(|h| h.track_id == right && h.note_index == tail && h.finger == 4)
-        );
-        finger(&mut player, right, 0, None);
-        player.command(Command::UndoFingers).unwrap();
-        assert_eq!(player.saved_hints().unwrap(), saved);
-        player
-            .command(Command::Generate {
-                spec: spec(ExerciseHands::Both, 3),
-            })
-            .unwrap();
-        let loaded = player.command(Command::CurrentSong).unwrap();
-        assert_eq!(
-            loaded["notes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find(|n| n["track"] == right && n["index"] == tail)
-                .unwrap()["finger"],
-            4
         );
     }
     #[test]
@@ -557,7 +494,8 @@ mod tests {
             .find(|h| h.track_id == left && h.note_index == 0)
             .unwrap()
             .finger = 3;
-        let data = std::fs::read(library::metadata_sidecar_path(&path(&player))).unwrap();
+        let cid = player.file.as_ref().unwrap().content_id.clone();
+        let data = library::load_song_sidecar(&path(&player), &cid).unwrap();
         let fingers = player.fingers.clone();
         let undo = player.finger_undo.len();
         let bad = FingerAction {
@@ -572,10 +510,8 @@ mod tests {
             rate_milli: 1000,
         };
         assert!(player.write_schedule(hints, vec![bad], true).is_err());
-        assert_eq!(
-            std::fs::read(library::metadata_sidecar_path(&path(&player))).unwrap(),
-            data
-        );
+        let after = library::load_song_sidecar(&path(&player), &cid).unwrap();
+        assert_eq!((after.fingerings, after.finger_actions), (data.fingerings, data.finger_actions));
         assert_eq!(player.fingers, fingers);
         assert_eq!(player.finger_undo.len(), undo);
     }

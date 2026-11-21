@@ -51,7 +51,8 @@ mod tests {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("exercise.mid");
-        let cid = "a".repeat(64);
+        std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
+        let cid = panthesia_music::MidiFile::new(&path).unwrap().content_id;
         let defaults = SongMetadata {title:Some("来源标题".into()),tags:vec!["来源标签".into()],..Default::default()};
         let mut personal = SongMetadata {title:Some("个人标题".into()),..Default::default()};
         let mut layers = MetadataLayers::import(&personal, None, defaults, "b".repeat(64), &[]);

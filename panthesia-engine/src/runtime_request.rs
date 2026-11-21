@@ -62,12 +62,38 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
         _=>false,
     };
     // Per-song preferences of a song at its own location go back to its manifest.
-    handle_inner(player,request,shared);
-    if barrier { player.sync_manifest_settings(); }
+    if !barrier {
+        handle_inner(player, request, shared);
+        return;
+    }
+    // Replies wait until the manifest holds this request's changes.
+    DEFERRED.with(|slot| *slot.borrow_mut() = Some(Vec::new()));
+    handle_inner(player, request, shared);
+    player.sync_manifest_settings();
+    let replies = DEFERRED.with(|slot| slot.borrow_mut().take()).unwrap_or_default();
+    for reply in replies {
+        reply();
+    }
 }
-/// Send a runtime reply; a caller that gave up waiting is ignored.
-pub(crate) fn respond<T>(reply: mpsc::SyncSender<Result<T, String>>, result: Result<T, String>) {
-    let _ = reply.send(result);
+thread_local! {
+    static DEFERRED: std::cell::RefCell<Option<Vec<Box<dyn FnOnce()>>>> = const { std::cell::RefCell::new(None) };
+}
+/// Send a runtime reply (after the manifest sync of a changing request); a caller that gave
+/// up waiting is ignored.
+pub(crate) fn respond<T: 'static>(reply: mpsc::SyncSender<Result<T, String>>, result: Result<T, String>) {
+    let send = move || {
+        let _ = reply.send(result);
+    };
+    let deferred = DEFERRED.with(|slot| match slot.borrow_mut().as_mut() {
+        Some(list) => {
+            list.push(Box::new(send));
+            None
+        }
+        None => Some(send),
+    });
+    if let Some(send) = deferred {
+        send();
+    }
 }
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
@@ -462,6 +488,7 @@ mod tests {
         let root = data("responsive");
         let lock = DataRootLock::acquire(&root).unwrap();
         let engine = Engine::start(root, lock, PathBuf::new(), true).unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
         // Engine construction starts recovery asynchronously. Exercise the
         // scheduling invariant only after startup has released its data lock.
         let ready_deadline = std::time::Instant::now() + Duration::from_secs(15);
@@ -527,6 +554,7 @@ mod tests {
         let root = data("public");
         let lock = DataRootLock::acquire(&root).unwrap();
         let engine = Engine::start(root, lock, PathBuf::new(), true).unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
         let song = engine
             .command(Command::Generate {
                 spec: ExerciseSpec::default(),

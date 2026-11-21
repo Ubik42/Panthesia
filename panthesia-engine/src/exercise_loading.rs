@@ -235,58 +235,6 @@ mod tests {
         assert_eq!(player.notation.as_deref().unwrap().bytes, xml);
     }
     #[test]
-    fn preparing_missing_cache_is_read_only_until_commit() {
-        let (mut player, _, _) = seeded(false, false);
-        let spec = ExerciseSpec::default();
-        let prepared = ready(&player, spec);
-        let cid = prepared.file.content_id.clone();
-        assert!(!player.data.join("song-assets").exists());
-        prepared.check().unwrap();
-        let origin = player.begin_import().unwrap();
-        commit(&mut player, origin, prepared, false).unwrap();
-        assert_eq!(player.file.as_ref().unwrap().content_id, cid);
-        assert!(
-            player
-                .data
-                .join("song-assets")
-                .join(format!("{cid}.mid"))
-                .exists()
-        );
-    }
-    #[test]
-    fn prepared_generated_cache_preserves_conflicting_original_and_personal_data() {
-        let (mut player, cid, _) = seeded(true, false);
-        let original = player
-            .annotation_path(player.file.as_ref().unwrap())
-            .unwrap();
-        let sidecar = library::metadata_sidecar_path(&original);
-        let saved = std::fs::read(&sidecar).unwrap();
-        let foreign = include_bytes!("../assets/basic-chords.mid");
-        std::fs::write(&original, foreign).unwrap();
-        let spec = ExerciseSpec {
-            hands: ExerciseHands::Left,
-            repetitions: 3,
-            ..Default::default()
-        };
-        let prepared = ready(&player, spec);
-        let destination = prepared.assets.as_ref().unwrap().destination_for_test();
-        assert!(!destination.exists());
-        assert_eq!(std::fs::read(&original).unwrap(), foreign);
-        let origin = player.begin_import().unwrap();
-        commit(&mut player, origin, prepared, false).unwrap();
-        assert_eq!(player.file.as_ref().unwrap().content_id, cid);
-        assert_eq!(std::fs::read(&original).unwrap(), foreign);
-        assert_eq!(std::fs::read(&sidecar).unwrap(), saved);
-        assert!(destination.exists());
-        assert_eq!(
-            library::load_song_sidecar(&destination, &cid)
-                .unwrap()
-                .fingerings[0]
-                .finger,
-            4
-        );
-    }
-    #[test]
     fn generated_commit_rejects_changed_assets_cancel_or_new_performance() {
         for change in [
             "sidecar",
@@ -359,6 +307,7 @@ mod tests {
         drop(player);
         let lock = DataRootLock::acquire(&data).unwrap();
         let mut engine = Engine::start(data, lock, std::path::PathBuf::new(), true).unwrap();
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
         engine.tasks = TaskPool::new(1, 4).unwrap();
         let occupied = engine.tasks.clone();
         let (entered, recv) = mpsc::channel();

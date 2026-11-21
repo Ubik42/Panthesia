@@ -61,10 +61,30 @@ impl Player {
     pub(crate) fn import_score(&mut self, bytes: Vec<u8>, name: String, bpm: u16) -> Result<Value, String> {
         self.open_score_bytes(bytes, &name, bpm)
     }
+    /// Open a score file and link it as the original of the opened score, so later changes to
+    /// the file are offered as updates.
     pub(crate) fn open_score_path(&mut self, path: &Path, bpm: u16) -> Result<Value, String> {
         let bytes = crate::score_sources::read_original(path)?;
+        let hash = blake3::hash(&bytes).to_hex().to_string();
         let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-        self.open_score_bytes(bytes, &name, bpm)
+        let mut result = self.open_score_bytes(bytes, &name, bpm)?;
+        self.remember_active_score()?;
+        let cid = result["contentId"].as_str().ok_or("曲目身份缺失")?.to_string();
+        let midi = PathBuf::from(result["sourcePath"].as_str().ok_or("曲目位置缺失")?);
+        let version = self
+            .preferences
+            .score_versions
+            .get(&cid)
+            .and_then(|rows| rows.iter().rev().find(|v| v.content_id == hash))
+            .map(|v| v.id.clone());
+        if let Some(version) = version {
+            if let Err(error) = self.link_score_source(midi, cid, version, path.to_path_buf(), bpm) {
+                let mut warnings = result["importWarnings"].as_array().cloned().unwrap_or_default();
+                warnings.push(serde_json::json!(format!("乐谱已打开，原文件关联未完成：{error}")));
+                result["importWarnings"] = serde_json::json!(warnings);
+            }
+        }
+        Ok(result)
     }
 }
 

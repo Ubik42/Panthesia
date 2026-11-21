@@ -707,6 +707,22 @@ pub async fn save_recognized_score_for_edit(
 
 #[cfg(test)]
 mod tests {
+    struct ShortDir {
+        dir: std::path::PathBuf,
+    }
+    impl ShortDir {
+        fn new(tag: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!("{tag}{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self { dir }
+        }
+    }
+    impl Drop for ShortDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
     use super::*;
 
     #[test]
@@ -789,11 +805,9 @@ mod tests {
 
     #[test]
     fn page_snapshot_detects_reorder_and_replacement() {
-        let temp = Scratch::create(&std::env::temp_dir().join(format!(
-            "neothesia-audiveris-snapshot-test-{}",
-            std::process::id()
-        )))
-        .unwrap();
+        // A short data folder: page assets add a hash folder and a hash file name, and a
+        // deep scratch folder would pass the Windows path limit.
+        let temp = ShortDir::new("pa");
         let cid = "test-song";
         let first =
             score_attachments::add(&temp.dir, cid, "第一份", b"%PDF-test".to_vec(), None).unwrap();
@@ -823,11 +837,9 @@ mod tests {
 
     #[test]
     fn image_book_snapshot_keeps_order_and_verifies_every_source_page() {
-        let temp = Scratch::create(&std::env::temp_dir().join(format!(
-            "neothesia-audiveris-image-book-test-{}",
-            std::process::id()
-        )))
-        .unwrap();
+        // A short data folder: page assets add a hash folder and a hash file name, and a
+        // deep scratch folder would pass the Windows path limit.
+        let temp = ShortDir::new("pb");
         let cid = "image-song";
         let png = b"\x89PNG\r\n\x1a\nfirst".to_vec();
         let jpeg = b"\xff\xd8\xffsecond".to_vec();

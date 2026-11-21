@@ -144,11 +144,7 @@ mod tests {
         std::fs::write(&midi, include_bytes!("../assets/five-finger.mid")).unwrap();
         let lock = DataRootLock::acquire(&data).unwrap();
         let engine = Engine::start(data.clone(), lock, PathBuf::new(), true).unwrap();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
-        while !(engine.snapshot().startup.ready && !engine.snapshot().storage.pending) {
-            assert!(std::time::Instant::now() < deadline, "engine startup did not finish");
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
+        engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
 
         let plain = engine.open_file(midi.clone()).unwrap();
         assert!(plain["opened"]["manifest"].is_null());
