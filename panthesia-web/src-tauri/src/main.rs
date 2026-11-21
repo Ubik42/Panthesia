@@ -871,6 +871,10 @@ mod musescore_tests {
         let data_lock=DataRootLock::acquire(&data).unwrap();
         let engine=Engine::start(data.clone(),data_lock,PathBuf::new(),true).unwrap();
         engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
+        // Saved score versions go beside the song: work on a copy, not the repository asset.
+        let song_dir=data.join("song");
+        std::fs::create_dir_all(&song_dir).unwrap();
+        let input={let copy=song_dir.join("five-finger.mid");std::fs::copy(&input,&copy).unwrap();copy};
         let song=engine.command(Command::OpenFile{path:input.clone()}).unwrap();
         let preview=engine.command(Command::PreviewScoreBytesRoute{
             bytes,name:"MuseScore 转谱初稿.musicxml".into(),
