@@ -2,6 +2,21 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R1 完成（提交 30cca4b、2374c75 及本条）
+
+- 第 3 项：删除 `legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration` 与 examples 中两个迁移程序、对应协议命令和核对对话框，以及随之失效的 `practice_conditions` 条件比较、`hands::Selection`。`library_repairs` 是集中曲库工作区文件的一部分，移到 R2 与集中曲库一起删除。
+- 第 8 项：DuET 独立 venv `D:\Music\_tools\_reference\DuET\.venv`（uv 离线从缓存建立，torch 2.11+cu128，CUDA 可用）；模型目录按设置项 → `PANTHESIA_DUET_MODEL` → `PANTHESIA_MODELS_ROOT/music-transcription/DuET` 查找，程序中不再有本机路径；`Open-Desktop.cmd` 设置本机共享模型库。已用新 venv 实际加载共享库中的模型。调试服务不再回退到旧 Neothesia 工作目录。
+- 第 9 项：engine 49.5k 行；`cargo check` 零警告；`assessment-separation.md` 更新。
+- 阶段检查：
+  - `panthesia-core` 262 通过 / 1 失败（与基线同一个 `score_alignment` 测试；少 2 个为已删 speed_ladder 测试）。
+  - `panthesia-engine`（`--skip package_commands`）124 通过 / 40 失败；40 个失败全部在基线失败名单中，无新增失败（基线 121 失败，其余随模块删除）。
+  - `panthesia-desktop` 13 通过 / 4 失败，与基线数量相同；其中音源设置测试所测函数本轮未改。
+  - 真实资料：备份副本解压到 `work/` 后启动引擎，恢复上次曲目（2468 音符）、无错误；修改速度触发保存后，ladderPresets、routines、songExpressionGoals 等旧键原样保留，每首歌设置只去掉已废弃的 adaptive。
+  - 桌面构建 `--headless-check`：全新目录与真实资料副本均 PASS。注意该检查取曲库第一首当作内置练习，曲库根目录指向 `D:\Music\MIDI\Datasets` 时会失败，需设 `PANTHESIA_LIBRARY_ROOT` 为空目录；R2 删除集中曲库时改为直接加载内置练习。
+- 临时副本已删除，备份 zip 保留。
+
+下一入口：R2 第 1 项（`.panthesia` 格式与读写）。
+
 ## 2026-11-21 · R1 第 1、2、4、7 项：删除评分时代功能（提交 59f9686）
 
 - 引擎：删除评分轮次保存、日课、速度阶梯、表现目标、学习资料、弱项练习、历史回放 / 批阅 / 问题重练、练习备份及其协议命令（`practice_policy.rs` 一并删除）。`Mode` 只接受 wait / listen（flow 视为 listen）；状态快照去掉 routine、ladder、adaptive、表现目标与循环重启字段。
