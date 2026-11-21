@@ -7,6 +7,12 @@
 - `bilibili_toolkit` 提交 9c6e7b6（分块 Range 下载 + 镜像切换，以及之前未提交的 ASR 工作）。
 - `cargo clean` 后用 `scripts/build-practice.ps1 -Target Desktop -Configuration Debug` 完整构建通过（约 2 分钟），构建缓存已预热。
 - 真实资料备份：`work/user-data-backup/com.ubik.neothesia-20261121.zip`（31 MB）。
+- Rust 测试基线（R0 后，`main` 上同样存在）：
+  - `panthesia-music` 4/4、`panthesia-keyboard` 1/1、`panthesia-vst3` 7/7 全部通过。
+  - `panthesia-core` 264 通过、1 失败（`score_alignment::tests::projects_notes_and_directions_with_duration_and_identity`）。
+  - `panthesia-desktop` 13 通过、4 失败（2 个 Audiveris 页快照、2 个需要本机安装 MuseScore）。
+  - `panthesia-engine` 329 个测试：约 203 通过、121 失败，`package_commands` 的 5 个测试死锁（CPU 几乎为 0，永不结束），所以 `cargo test --workspace` 跑不完。失败的主要原因是引擎启动后立即处于"正在保存或恢复"忙碌状态（`storage_control.rs:46`），测试发出的命令被全部拒绝；约一半失败位于 R1 将删除的模块（routine、history、expression_goal、practice_backup 等）。
+  - 在 R1 第 5 项修好之前，engine 测试用 `cargo test -p panthesia-engine -- --skip package_commands` 运行，并以本条为基线比较。日志在 `work/test-runs/engine.log`。
 - `AGENTS.md` 增加"长期自主执行"协议；`current-plan.md` 增加 R1 任务分解。
 - 用户决定：曲库与管理界面改为 Serpent 式三栏工作台（只借布局与交互，不借美术），演奏舞台保留 Synthesia 式。调研见 research-2026-11.md 第 8 节，规格见 current-plan.md 第 3.5 节，R2 改为"曲库工作台与设计系统"。
 

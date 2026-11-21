@@ -167,7 +167,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 2. **历史回放与表现记录**：engine 的 `history_*`（loading 1028、commands 539、reader 448、replay_loading 611 等）、`performance_archive*`、`replay_*`；core 的 `practice_history`（2220 行）中仅供回放的部分；前端 `features/review/`、`HistoryDialog` 相关、`Notation.tsx` 中的 ScoreHistoryReview 与 HistoryReplayTransport、对应 spec。录音（R9 需要）与普通播放捕获不删。
 3. **一次性迁移**：`legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration`、`library_repairs` 及 examples 中的迁移脚本。保留 `.neothesia.ron` 与 Synthesia 资料的**导入器**（它们是导入来源，不是迁移）。先确认真实资料在当前格式下读取不依赖这些模块。
 4. **`practice_backup*`**（约 4000 行）：判断是否只服务于评分历史；是则删除，否则收缩为"歌曲与资产备份"，与整歌归档（`song_archive`）合并为一条路径。
-5. **存储事务合并**：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。
+5. **存储事务合并**：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。同时修复两个已知缺陷：引擎启动后长时间处于忙碌状态、拒绝普通命令（`storage_control::check_command`，导致约 120 个 engine 测试失败）；`package_commands` 测试死锁。完成标准：`cargo test --workspace` 能跑完且全部通过。
 6. **拆分 `lib.rs`**（4438 行）：`Player` 与命令分派分离，按领域分模块（library、playback、sound、notation、import、annotations）。
 7. **前端残留**：删除对已删命令的调用、`api.ts` 中对应函数、生成协议后不再存在的类型；`npm run protocol:generate` 重新生成。
 8. **后台工具**：DuET 使用独立 venv；`duet_runtime.rs` 中 Python 与模型路径改为设置项，删除 `D:\cs\...` 硬编码默认值。
