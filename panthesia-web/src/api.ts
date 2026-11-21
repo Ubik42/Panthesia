@@ -1,5 +1,5 @@
 import { reportDiagnostic } from "./app/diagnostics";
-import type { MusicKind, MusicReceipt } from "./engine/commands.generated";
+
 export type { StorageRecovery, StorageOperation } from "./engine/commands.generated";
 import { readDesktopBuildReport, type DesktopBuildReport } from "./engine/buildIdentity";
 import { readDeviceSnapshot, type DeviceScanTarget } from "./engine/deviceCatalog";
@@ -20,34 +20,12 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
   try { return await nativeInvoke<T>(command, args); }
   catch(error) { reportDiagnostic(command,error); throw error; }
 }
-const historyReadCommands = new Set<EngineCommand["type"]>([
-  "collection", "practiceTime", ]);
+const historyReadCommands = new Set<EngineCommand["type"]>(["practiceTime",]);
 
 let sessionReadSequence = 0;
 const service = "http://127.0.0.1:32124";
-const controlCommands = new Set<EngineCommand["type"]>([
-  "panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",
-]);
-const backgroundCommands = new Set<EngineCommand["type"]>([
-  "scoreView", "sourceScore",
-  "discoverSynthesiaMetadata", "previewDiscoveredSynthesiaMetadata", "importDiscoveredSynthesiaMetadata",
-  "previewSynthesiaMetadata", "importSynthesiaMetadata",
-  "libraryRepairs", "midiReplacements", "previewMidiReplacement", "decideMidiReplacement", "readLibraryPath",
-  "relinkLibrary", "setLibraryPrimary", "ignoreLibraryPath", "restoreLibraryPath", "pendingMetadataHistory", "pendingMetadataHistoryPage", "claimPendingMetadataHistory", "readMetadataHistoryClaim",
-  "libraryWorkspace", "inspectSong", "inspectSongs", "libraryGroup", "removeLibraryGroup", "assignLibrary", "unassignLibrary",
-  "readLibraryMetadata", "previewLibraryMetadata", "saveLibraryMetadata", "resetLibraryMetadataDefaults", "restoreLibraryMetadata", "updateSongMetadata",
-  "libraryMetadataHistory", "previewMetadataRestore", "metadataTemplates", "updateMetadataTemplate",
-  "importMidi", "importScore", "importScoreOriginal",
-  "startLibraryOpen", "readLibraryOpen", "cancelLibraryOpen", "releaseLibraryOpen",
-  "load", "loadIndexed", "openRecent", "generate", "openLibraryScore", "openPassage", "inspectPackage", "importPackage", "importStagedPackage", "exportPackage", "exportPackageFile",
-  "retrySave", "recording", "soundFont", "linkScoreSource", "applyScoreSource", "acknowledgeScoreSource", "unlinkScoreSource",
-  "scoreSources", "previewScoreSource", "manageLibraryScore", "addLibraryScore",
-  "pairScore", "activateScore", "detachScore", "saveScoreVersion", "removeScoreVersion", "scoreVersions", "renameScoreVersion", "setPaperMapping", "savePaperPractice", "previewPaperPractice", "previewScoreVersionRoute", "previewCrossPaperTransfer", "paperTransferSources", "score", "exportAnnotatedScore", "addScoreAttachment", "updateScoreAttachment", "readPaperView", "savePaperView", "seekPaperMeasure", "seekPaperNote",
-  "editPaperAnnotation", "editPaperInk", "editPaperNoteAnchor", "batchPaperNoteAnchors",
-  "fileLocations", "fileLocationsFor", "updateFileLocation",
-  "createLocatedScorePaper", "linkPaperSource", "applyPaperSource", "applyPaperTransfer", "applyCrossPaperTransfer", "updateLibraryPaper",
-  "suggestFingers", "suggestFingerPlans", "suggestHeldFingerPlans", "reviewFingerAcceptance",
-]);
+const controlCommands = new Set<EngineCommand["type"]>(["panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",]);
+const backgroundCommands = new Set<EngineCommand["type"]>(["scoreView", "sourceScore", "importScoreOriginal", "generate", "openPassage", "retrySave", "recording", "soundFont", "linkScoreSource", "applyScoreSource", "acknowledgeScoreSource", "unlinkScoreSource", "scoreSources", "previewScoreSource", "pairScore", "activateScore", "detachScore", "saveScoreVersion", "removeScoreVersion", "scoreVersions", "renameScoreVersion", "setPaperMapping", "savePaperPractice", "previewPaperPractice", "previewScoreVersionRoute", "previewCrossPaperTransfer", "paperTransferSources", "score", "exportAnnotatedScore", "addScoreAttachment", "updateScoreAttachment", "readPaperView", "savePaperView", "seekPaperMeasure", "seekPaperNote", "editPaperAnnotation", "editPaperInk", "editPaperNoteAnchor", "batchPaperNoteAnchors", "fileLocations", "fileLocationsFor", "updateFileLocation", "createLocatedScorePaper", "linkPaperSource", "applyPaperSource", "applyPaperTransfer", "applyCrossPaperTransfer", "suggestFingers", "suggestFingerPlans", "suggestHeldFingerPlans", "reviewFingerAcceptance",]);
 async function http<T>(path: string, command?: EngineCommand, post = false): Promise<T> {
   if (path === "/api/command" && command && controlCommands.has(command.type)) path = "/api/control";
   const response = await fetch(service + path, {
@@ -140,7 +118,7 @@ async function savePaperFile(format: "png" | "pdf", name: string, bytes: Uint8Ar
 export const api = {
   /** Files handed over by the command line, a second launch or a native drop. Empty outside the desktop. */
   takeOpenRequests: async (): Promise<string[]> => isTauri() ? invoke<string[]>("take_open_requests") : [],
-  pickSongFile: async (kind: "performance" | "audio" | "paper", near?: string): Promise<string | null> =>
+  pickSongFile: async (kind: "music" | "performance" | "audio" | "paper", near?: string): Promise<string | null> =>
     isTauri() ? invoke<string | null>("pick_song_file", { kind, near: near ?? null }) : null,
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,
   prepareMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, input: import("./engine/commands.generated").MediaExportInput): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("prepare_media_export", {request, input}),
@@ -190,27 +168,6 @@ export const api = {
       throw failure;
     }
   },
-  prepareExercise: (request: import("./engine/commands.generated").ExerciseRequest): Promise<MusicReceipt> => postLocal("prepare_exercise", "/api/exercise/prepare", request, 20000),
-  preparePackage: (request: import("./engine/commands.generated").PackageRequest): Promise<MusicReceipt> => postLocal("prepare_package", "/api/package/prepare", request, 20000),
-  refreshPackagePreview: (request: import("./engine/commands.generated").PackagePreviewRequest): Promise<import("./engine/commands.generated").PackagePreview> => postLocal("refresh_package_preview", "/api/package/preview", request),
-  beginMusicImport: (request: { engineId: string; requestId?: string; createdAtMs?: number; name: string; size: number; kind: MusicKind; defaultBpm?: number; catalogOnly?: boolean }): Promise<MusicReceipt> => postLocal("begin_music_import", "/api/music-import/begin", request, 15000),
-  writeMusicImport: async (id: string, offset: number, bytes: Blob): Promise<MusicReceipt> => {
-    if (bytes.size > 524288) throw new Error("文件分块超过传输限制");
-    if (isTauri()) return invoke<MusicReceipt>("write_music_import", { request: { id, offset, bytes: Array.from(new Uint8Array(await bytes.arrayBuffer())) } });
-    const response = await fetch(service + "/api/music-import/chunk", {
-      method: "POST", headers: { "X-Panthesia-Client": "web", "X-Panthesia-Upload": id, "X-Panthesia-Offset": String(offset) },
-      body: bytes, signal: AbortSignal.timeout(15000), cache: "no-store",
-    });
-    const value = await response.json();
-    if (!response.ok) throw new Error(value.error || "文件分块传输失败");
-    return value as MusicReceipt;
-  },
-  finishMusicImport: (id: string): Promise<MusicReceipt> => postLocal("finish_music_import", "/api/music-import/finish", { id }, 20000),
-  readMusicImport: (id: string): Promise<MusicReceipt> => postLocal("read_music_import", "/api/music-import/read", { id }, 4000),
-  cancelMusicImport: async (id: string, kind?: MusicKind): Promise<MusicReceipt> => {
-    const state = await api.state();
-    return postLocal("cancel_music_import", "/api/music-import/cancel", { id, ...((state.musicImportVersion ?? 0) >= 2 ? { kind } : {}) }, 4000);
-  },
   readHistory: <T>(command: HistoryReadCommand, scope?: HistoryReadScope, engineId?: string): Promise<T> => scope ? postLocal("read_history", "/api/history-read", {command,scope,...(engineId ? {engineId} : {})}) : engineId ? api.commandForEngine<T>(engineId, command) : postLocal("read_history", "/api/history-read", command),
   readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>postLocal("read_notation","/api/notation-read",request,60000,request.type==="release"),
   notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
@@ -222,45 +179,6 @@ export const api = {
     return { ...session, readSequence };
   },
   currentSessionRead: (session: EngineSession) => session.readSequence === undefined || session.readSequence === sessionReadSequence,
-  checkLibraryScoreImport: async (
-    path: string,
-    contentId: string,
-    file: File,
-    kind: string,
-    target?: string,
-  ) => {
-    if (file.size > (kind === "notation" ? 64 * 1024 * 1024 : 48_000_000))
-      throw new Error("文件超过谱面容量上限");
-    type Result = {
-      matches: { id: string; name: string; kind: string; page: number }[];
-    };
-    if (isTauri())
-      return invoke<Result>("engine_command", {
-        command: {
-          type: "checkLibraryScoreImport",
-          path,
-          content_id: contentId,
-          bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
-          kind,
-          target: target ?? null,
-        },
-      });
-    const r = await fetch(service + "/api/library-score/check", {
-      method: "POST",
-      headers: {
-        "X-Panthesia-Client": "web",
-        "X-Panthesia-Path": encodeURIComponent(path),
-        "X-Panthesia-Song": contentId,
-        "X-Panthesia-Kind": kind,
-        ...(target ? { "X-Panthesia-Target": target } : {}),
-      },
-      body: file,
-      signal: AbortSignal.timeout(120000),
-    });
-    const value = await r.json();
-    if (!r.ok) throw new Error(value.error || "保存结果核对失败");
-    return value as Result;
-  },
   desktop: isTauri(),
   soundfontStatus: () => invoke<SoundFontStatus>("get_soundfont_status"),
   selectSoundfont: () => invoke<SoundFontStatus | null>("select_soundfont"),
@@ -382,68 +300,6 @@ export const api = {
     if (typeof active !== "string" || !active) throw new Error("谱页保存结果尚未确认，请核对谱页列表后继续。");
     return { active, alreadySaved: result.alreadySaved === true };
   },
-  cancelLibraryScoreImport: (batchId: string) =>
-    invoke("cancel_library_score_import", { batchId }),
-  importLibraryScores: (
-    batchId: string,
-    path: string,
-    contentId: string,
-    kind: string,
-    target?: string,
-    page = 0,
-  ) =>
-    invoke<{
-      results: { name: string; ok: boolean; id?: string; kind?: "notation" | "paper"; error?: string; warning?: string }[];
-      stopped?: boolean;
-    } | null>("import_library_scores", {
-      batchId,
-      path,
-      contentId,
-      kind,
-      target: target ?? null,
-      page,
-    }),
-  addLibraryScore: async (
-    path: string,
-    contentId: string,
-    file: File,
-    kind: string,
-    target?: string,
-    page = 0,
-  ) => {
-    if (file.size > (kind === "notation" ? 64 * 1024 * 1024 : 48_000_000))
-      throw new Error("文件超过当前谱面格式容量上限");
-    if (isTauri())
-      return invoke<{ active?: string }>("engine_command", {
-        command: {
-          type: "addLibraryScore",
-          path,
-          content_id: contentId,
-          name: file.name,
-          bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
-          kind,
-          target: target ?? null,
-          page,
-        },
-      });
-    const r = await fetch(service + "/api/library-score/add", {
-      method: "POST",
-      headers: {
-        "X-Panthesia-Client": "web",
-        "X-Panthesia-Song": contentId,
-        "X-Panthesia-Name": encodeURIComponent(file.name),
-        "X-Panthesia-Path": encodeURIComponent(path),
-        "X-Panthesia-Kind": kind,
-        "X-Panthesia-Page": String(page),
-        ...(target ? { "X-Panthesia-Target": target } : {}),
-      },
-      body: file,
-      signal: AbortSignal.timeout(120000),
-    });
-    const value = await r.json();
-    if (!r.ok) throw new Error(value.error || "谱面导入失败");
-    return value as { active?: string };
-  },
   addScoreAttachment: async (
     contentId: string,
     file: File,
@@ -513,17 +369,6 @@ export const api = {
       { contentId, append: append ?? null },
     ),
   openLogs: () => invoke<void>("open_log_folder"),
-  musicFileExists: (path:string):Promise<boolean|null> => isTauri()?invoke<boolean>("music_file_exists",{path}):Promise.resolve(null),
-  revealFile: (path: string) => invoke<void>("reveal_library_file", { path }),
-  importFolder: () => invoke<number | null>("import_folder"),
-  repairPath: (contentId: string, from: string) =>
-    invoke<{ results: import("./features/library/repairSessionStore").RepairResult[] } | null>(
-      "repair_midi",
-      { contentId, from },
-    ),
-  pickRepairPath: (contentId: string, from: string) => invoke<string | null>("repair_midi", { contentId, from, chooseOnly: true }),
-  relocate: (contentId: string) =>
-    invoke<LoadedSong | null>("relocate_midi", { contentId }),
   export: () => invoke<string | null>("export_midi"),
   downloadMidi: async (contentId: string, signal?: AbortSignal): Promise<Blob> => {
     const timeout = AbortSignal.timeout(120000);
@@ -582,66 +427,7 @@ export const api = {
   exportPaperBook: (name: string, bytes: Uint8Array, options: PaperSaveOptions = {}) => savePaperFile("pdf", name, bytes, options),
   exportAnnotatedScore: (request: Extract<EngineCommand, { type: "exportAnnotatedScore" }>) =>
     invoke<string | null>("export_annotated_score", { request }),
-  pickPackage: () => invoke<import("./engine/commands.generated").PackagePreview | null>("pick_package"),
-  stagePackage: async (file: File, options: { signal?: AbortSignal; progress?: (percent: number) => void } = {}): Promise<import("./engine/commands.generated").PackagePreview> => {
-    if (!file.size || file.size > 256_000_000) throw new Error("曲目包为空或超过 256 MB");
-    const check = () => { if (options.signal?.aborted) throw new DOMException("曲目包传输已取消，原文件保留", "AbortError"); };
-    check();
-    if (isTauri()) {
-      const engine = await api.state();
-      if (!engine.packageImportVersion) return invoke<import("./engine/commands.generated").PackagePreview>("stage_package", {
-        bytes: Array.from(new Uint8Array(await file.arrayBuffer())),
-      });
-      const session = await invoke<string>("begin_package_stage", { size: file.size });
-      try {
-        for (let offset = 0; offset < file.size; offset += 1_048_576) {
-          check();
-          const bytes = Array.from(new Uint8Array(await file.slice(offset, offset + 1_048_576).arrayBuffer()));
-          await invoke("write_package_stage_chunk", { session, offset, bytes });
-          options.progress?.(Math.min(100, Math.round((offset + bytes.length) / file.size * 100)));
-        }
-        check();
-        const result = await invoke<import("./engine/commands.generated").PackagePreview>("finish_package_stage", { session });
-        check();
-        return result;
-      } catch (failure) {
-        await invoke("cancel_package_stage", { session }).catch(() => {});
-        throw failure;
-      }
-    }
-    const r = await fetch(service + "/api/package/stage", {
-      method: "POST",
-      headers: { "X-Panthesia-Client": "web" },
-      body: file,
-      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(120000)]) : AbortSignal.timeout(120000),
-    });
-    const v = await r.json();
-    if (!r.ok) throw new Error(v.error || "曲目包预览失败");
-    check();
-    options.progress?.(100);
-    return v as import("./engine/commands.generated").PackagePreview;
-  },
-  downloadPackage: async (contentId?: string, signal?: AbortSignal): Promise<Blob> => {
-    if (contentId && (await api.state()).contentId !== contentId) throw new Error("曲目已切换，请返回来源曲目后重新导出。");
-    const timeout = AbortSignal.timeout(120000);
-    const r = await fetch(service + "/api/package/export", {
-      method: "POST",
-      headers: { "X-Panthesia-Client": "web", "Content-Type": "application/json" },
-      body: JSON.stringify({contentId}),
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    });
-    if (!r.ok) {
-      const v = await r.json();
-      throw new Error(v.error || "曲目包导出失败");
-    }
-    const blob = await r.blob();
-    const prefix = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
-    if (blob.size < 22 || blob.size > 256_000_000 || prefix[0] !== 0x50 || prefix[1] !== 0x4b) throw new Error("导出结果不是有效的曲目包，请重新读取当前曲目。");
-    if (contentId && (await api.state()).contentId !== contentId) throw new Error("制作期间曲目已切换，请返回来源曲目后重新导出。");
-    return blob;
-  },
   exportPackage: () => invoke<string | null>("export_package"),
   import: () => invoke<LoadedSong | null>("import_midi"),
-  pickMusic: () => invoke<{ path: string; title: string; kind: "midi" | "score" } | null>("import_midi", { chooseOnly: true }),
 };
 export { pitchName, clock } from "./engine/musicFormatting";

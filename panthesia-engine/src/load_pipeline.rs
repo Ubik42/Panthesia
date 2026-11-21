@@ -274,22 +274,13 @@ impl Input {
                 title,
                 expected,
             } => {
-                let repository=crate::song_repository::SongRepository::open(data)?;
-                let resolved=match expected.as_deref(){
-                    Some(id)=>repository.resolve(Path::new(""),Some(id)).or_else(|_|repository.resolve(&path,Some(id)))?,
-                    None=>repository.resolve(&path,None)?,
-                };
-                Prepared::read_checked(resolved,title,expected.as_deref(),names,&check)
+                Prepared::read_checked(path,title,expected.as_deref(),names,&check)
             },
             Self::Recent {
                 content_id,
                 title,
                 paths,
             } => {
-                let index = crate::library_workspace::Workspace::load_hint(data)?;
-                let repository=crate::song_repository::SongRepository::open(data)?;
-                let mut paths=crate::library::candidate_paths(&index,&content_id,paths);
-                if let Ok(path)=repository.resolve(Path::new(""),Some(&content_id)){paths.insert(0,path);}
                 for path in paths {
                     check()?;
                     if let Ok(prepared) = Prepared::read_checked(
@@ -328,7 +319,7 @@ impl Prepared {
         check()?;
         let path = std::path::absolute(path).map_err(|e| format!("曲目位置无法解析：{e}"))?;
         let watch = Watch::capture(&path)?;
-        let file = crate::library::read_midi_checked(&path,check).map_err(|e| format!("曲目加载失败：{e}"))?;
+        let file = crate::music_file::read_midi_checked(&path,check).map_err(|e| format!("曲目加载失败：{e}"))?;
         check()?;
         if expected.is_some_and(|id| id != file.content_id) {
             return Err("曲库索引中的文件内容已改变，请重新检查这首曲目".into());
@@ -372,28 +363,6 @@ impl Prepared {
         check()?;
         prepared.check()?;
         Ok(prepared)
-    }
-    pub(crate) fn retain_assets(mut self,data:&Path,preferences:&mut crate::preferences::Preferences,check:&impl Fn()->Result<(),String>)->Result<Self,String>{
-        self.check()?;check()?;
-        let source=self.file.source_path.as_ref().ok_or("曲目缺少来源")?;
-        let cid=self.file.content_id.clone();
-        // A song not yet in the central library stays at its own location; its data is kept in
-        // the `.panthesia` manifest beside it (current-plan 3.7).
-        if !crate::song_repository::SongRepository::managed_path(data,&cid)?.is_file(){return Ok(self);}
-        let owned=crate::song_repository::SongRepository::open(data)?.retain_with_parts(source,&cid,&self.title,"",preferences.songs.get(&cid).map(|s|&s.parts),check)?;
-        let versions=preferences.score_versions.entry(cid.clone()).or_default();
-        crate::notation_assets::retain_editions(data,&cid,&owned,versions)?;
-        self.rebind_annotations(owned,versions,check)?;Ok(self)
-    }
-    pub(crate) fn rebind_annotations(&mut self,anchor:PathBuf,versions:&[ScoreVersion],check:&impl Fn()->Result<(),String>)->Result<(),String>{
-        let mut watches=vec![Watch::capture(&anchor)?,Watch::capture(&library::metadata_sidecar_path(&anchor))?];
-        if let Ok(sidecar)=library::load_song_sidecar(&anchor,&self.file.content_id){
-            if let Some(score)=sidecar.score{watches.push(Watch::capture(&library::resolve_score_path(&anchor,&score))?);}
-        }
-        let assets=Assets::read_checked(&self.file,&anchor,versions,check)?;
-        check()?;
-        for watch in &watches{watch.check()?;}
-        self.assets=assets;self.watches=watches;self.file.source_path=Some(anchor);Ok(())
     }
     pub fn check(&self) -> Result<(), String> {
         for watch in &self.watches {
@@ -441,168 +410,6 @@ mod tests {
         let path = root.join("课堂.mid");
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         path
-    }
-    #[test]
-    fn public_load_and_recent_restore_saved_assets_at_relocated_path() {
-        let engine = engine();
-        let song = engine
-            .command(Command::ImportScore {
-                bytes: SCORE.to_vec(),
-                name: "课堂谱面.musicxml".into(),
-                default_bpm: 120,
-            })
-            .unwrap();
-        let cid = song["contentId"].as_str().unwrap().to_owned();
-        let old = PathBuf::from(song["sourcePath"].as_str().unwrap());
-        let mut sidecar = library::load_song_sidecar(&old, &cid).unwrap();
-        sidecar.metadata.title = Some("保存的课程名称".into());
-        let midi = MidiFile::new(&old).unwrap();
-        let track = midi
-            .tracks
-            .iter()
-            .find(|t| !t.notes.is_empty())
-            .unwrap()
-            .track_id;
-        sidecar.fingerings = vec![FingerHint {
-            track_id: track,
-            note_index: 0,
-            finger: 4,
-        }];
-        sidecar.hands = vec![NoteHandHint {
-            track_id: track,
-            note_index: 0,
-            part: PracticePart::LeftHand,
-        }];
-        sidecar.meter = Some(MeterCorrection {
-            numerator: 3,
-            denominator: 4,
-            pickup_ticks: 0,
-        });
-        library::save_song_sidecar(&old, &cid, sidecar).unwrap();
-        let names = vec![];
-        let prepared =
-            Prepared::read(old.clone(), "fallback".into(), Some(&cid), |_| Ok(names)).unwrap();
-        let grid = prepared.assets.grid.as_ref().unwrap().clone();
-        let mut corrected = prepared.file.clone();
-        corrected.musical_time = grid;
-        let expected =
-            notation::ScoreAsset::new(SCORE.to_vec(), "课堂谱面.musicxml".into(), &corrected)
-                .unwrap();
-        assert_eq!(
-            prepared.assets.notation.as_ref().unwrap().alignment,
-            expected.alignment
-        );
-        let restored = engine
-            .command(Command::LoadIndexed {
-                path: old.clone(),
-                title: "fallback".into(),
-                content_id: cid.clone(),
-            })
-            .unwrap();
-        assert_eq!(restored["title"], "保存的课程名称");
-        assert_eq!(restored["hasScore"], true);
-        assert_eq!(
-            engine.command(Command::Score).unwrap()["name"],
-            "课堂谱面.musicxml"
-        );
-        let moved = engine.data.join("移动后的课堂.mid");
-        std::fs::rename(&old, &moved).unwrap();
-        std::fs::rename(
-            library::metadata_sidecar_path(&old),
-            library::metadata_sidecar_path(&moved),
-        )
-        .unwrap();
-        let mut index = crate::library_workspace::Workspace::load(&engine.data).unwrap();
-        index.inspect(moved.clone(), true).unwrap();
-        index.save(&engine.data).unwrap();
-        engine
-            .command(Command::Generate {
-                spec: ExerciseSpec::default(),
-            })
-            .unwrap();
-        let recent = engine
-            .command(Command::OpenRecent { content_id: cid })
-            .unwrap();
-        assert_eq!(recent["sourcePath"], moved.to_string_lossy().as_ref());
-        assert_eq!(recent["hasScore"], true);
-        assert_eq!(recent["title"], "保存的课程名称");
-        assert_eq!(recent["meterMap"]["segments"][0]["numerator"], 3);
-        let first = recent["notes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|n| n["track"] == track && n["index"] == 0)
-            .unwrap();
-        assert_eq!(first["finger"], 4);
-        assert_eq!(first["part"], "left");
-    }
-    #[test]
-    fn changed_score_bytes_are_rejected_without_overwriting_saved_association() {
-        let engine = engine();
-        let song = engine
-            .command(Command::ImportScore {
-                bytes: SCORE.to_vec(),
-                name: "课程.musicxml".into(),
-                default_bpm: 120,
-            })
-            .unwrap();
-        let path = PathBuf::from(song["sourcePath"].as_str().unwrap());
-        let cid = song["contentId"].as_str().unwrap();
-        let sidecar = library::load_song_sidecar(&path, cid).unwrap();
-        let score_path = library::resolve_score_path(&path, sidecar.score.as_ref().unwrap());
-        let prepared =
-            Prepared::read(path.clone(), "课程".into(), Some(cid), |_| Ok(vec![])).unwrap();
-        let changed = String::from_utf8(SCORE.to_vec())
-            .unwrap()
-            .replace("</score-partwise>", "<!-- changed --> </score-partwise>");
-        std::fs::write(&score_path, changed.as_bytes()).unwrap();
-        assert!(prepared.check().unwrap_err().contains("文件已改变"));
-        let opened = engine
-            .command(Command::Load {
-                path: path.clone(),
-                title: "课程".into(),
-            })
-            .unwrap();
-        assert_eq!(opened["hasScore"], false);
-        assert!(engine.snapshot().error.unwrap().contains("内容校验不一致"));
-        assert_eq!(
-            library::load_song_sidecar(&path, cid).unwrap().score,
-            sidecar.score
-        );
-        assert_eq!(std::fs::read(&score_path).unwrap(), changed.as_bytes());
-    }
-    #[test]
-    fn invalid_or_mismatched_load_keeps_the_current_song() {
-        let engine = engine();
-        let song = engine
-            .command(Command::Generate {
-                spec: ExerciseSpec::default(),
-            })
-            .unwrap();
-        let path = file(&engine.data);
-        assert!(
-            engine
-                .command(Command::LoadIndexed {
-                    path: path.clone(),
-                    title: "wrong".into(),
-                    content_id: "different".into()
-                })
-                .is_err()
-        );
-        std::fs::write(&path, b"invalid midi").unwrap();
-        assert!(
-            engine
-                .command(Command::Load {
-                    path,
-                    title: "invalid".into()
-                })
-                .unwrap_err()
-                .contains("曲目加载失败")
-        );
-        assert_eq!(
-            engine.command(Command::CurrentSong).unwrap()["contentId"],
-            song["contentId"]
-        );
     }
     #[test]
     fn prepared_load_checks_file_and_new_sidecar_before_install() {

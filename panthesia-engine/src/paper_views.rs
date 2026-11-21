@@ -12,8 +12,8 @@ impl Engine {
             Some(content_id.clone()),
             move |token| {
                 token.stage("readingScore")?;
-                let lock = library_workspace::lock_for(&engine.data)?;
-                let _guard = library_workspace::wait_for(&lock, &|| token.check())?;
+                let lock = data_locks::lock_for(&engine.data)?;
+                let _guard = data_locks::wait_for(&lock, &|| token.check())?;
                 let state = score_attachments::read_view_locked(&engine.data, &content_id, &book)?;
                 token.check()?;
                 serde_json::to_value(state).map_err(|e| e.to_string())
@@ -37,8 +37,8 @@ impl Engine {
                 let _operation = operation;
                 token.stage("readingScore")?;
                 engine.pending_saves.flush()?;
-                let lock = library_workspace::lock_for(&engine.data)?;
-                let guard = library_workspace::wait_for(&lock, &|| token.check())?;
+                let lock = data_locks::lock_for(&engine.data)?;
+                let guard = data_locks::wait_for(&lock, &|| token.check())?;
                 if storage_control::recovery_pending(&engine.data) {
                     return Err("练习资料尚待恢复，阅读位置仍可暂存，请恢复后重试保存".into());
                 }

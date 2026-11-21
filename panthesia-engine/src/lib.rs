@@ -1,18 +1,8 @@
-mod portable_song;
-mod owned_annotations;
-#[cfg(test)]
-mod unified_asset_tests;
-pub mod song_repository;
 mod notation_assets;
 mod loop_practice;
 mod note_guidance;
-mod song_audition;
-mod library_progress;
 mod bookmarks;
 pub mod state_order;
-pub mod music_import;
-mod music_import_receipts;
-pub mod package_preview;
 pub mod notation_drafts;
 pub mod pdf_drafts;
 pub mod media_export;
@@ -20,11 +10,8 @@ pub mod media_export_cache;
 mod background_tasks;
 mod device_catalog;
 pub use device_catalog::Snapshot as DeviceSnapshot;
-mod import_pipeline;
-mod catalog_import;
 mod load_pipeline;
 mod operation_journal;
-mod library_operations;
 mod song_metadata;
 mod metadata_defaults;
 mod exercise_assets;
@@ -68,12 +55,16 @@ pub use panthesia_core::manifest_store;
 mod file_open;
 mod manifest_settings;
 mod song_files;
+mod recent_files;
+mod score_open;
+mod song_audition;
+mod data_locks;
+mod music_file;
 pub mod probe;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;
 mod song_switch;
-mod package_loading;
 mod song_document;
 mod state_projection;
 pub mod live_notes;
@@ -82,15 +73,8 @@ pub use state_projection::{StateCursor, StateFrame};
 mod practice_conditions;
 mod practice_variant;
 mod passage_practice;
-mod metadata_history;
-mod metadata_templates;
+mod library_scores;
 pub mod file_locations;
-pub mod repertoire;
-mod import_storage;
-mod library_metadata;
-mod synthesia_import;
-mod metadata_discovery;
-pub use synthesia_import::{ImportOptions as SynthesiaImportOptions, ImportPreview as SynthesiaImportPreview, ImportRow as SynthesiaImportRow};
 mod audio;
 mod track_sound;
 mod track_appearance;
@@ -104,12 +88,7 @@ mod paper_views;
 mod held_actions;
 mod hands;
 mod history_commands;
-mod library_index;
-mod library_scores;
 mod score_review;
-pub mod library_workspace;
-mod library_edits;
-mod metadata_claims;
 mod notation;
 mod duet_alignment;
 pub mod score_ranges;
@@ -122,8 +101,6 @@ mod midi_master_volume;
 mod finger_demo;
 mod demo_protocol;
 mod held_demo;
-mod package_commands;
-mod piece_package;
 mod preferences;
 pub mod data_root_lock;
 use panthesia_core::{
@@ -133,9 +110,6 @@ use panthesia_core::{
 };
 use preferences::{Passage, Preferences};
 use std::collections::HashMap;
-pub mod library;
-pub mod library_monitor;
-pub mod library_repairs;
 pub mod score_attachments;
 
 use panthesia_music::{MidiFile, MidiNote};
@@ -182,10 +156,7 @@ pub use practice_edit::Request as PracticeRequest;
 #[derive(Clone)]
 pub struct Engine {
     notation_readers: notation_reader::Store,
-    catalog_rows: Arc<Mutex<Option<std::sync::Weak<Mutex<Vec<library::SongRow>>>>>>,
     paper_navigation: Arc<std::sync::atomic::AtomicU64>,
-    music_imports: music_import::Store,
-    library_opens: library_operations::Store,
     engine_id: Arc<str>,
     startup: startup::Control,
     devices: device_catalog::Catalog,
@@ -206,7 +177,6 @@ pub struct Engine {
     storage_tasks: background_tasks::TaskPool,
     pending_saves: pending_save::Pipeline,
     state: Arc<Mutex<Snapshot>>,
-    indexer: library_index::Indexer,
     data: PathBuf,
     _data_lock: Arc<data_root_lock::DataRootLock>,
 }
@@ -453,15 +423,16 @@ impl Player {
     }
     fn annotation_path(&self, file: &MidiFile) -> Result<PathBuf, String> {
         if let Some(path) = &file.source_path {
-            if panthesia_core::song_annotations::document_path(path).is_some(){return Ok(path.clone());}
-            let owned = song_repository::SongRepository::managed_path(&self.data,&file.content_id)?;
-            return Ok(if owned.is_file(){owned}else{path.clone()});
+            return Ok(path.clone());
         }
-        let root = self.data.join("library/assets/exercises");
         let spec=self.exercise.ok_or("曲目缺少可保存的内容")?;
-        let bytes=exercise_assets::canonical_bytes(spec)?;
-        let bytes_id=blake3::hash(&bytes).to_hex().to_string();
-        Ok(import_storage::store_with_identity(&root,&file.content_id,&bytes_id,&file.content_id,&bytes)?.path)
+        let path=self.data.join("library/assets/exercises").join(format!("{}.mid",file.content_id));
+        if !panthesia_core::utils::atomic_file::is_file(&path){
+            let bytes=exercise_assets::canonical_bytes(spec)?;
+            if let Some(parent)=path.parent(){std::fs::create_dir_all(parent).map_err(|e|e.to_string())?;}
+            panthesia_core::utils::atomic_file::write(&path,&bytes).map_err(|e|e.to_string())?;
+        }
+        Ok(path)
 
     }
     fn begin_play(&mut self) {
@@ -508,9 +479,7 @@ impl Player {
         self.manifest_settings = None;
         if plan.is_none() {
             if let Some(path) = file.source_path.clone() {
-                if panthesia_core::song_annotations::document_path(&path).is_none()
-                    && !song_repository::SongRepository::managed_path(&self.data, &file.content_id).is_ok_and(|p| p.is_file())
-                {
+                if panthesia_core::song_annotations::document_path(&path).is_none() {
                     self.apply_manifest_settings(&path, &file.content_id);
                 }
             }
@@ -702,10 +671,7 @@ impl Player {
                 errors.push(e)
             }
         } else if let Some(path) = prefs.path.clone() {
-            if let Err(e) = self.command(Command::Load {
-                path,
-                title: prefs.title.clone(),
-            }) {
+            if let Err(e) = self.load_file(path, prefs.title.clone()) {
                 errors.push(format!("上次曲目无法恢复：{e}"));
             }
         }
@@ -1108,12 +1074,8 @@ impl Player {
             Command::SaveTickPassage{id,name,notes,range}=>return self.save_tick_passage(id.clone(),name.clone(),notes.clone(),range.clone()),
             _=>{}
         }
-        let workspace_lock = if matches!(
-            command,
-            Command::ImportPackage { .. }
-                | Command::ExportPackage | Command::ExportPackageFile
-        ) {
-            Some(library_workspace::lock_for(&self.data)?)
+        let workspace_lock = if false {
+            Some(data_locks::lock_for(&self.data)?)
         } else {
             None
         };
@@ -1124,13 +1086,7 @@ impl Player {
         if self.recorder.is_recording()
             && matches!(
                 command,
-                Command::ImportScore { .. }
-                    | Command::ImportPackage { .. }
-                    | Command::ImportMidi { .. }
-                    | Command::Load { .. }
-                    | Command::LoadIndexed { .. }
-                    | Command::OpenRecent { .. }
-                    | Command::Generate { .. }
+                Command::Generate { .. }
                     | Command::OpenPassage { .. }
                     | Command::Play
                     | Command::Restart
@@ -1154,27 +1110,7 @@ impl Player {
         {
             return Err("请先停止录音，再切换曲目或练习设置".into());
         }
-        if library_workspace::accepts(&command) {
-            return library_workspace::execute(command, &self.data);
-        }
-        if matches!(command, Command::Collection) {
-            return self.collection_checked(&||Ok(()));
-        }
-        if let Command::OpenRecent { content_id } = &command {
-            let record = self.history.song(content_id).ok_or("找不到该练习记录")?;
-            if let Some(spec) = record.setup.as_ref().and_then(|s| s.exercise_spec) {
-                return self.command(Command::Generate { spec });
-            }
-            let paths=record.setup.as_ref().and_then(|s|s.source_path.clone()).into_iter().chain(record.library.source_path.clone());
-            let file=library::verified_file(&self.data,content_id,paths)?;
-            let title=record.display_name.clone();
-            self.install(file,title,None)?;
-            self.persist()?;
-            return self.command(Command::CurrentSong);
-        }
         match &command {
-            Command::StartLibraryOpen{..}|Command::ReadLibraryOpen{..}|Command::CancelLibraryOpen{..}|Command::ReleaseLibraryOpen{..}=>return Err("曲库打开操作需要使用后台入口".into()),
-            Command::SetLibraryCollection{path,content_id,favorite,queued} => return self.set_library_collection(path,content_id,*favorite,*queued),
             Command::PracticeTime {content_id,from,to} => return self.practice_time(content_id,*from,*to),
             _ => {}
         }
@@ -1184,8 +1120,6 @@ impl Player {
                 | Command::Play
                 | Command::Pause
                 | Command::Panic
-                | Command::ExportPackage | Command::ExportPackageFile
-                | Command::InspectPackage { .. }
                 | Command::ExportMidi
                 | Command::Metadata
                 | Command::Calibration
@@ -1199,8 +1133,7 @@ impl Player {
         );
         let _legacy_persist = matches!(
             command,
-            Command::Load { .. } | Command::LoadIndexed { .. }
-                | Command::Speed { .. }
+            Command::Speed { .. }
                 | Command::Wait { .. }
                 | Command::Hands { .. }
                 | Command::Input { .. }
@@ -1245,31 +1178,10 @@ impl Player {
             Command::ExportPracticeVariant=>return self.export_practice_variant(),
             Command::AudioDevices=>return Ok(serde_json::json!({"devices":audio::Audio::devices()?})),
             Command::AudioDevice{..}=>return Err("请使用设备连接流程".into()),
-            Command::StartInstrumentPreview{..}|Command::SongPreview{..}|Command::StartSongAudition{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}=>return Err("请使用曲目预览流程".into()),
+            Command::StartInstrumentPreview{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}=>return Err("请使用曲目预览流程".into()),
             Command::TrackAppearance{id,appearance} => return self.set_track_appearance(id,appearance),
             Command::TrackSound{id,sound} => return self.set_track_sound(id,sound),
             Command::SoundFont { path } => return self.set_soundfont(path),
-            Command::ExportPackage | Command::ExportPackageFile => {
-                self.command(Command::Pause)?;
-                return self.export_piece_package(matches!(command,Command::ExportPackageFile));
-            }
-            Command::ImportStagedPackage { .. } => return Err("请先预览曲目包".into()),
-            Command::InspectPackage { bytes } => {
-                let (content_id,mut result)=portable_song::inspect(&bytes,&||Ok(()))?;
-                result["existing"] = serde_json::json!(
-                    self.history.song(&content_id).is_some()
-                        || library_workspace::Workspace::load(&self.data)?
-                            .entries
-                            .values()
-                            .any(|e| e.content_id.as_ref() == Some(&content_id))
-                );
-                return Ok(result);
-            }
-            Command::ImportPackage { bytes, policy } => {
-                return self.import_portable_package(bytes, policy);
-            }
-            Command::ImportMidi { bytes, name } => return self.install_import(import_pipeline::prepare(import_pipeline::Input::Midi { bytes, name })?),
-            Command::ImportScore { bytes, name, default_bpm } => return self.install_import(import_pipeline::prepare(import_pipeline::Input::Score { bytes, name, bpm: default_bpm })?),
             Command::PreviewMeterMap{content_id,value} => return self.preview_meter_map(&content_id,value.as_ref()),
             Command::SaveMeterMap{content_id,value,proof} => return self.save_meter_map(&content_id,value,&proof),
             Command::Meter { value } => {
@@ -1515,40 +1427,12 @@ impl Player {
                 if let Some(m)=&mapping{if m.grid!=self.grid_signature()||m.anchors.iter().any(|a|a.measure>file.musical_time.measures.len()){return Err("小节网格或范围已改变，请重新确认对应".into());}}
                 return score_attachments::set_mapping_checked(&self.data,&content_id,&id,mapping,expected);
             }
-            Command::LibraryRepairs{..}
-            | Command::ReadLibraryPath { .. } | Command::ReadMetadataHistoryClaim { .. } | Command::PendingMetadataHistoryPage { .. }
-            | Command::MidiReplacements{..}
-            | Command::PreviewMidiReplacement{..}
-            | Command::DecideMidiReplacement{..}
-            | Command::RelinkLibrary{..}
-            | Command::SetLibraryPrimary{..}
-            | Command::ScoreAttachments{..}
+            Command::ScoreAttachments{..}
             | Command::PaperSourceUpdates| Command::LinkPaperSource{..}|Command::InspectPaperSources{..}|Command::PreviewPaperSource{..}|Command::ApplyPaperSource{..}
             | Command::PreviewPaperTransfer{..}|Command::ApplyPaperTransfer{..}
             | Command::AddScoreAttachment{..}
             | Command::UpdateScoreAttachment{..}
-            | Command::RestoreLibraryPath{..}
-            | Command::IgnoreLibraryPath{..}
-            | Command::LibraryMonitorStatus
-            | Command::SetLibraryMonitor { .. }
-            | Command::LibraryWorkspace
-            | Command::InspectSong { .. }
-            | Command::InspectSongs { .. }
-            | Command::LibraryGroup { .. }
-            | Command::RemoveLibraryGroup { .. }
-            | Command::AssignLibrary { .. }
-            | Command::UnassignLibrary { .. }
-            | Command::LibraryMetadataHistory { .. } | Command::PreviewMetadataRestore { .. } | Command::RestoreLibraryMetadata { .. }
-            | Command::PreviewLibraryMetadata { .. }
-            | Command::ReadLibraryMetadata { .. }
-            | Command::SaveLibraryMetadata { .. }
-            | Command::UpdateSongMetadata { .. } => unreachable!(),
-            Command::DiscoverSynthesiaMetadata { .. } | Command::PreviewDiscoveredSynthesiaMetadata { .. }
-            | Command::ImportDiscoveredSynthesiaMetadata { .. }
-            | Command::PreviewSynthesiaMetadata { .. } | Command::ImportSynthesiaMetadata { .. } => unreachable!("library import uses the background library lane"),
-            Command::LibraryFolders
-            | Command::RefreshLibrary
-            | Command::RemoveLibraryFolder { .. } => return Err("曲库文件夹管理由应用处理".into()),
+ => unreachable!(),
             Command::ReadMetadataDefaults => {
                 let file = self.file.as_ref().ok_or("请先选择曲目")?;
                 return serde_json::to_value(metadata_defaults::view(&self.annotation_path(file)?, &file.content_id)?).map_err(|e|e.to_string());
@@ -1571,11 +1455,6 @@ impl Player {
                     .open_editor()
                     .map_err(|e| e.to_string())?;
             }
-            Command::LibraryScores{..}=>return Err("请从曲库查看谱面资料".into()),
-            Command::PreviewLibraryScoreRoute{path,content_id,id}=>return library_scores::preview_route(&self.data,&path,&content_id,&id),
-            Command::CheckLibraryScoreImport{..}=>return Err("请从独立谱面核对调用".into()),
-            Command::ManageLibraryScore{path,content_id,kind,id,action,name}=>return self.manage_library_score(path,content_id,kind,id,action,name),
-            Command::OpenLibraryScore{path,content_id,kind,id}=>return self.open_library_score(path,content_id,kind,id),
             Command::ScoreSources{..}|Command::PreviewScoreSource{..}=>return Err("请从独立线程检查原谱".into()),
             Command::LinkScoreSource{midi_path,content_id,version_id,path,default_bpm}=>return self.link_score_source(midi_path,content_id,version_id,path,default_bpm),
             Command::AcknowledgeScoreSource{id,fingerprint}=>return score_sources::acknowledge(&self.data,&id,&fingerprint),
@@ -1760,19 +1639,6 @@ impl Player {
             Command::ScoreMap {score_revision,midi,notes,content_id} => {
                 return self.map_score_owned(score_mapping::Input { measure_range:None,display_fingerprint:None,page_count: None,content_id,score_revision,source_fingerprint:None,midi,notes,practice_notation:false});
             }
-            Command::UpdateLibraryPaper{..}=>return Err("谱页整理应由独立调用线程执行".into()),
-            Command::PendingMetadataHistory | Command::ClaimPendingMetadataHistory{..}=>{
-                let lock=library_workspace::lock_for(&self.data)?;
-                let _guard=lock.lock().map_err(|_|"曲库资料正忙")?;
-                let mut workspace=library_workspace::Workspace::load(&self.data)?;
-                return match command {
-                    Command::PendingMetadataHistory=>metadata_history::pending_rows(&self.data,&mut workspace),
-                    Command::ClaimPendingMetadataHistory{source_path,content_id,target_path,..}=>
-                        metadata_history::claim_pending(&self.data,&mut workspace,&source_path,&content_id,&target_path),
-                    _=>unreachable!(),
-                };
-            }
-            Command::AddLibraryScore{path,content_id,name,bytes,kind,target,..}=>{if kind!="notation"{return Err("谱页操作应由独立调用线程执行".into());}return self.add_library_notation(path,content_id,name,bytes,target);}
             command @ (Command::EditFingersFor { .. } | Command::UndoFingersFor { .. }
                 | Command::Finger { .. } | Command::ApplyFingers { .. } | Command::UndoFingers) => {
                 self.edit_finger_annotations(command)?;
@@ -1856,10 +1722,10 @@ impl Player {
                     self.state.mode = "listen".into();
                     self.state.wait = false;
                     self.state.passage = None;
-                    let result = self.command(Command::Load {
-                        path,
-                        title: "自由演奏录音".into(),
-                    })?;
+                    let file = crate::music_file::read_midi(&path)?;
+                    self.install(file, "自由演奏录音".into(), None)?;
+                    self.persist()?;
+                    let result = self.command(Command::CurrentSong)?;
                     self.state.mode = "listen".into();
                     self.state.wait = false;
                     self.state.count_in = 0;
@@ -2106,25 +1972,11 @@ impl Player {
                 self.preferences.calibrations.insert(key, milliseconds);
             }
             Command::OpenFile { .. } => return Err("打开文件应由引擎调用线程处理".into()),
+            Command::RecentFiles | Command::ForgetRecentFile { .. } => return Err("最近打开列表应由引擎调用线程处理".into()),
             Command::SongFiles => return self.song_files(),
             Command::EditSongFile { action, path, id, role, stem, label } => {
                 let edit = song_files::SongFileEdit::parse(&action, path, id, role, stem, label)?;
                 return self.edit_song_file(edit);
-            }
-            Command::Load { path, title } => {
-                let file = library::read_midi(&path)?;
-                self.install(file, title, None)?;
-                self.persist()?;
-                return self.command(Command::CurrentSong);
-            }
-            Command::LoadIndexed { path, title, content_id } => {
-                let file = library::read_midi(&path)?;
-                if file.content_id != content_id {
-                    return Err("曲库索引中的文件内容已改变，请重新检查这首曲目".into());
-                }
-                self.install(file, title, None)?;
-                self.persist()?;
-                return self.command(Command::CurrentSong);
             }
             Command::Play => {
                 if self.state.status!="playing"{self.time_connected=false;}
@@ -2153,56 +2005,13 @@ impl Player {
                 }
                 self.begin_play();
             }
-            Command::IndexLibrary { .. }
-            | Command::IndexStatus
-            | Command::PauseIndex
-            | Command::ResumeIndex
-            | Command::CancelIndex => return Err("请通过后台索引服务执行此命令".into()),
             Command::Tasks | Command::RetrySave | Command::RetrySettingsSave { .. } | Command::ReadStorageStatus | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. } | Command::CancelTask { .. } | Command::CancelHistoryRead { .. } | Command::CurrentSong | Command::Session
             |Command::PreviewTickRange{..}|Command::ApplyTickRange{..}|Command::SaveTickPassage{..}
             | Command::PracticeTime { .. }
-            | Command::StartLibraryOpen { .. }
-            | Command::ReadLibraryOpen { .. }
-            | Command::CancelLibraryOpen { .. }
-            | Command::ReleaseLibraryOpen { .. }
-            | Command::SetLibraryCollection { .. }
-            | Command::Collection
             | Command::EditExercisePreset { .. } | Command::DeleteExercisePreset { .. }
-            | Command::ResetLibraryMetadataDefaults { .. } | Command::MetadataTemplates | Command::UpdateMetadataTemplate { .. }
             | Command::FileLocations | Command::FileLocationsFor { .. } | Command::UpdateFileLocation { .. }
             | Command::ReadPaperView { .. } | Command::SavePaperView { .. }
-            | Command::OpenRecent { .. } => unreachable!(),
-            Command::Favorite { enabled } => {
-                let file = self.file.as_ref().ok_or("请先选择曲目")?;
-                self.history
-                    .set_favorite(
-                        &file.content_id,
-                        &self.title,
-                        file.source_path.clone(),
-                        enabled,
-                    )
-                    .map_err(|e| e.to_string())?;
-            }
-            Command::Queue { enabled } => {
-                let file = self.file.as_ref().ok_or("请先选择曲目")?;
-                self.history
-                    .set_queued(
-                        &file.content_id,
-                        &self.title,
-                        file.source_path.clone(),
-                        enabled,
-                    )
-                    .map_err(|e| e.to_string())?;
-            }
-            Command::MoveQueue { direction } => {
-                if direction != -1 && direction != 1 {
-                    return Err("队列移动方向无效".into());
-                }
-                let file = self.file.as_ref().ok_or("请先选择曲目")?;
-                self.history
-                    .move_in_queue(&file.content_id, direction)
-                    .map_err(|e| e.to_string())?;
-            }
+ => unreachable!(),
             Command::Volume { value } => {
                 if !value.is_finite() || !(0.0..=1.0).contains(&value) {
                     return Err("音量参数无效".into());
@@ -2347,7 +2156,6 @@ impl Player {
                 self.prepare_measure_part(&content_id, measure, part, track_id)?;
             }
             Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
-            Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
         }
         if persist {
             self.persist()?;
@@ -2609,10 +2417,7 @@ mod tests {
         std::fs::write(&midi, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut player = Player::new(path, PathBuf::new(), true);
         player
-            .command(Command::Load {
-                path: midi,
-                title: "五指热身".into(),
-            })
+            .load_file(midi, "五指热身".into())
             .unwrap();
         player.state.count_in = 0;
         player
@@ -2790,82 +2595,11 @@ mod tests {
         assert_eq!(std::fs::read(&restored.preferences_path).unwrap(), before);
     }
     #[test]
-    fn indexed_library_load_rejects_replaced_content_before_switching_song() {
-        let mut p = player();
-        let previous = p.file.as_ref().unwrap().content_id.clone();
-        let path = p.preferences_path.parent().unwrap().join("indexed-selection.mid");
-        std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
-        let expected = MidiFile::new(&path).unwrap().content_id;
-        assert_eq!(library::command_paths(&Command::LoadIndexed {
-            path: path.clone(), title: "已索引曲目".into(), content_id: expected.clone(),
-        }), vec![path.clone()]);
-        std::fs::write(&path, include_bytes!("../assets/basic-chords.mid")).unwrap();
-        assert!(p.command(Command::LoadIndexed {
-            path: path.clone(), title: "已索引曲目".into(), content_id: expected.clone(),
-        }).is_err());
-        assert_eq!(p.file.as_ref().unwrap().content_id, previous);
-        std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
-        let opened = p.command(Command::LoadIndexed {
-            path, title: "已索引曲目".into(), content_id: expected.clone(),
-        }).unwrap();
-        assert_eq!(opened["contentId"], expected);
-    }
-    #[test]
-    fn favorites_queue_and_imported_paths_survive_restart() {
-        let mut p = player();
-        let first = p.file.as_ref().unwrap().content_id.clone();
-        p.command(Command::Favorite { enabled: true }).unwrap();
-        p.command(Command::Queue { enabled: true }).unwrap();
-        let second_path = p.preferences_path.parent().unwrap().join("chords.mid");
-        std::fs::write(&second_path, include_bytes!("../assets/basic-chords.mid")).unwrap();
-        p.command(Command::Load {
-            path: second_path,
-            title: "三和弦".into(),
-        })
-        .unwrap();
-        let second = p.file.as_ref().unwrap().content_id.clone();
-        p.command(Command::Queue { enabled: true }).unwrap();
-        p.command(Command::MoveQueue { direction: -1 }).unwrap();
-        p.command(Command::Volume { value: 0.4 }).unwrap();
-        assert!(p.command(Command::Volume { value: 1.1 }).is_err());
-        let data = p.preferences_path.parent().unwrap().to_owned();
-        drop(p);
-        let mut restored = Player::new(data, PathBuf::new(), true);
-        restored.restore();
-        assert_eq!(restored.state.volume, 0.4);
-        assert_eq!(
-            restored
-                .history
-                .song(&first)
-                .unwrap()
-                .library
-                .queue_position,
-            Some(1)
-        );
-        assert_eq!(
-            restored
-                .history
-                .song(&second)
-                .unwrap()
-                .library
-                .queue_position,
-            Some(0)
-        );
-        assert!(restored.history.song(&first).unwrap().library.favorite);
-        restored
-            .command(Command::OpenRecent { content_id: first })
-            .unwrap();
-        assert_eq!(restored.notes.len(), 9);
-    }
-    #[test]
     fn chord_lesson_requires_all_three_pitches() {
         let mut p = player();
         let path = p.preferences_path.parent().unwrap().join("chords.mid");
         std::fs::write(&path, include_bytes!("../assets/basic-chords.mid")).unwrap();
-        p.command(Command::Load {
-            path,
-            title: "三和弦".into(),
-        })
+        p.load_file(path, "三和弦".into())
         .unwrap();
         p.command(Command::CountIn { bars: 0 }).unwrap();
         p.command(Command::Play).unwrap();
@@ -2900,44 +2634,6 @@ mod tests {
         p.reset(0.);
         assert!(p.snapshot().current_history_id.is_none());
         assert!(!p.previous_summary.as_ref().unwrap().measures.is_empty());
-    }
-    #[test]
-    fn generated_practice_restores_fingers_hand_roles_and_collection() {
-        let mut p = player();
-        p.command(Command::Generate {
-            spec: ExerciseSpec::default(),
-        })
-        .unwrap();
-        let song = p.command(Command::CurrentSong).unwrap();
-        let id = p.file.as_ref().unwrap().content_id.clone();
-        assert!(
-            song["notes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|n| n["finger"].as_u64().is_some())
-        );
-        assert!(
-            p.config
-                .tracks
-                .iter()
-                .any(|t| t.practice_part == PracticePart::LeftHand)
-        );
-        p.command(Command::Favorite { enabled: true }).unwrap();
-        let directory = p.data.clone();
-        drop(p);
-        let mut restored = Player::new(directory, PathBuf::new(), true);
-        restored.restore();
-        assert_eq!(restored.file.as_ref().unwrap().content_id, id);
-        assert!(restored.history.song(&id).unwrap().library.favorite);
-        assert!(
-            restored
-                .command(Command::OpenRecent { content_id: id })
-                .is_ok()
-        );
-        let exported = restored.command(Command::ExportMidi).unwrap();
-        let bytes: Vec<u8> = serde_json::from_value(exported["bytes"].clone()).unwrap();
-        assert!(panthesia_music::midly::Smf::parse(&bytes).is_ok());
     }
     #[test]
     fn hand_assignment_uses_track_even_when_pitch_crosses_middle_c() {
@@ -2979,36 +2675,6 @@ mod tests {
         assert_eq!(p.state.status, "playing");
         p.tick(Duration::from_millis(5));
         assert_eq!(p.snapshot().required, vec![60]);
-    }
-    #[test]
-    fn recording_is_saved_and_reopens_as_playable_midi() {
-        let mut p = player();
-        let original = p.file.as_ref().unwrap().content_id.clone();
-        p.command(Command::Recording { active: true }).unwrap();
-        assert_eq!(p.state.mode, "wait");
-        assert!(p.command(Command::Play).is_err());
-        p.midi(&[144, 60, 99]);
-        p.midi(&[176, 64, 127]);
-        p.midi(&[128, 60, 0]);
-        p.command(Command::Recording { active: false }).unwrap();
-        assert_eq!(p.notes.len(), 1);
-        assert!(
-            p.file
-                .as_ref()
-                .unwrap()
-                .source_path
-                .as_ref()
-                .unwrap()
-                .is_file()
-        );
-        assert!(!p.snapshot().recording);
-        assert_eq!(p.state.mode, "listen");
-        p.command(Command::OpenRecent {
-            content_id: original,
-        })
-        .unwrap();
-        assert_eq!(p.state.mode, "wait");
-        assert!(p.state.wait);
     }
     #[test]
     fn fingering_preview_acceptance_undo_and_content_guard() {
@@ -3082,54 +2748,6 @@ mod tests {
         assert_eq!(p.saved_hints().unwrap(), vec![hint]);
         p.command(Command::UndoFingers).unwrap();
         assert!(p.saved_hints().unwrap().is_empty());
-    }
-    #[test]
-    fn generated_annotations_and_score_pair_survive_reopening() {
-        let mut p = player();
-        p.command(Command::Generate {
-            spec: ExerciseSpec::default(),
-        })
-        .unwrap();
-        let id = p.file.as_ref().unwrap().content_id.clone();
-        let track = p
-            .file
-            .as_ref()
-            .unwrap()
-            .tracks
-            .iter()
-            .find(|t| !t.notes.is_empty())
-            .unwrap()
-            .track_id;
-        let hint = panthesia_core::library::FingerHint {
-            track_id: track,
-            note_index: 0,
-            finger: 5,
-        };
-        p.command(Command::ApplyFingers {
-            content_id: id.clone(),
-            hints: vec![hint],
-        })
-        .unwrap();
-        let xml=br#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>"#;
-        p.command(Command::PairScore {
-            expected: None,            bytes: xml.to_vec(),
-            name: "exercise.musicxml".into(),
-            content_id: id.clone(),
-        })
-        .unwrap();
-        p.command(Command::OpenRecent { content_id: id }).unwrap();
-        assert_eq!(p.saved_hints().unwrap(), vec![hint]);
-        assert!(p.notation.is_some());
-        let n = &p
-            .file
-            .as_ref()
-            .unwrap()
-            .tracks
-            .iter()
-            .find(|t| t.track_id == track)
-            .unwrap()
-            .notes[0];
-        assert_eq!(p.fingers.get(&(track, n.start, n.note)), Some(&5));
     }
     #[test]
     fn suggestions_preserve_note_identity_when_release_order_differs() {
@@ -3386,28 +3004,7 @@ mod tests {
         let read=score_attachments::list(&data,&cid).unwrap();assert_eq!(read["attachments"][0]["annotations"].as_array().unwrap().len(),2);assert_eq!(read["attachments"][0]["mapping"]["grid"],p.grid_signature());assert_eq!(read["attachments"][0]["mapping"]["anchors"][1]["measure"],2);assert_eq!(read["attachments"][0]["mapping"]["enabled"],false);assert_eq!(score_attachments::list(&data,source_cid).unwrap(),original);
         let preview=p.preview_cross_paper(&cid,source_cid,&sb,&tb).unwrap();assert_eq!(preview["imported"][0],note);assert_eq!(p.apply_cross_paper(&cid,request(preview["baseline"].as_str().unwrap().into())).unwrap()["added"],0);
         score_attachments::set_mapping(&data,&cid,&tb,Some(Mapping{grid:"expired-target-grid".into(),enabled:true,anchors:vec![PageAnchor{measure:1,page:1,region:None}]})).unwrap();let preview=p.preview_cross_paper(&cid,source_cid,&sb,&tb).unwrap();assert!(p.apply_cross_paper(&cid,request(preview["baseline"].as_str().unwrap().into())).is_err());assert_eq!(score_attachments::list(&data,&cid).unwrap()["attachments"][0]["mapping"]["grid"],"expired-target-grid");
-        let mut reopened=Player::new(data.clone(),PathBuf::new(),true);reopened.command(Command::Load{path:p.file.as_ref().unwrap().source_path.clone().unwrap(),title:"重开目标".into()}).unwrap();assert_eq!(score_attachments::list(&data,&cid).unwrap()["attachments"][0]["annotations"].as_array().unwrap().len(),2);
-    }
-    #[test]
-    fn segmented_meter_preview_save_reopen_and_stale_guard(){
-        use panthesia_core::library::{MeasureLength,MeterMap,MeterSegment};
-        let mut p=player();let file=p.file.as_ref().unwrap();let id=file.content_id.clone();let path=file.source_path.clone().unwrap();let ppq=u64::from(file.musical_time.ppq);let original=p.grid_signature();let notes:Vec<_>=p.notes.iter().map(|n|(n.start,n.end)).collect();
-        assert_eq!(p.command(Command::CurrentSong).unwrap()["grid"], original);
-        let value=Some(MeterMap{pickup_ticks:ppq,segments:vec![MeterSegment{measure:1,numerator:3,denominator:4,display_start:Some(0)},MeterSegment{measure:3,numerator:6,denominator:8,display_start:Some(20)}],measure_lengths:vec![MeasureLength{measure:2,ticks:ppq}]});
-        let preview=p.command(Command::PreviewMeterMap{content_id:id.clone(),value:value.clone()}).unwrap();assert_eq!(preview["measures"][0]["displayNumber"],0);assert_eq!(preview["measures"][1]["partial"],true);assert_eq!(preview["measures"][2]["displayNumber"],20);assert_eq!(preview["measures"][2]["startTick"],ppq*2);assert_eq!(p.grid_signature(),original);
-        let proof=preview["proof"].as_str().unwrap().to_string();p.command(Command::SaveMeterMap{content_id:id.clone(),value:value.clone(),proof:proof.clone()}).unwrap();assert!(p.command(Command::SaveMeterMap{content_id:id.clone(),value:value.clone(),proof}).is_err());
-        assert_ne!(p.grid_signature(), original);
-        assert_eq!(p.command(Command::CurrentSong).unwrap()["grid"], p.grid_signature());
-        p.command(Command::MeasureLoop{start:2,end:2,enabled:true}).unwrap();
-        let expected_start=p.file.as_ref().unwrap().tempo_track.pulses_to_duration(ppq).as_secs_f64();
-        let expected_end=p.file.as_ref().unwrap().tempo_track.pulses_to_duration(ppq*2).as_secs_f64();
-        let passage=p.state.passage.as_ref().unwrap();assert_eq!((passage.start,passage.end),(expected_start,expected_end));
-        assert!(p.command(Command::Seek{position:expected_end}).is_err());
-        p.command(Command::Seek{position:expected_start}).unwrap();
-        p.command(Command::Load{path:path.clone(),title:"reopened".into()}).unwrap();assert_eq!(p.meter_map,value);assert_eq!(p.file.as_ref().unwrap().musical_time.measures[2].display_number,20);assert_eq!(notes,p.notes.iter().map(|n|(n.start,n.end)).collect::<Vec<_>>());
-        let exported=p.command(Command::ExportPackage).unwrap();let bytes:Vec<u8>=serde_json::from_value(exported["bytes"].clone()).unwrap();let mut package=piece_package::Package::decode(&bytes).unwrap();assert_eq!(package.manifest.meter_map,value);assert_eq!(package.manifest.version,12);package.manifest.version=11;assert!(package.encode().is_err());
-        let preview=p.command(Command::PreviewMeterMap{content_id:id.clone(),value:None}).unwrap();p.command(Command::SaveMeterMap{content_id:id.clone(),value:None,proof:preview["proof"].as_str().unwrap().into()}).unwrap();assert_eq!(p.grid_signature(),original);
-        let preview=p.command(Command::PreviewMeterMap{content_id:id.clone(),value:value.clone()}).unwrap();std::fs::write(path,include_bytes!("../assets/basic-chords.mid")).unwrap();assert!(p.command(Command::SaveMeterMap{content_id:id,value,proof:preview["proof"].as_str().unwrap().into()}).is_err());
+        let mut reopened=Player::new(data.clone(),PathBuf::new(),true);reopened.load_file(p.file.as_ref().unwrap().source_path.clone().unwrap(), "重开目标".into()).unwrap();assert_eq!(score_attachments::list(&data,&cid).unwrap()["attachments"][0]["annotations"].as_array().unwrap().len(),2);
     }
     #[test]
     fn score_versions_keep_previous_files_and_switch_without_overwriting() {
@@ -3499,12 +3096,8 @@ mod tests {
     fn direct_musicxml_import_persists_performance_score_hands_and_original_fingers() {
         let mut p = player();
         let imported = p
-            .command(Command::ImportScore {
-                bytes: include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
-                    .to_vec(),
-                name: "lesson.musicxml".into(),
-                default_bpm: 100,
-            })
+            .import_score(include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
+                    .to_vec(), "lesson.musicxml".into(), 100)
             .unwrap();
         assert_eq!(imported["title"], "弱起与连音练习");
         assert!(imported["hasScore"].as_bool().unwrap());
@@ -3586,12 +3179,8 @@ mod tests {
     #[test]
     fn beat_navigation_uses_pickup_and_real_tempo_and_rejects_invalid_beats() {
         let mut p = player();
-        p.command(Command::ImportScore {
-            bytes: include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
-                .to_vec(),
-            name: "乐谱.musicxml".into(),
-            default_bpm: 120,
-        })
+        p.import_score(include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
+                .to_vec(), "乐谱.musicxml".into(), 120)
         .unwrap();
         assert!(
             p.command(Command::SeekBeat {
@@ -3632,55 +3221,8 @@ mod tests {
     }
 
 
-    #[test]
-    fn library_collection_does_not_load_other_song_and_guards_content() {
-        let mut p=player();let current=p.file.as_ref().unwrap().content_id.clone();let position=p.state.position;
-        let other=p.data.join("other piece.mid");std::fs::write(&other,include_bytes!("../assets/c-major-scale.mid")).unwrap();
-        let mut w=library_workspace::Workspace::load(&p.data).unwrap();let e=w.inspect(other.clone(),true).unwrap();w.save(&p.data).unwrap();let cid=e.content_id.unwrap();
-        p.command(Command::SetLibraryCollection{path:other.clone(),content_id:cid.clone(),favorite:Some(true),queued:None}).unwrap();
-        p.command(Command::SetLibraryCollection{path:other.clone(),content_id:cid.clone(),favorite:None,queued:Some(true)}).unwrap();
-        assert!(p.history.song(&cid).unwrap().library.favorite);assert_eq!(p.history.song(&cid).unwrap().library.queue_position,Some(0));
-        assert_eq!(p.file.as_ref().unwrap().content_id,current);assert_eq!(p.state.position,position);
-        std::fs::write(&other,include_bytes!("../assets/basic-chords.mid")).unwrap();
-        assert!(p.command(Command::SetLibraryCollection{path:other.clone(),content_id:cid.clone(),favorite:Some(false),queued:None}).is_err());assert!(p.history.song(&cid).unwrap().library.favorite);
-        std::fs::remove_file(&other).unwrap();p.command(Command::SetLibraryCollection{path:other.clone(),content_id:cid.clone(),favorite:None,queued:Some(false)}).unwrap();assert_eq!(p.history.song(&cid).unwrap().library.queue_position,None);
-        assert!(p.command(Command::SetLibraryCollection{path:other,content_id:cid,favorite:Some(true),queued:Some(true)}).is_err());
-    }
 
-    #[test]
-    fn midi_import_keeps_searchable_title_and_personal_metadata_on_repeat() {
-        let mut p = player();
-        let bytes = include_bytes!("../assets/basic-chords.mid").to_vec();
-        let first = p.command(Command::ImportMidi { bytes: bytes.clone(), name: "课堂和弦.mid".into() }).unwrap();
-        let path = PathBuf::from(first["sourcePath"].as_str().unwrap());
-        let cid = first["contentId"].as_str().unwrap();
-        let rows = library::enriched(&[], &p.data);
-        assert!(rows.iter().any(|r| r.path == path && r.title == "课堂和弦"));
-        let mut sidecar = panthesia_core::library::load_song_sidecar(&path, cid).unwrap();
-        sidecar.metadata.title = Some("老师命名的和弦课".into());
-        sidecar.metadata.notes = Some("保持共同音".into());
-        sidecar.metadata.tags = vec!["课堂".into()];
-        sidecar.fingerings = vec![panthesia_core::library::FingerHint { track_id: 0, note_index: 0, finger: 1 }];
-        panthesia_core::library::save_song_sidecar(&path, cid, sidecar.clone()).unwrap();
-        let second = p.command(Command::ImportMidi { bytes, name: "其他文件名.mid".into() }).unwrap();
-        assert_eq!(second["contentId"], first["contentId"]);
-        let saved = panthesia_core::library::load_song_sidecar(&path, cid).unwrap();
-        assert_eq!(saved.metadata, sidecar.metadata);
-        assert_eq!(saved.fingerings, sidecar.fingerings);
-        assert!(library::enriched(&[], &p.data).iter().any(|r| r.path == path && r.title == "老师命名的和弦课"));
-    }
 
-    #[test]
-    fn changed_import_cache_recovers_score_and_midi_without_overwriting() {
-        let mut p=player();let xml=br#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><type>whole</type></note></measure></part></score-partwise>"#.to_vec();
-        let first=p.command(Command::ImportScore{bytes:xml.clone(),name:"original.musicxml".into(),default_bpm:100}).unwrap();let path=PathBuf::from(first["sourcePath"].as_str().unwrap());let cid=first["contentId"].as_str().unwrap().to_owned();
-        let mut annotations=panthesia_core::library::load_song_sidecar(&path,&cid).unwrap();annotations.metadata.notes=Some("teacher".into());annotations.fingerings=vec![panthesia_core::library::FingerHint{track_id:p.file.as_ref().unwrap().tracks.iter().find(|t|!t.notes.is_empty()).unwrap().track_id,note_index:0,finger:3}];panthesia_core::library::save_song_sidecar(&path,&cid,annotations).unwrap();let sidecar=panthesia_core::library::metadata_sidecar_path(&path);let personal=std::fs::read(&sidecar).unwrap();
-        let foreign=include_bytes!("../assets/basic-chords.mid");std::fs::write(&path,foreign).unwrap();
-        let restored=p.command(Command::ImportScore{bytes:xml.clone(),name:"original.musicxml".into(),default_bpm:100}).unwrap();let restored_path=PathBuf::from(restored["sourcePath"].as_str().unwrap());assert_ne!(path,restored_path);assert_eq!(restored["contentId"],cid);assert_eq!(std::fs::read(&path).unwrap(),foreign);assert_eq!(std::fs::read(&sidecar).unwrap(),personal);assert_eq!(restored["importRecovery"]["carriedAnnotations"],true);assert_eq!(panthesia_core::library::load_song_sidecar(&restored_path,&cid).unwrap().fingerings[0].finger,3);
-        assert_eq!(p.command(Command::ImportScore{bytes:xml,name:"original.musicxml".into(),default_bpm:100}).unwrap()["sourcePath"],restored["sourcePath"]);
-        let bytes=include_bytes!("../assets/five-finger.mid").to_vec();let midi=p.command(Command::ImportMidi{bytes:bytes.clone(),name:"test.mid".into()}).unwrap();let old=PathBuf::from(midi["sourcePath"].as_str().unwrap());std::fs::write(&old,foreign).unwrap();let recovered=p.command(Command::ImportMidi{bytes:bytes.clone(),name:"test.mid".into()}).unwrap();assert_ne!(recovered["sourcePath"],midi["sourcePath"]);assert_eq!(recovered["contentId"],midi["contentId"]);assert_eq!(std::fs::read(&old).unwrap(),foreign);
-        let good=PathBuf::from(recovered["sourcePath"].as_str().unwrap());let broken=panthesia_core::library::metadata_sidecar_path(&good);std::fs::write(&broken,b"broken").unwrap();let next=p.command(Command::ImportMidi{bytes,name:"test.mid".into()}).unwrap();assert_ne!(next["sourcePath"],recovered["sourcePath"]);assert_eq!(std::fs::read(&broken).unwrap(),b"broken");
-    }
 
 }
 

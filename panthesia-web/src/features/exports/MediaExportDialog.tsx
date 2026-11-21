@@ -62,17 +62,11 @@ export function MediaExportDialog({
           </button>
         </header>
         <div className="media-export-intro">
-          {kind !== "package" ? (
-            <FileMusic size={26} aria-hidden="true" />
-          ) : (
-            <Package size={26} aria-hidden="true" />
-          )}
+          <FileMusic size={26} aria-hidden="true" />
           <p>
             {kind === "practiceMidi"
               ? "导出当前转调、量化后的音符与演奏事件。原始 MIDI 保留；该文件可在其他 MIDI 软件中使用。"
-              : kind !== "package"
-                ? "保留原始 MIDI 的音符与演奏事件，生成可另存的副本。练习指法、谱页和个人设置可通过曲目包一起保存。"
-                : "将 MIDI、全部谱面、个人标记、教学规则和曲目设置一起打包。个人成绩、设备设置与练习进度继续保留在本机。"}
+              : "保留原始 MIDI 的音符与演奏事件，生成可另存的副本。"}
           </p>
         </div>
         {workspace.message && (
@@ -122,7 +116,7 @@ export function MediaExportDialog({
             <div className="media-export-result-heading">
               <strong>{artifact.name}</strong>
               <span>
-                {artifact.kind !== "package" ? "MIDI" : "曲目包"} ·{" "}
+                MIDI ·{" "}
                 {(artifact.size / 1_048_576).toFixed(2)} MB
               </span>
             </div>
@@ -132,43 +126,6 @@ export function MediaExportDialog({
               {artifact.contentId !== source.contentId ? " · 来自其他曲目" : ""}
               。曲目资料修改后，可以制作新的副本。
             </p>
-            {artifact.kind === "package" && (
-              <dl className="media-export-summary">
-                <div>
-                  <dt>演奏谱面</dt>
-                  <dd>
-                    {artifact.summary.scores} 份 ·{" "}
-                    {artifact.summary.performances || 1} 个演奏版本
-                  </dd>
-                </div>
-                <div>
-                  <dt>PDF / 图片谱</dt>
-                  <dd>
-                    {artifact.summary.paperBooks} 份 ·{" "}
-                    {artifact.summary.paperPages} 个文件
-                  </dd>
-                </div>
-                <div>
-                  <dt>个人指法 / 分手</dt>
-                  <dd>
-                    {artifact.summary.fingerings} / {artifact.summary.hands}{" "}
-                    个标记
-                  </dd>
-                </div>
-                <div>
-                  <dt>持音换指</dt>
-                  <dd>{artifact.summary.fingerActions} 个动作</dd>
-                </div>
-                <div>
-                  <dt>命名练习段</dt>
-                  <dd>{artifact.summary.passages} 个</dd>
-                </div>
-                <div>
-                  <dt>速度阶梯</dt>
-                  <dd>{artifact.summary.ladders} 个</dd>
-                </div>
-              </dl>
-            )}
             {artifact.savedPath && <p>上次另存：{artifact.savedPath}</p>}
             {(artifact.savePendingPath ||
               !!artifact.previousPendingPaths?.length) && (

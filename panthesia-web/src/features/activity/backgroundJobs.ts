@@ -1,8 +1,12 @@
 import { scoreJobProgress } from "../scores/scoreJobProgress";
-import {
-  pendingPreparationReads,
-  type BackgroundRead,
-} from "./backgroundPreparations";
+/** One background status read: a score job admitted earlier and still pending. */
+export interface BackgroundRead {
+  id: string;
+  engineId: string;
+  available: () => boolean;
+  read: (valid: () => boolean) => Promise<number | void>;
+  issue: (message: string) => void;
+}
 import { api } from "../../api";
 import type {
   ScoreJobRequest,
@@ -359,7 +363,6 @@ export function startBackgroundJobs(
             await ref.apply(status, false, valid);
           },
         })),
-      ...pendingPreparationReads(sources, engineId),
     ];
   };
   let currentRead: Promise<void> = Promise.resolve();
@@ -442,8 +445,6 @@ export function startBackgroundJobs(
   });
   // Persistent preparation stores do not emit the transient inventory signal.
   const releases = [
-    sources.imports,
-    sources.piecePackage,
     sources.exercise,
   ].map((source) =>
     source.subscribe(() => {

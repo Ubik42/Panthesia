@@ -34,14 +34,10 @@ pub(crate) fn seeded(generated: bool, legacy: bool) -> (Player, String, String) 
             .unwrap();
     } else {
         player
-            .command(Command::ImportScore {
-                bytes: include_bytes!(
+            .import_score(include_bytes!(
                     "../../panthesia-core/src/score_performance_test.musicxml"
                 )
-                .to_vec(),
-                name: "历史课堂.musicxml".into(),
-                default_bpm: 120,
-            })
+                .to_vec(), "历史课堂.musicxml".into(), 120)
             .unwrap();
     }
     let cid = player.file.as_ref().unwrap().content_id.clone();

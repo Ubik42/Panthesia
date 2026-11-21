@@ -1,57 +1,36 @@
-import { useMemo, useState } from "react";
-import type { CollectionSong, SongRow } from "../../api";
-import { pathKey } from "../../engine/pathIdentity";
+import { useState } from "react";
 import { product } from "../../product.generated";
-import { useSongCatalog } from "../library/useSongCatalog";
+
+export type RecentFile = { path: string; title: string; openedAt: number; exists: boolean };
+
+/** Start page: open a file, reopen a recent one, play freely or change settings. */
 export function HomeScreen({
-  rows,
-  collection,
+  recent,
   disabled,
-  choose,
+  chooseFile,
+  open,
+  forget,
   freePlay,
   settings,
-  open,
-  openProblem,
 }: {
-  rows: readonly SongRow[];
-  collection: readonly CollectionSong[];
+  recent: readonly RecentFile[];
   disabled: boolean;
-  choose: () => void;
+  chooseFile: () => Promise<unknown>;
+  open: (path: string) => Promise<boolean>;
+  forget: (path: string) => void;
   freePlay: () => void;
   settings: () => void;
-  open: (row: SongRow) => Promise<boolean>;
-  openProblem?: {path:string;message:string}|null;
 }) {
   const [pending, setPending] = useState(false);
-  const { catalog } = useSongCatalog(rows);
-  const recent = useMemo(() => {
-    const byId = new Map(
-      rows.filter((r) => r.contentId).map((r) => [r.contentId, r]),
-    );
-    const byPath = new Map(rows.map((r) => [pathKey(r.path), r]));
-    const performances = new Map(
-      catalog?.performances.map((p) => [p.contentId, p]) ?? [],
-    );
-    const seen = new Set<string>();
-    const result: SongRow[] = [];
-    for (const item of [...collection]
-      .filter((r) => r.lastUsed > 0)
-      .sort((a, b) => b.lastUsed - a.lastUsed)) {
-      const row =
-        byId.get(item.contentId) ??
-        (item.path ? byPath.get(pathKey(item.path)) : undefined);
-      const performance = performances.get(item.contentId);
-      const key = performance?.workId ?? item.contentId;
-      if (!row || seen.has(key)) continue;
-      seen.add(key);
-      result.push({
-        ...row,
-        title: performance?.title || item.title || row.title,
-      });
-      if (result.length === 8) break;
+  const busy = disabled || pending;
+  const guard = async (work: () => Promise<unknown>) => {
+    setPending(true);
+    try {
+      await work();
+    } finally {
+      setPending(false);
     }
-    return result;
-  }, [rows, collection, catalog]);
+  };
   return (
     <main className="product-home" aria-label="主页">
       <header className="product-home-brand">
@@ -60,41 +39,35 @@ export function HomeScreen({
       </header>
       <div className="product-home-body">
         <nav className="product-home-actions" aria-label="主菜单">
-          <button disabled={disabled || pending} onClick={choose}>
-            选择歌曲
+          <button disabled={busy} onClick={() => void guard(chooseFile)}>
+            打开乐曲…
           </button>
-          <button disabled={disabled || pending} onClick={freePlay}>
+          <button disabled={busy} onClick={freePlay}>
             自由演奏
           </button>
-          <button
-            className="product-home-settings"
-            disabled={disabled || pending}
-            onClick={settings}
-          >
+          <button className="product-home-settings" disabled={busy} onClick={settings}>
             设置
           </button>
         </nav>
         <section className="product-home-recent">
-          <h2>最近演奏</h2>
+          <h2>最近打开</h2>
           <div className="product-recent-list">
-            {recent.map((row) => (
+            {recent.map((file) => (
               <button
-                key={row.contentId ?? row.path}
-                disabled={disabled || pending}
-                onClick={async () => {
-                  setPending(true);
-                  try {
-                    await open(row);
-                  } finally {
-                    setPending(false);
-                  }
+                key={file.path}
+                disabled={busy || !file.exists}
+                title={file.path}
+                onClick={() => void guard(() => open(file.path))}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  if (window.confirm(`从最近打开中移除“${file.title}”？文件本身不受影响。`)) forget(file.path);
                 }}
               >
-                <span>{row.title}</span>
-                {openProblem&&pathKey(openProblem.path)===pathKey(row.path)&&<small className="song-file-status">{openProblem.message}</small>}
+                <span>{file.title}</span>
+                {!file.exists && <small className="song-file-status">文件不存在</small>}
               </button>
             ))}
-            {!recent.length && <p>从“选择歌曲”开始演奏。</p>}
+            {!recent.length && <p>打开 MIDI、MusicXML 或 .panthesia 文件开始练习；也可以在资源管理器或 Keel 中双击乐曲。</p>}
           </div>
         </section>
       </div>

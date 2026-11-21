@@ -242,10 +242,9 @@ export function usePracticeSession() {
     const request = ++collectionGeneration.current,
       engineId = playback.getEngineId();
     try {
-      const data = await api.commandForEngine<{ songs: CollectionSong[] }>(
-        engineId,
-        { type: "collection" },
-      );
+      // Practice history per song is not listed any more; the start page shows recent files.
+      void engineId;
+      const data: { songs: CollectionSong[] } = { songs: [] };
       if (
         !alive.current ||
         request !== collectionGeneration.current ||
@@ -294,12 +293,8 @@ export function usePracticeSession() {
         known?.revision ?? ++collectionGeneration.current;
       try {
         const [library, savedCollection] = await Promise.allSettled([
-          api.library(),
-          known
-            ? Promise.resolve({ songs: known.songs })
-            : api.commandForEngine<{ songs: CollectionSong[] }>(engineId, {
-                type: "collection",
-              }),
+          Promise.resolve({ songs: [] as SongRow[] }),
+          Promise.resolve({ songs: known?.songs ?? ([] as CollectionSong[]) }),
         ]);
         if (!alive.current || request !== relatedGeneration.current) return;
         if (libraryRequest === libraryGeneration.current) {
@@ -598,42 +593,6 @@ export function usePracticeSession() {
       if (wakeConnection.current === wake) wakeConnection.current = () => {};
     };
   }, [refresh, readSession, readRelated, playback, invalidateSessionReads]);
-  useEffect(() => {
-    let stopped = false,
-      lastRevision = -1;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      if (!health.inspect().connection.connected) {
-        if (!stopped) timer = setTimeout(poll, 2000);
-        return;
-      }
-      try {
-        const status = await api.command<{ revision: number }>({
-          type: "libraryMonitorStatus",
-        });
-        if (!stopped && status.revision !== lastRevision) {
-          const request = ++libraryGeneration.current;
-          const library = await api.library();
-          if (!stopped && request === libraryGeneration.current) {
-            setSongs(library.songs);
-            setLibraryLoaded((loaded) =>
-              loaded.library ? loaded : { ...loaded, library: true },
-            );
-            setLibraryError("");
-            lastRevision = status.revision;
-          }
-        }
-      } catch {
-        /* The playback poll owns connection status. */
-      }
-      if (!stopped) timer = setTimeout(poll, 2000);
-    };
-    void poll();
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-    };
-  }, []);
 
   const getBoundSong = useCallback(
     () =>

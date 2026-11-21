@@ -32,19 +32,16 @@ fn name(title: &str, kind: MediaExportKind) -> String {
 fn location(kind: MediaExportKind) -> &'static str {
     match kind {
         MediaExportKind::Midi | MediaExportKind::PracticeMidi => "exportMidi",
-        MediaExportKind::Package => "exportPiece",
     }
 }
 fn title(kind: MediaExportKind) -> &'static str {
     match kind {
         MediaExportKind::Midi | MediaExportKind::PracticeMidi => "另存 MIDI 副本",
-        MediaExportKind::Package => "另存曲目包",
     }
 }
 fn filter(kind: MediaExportKind) -> &'static str {
     match kind {
         MediaExportKind::Midi | MediaExportKind::PracticeMidi => "MIDI 演奏",
-        MediaExportKind::Package => "Panthesia 曲目包",
     }
 }
 
@@ -60,7 +57,6 @@ pub async fn prepare_media_export(
     let cache_lease = crate::score_edit::reserve(&state, "media-export-cache")?;
     let kind = match input.kind {
         MediaExportKind::Midi | MediaExportKind::PracticeMidi => ScoreJobKind::MidiExport,
-        MediaExportKind::Package => ScoreJobKind::PackageExport,
     };
     let guard = state.score_jobs.begin(
         Some(request.clone()),
@@ -74,11 +70,7 @@ pub async fn prepare_media_export(
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _cache_lease = cache_lease;
         control.stage("readingExportSource")?;
-        control.stage(if input.kind == MediaExportKind::Package {
-            "encodingPackage"
-        } else {
-            "preparingMidi"
-        })?;
+        control.stage("preparingMidi")?;
         let output = engine.prepare_media_export(input.clone(), &|| control.check())?;
         control.stage("retainingMediaExport")?;
         let hash = blake3::hash(&output.bytes).to_hex().to_string();

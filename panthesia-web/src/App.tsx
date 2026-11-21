@@ -26,7 +26,6 @@ import type { SongWorkspaceRequest,SongWorkspaceTarget } from "./app/songWorkspa
 import { StartupNotice } from "./app/StartupNotice";
 import { useDialogFocus } from "./app/useDialogFocus";
 import { useWorkspaceSessions } from "./app/useWorkspaceSessions";
-import { WorkspaceBrowseRecovery } from "./app/WorkspaceBrowseRecovery";
 import type { DisplayPreferences } from "./displayPreferences";
 import type { MediaExportKind } from "./engine/commands.generated";
 import { pathKey } from "./engine/pathIdentity";
@@ -34,17 +33,9 @@ import { TaskActivity } from "./engine/TaskActivity";
 import { WorkProgressDialog } from "./features/activity/WorkProgress";
 import type { WorkEntry } from "./features/activity/workProgressStore";
 import { EditDraftCenter } from "./features/editing/EditDraftCenter";
-import { ImportQueueButton,ImportQueueNotice } from "./features/imports/ImportQueueButton";
-import { FolderManager } from "./features/library/FolderManager";
-import type { LibrarySearchRequest } from "./features/library/libraryBrowse";
-import { type LibraryOpenLocation } from "./features/library/libraryOpen";
-import { checkLibraryPrepared,sourceForLibraryRow } from "./features/library/libraryOpenStore";
-import { SongBrowser } from "./features/library/SongBrowser";
-import { useLibraryOpening } from "./features/library/useLibraryOpening";
 import { resolveKeyboardViewport,viewportRange,type KeyboardViewport } from "./features/practice/keyboardViewport";
 import { samePlaybackSource } from "./features/practice/playbackCommands";
 import { PlaybackView } from "./features/practice/PlaybackView";
-import { collectionSongRow,practiceCollectionByPath } from "./features/practice/practiceLibraryModel";
 import {
 PracticeStageReadout
 } from "./features/practice/PracticeReadouts";
@@ -59,7 +50,7 @@ import {usePerformanceSize} from "./features/practice/usePerformanceSize";
 import { usePracticeSession } from "./features/practice/usePracticeSession";
 import type { ScoreToolRequest } from "./features/scores/scoreToolRequest";
 import { HandSplitScreen } from "./features/screens/HandSplitScreen";
-import { HomeScreen } from "./features/screens/HomeScreen";
+import { HomeScreen, type RecentFile } from "./features/screens/HomeScreen";
 import { ScreenHeader } from "./features/screens/ScreenHeader";
 import { SettingsScreen } from "./features/screens/SettingsScreen";
 import { TrackSetupScreen } from "./features/screens/TrackSetupScreen";
@@ -99,9 +90,7 @@ import { fingeringDraftId } from "./features/fingering/fingeringWorkbenchStore";
 import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { usePracticeRange } from "./features/practice/usePracticeRange";
 import { FingeringDialog } from "./FingeringDialog";
-import { ImportDialog } from "./ImportDialog";
 import { Notation } from "./Notation";
-import { PackageDialog } from "./PackageDialog";
 import { PaperScore } from "./PaperScore";
 import { PassageDialog } from "./PassageDialog";
 import { Piano } from "./Piano";
@@ -146,10 +135,6 @@ export default function App() {
   const songSetup=productScreens.screen==="setup";
   const setSongSetup=productScreens.setSongSetup;
   const bookmarkNavigation = useRef<BookmarkNavigation>(null);
-  const [libraryAdvanced,setLibraryAdvanced]=useState(false);
-  const libraryDialog = workspace === "library";
-  const setLibraryDialog = (open: boolean) =>
-    open ? navigation.navigate("library") : navigation.closeLibrary();
   const interfaceSettings = getInterfaceSettings();
   const display = useSyncExternalStore(
     interfaceSettings.subscribe,
@@ -212,16 +197,6 @@ export default function App() {
   const songOpeningActive = useRef(false);
   const { onNote, pointerNote, clear: clearLiveNotes } = useLiveNotes(playback, connected && !binding && !workspaceSessions.desktopClose.status, setError,
     () => !songOpeningActive.current && !document.hidden && !topInputScope() && !topPopup(null));
-  const importingName = useSyncExternalStore(
-    workspaceSessions.imports.subscribe,
-    () => {
-      const queue = workspaceSessions.imports.getSnapshot();
-      return queue.busy
-        ? (queue.items.find((item) => item.state === "working" && item.receipt && !item.receipt.catalogOnly)?.source.name ??
-            "")
-        : "";
-    },
-  );
   const [sessionRecovery] = useState(() => createSessionRecoveryStore(health, workspaceSessions.workProgress));
   const startupReady = state.startup?.ready ?? true;
   const [requestPending, setBusy] = useState(false);
@@ -238,7 +213,6 @@ export default function App() {
   }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, !!workspaceSessions.desktopClose.status, song?.title, song?.sourcePath, state]);
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [librarySearch, setLibrarySearch] = useState<LibrarySearchRequest | null>(null);
   const [editDraftsOpen, setEditDraftsOpen] = useState(false);
   const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
@@ -254,23 +228,11 @@ export default function App() {
     [exerciseDialog, setExerciseDialog] = useState(false),
     [metadata, setMetadata] = useState(false),
     [fingeringDraft, setFingeringDraft] = useState<import("./features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
-    [libraryLaunch, setLibraryLaunch] = useState<
-      "normal" | "missing" | "review"
-    >("normal"),
-    [libraryScoreRange, setLibraryScoreRange] = useState<{
-      song: LoadedSong;
-      first: number;
-      last: number;
-    } | null>(null),
     [passageDialog, setPassageDialog] = useState(false),
     [progressOpen, setProgressOpen] = useState(false),
     [recoveryOpen, setRecoveryOpen] = useState(false),
     [paperRevision, setPaperRevision] = useState(0),
-    [importDialog, setImportDialog] = useState(false),
-    [packageDialog, setPackageDialog] = useState(false),
     [mediaExport, setMediaExport] = useState<(MediaExportSource & { kind?: MediaExportKind }) | null>(null),
-    [packageFile, setPackageFile] = useState<File | undefined>(),
-    [droppedFiles, setDroppedFiles] = useState<File[]>([]),
     [notice, setNotice] = useState("");
   useEffect(() => {
     if (!scoreToolRequest) return;
@@ -368,7 +330,6 @@ export default function App() {
       return originEngine === live.stateOrder?.engineId && !requestBusy.current &&
         !live.recording && live.startup?.ready !== false && !live.storage?.operation;
     }, signal);
-    if (changed && next === "library") {setLibraryLaunch("normal");setLibraryAdvanced(false);}
     return changed;
   }, [busy, startupReady, state.recording, workspace, navigation.pending, navigation.navigate, navigation.request, run, clearLiveNotes, playback]);
   const currentPracticeTarget: SongWorkspaceTarget | null = song && !binding && matchesSong(state, song) &&
@@ -384,42 +345,56 @@ export default function App() {
     : navigation.locked ? "请先完成当前工作区中的操作。" : null;
   const currentPracticeUnavailable = workspaceUnavailable ?? (!connected ? "练习室重新连接后可打开或继续曲目。"
     : !currentPracticeTarget && song ? "正在读取当前练习，读齐后可继续。" : null);
-  const continueLibraryPractice = async (expected: SongWorkspaceTarget) => {
-    const live = playback.getSnapshot();
-    if (requestBusy.current || busy || !connected || live.recording || live.startup?.ready === false || live.storage?.operation || !song || !matchesSong(live, song) ||
-      (live.stateOrder?.engineId ?? null) !== (song.engineId ?? null) ||
-      live.contentId !== expected.contentId || normalize(song.sourcePath) !== normalize(expected.path))
-      throw new Error("当前练习已改变，请重新选择要继续的曲目。");
-    clearLiveNotes();
-    setLibraryDialog(false);
-    return true;
-  };
   const resumeEditingSong = async (contentId: string, path?: string) => {
     if (!(await changeWorkspace("practice"))) return false;
-    const same = playback.getSnapshot().contentId === contentId && (!path || normalize(song?.sourcePath) === normalize(path) || path === "内置技术练习" && song?.generated);
-    if (!same) {
-      const opened = await run(!path || path.startsWith("exercise:") || path === "内置技术练习"
-        ? { type: "openRecent", content_id: contentId }
-        : { type: "loadIndexed", path, title: path.split(/[\\/]/).at(-1) ?? "原曲目", content_id: contentId }, true);
-      if (!opened) return false;
+    if (playback.getSnapshot().contentId !== contentId) {
+      if (!path || !(await openPathRef.current(path))) return false;
     }
     return playback.getSnapshot().contentId === contentId;
   };
-  const visitSongWorkspace = async (next: "library" | "review", target: SongWorkspaceTarget, signal?: AbortSignal) => {
-    if (signal?.aborted || navigation.locked || busy || !startupReady || state.recording || !target.contentId) return false;
-    if (!(await changeWorkspace(next, signal)) || signal?.aborted) return false;
-    const request = { id: crypto.randomUUID(), song: { ...target }, from: workspace };
-    if (next === "library") {
-      setLibraryLaunch("normal");
-      setLibrarySearch(request);
-    }
-    return true;
-  };
   const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, handsDialog, meterDialog,
-    scoresDialog, importDialog, packageDialog, !!mediaExport]);
+    scoresDialog, !!mediaExport]);
   // Files opened from Explorer, Ouro, the command line or a drop open directly from their own location.
   const [songFilesOpen, setSongFilesOpen] = useState(false);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const refreshRecent = useCallback(() => {
+    void api.command<RecentFile[]>({ type: "recentFiles" }).then(setRecentFiles).catch(() => {});
+  }, []);
+  useEffect(() => { if (connected && startupReady) refreshRecent(); }, [connected, startupReady, refreshRecent]);
+  const [opening, setOpening] = useState(false);
+  /** Open a file from its own location (current-plan 3.7) and show its setup or the stage. */
+  const openPath = async (path: string, screen: "setup" | "performance" = "setup") => {
+    if (requestBusy.current || songOpeningActive.current) return false;
+    if (!connected || !startupReady) { setNotice("练习室连接完成后可打开曲目。"); return false; }
+    if (playback.getSnapshot().recording) { setNotice("请先停止并保存当前录音。"); return false; }
+    if (!(await changeWorkspace("practice"))) return false;
+    clearLiveNotes();
+    setOpening(true);
+    let opened = false;
+    try {
+      opened = await run({ type: "openFile", path }, true);
+    } finally {
+      setOpening(false);
+      refreshRecent();
+    }
+    if (!opened) return false;
+    setView("keyboard");
+    productScreens.show(screen);
+    // Report manifest problems once; details are in the song files dialog.
+    const files = await api.command<{ files?: { missing: boolean }[]; unmatched?: number }>({ type: "songFiles" }).catch(() => null);
+    const missing = files?.files?.filter((file) => file.missing).length ?? 0;
+    const problems = [missing ? `${missing} 个文件缺失` : "", files?.unmatched ? `${files.unmatched} 条标注无法对应到音符` : ""].filter(Boolean);
+    if (problems.length) setError(`歌曲清单中${problems.join("，")}；可在歌曲设置的“歌曲文件与版本”中查看。`);
+    return true;
+  };
+  const openPathRef = useRef(openPath);
+  openPathRef.current = openPath;
+  const chooseFile = async () => {
+    if (requestBusy.current || busy || !startupReady || state.recording) return false;
+    const path = api.desktop ? await api.pickSongFile("music", song?.sourcePath ?? undefined) : window.prompt("MIDI、MusicXML 或 .panthesia 文件的完整路径")?.trim();
+    return path ? openPath(path) : false;
+  };
   const openRequestsBusy = useRef(false);
   const takeOpenRequests = useCallback(async () => {
     if (openRequestsBusy.current || !connected || !startupReady) return;
@@ -428,20 +403,13 @@ export default function App() {
       const paths = await api.takeOpenRequests();
       const path = paths.at(-1);
       if (!path) return;
-      if (!(await changeWorkspace("practice"))) return;
-      if (!(await run({ type: "openFile", path }, true))) return;
-      productScreens.show("performance");
-      // Report manifest problems once; details are in the song files dialog.
-      const files = await api.command<{ files?: { missing: boolean }[]; unmatched?: number }>({ type: "songFiles" }).catch(() => null);
-      const missing = files?.files?.filter((file) => file.missing).length ?? 0;
-      const problems = [missing ? `${missing} 个文件缺失` : "", files?.unmatched ? `${files.unmatched} 条标注无法对应到音符` : ""].filter(Boolean);
-      if (problems.length) setError(`歌曲清单中${problems.join("，")}；可在歌曲设置的“歌曲文件与版本”中查看。`);
+      await openPathRef.current(path, "performance");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     } finally {
       openRequestsBusy.current = false;
     }
-  }, [connected, startupReady, changeWorkspace, run, productScreens, setError]);
+  }, [connected, startupReady, setError]);
   useEffect(() => {
     if (!api.desktop) return;
     void takeOpenRequests();
@@ -482,180 +450,6 @@ export default function App() {
     window.addEventListener("keydown", escapeWorkspace);
     return () => window.removeEventListener("keydown", escapeWorkspace);
   }, []);
-  const byPath=useMemo(()=>practiceCollectionByPath(collection),[collection]);
-  const allLibraryRows = useMemo(() => {
-    const rows = songs.map(row=>{
-      const record=byPath.get(normalize(row.path));
-      return !row.contentId&&record?{...row,contentId:record.contentId}:row;
-    });
-    const known = new Set(rows.map((row) => normalize(row.path)));
-    for (const record of byPath.values()) {
-      const row = collectionSongRow(record),
-        key = normalize(row.path);
-      if (known.has(key)) continue;
-      known.add(key);
-      rows.push({ ...row, id: record.contentId });
-    }
-    return rows;
-  }, [songs, byPath]);
-  const recentPractice = useMemo(() => {
-    const recent = collection
-      .filter(
-        (record) =>
-          record.available && (record.lastPracticed || record.lastUsed),
-      )
-      .sort(
-        (a, b) =>
-          Math.max(b.lastPracticed ?? 0, b.lastUsed) -
-          Math.max(a.lastPracticed ?? 0, a.lastUsed),
-      );
-    for (const record of recent) {
-      const row = allLibraryRows.find(
-        (candidate) =>
-          byPath.get(normalize(candidate.path))?.contentId === record.contentId,
-      );
-      if (row) return row;
-    }
-    return null;
-  }, [allLibraryRows, byPath, collection]);
-  const starterSong =
-    songs.find(row => /look at the sky/i.test(row.path) && /原调_乐谱量化/i.test(row.path)) ?? songs.find(row => /look at the sky/i.test(row.title)) ?? songs.find(row => /[\\/]Output[\\/]/i.test(row.path)) ?? songs.find((row) => row.id === "builtin/five-finger") ?? songs[0];
-  const [songOpenProblem,setSongOpenProblem]=useState<{path:string;message:string}|null>(null);
-  const load = async (
-    row: SongRow,
-    expectedContentId?: string,
-    location: LibraryOpenLocation = "recent",
-  ) => {
-    if (requestBusy.current) return false;
-    if (songOpeningActive.current) return false;
-    if (!connected || !startupReady) { setNotice("练习室连接完成后可打开曲目。"); return false; }
-    if (playback.getSnapshot().recording) { setNotice("请先停止并保存当前录音。"); return false; }
-    const pathRecord = byPath.get(normalize(row.path));
-    const record =
-      location === "recent" && expectedContentId
-        ? collection.find((record) => record.contentId === expectedContentId)
-        : expectedContentId && pathRecord?.contentId !== expectedContentId
-          ? undefined
-          : pathRecord;
-    setSongOpenProblem(null);
-    try {
-      clearLiveNotes();
-      const source=sourceForLibraryRow(row,expectedContentId,location,record);
-      if(source.kind==="file"){
-        if(await api.musicFileExists(source.path)===false){
-          setSongOpenProblem({path:row.path,message:"文件不存在"});
-          void updateCollection().catch(()=>{});
-          return false;
-        }
-        // A selected path opens its current bytes. Previous annotations keep
-        // their content identity and are never applied to a changed file.
-        source.contentId=null;
-      }
-      return await libraryOpening.start(source,record?.title||row.title,row.path);
-    }catch(failure){
-      reportDiagnostic("曲目读取",failure);
-      const detail=failure instanceof Error?failure.message:String(failure);
-      const missing=/不存在|找不到|cannot find|not found|os error 2|os error 3/i.test(detail);
-      setSongOpenProblem({path:row.path,message:missing?"文件不存在":"文件内容无法读取"});
-      return false;
-    }
-  };
-  const importMidi = async () => {
-    if (requestBusy.current || busy || !startupReady || state.recording) return;
-    if (songOpeningActive.current) {
-
-      return;
-    }
-    clearLiveNotes();
-    if (!api.desktop) {
-      setImportDialog(true);
-      return;
-    }
-    const origin = playback.getEngineId(),
-      openingFrom = playback.getSnapshot(),
-      owner = navigation.getCurrent().workspace;
-    requestBusy.current = true;
-    setBusy(true);
-    let choice: Awaited<ReturnType<typeof api.pickMusic>> = null;
-    try {
-      choice = await api.pickMusic();
-      if (
-        origin !== playback.getEngineId() ||
-        owner !== navigation.getCurrent().workspace ||
-        !samePlaybackSource(openingFrom, playback.getSnapshot())
-      )
-        throw new Error("练习室连接、曲目或工作区已变化，请重新打开文件。");
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
-      return;
-    } finally {
-      requestBusy.current = false;
-      setBusy(false);
-    }
-    if (!choice) return;
-    try {
-      await libraryOpening.start(
-        choice.kind === "score"
-          ? { kind: "originalScore", path: choice.path, defaultBpm: 120 }
-          : {
-              kind: "file",
-              path: choice.path,
-              title: choice.title,
-              contentId: null,
-            },
-        choice.title,
-        choice.path,
-      );
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
-    }
-  };
-  const openPreparedSource = async (
-    source: import("./engine/commands.generated").LibraryOpenSource,
-    title: string,
-    path: string,
-    signal?: AbortSignal,
-  ): Promise<boolean> => {
-    if (signal?.aborted) return false;
-    const live = playback.getSnapshot(),
-      owner = navigation.getCurrent().workspace;
-    if (
-      requestBusy.current ||
-      songOpeningActive.current ||
-      busy ||
-      !connected ||
-      live.startup?.ready === false ||
-      live.recording
-    )
-      throw new Error("请先完成当前保存、录音或曲目打开，再打开曲目。");
-    if (navigation.locked)
-      throw new Error("请先保存或取消当前工作区中的编辑，再打开曲目。");
-    if (signal?.aborted) return false;
-    if (navigation.getCurrent().workspace !== owner)
-      throw new Error("工作区已变化，原打开来源继续保留。");
-    clearLiveNotes();
-    await libraryOpening.start(source, title, path);
-    setImportDialog(false);
-    setDroppedFiles([]);
-    setPackageDialog(false);
-    setPackageFile(undefined);
-    return true;
-  };
-  const openImportedSong = (
-    value: import("./engine/commands.generated").ImportedSong,
-  ) =>
-    openPreparedSource(
-      value.catalogOnly
-        ? {
-            kind: "file",
-            path: value.sourcePath,
-            title: value.title,
-            contentId: value.contentId,
-          }
-        : { kind: "recent", contentId: value.contentId },
-      value.title,
-      value.sourcePath,
-    ).then(ok=>{if(ok)productScreens.show("setup");return ok;});
   const exportMidi = () => {
     if (song) setMediaExport({contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId});
   };
@@ -679,8 +473,7 @@ export default function App() {
     },
     prepare:(source,signal)=>{
       if(signal.aborted)return Promise.resolve(false);
-      const path=allLibraryRows.find(row=>byPath.get(normalize(row.path))?.contentId===source.contentId)?.path;
-      return resumeEditingSong(source.contentId,path||source.path);
+      return resumeEditingSong(source.contentId,source.path);
     },
     current:getBoundSong,snapshot:playback.getSnapshot,scores:workspaceSessions.scores,
     openEditor:(target,signal)=>openPracticeTool(signal,()=>{
@@ -689,9 +482,7 @@ export default function App() {
     openScores:()=>setScoresDialog(true),
     openScore:request=>{setView("score");productScreens.show("performance");setScoreToolRequest(request);},
     openSimple:target=>{
-      if(target==="imports")setImportDialog(true);
-      else if(target==="package"){setPackageFile(undefined);setPackageDialog(true);}
-      else if(target==="devices")openSoundSettings();
+      if(target==="devices")openSoundSettings();
       else if(target==="exercise")setExerciseDialog(true);
       else if(target==="drafts")setEditDraftsOpen(true);
     },
@@ -701,7 +492,6 @@ export default function App() {
       setDisplayDialog(true);
     },
     browsePending:async(id,signal)=>{
-      libraryOpening.cancelPending();
       if(!(await productActions.current.browse(signal)))return false;
       return true;
     },
@@ -719,53 +509,17 @@ export default function App() {
       setState(await api.state());
     },
     startupSong: async (warning, signal) => {
-      if (!warning.source)
-        throw new Error("原曲目位置尚未保留，请从曲库重新选择。");
       const source = warning.source;
-      const title = source.kind === "file" ? source.title : "上次练习";
-      const path = source.kind === "file" ? source.path : "";
-      const opened = await openPreparedSource(source, title, path, signal);
+      if (source?.kind !== "file" || signal?.aborted)
+        throw new Error("上次的曲目没有保留文件位置，请重新打开乐曲。");
+      const opened = await openPathRef.current(source.path);
       if (opened) setRecoveryOpen(false);
       return opened;
     },
-    library: (signal) => productActions.current.browse(signal),
-    locateStartupSong: async (warning, signal) => {
-      const source = warning.source;
-      if (!api.desktop || source?.kind !== "file" || !source.contentId)
-        throw new Error("原曲目缺少可核对的本地文件身份，请从曲库重新选择。");
+    library: async () => { await goHomeRef.current(); return true; },
+    locateStartupSong: async (_warning, signal) => {
       if (signal?.aborted) return false;
-      if (requestBusy.current || busy || songOpeningActive.current)
-        throw new Error("当前资料仍在处理，完成后可重新定位原文件。");
-      const origin = playback.getSnapshot(),
-        owner = navigation.getCurrent().workspace;
-      requestBusy.current = true;
-      setBusy(true);
-      let path: string | null;
-      try {
-        path = await api.pickRepairPath(source.contentId, source.path);
-      } finally {
-        requestBusy.current = false;
-        setBusy(false);
-      }
-      if (!path || signal?.aborted) return false;
-      if (
-        owner !== navigation.getCurrent().workspace ||
-        origin.stateOrder?.engineId !== playback.getEngineId() ||
-        !samePlaybackSource(origin, playback.getSnapshot())
-      )
-        throw new Error("练习室连接、曲目或工作区已变化，请重新选择原文件。");
-      const opened = await openPreparedSource(
-        {
-          kind: "relocated",
-          path,
-          title: source.title,
-          contentId: source.contentId,
-          from: source.path,
-        },
-        source.title,
-        path,
-        signal,
-      );
+      const opened = await chooseFile();
       if (opened) setRecoveryOpen(false);
       return opened;
     },
@@ -815,7 +569,7 @@ export default function App() {
       productScreens.show("performance");
       return run({ type: ["playing", "countIn"].includes(playback.getSnapshot().status) ? "pause" : "play" });
     },
-    import: (signal) => openPracticeTool(signal, () => setImportDialog(true), false),
+    import: async () => { await chooseFile(); return true; },
     exercise: (signal) => openPracticeTool(signal, () => setExerciseDialog(true), false),
     passages: (signal) => openPracticeTool(signal, () => setPassageDialog(true)),
     fingering: (signal) => openPracticeTool(signal, () => { setSelectedNote(null); setFingeringDialog(true); }),
@@ -825,7 +579,7 @@ export default function App() {
     metadata: (signal) => openPracticeTool(signal, () => { setMetadataDraftPath(null); setMetadata(true); }, false),
     keyboard: (signal) => openPracticeTool(signal, () => setView("keyboard"), false),
     score: (signal) => openPracticeTool(signal, () => setView("score"), false),
-    libraryPanel: () => productActions.current.browse(),
+    libraryPanel: async () => { await chooseFile(); return true; },
     inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
     display: () => setDisplayDialog(true),
@@ -839,59 +593,7 @@ export default function App() {
     editable: attemptLocked ? "请先结束当前计划、阶梯或完整演奏，再修改练习条件。" : null,
     score: !song?.hasScore ? "请先在乐谱管理中配对 MusicXML 或 MXL 乐谱。" : null,
   }, display.shortcuts);
-  const libraryOpening = useLibraryOpening({
-    engineId: progressEngineId,
-    workspace,
-    visible:
-      startupReady &&
-      !workspaceSessions.desktopClose.status,
-    canPresent: !navigation.locked && !requestBusy.current && !busy && !state.recording,
-    present: async (intent, prepared, current, owner) => {
-      const session = await api.session();
-      const navigationState = navigation.getCurrent();
-      if (
-        !current() ||
-        navigationState.workspace !== owner ||
-        navigationState.locked
-      )
-        return false;
-      checkLibraryPrepared(prepared, intent.request.engineId, session.state);
-      if (
-        playback.getSnapshot().stateOrder?.engineId !== intent.request.engineId
-      )
-        throw new Error("练习室连接已变化，原打开结果继续保留。");
-      if (!session.song || session.song.contentId !== prepared.contentId)
-        throw new Error("打开结果尚未读齐，可重新读取原结果。");
-      checkLibraryPrepared(
-        prepared,
-        intent.request.engineId,
-        installSession(session),
-      );
-      clearLiveNotes();
-      setError("");
-      setNotice((prepared.importWarnings ?? []).join("；"));
-      if (prepared.view !== "practice") {
-        setView(prepared.view === "paper" ? "paper" : "score");
-        setPaperRevision((value) => value + 1);
-      }
-      if (
-        prepared.view === "range" &&
-        prepared.source.kind === "score" &&
-        prepared.source.selection
-      ) {
-        setLibraryScoreRange({
-          song: session.song,
-          first: prepared.source.selection.first.ordinal,
-          last: prepared.source.selection.last.ordinal,
-        });
-      }
-      navigation.closeLibrary();
-      productScreens.show(prepared.view === "practice" ? "setup" : "performance");
-      void updateCollection().catch(() => {});
-      return true;
-    },
-  });
-  const openingActive = libraryOpening.submitting || !!importingName;
+  const openingActive = opening;
   songOpeningActive.current = openingActive;
   useEffect(() => {
     if (openingActive) {
@@ -900,12 +602,11 @@ export default function App() {
       clearLiveNotes();
     }
   }, [openingActive, clearLiveNotes]);
-  const {chooseSongs,goHome,openSongSetup,openFreePlay,resumePractice}=useProductNavigation({
-    screens:productScreens,changeWorkspace,load,run,clearLiveNotes,
-    prepareBrowser:()=>{setLibraryAdvanced(false);setLibrarySearch(null);},
-    prepareSong:()=>setView("keyboard"),closeMenu:()=>setAppMenuOpen(false),
+  const {goHome,openFreePlay,resumePractice}=useProductNavigation({
+    screens:productScreens,changeWorkspace,run,clearLiveNotes,closeMenu:()=>setAppMenuOpen(false),
   });
-  productActions.current={browse:chooseSongs,resume:resumePractice};
+  const goHomeRef=useRef(goHome);goHomeRef.current=goHome;
+  productActions.current={browse:goHome,resume:resumePractice};
   return (
     <div
       data-skin={display.skin}
@@ -913,39 +614,6 @@ export default function App() {
       data-product-screen={productScreens.screen}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
-      }}
-      onDrop={(e) => {
-        if (!e.dataTransfer.types.includes("Files") && !e.dataTransfer.files.length) return;
-        e.preventDefault();
-        if (!startupReady) {setNotice("练习室正在恢复，请稍后再导入文件");return;}
-        if (navigation.locked) {
-          setNotice("请先保存或取消当前编辑，再导入文件");
-          return;
-        }
-        if (songOpeningActive.current) { setNotice("正在准备曲目，可先接续或取消，再拖入文件。"); return; }
-        if (state.recording || busy) {
-          setNotice(
-            state.recording
-              ? "请先停止录音，再导入文件"
-              : "请等待当前操作完成，再导入文件",
-          );
-          return;
-        }
-        if (document.querySelector('[role="dialog"]')) {
-          setNotice("请先关闭当前窗口，再拖入文件；导入窗口内可以继续添加文件");
-          return;
-        }
-        const files = Array.from(e.dataTransfer.files);
-        if (files.length === 1 && /\.neopiece$/i.test(files[0].name)) {
-          setPackageFile(files[0]);
-          setPackageDialog(true);
-          return;
-        }
-        setDroppedFiles(files);
-        setImportDialog(true);
-      }}
     >
       <header className="workspace-topbar" hidden={!appMenuOpen} role={appMenuOpen?"dialog":undefined} aria-modal={appMenuOpen||undefined} aria-label="应用菜单">
         <button
@@ -959,18 +627,11 @@ export default function App() {
         </button>
         <ApplicationMenu disabled={!startupReady || navigation.locked || !!state.storage?.operation || !!workspaceSessions.desktopClose.status} groups={[
           {label:"文件",content:<>
-            <button disabled={busy || state.recording} onClick={()=>void importMidi()}>打开 MIDI / MusicXML…</button>
-            <ImportQueueButton queue={workspaceSessions.imports} open={()=>setImportDialog(true)}/>
-            <PreparationButton store={workspaceSessions.piecePackage} name="曲目包…" readyLabel="已保存" disabled={busy || state.recording || openingActive} open={()=>{setPackageFile(undefined);setPackageDialog(true);}}/>
+            <button disabled={busy || state.recording} onClick={()=>void chooseFile()}>打开乐曲…</button>
+            <button disabled={!song || song.generated || busy} onClick={()=>{setMetadataDraftPath(null);setMetadata(true);}}>当前曲目信息…</button>
+            {song && <button disabled={busy} onClick={()=>setSongFilesOpen(true)}>歌曲文件与版本…</button>}
             <MediaExportButton source={song} kind="practiceMidi" disabled={!song || busy} open={()=>{if(song)setMediaExport({contentId:song.contentId,title:song.title,path:song.sourcePath,engineId:song.engineId,kind:"practiceMidi"});}}/>
             <MediaExportButton source={song} kind="midi" disabled={!song || busy} open={exportMidi}/>
-          </>},
-          {label:"曲库",content:<>
-            <button onClick={()=>{setLibraryAdvanced(false);void changeWorkspace("library");}}>选择曲目…</button>
-            <button onClick={()=>{void changeWorkspace("library").then(()=>setLibraryAdvanced(true));}}>管理目录与资料…</button>
-            <button disabled={!song || song.generated || busy} onClick={()=>{setMetadataDraftPath(null);setMetadata(true);}}>当前曲目信息…</button>
-            {api.desktop&&<button disabled={busy} onClick={()=>void api.importFolder().then(refresh).catch(e=>setError(String(e)))}>添加扫描文件夹…</button>}
-            <button disabled={busy} onClick={()=>void api.command({type:"refreshLibrary"}).then(refresh).catch(e=>setError(String(e)))}>重新扫描目录</button>
           </>},
           {label:"练习",content:<>
             <button disabled={!song || state.recording} onClick={()=>action({type:["playing","countIn"].includes(playback.getSnapshot().status)?"pause":"play"})}>播放 / 暂停</button>
@@ -1014,7 +675,6 @@ export default function App() {
       </header>
 
       <DesktopCloseProgress {...workspaceSessions.desktopClose} />
-      <WorkspaceBrowseRecovery store={workspaceSessions.browse} />
       <StartupNotice status={state.startup} connected={connected} recovery={sessionRecovery} act={recoverSession} openRecovery={openRecovery} error={health.getMessages().action || health.getMessages().session} />
       {notice && (
         <div className="app-notice" role="status">
@@ -1025,13 +685,11 @@ export default function App() {
         </div>
       )}
       {startupReady && <SessionStatus store={sessionRecovery} act={recoverSession} openRecovery={openRecovery} />}
-      {!importDialog && <ImportQueueNotice queue={workspaceSessions.imports} open={() => setImportDialog(true)} />}
-      {busy && !importDialog && !fingeringDialog && !exerciseDialog && <TaskActivity />}
-      {startupReady && productScreens.screen==="home" && <HomeScreen rows={allLibraryRows} collection={collection} disabled={!!workspaceUnavailable||!connected} choose={()=>void chooseSongs()} freePlay={()=>void openFreePlay()} settings={()=>productScreens.settings()} open={openSongSetup} openProblem={songOpenProblem}/>}
-      {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen state={state} engineId={progressEngineId} visible={productScreens.screen==="settings"&&!settings&&!displayDialog} back={()=>productScreens.home()} devices={device=>openSoundSettings(device)} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} folders={()=>productScreens.folders()} display={section=>{setDisplaySection(section);setDisplayDialog(true);}} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
-      {startupReady && productScreens.screen==="folders" && <FolderManager changed={refreshWithCollection} backLabel="设置" close={()=>productScreens.settings()}/>}
+      {busy && !fingeringDialog && !exerciseDialog && <TaskActivity />}
+      {startupReady && productScreens.screen==="home" && <HomeScreen recent={recentFiles} disabled={!!workspaceUnavailable||!connected} chooseFile={chooseFile} open={openPath} forget={path=>void api.command<RecentFile[]>({type:"forgetRecentFile",path}).then(setRecentFiles).catch(()=>{})} freePlay={()=>void openFreePlay()} settings={()=>productScreens.settings()}/>}
+      {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen state={state} engineId={progressEngineId} visible={productScreens.screen==="settings"&&!settings&&!displayDialog} back={()=>productScreens.home()} devices={device=>openSoundSettings(device)} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} display={section=>{setDisplaySection(section);setDisplayDialog(true);}} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
 
-      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void chooseSongs();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} files={()=>setSongFilesOpen(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
+      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void goHome();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} files={()=>setSongFilesOpen(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
       {songFilesOpen && song && <SongFilesDialog close={()=>setSongFilesOpen(false)} openVersion={path=>run({type:"openFile",path},true)}/>}
       {workspace==="practice" && productScreens.screen==="parts" && song && <TrackSetupScreen song={song} disabled={busy||openingActive||!connected} builtin={!state.outputId} pianoOnly={/default\.sf2$/i.test(state.soundfont??"")} back={()=>productScreens.show("setup")} custom={track=>{const t=song.tracks.find(t=>t.id===track);if(t&&!t.visible){void run({type:"track",id:t.id,mode:t.mode,part:t.part,visible:true},true).then(ok=>{if(ok)productScreens.split(track);});}else productScreens.split(track);}} command={value=>run(value,true)}/>}
       {workspace==="practice" && productScreens.screen==="split" && song && productScreens.splitTrack!==null && <HandSplitScreen key={`${song.contentId}:${productScreens.splitTrack}`} song={song} trackId={productScreens.splitTrack} disabled={busy||openingActive||!connected} back={()=>productScreens.show("parts")} command={value=>run(value,true)}/>}
@@ -1208,11 +866,11 @@ export default function App() {
               </div>
             )}
             {!song && <PracticeWelcome
-              resumeTitle={(recentPractice ?? starterSong)?.title} resumeRecent={!!recentPractice}
+              resumeTitle={recentFiles.find(file=>file.exists)?.title} resumeRecent={recentFiles.some(file=>file.exists)}
               disabled={busy || openingActive || state.recording || !connected || navigation.locked}
               input={state.input} inputConnected={state.inputConnected}
-              resume={() => { const target = recentPractice ?? starterSong; if (target) void load(target, target.contentId ?? undefined, "recent"); }}
-              choose={() => { void changeWorkspace("library"); }} importFile={() => void importMidi()}
+              resume={() => { const target = recentFiles.find(file=>file.exists); if (target) void openPath(target.path); }}
+              choose={() => void chooseFile()} importFile={() => void chooseFile()}
               generate={() => launchPracticeTool(() => setExerciseDialog(true))} devices={() => openSoundSettings()} />}
 
           </PracticeStage>
@@ -1238,35 +896,8 @@ export default function App() {
           if(!song)return false;
           const ok=await run({type:"practiceVariant",content_id:song.contentId,score_revision:song.scoreRevision,value},true);
           if(ok)setDisplay(previous=>({...previous,...(value.quantize?{gridSubdivision:value.quantize as 8|16|32}:{}),tonic:((value.tonic??song.practiceVariant?.tonic??0)+(value.transpose??0)+120)%12}));return ok;
-        }} execute={command=>run(command,true)}
-        openPerformance={(path,contentId,title)=>openPreparedSource({kind:"file",path,contentId,title},title,path)}/>
+        }} execute={command=>run(command,true)}/>
       {mediaExport && <MediaExportDialog source={mediaExport} kind={mediaExport.kind ?? "midi"} close={() => setMediaExport(null)} />}
-      {packageDialog && (
-        <PackageDialog
-          session={workspaceSessions.piecePackage}
-          openSong={openImportedSong}
-          song={song}
-          initialFile={packageFile}
-          close={() => { setPackageDialog(false); setPackageFile(undefined); }}
-          changed={refreshOrThrow}
-        />
-      )}
-      {importDialog && (
-        <ImportDialog
-          queue={workspaceSessions.imports}
-          openSong={openImportedSong}
-          initialFiles={droppedFiles}
-          close={() => {
-            setImportDialog(false);
-            setDroppedFiles([]);
-          }}
-          changed={async (catalogOnly) => {
-            workspaceSessions.libraryReads.invalidate();
-            if (catalogOnly) await refreshLibrary();
-            else await refreshOrThrow();
-          }}
-        />
-      )}
       {passageDialog && song && (
         <PassageDialog
           key={song.contentId}
@@ -1275,27 +906,6 @@ export default function App() {
           start={loopStart}
           end={loopEnd}
           close={() => setPassageDialog(false)}
-          changed={async () => {
-            const session = await api.session();
-            installSession(session);
-            await updateCollection();
-          }}
-        />
-      )}
-      {startupReady && <div className="product-browser-host" hidden={productScreens.screen!=="library"||libraryAdvanced||libraryLaunch!=="normal"||!!librarySearch} inert={productScreens.screen!=="library"||libraryAdvanced||libraryLaunch!=="normal"||!!librarySearch}><SongBrowser
-        rows={allLibraryRows} ready={libraryReady} current={song} collection={collection}
-        visible={productScreens.screen==="library"&&!libraryAdvanced} back={()=>void goHome()}
-        unavailable={workspaceUnavailable}
-        menu={()=>setAppMenuOpen(v=>!v)} manage={()=>setLibraryAdvanced(true)}
-        open={openSongSetup}
-        openProblem={songOpenProblem}/></div>}
-      {libraryDialog && productScreens.screen==="library" && startupReady && (libraryAdvanced || libraryLaunch!=="normal" || !!librarySearch) && <FolderManager changed={refreshWithCollection} close={()=>{setLibraryAdvanced(false);setLibraryLaunch("normal");setLibrarySearch(null);}}/>}
-      {libraryScoreRange && (
-        <ScoreRangeDialog
-          song={libraryScoreRange.song}
-          first={libraryScoreRange.first}
-          last={libraryScoreRange.last}
-          close={() => setLibraryScoreRange(null)}
           changed={async () => {
             const session = await api.session();
             installSession(session);
@@ -1367,13 +977,6 @@ export default function App() {
         recent={recentCommands}
         context={`${workspace === "library" ? "曲库" : workspace === "review" ? "回顾" : "练习"} · ${song ? `当前练习：${song.title}` : "还未选择练习曲目"}`}
         shortcut={display.shortcuts.commands}
-        libraryUnavailable={commandActions.find((item) => item.id === "library")?.unavailable ?? null}
-        searchLibrary={async (query, signal) => {
-          if (!(await changeWorkspace("library", signal)) || signal.aborted) return false;
-          setLibraryLaunch("normal");
-          setLibrarySearch({ id: crypto.randomUUID(), query });
-          return true;
-        }}
         close={() => setCommandsOpen(false)}
         used={(id) => setRecentCommands((old) => [id, ...old.filter((value) => value !== id)].slice(0, 6))}
         silence={async () => {

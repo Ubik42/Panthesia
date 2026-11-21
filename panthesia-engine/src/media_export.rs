@@ -8,20 +8,16 @@ use std::path::Path;
 #[serde(rename_all = "camelCase")]
 pub enum MediaExportKind {
     Midi,
-    PracticeMidi,
-    Package,
-}
+    PracticeMidi,}
 impl MediaExportKind {
     pub fn extension(self) -> &'static str {
         match self {
             Self::Midi | Self::PracticeMidi => "mid",
-            Self::Package => "neopiece",
         }
     }
     pub fn maximum(self) -> usize {
         match self {
             Self::Midi | Self::PracticeMidi => 32_000_000,
-            Self::Package => 256_000_000,
         }
     }
 }
@@ -88,7 +84,7 @@ impl Engine {
         let (reply, receiver) = mpsc::sync_channel(1);
         self.tx
             .send(runtime_request::Request::AssetReadContext {
-                registry: input.kind == MediaExportKind::Package,
+                registry: false,
                 export: true,
                 editor: false,
                 scope: None,
@@ -119,11 +115,6 @@ impl Engine {
                     }
                     MediaExportKind::Midi => {
                         (reader.prepare_midi_export()?, MediaExportSummary::default())
-                    }
-                    MediaExportKind::Package => {
-                        let (bytes, summary) = reader.prepare_song_package_checked(check)?;
-                        title=summary["title"].as_str().unwrap_or(&title).to_owned();
-                        (bytes, MediaExportSummary::from_package(&summary))
                     }
                 };
                 check()?;

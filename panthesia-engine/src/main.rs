@@ -1,5 +1,5 @@
 mod service_lane;
-use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock, library};
+use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock};
 use std::{path::PathBuf, sync::{Arc,Mutex, atomic::{AtomicUsize, Ordering}}};
 use tiny_http::{Header, Method, Response, Server};
 
@@ -19,9 +19,6 @@ struct DeviceRefresh {
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args: Vec<_> = std::env::args().collect();
-    let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\Datasets"));
     let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/web-data"));
@@ -33,9 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
     let data_lock = DataRootLock::acquire(&data)?;
     let data = data_lock.root().to_path_buf();
-    let rows = Arc::new(Mutex::new(Vec::new()));
     let engine = Engine::start(data.clone(), data_lock, font, args.iter().any(|a| a == "--silent"))?;
-    let monitor=engine.start_library_monitor(root.clone(),rows.clone());
     let address = panthesia_core::product::env("PANTHESIA_SERVICE_ADDR").unwrap_or("127.0.0.1:32124".into());
     if !address.starts_with("127.0.0.1:") {
         return Err("服务只允许监听本机回环地址".into());
@@ -45,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let activity = Arc::new(Activity::default());
     let handler = {
         let activity = activity.clone();
-        Arc::new(move |request| handle_request(request, &engine, &rows, &data, &monitor, &activity))
+        Arc::new(move |request| handle_request(request, &engine, &data, &activity))
     };
     let business = service_lane::Lane::new("neothesia-http-work", 1, 16, activity.business.clone(), {
         let handler = handler.clone(); move |request| handler(request)
@@ -84,9 +79,7 @@ fn client_json<T:serde::de::DeserializeOwned>(request:&mut tiny_http::Request,li
     serde_json::from_slice(&bytes).map_err(|error|error.to_string())
 }
 
-fn handle_request(mut request: tiny_http::Request, engine: &Engine,
-    rows: &Arc<Mutex<Vec<library::SongRow>>>, data: &PathBuf,
-    monitor: &panthesia_engine::library_monitor::Monitor, activity: &Activity) {
+fn handle_request(mut request: tiny_http::Request, engine: &Engine, data: &PathBuf, activity: &Activity) {
         let origin = request
             .headers()
             .iter()
@@ -119,19 +112,16 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
             if let Some(origin)=origin_header {response.add_header(Header::from_bytes("Access-Control-Allow-Origin",origin).unwrap());}
             let _=request.respond(response);return;
         }
-        if request.method()==&Method::Post && ["/api/package/stage","/api/package/export","/api/midi/export"].contains(&url.as_str()) {
+        if request.method()==&Method::Post && ["/api/midi/export"].contains(&url.as_str()) {
             let result=(||->Result<(Vec<u8>,String),String>{
                 if !request.headers().iter().any(|h|h.field.equiv("X-Panthesia-Client")&&h.value.as_str()=="web") {return Err("缺少本地客户端标识".into());}
-                if url.ends_with("/stage") {
-                    let mut bytes=Vec::new();request.as_reader().take(256_000_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
-                    let v=engine.stage_package(bytes)?;Ok((serde_json::to_vec(&v).map_err(|e|e.to_string())?,"application/json".into()))
-                } else {
+                {
                     let mut body=Vec::new();request.as_reader().take(4097).read_to_end(&mut body).map_err(|e|e.to_string())?;
                     if body.len()>4096{return Err("导出请求过大".into());}
                     let value:serde_json::Value=if body.is_empty(){serde_json::json!({})}else{serde_json::from_slice(&body).map_err(|e|e.to_string())?};
                     let content_id=value["contentId"].as_str().map(str::to_owned).or_else(||engine.snapshot().content_id).ok_or("请先打开曲目或保存录音")?;
                     let midi=url=="/api/midi/export";
-                    let output=engine.prepare_media_export(panthesia_engine::media_export::MediaExportInput{content_id,kind:if midi{panthesia_engine::media_export::MediaExportKind::Midi}else{panthesia_engine::media_export::MediaExportKind::Package}},&||Ok(()))?;
+                    let output=engine.prepare_media_export(panthesia_engine::media_export::MediaExportInput{content_id,kind:panthesia_engine::media_export::MediaExportKind::Midi},&||Ok(()))?;
                     Ok((output.bytes,if midi{"audio/midi"}else{"application/zip"}.into()))
                 }
             })();
@@ -140,26 +130,16 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
             if let Some(origin)=origin_header {response.add_header(Header::from_bytes("Access-Control-Allow-Origin",origin).unwrap());}
             let _=request.respond(response);return;
         }
-        if request.method()==&Method::Post && ["/api/score-attachment/add","/api/library-score/add","/api/library-score/check","/api/score-attachment/read"].contains(&url.as_str()){
+        if request.method()==&Method::Post && ["/api/score-attachment/add","/api/score-attachment/read"].contains(&url.as_str()){
             let result=(||->Result<(Vec<u8>,String),String>{
               if !request.headers().iter().any(|h|h.field.equiv("X-Panthesia-Client")&&h.value.as_str()=="web"){return Err("缺少本地客户端标识".into())}
-              if url.ends_with("/check") {
-                let header=|field:&'static str|request.headers().iter().find(|h|h.field.equiv(field)).map(|h|h.value.as_str().to_owned());
-                let path=decode_name(&header("X-Panthesia-Path").ok_or("未指定曲目位置")?)?;
-                let content_id=header("X-Panthesia-Song").ok_or("未指定曲目")?;
-                let kind=header("X-Panthesia-Kind").ok_or("未指定谱面类型")?;
-                let target=header("X-Panthesia-Target");
-                let mut bytes=Vec::new();request.as_reader().take(48_000_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
-                let result=engine.command(Command::CheckLibraryScoreImport{path:path.into(),content_id,bytes,kind,target})?;
-                return Ok((serde_json::to_vec(&result).unwrap(),"application/json".into()));
-              }
               if url.ends_with("/add"){
                 let cid=request.headers().iter().find(|h|h.field.equiv("X-Panthesia-Song")).map(|h|h.value.as_str().to_owned()).ok_or("未指定曲目")?;
                 let encoded=request.headers().iter().find(|h|h.field.equiv("X-Panthesia-Name")).map(|h|h.value.as_str().to_owned()).ok_or("未指定谱面名称")?;
                 let name=decode_name(&encoded)?;
                 let append=request.headers().iter().find(|h|h.field.equiv("X-Panthesia-Append")).map(|h|h.value.as_str().to_owned());
                 let mut bytes=Vec::new();request.as_reader().take(48_000_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
-                let value=if url=="/api/library-score/add" {let header=|field:&'static str|request.headers().iter().find(|h|h.field.equiv(field)).map(|h|h.value.as_str().to_owned());let path=decode_name(&header("X-Panthesia-Path").ok_or("未指定曲目位置")?)?;let kind=header("X-Panthesia-Kind").ok_or("未指定谱面类型")?;let target=header("X-Panthesia-Target");let page=header("X-Panthesia-Page").unwrap_or_else(||"0".into()).parse().map_err(|_|"页码无效")?;engine.command(Command::AddLibraryScore{path:path.into(),content_id:cid,name,bytes,kind,target,page})?}else{engine.command(Command::AddScoreAttachment{content_id:cid,name,bytes,append})?};
+                let value={engine.command(Command::AddScoreAttachment{content_id:cid,name,bytes,append})?};
                 Ok((serde_json::to_vec(&value).unwrap(),"application/json".into()))
               }else{
                 let mut b=String::new();request.as_reader().take(4097).read_to_string(&mut b).map_err(|e|e.to_string())?;if b.len()>4096{return Err("请求过大".into())}
@@ -212,10 +192,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                         else { engine.refresh_devices(input.target.as_deref()) };
                     result.and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
                 },
-                (&Method::Get, "/api/library") => {
-                    let current=rows.lock().map_err(|_|"曲库列表暂不可用")?.clone();
-                    Ok(serde_json::json!({"songs":library::enriched(&current,&data)}))
-                },
                 (&Method::Post, "/api/history-read") => {
                     if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") { return Err("缺少本地客户端标识".into()); }
                     let mut body = String::new();
@@ -239,37 +215,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     if body.len() > 16_000_000 { return Err("请求过大".into()); }
                     let input: panthesia_engine::ScoreMappingRequest = serde_json::from_str(&body).map_err(|error| error.to_string())?;
                     engine.map_score(input)
-                }
-                (&Method::Post, "/api/music-import/begin") => {
-                    serde_json::to_value(engine.begin_music_import(client_json(&mut request, 4096, "曲目传输")?)?).map_err(|error| error.to_string())
-                }
-                (&Method::Post, "/api/exercise/prepare") => {
-                    serde_json::to_value(engine.prepare_exercise(client_json(&mut request, 4096, "技术练习")?)?).map_err(|error| error.to_string())
-                }
-                (&Method::Post, "/api/package/prepare") => {
-                    serde_json::to_value(engine.prepare_package(client_json(&mut request, 4096, "曲目包")?)?).map_err(|error| error.to_string())
-                }
-                (&Method::Post, "/api/package/preview") => {
-                    serde_json::to_value(engine.refresh_package_preview(client_json(&mut request, 4096, "曲目包预览")?)?).map_err(|error| error.to_string())
-                }
-                (&Method::Post, "/api/music-import/chunk") => {
-                    require_client(&request)?;
-                    let id = request.headers().iter().find(|header| header.field.equiv("X-Panthesia-Upload"))
-                        .map(|header| header.value.as_str().to_owned()).filter(|id| id.len() <= 256).ok_or("缺少文件传输编号")?;
-                    let offset = request.headers().iter().find(|header| header.field.equiv("X-Panthesia-Offset"))
-                        .and_then(|header| header.value.as_str().parse::<usize>().ok()).ok_or("文件分块位置无效")?;
-                    let mut bytes = Vec::new();
-                    request.as_reader().take(524_289).read_to_end(&mut bytes).map_err(|error| error.to_string())?;
-                    serde_json::to_value(engine.write_music_chunk(panthesia_engine::music_import::Chunk { id, offset, bytes })?).map_err(|error| error.to_string())
-                }
-                (&Method::Post, "/api/music-import/finish") | (&Method::Post, "/api/music-import/read") | (&Method::Post, "/api/music-import/cancel") => {
-                    let selection: panthesia_engine::music_import::Selection = client_json(&mut request, 1024, "曲目导入")?;
-                    let receipt = match url.as_str() {
-                        "/api/music-import/finish" => engine.finish_music_import(&selection.id),
-                        "/api/music-import/cancel" => engine.cancel_music_preparation(&selection.id, selection.kind),
-                        _ => engine.read_music_import(&selection.id),
-                    }?;
-                    serde_json::to_value(receipt).map_err(|error| error.to_string())
                 }
                 (&Method::Post, "/api/playback-adjustment") => {
                     if !request.headers().iter().any(|h| h.field.equiv("X-Panthesia-Client") && h.value.as_str() == "web") {
@@ -323,28 +268,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine,
                     }
                     if url == "/api/history-read-scoped" {
                         return engine.read_history(panthesia_engine::HistoryReadRequest::Command(command));
-                    }
-                    if matches!(command,Command::LibraryMonitorStatus){return serde_json::to_value(monitor.status()?).map_err(|e|e.to_string());}
-                    if let Command::SetLibraryMonitor{enabled}=command {monitor.set_enabled(enabled)?;return serde_json::to_value(monitor.status()?).map_err(|e|e.to_string());}
-                    if matches!(command, Command::LibraryFolders) {
-                        return library::folder_status(&data);
-                    }
-                    if matches!(
-                        command,
-                        Command::RefreshLibrary | Command::RemoveLibraryFolder { .. }
-                    ) {
-                        if let Command::RemoveLibraryFolder { path } = command {
-                            library::remove_folder(&data, &path)?;
-                        }
-                        monitor.refresh()?;
-                        return Ok(serde_json::json!({"songs":monitor.rows()?,"scheduled":true}));
-                    }
-                    let paths = library::command_paths(&command);
-                    if !paths.is_empty() {
-                        let known = engine.command(Command::Collection)?;
-                        let indexed = engine.command(Command::LibraryWorkspace)?;
-                        let registered = rows.lock().unwrap();
-                        library::validate_paths(paths, &registered, &known, &indexed)?;
                     }
                     engine.command(command)
                 }

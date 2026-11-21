@@ -131,18 +131,10 @@ export function PaperScore({
     if (owner !== currentOwner.current) return;
     const ticket = ++readGeneration.current;
     const readingTickets = capturePaperViewReads(contentId);
-    const v = libraryPath
-      ? (
-          await command<{ papers: Papers }>({
-            type: "libraryScores",
-            content_id: contentId,
-            path: libraryPath,
-          })
-        ).papers
-      : await command<Papers>({
-          type: "scoreAttachments",
-          content_id: contentId,
-        });
+    const v = await command<Papers>({
+      type: "scoreAttachments",
+      content_id: contentId,
+    });
     if (v.contentId !== contentId || !Array.isArray(v.attachments))
       throw new Error("谱页回复与当前曲目不一致，请重新读取。");
     if (previewBook) v.active = previewBook;

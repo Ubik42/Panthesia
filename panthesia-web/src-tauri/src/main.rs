@@ -1,7 +1,6 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 mod diagnostics;
 mod score_batch_export;
-mod music_import_bridge;
 mod score_jobs;
 mod score_draft_bridge;
 mod score_edit;
@@ -21,9 +20,9 @@ mod musescore_program;
 mod conversion_files;
 mod located_paper_bridge;
 mod open_requests;
-use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock, library};
+use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock};
 use std::path::PathBuf;
-use tauri::{Manager,Emitter};
+use tauri::Manager;
 
 struct State {
     score_jobs: score_jobs::Jobs,
@@ -33,8 +32,6 @@ struct State {
     allow_closing_drafts: std::sync::atomic::AtomicBool,
     desktop_close: desktop_close::Bridge,
     engine: Engine,
-    songs: std::sync::Arc<std::sync::Mutex<Vec<library::SongRow>>>,
-    monitor: panthesia_engine::library_monitor::Monitor,
     data: PathBuf,
     font: PathBuf,
     bundled_font: PathBuf,
@@ -215,11 +212,8 @@ async fn open_practice_data_folder(state:tauri::State<'_,State>)->Result<(),Stri
 
 #[tauri::command]
 async fn reveal_library_file(state:tauri::State<'_,State>,path:PathBuf)->Result<(),String>{
-    let known=state.engine.command(Command::Collection)?;let indexed=state.engine.command(Command::LibraryWorkspace)?;
-    {let rows=state.songs.lock().map_err(|e|e.to_string())?;library::validate_repository_paths(&state.data,vec![path.clone()],&rows,&known,&indexed)?;}
-    let data=state.data.clone();
+    let _ = &state;
     tauri::async_runtime::spawn_blocking(move||{
-        let path=if path.is_file(){path}else{panthesia_engine::song_repository::SongRepository::open(&data).and_then(|repository|repository.resolve(&path,None)).unwrap_or(path)};
         let requested_file=path.is_file();
         let mut target=path.clone();
         if !requested_file {while !target.is_dir(){if !target.pop(){return Err("原文件和上级文件夹均不可用".into());}}}
@@ -255,14 +249,10 @@ async fn native_startup_check(
         startup_stage("window_visible");
     }
     let engine = state.engine.clone();
-    let row = state
-        .songs
-        .lock()
-        .map_err(|e| e.to_string())?
-        .first()
-        .cloned()
-        .ok_or("内置练习缺失")?;
-    let count = state.songs.lock().map_err(|e| e.to_string())?.len();
+    // The check opens the bundled five-finger exercise from the data folder.
+    let starter = state.data.join("startup-check").join("five-finger.mid");
+    std::fs::create_dir_all(starter.parent().ok_or("检查目录无效")?).map_err(|e| e.to_string())?;
+    std::fs::write(&starter, include_bytes!("../../../panthesia-engine/assets/five-finger.mid")).map_err(|e| e.to_string())?;
     let font = state.font.clone();
     let _data = state.data.clone();
     let _bundled_font = state.bundled_font.clone();
@@ -273,7 +263,7 @@ async fn native_startup_check(
         if !notation_ready {return Err("桌面乐谱 WASM 渲染器未通过启动检查".into());}
         if !ready { return Err("桌面前端未完成真实引擎连接".into()); }
         startup_stage("frontend_evidence_ready");
-        let song = engine.command(Command::Load { path: row.path, title: row.title })?;
+        let song = engine.command(Command::OpenFile { path: starter })?;
         startup_stage("song_loaded");
         if song["notes"].as_array().map(Vec::len) != Some(9) { return Err("内置练习解析失败".into()); }
         engine.command(Command::Speed { value: 0.5 })?;
@@ -281,7 +271,7 @@ async fn native_startup_check(
         panthesia_engine::probe_audio(&font)?;
         startup_stage("audio_ready");
         if let Some(path) = panthesia_core::product::env_os("PANTHESIA_STARTUP_CHECK_LOG") {
-            std::fs::write(path, format!("PASS\nvisible={}\nfrontend=ready\nIPC=ready\nlibraryRows={count}\nnotes=9\naudio=ready\nnotationWasm=ready\npdfPages=ready\nmidiConnected={}\n", !headless_check(),engine.snapshot().input_connected)).map_err(|e| e.to_string())?;
+            std::fs::write(path, format!("PASS\nvisible={}\nfrontend=ready\nIPC=ready\nnotes=9\naudio=ready\nnotationWasm=ready\npdfPages=ready\nmidiConnected={}\n", !headless_check(),engine.snapshot().input_connected)).map_err(|e| e.to_string())?;
         }
         Ok(())
     }).await.unwrap_or_else(|error|Err(format!("启动检查线程未完成：{error}")));
@@ -309,6 +299,7 @@ async fn pick_song_file(state:tauri::State<'_,State>,kind:String,near:Option<Pat
     let mut dialog=file_dialog(&state.data,"music");
     if let Some(folder)=near.as_deref().and_then(std::path::Path::parent).filter(|p|p.is_dir()){dialog=dialog.set_directory(folder);}
     let dialog=match kind.as_str(){
+        "music"=>dialog.set_title("打开乐曲").add_filter("乐曲与歌曲清单", &["mid","midi","kar","musicxml","mxl","xml","panthesia"]),
         "performance"=>dialog.set_title("选择同一首歌的另一个 MIDI 版本").add_filter("MIDI", &["mid","midi","kar"]),
         "paper"=>dialog.set_title("选择谱页原件").add_filter("谱页", &["pdf","png","jpg","jpeg","webp"]),
         _=>dialog.set_title("选择伴奏、人声或原音频").add_filter("音频与视频", &["wav","mp3","flac","ogg","m4a","aac","opus","mp4","mkv","webm"]),
@@ -338,121 +329,6 @@ async fn import_score_attachments(state:tauri::State<'_,State>,content_id:String
  tauri::async_runtime::spawn_blocking(move||{let _close_worker=_close_worker;let mut results=Vec::new();let only_append=append.is_some();let mut append_to=append;for path in paths{let result=(||->Result<serde_json::Value,String>{if std::fs::metadata(&path).map_err(|e|e.to_string())?.len()>48_000_000{return Err("谱面超过 48 MB".into())}let bytes=std::fs::read(&path).map_err(|e|e.to_string())?;let image=!bytes.starts_with(b"%PDF-");let hash=blake3::hash(&bytes).to_hex().to_string();let value=engine.command(Command::AddScoreAttachment{content_id:content_id.clone(),name:path.file_name().unwrap_or_default().to_string_lossy().into(),bytes,append:if image||only_append{append_to.clone()}else{None}})?;link_imported_paper_source(&engine,&content_id,&value,path.clone(),&hash)?;if image&&append_to.is_none(){append_to=value["active"].as_str().map(String::from);}Ok(value)})();results.push(match result{Ok(_)=>serde_json::json!({"name":path.file_name().unwrap_or_default().to_string_lossy(),"ok":true}),Err(e)=>serde_json::json!({"name":path.file_name().unwrap_or_default().to_string_lossy(),"ok":false,"error":e})});}Ok(Some(serde_json::json!({"results":results}))) }).await.map_err(|e|e.to_string())?
 }
 #[tauri::command]
-async fn import_library_scores(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, State>,
-    batch_id: String,
-    path: String,
-    content_id: String,
-    kind: String,
-    target: Option<String>,
-    page: usize,
-) -> Result<Option<serde_json::Value>, String> {
-    let _close_lease=score_edit::reserve(&state,"native-import-library-scores")?;
-    let _close_worker=_close_lease.clone();
-
-    let location_kind=if kind=="repairPaper"||kind=="notation"&&target.is_some(){"repair"}else if kind=="notation"{"notation"}else{"paper"};
-    let dialog = file_dialog(&state.data,location_kind).set_title("为曲库曲目添加或修复谱面");
-    let dialog = if kind == "notation" {
-        dialog.add_filter("演奏乐谱", &["musicxml", "xml", "mxl"])
-    } else if kind == "append" {
-        dialog.add_filter("图片谱页", &["png", "jpg", "jpeg", "webp"])
-    } else {
-        dialog.add_filter("谱页", &["pdf", "png", "jpg", "jpeg", "webp"])
-    };
-    let Some(files) = dialog.pick_files().await else {
-        return Ok(None);
-    };
- for file in &files{remember_location(&state.data,location_kind,file.path(),false);}
-    let files = files
-        .into_iter()
-        .map(|f| f.path().to_path_buf())
-        .collect::<Vec<_>>();
-    if files.len() > 100 {
-        return Err("一次最多添加 100 份文件".into());
-    }
-    if (kind == "repairPaper" || kind == "notation" && target.is_some()) && files.len() != 1 {
-        return Err("修复时请选择一份原文件".into());
-    }
-    let registry = state.score_imports.clone();
-    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    if batch_id.len() > 64 || batch_id.is_empty() {
-        return Err("导入批次无效".into());
-    }
-    {
-        let mut map = registry.lock().map_err(|_| "导入队列正忙")?;
-        if map.len() >= 8 || map.contains_key(&batch_id) {
-            return Err("导入队列正忙或批次重复".into());
-        }
-        map.insert(batch_id.clone(), cancel.clone());
-    }
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || {let _close_worker=_close_worker;
-        let total = files.len();
-        let mut results = vec![];
-        let mut append_to = target.clone();
-        for (i, file) in files.into_iter().enumerate() {
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) { break; }
-            let name = file.file_name().unwrap_or_default().to_string_lossy().to_string();
-            let _ = app.emit("library-score-import-progress", serde_json::json!({
-                "batchId": batch_id, "current": i+1, "total": total,
-                "name": name, "results": results
-            }));
-            let result = (|| -> Result<(String, &'static str, Option<String>), String> {
-                let limit = if kind == "notation" { panthesia_core::source_score_window::ASSET_LIMIT } else { 48_000_000 };
-                if std::fs::metadata(&file).map_err(|e|e.to_string())?.len() > limit as u64 {
-                    return Err("文件超过当前谱面格式容量上限".into());
-                }
-                let bytes = std::fs::read(&file).map_err(|e|e.to_string())?;
-                let hash=blake3::hash(&bytes).to_hex().to_string();
-                let image = kind == "paper" && !bytes.starts_with(b"%PDF-");
-                let actual = if image && append_to.is_some() { "append" } else { &kind };
-                let value = engine.command(Command::AddLibraryScore {
-                    path: path.clone().into(), content_id: content_id.clone(), name: name.clone(), bytes,
-                    kind: actual.into(), target: if image { append_to.clone() } else { target.clone() }, page
-                })?;
-                if image && append_to.is_none() {
-                    append_to = value["active"].as_str().map(String::from);
-                }
-                let linked = if kind=="notation" {
-                    value["id"].as_str().ok_or("谱面版本编号缺失".to_string())
-                        .and_then(|id| engine.command(Command::LinkScoreSource {midi_path:path.clone().into(),content_id:content_id.clone(),version_id:id.into(),path:file.clone(),default_bpm:0}).map(|_|()))
-                        .map_err(|e|format!("谱面已保存，原文件关联失败：{e}"))
-                } else if ["paper","append"].contains(&kind.as_str()) {
-                    link_imported_paper_source(&engine,&content_id,&value,file.clone(),&hash)
-                } else if kind=="repairPaper" {
-                    target.clone().ok_or("待修复谱面未指定".to_string())
-                        .and_then(|book| engine.command(Command::LinkPaperSource{content_id:content_id.clone(),book,asset:hash.clone(),path:Some(file.clone()),baseline:None}).map(|_|()))
-                        .map_err(|e|format!("谱页已修复，原件关联失败：{e}"))
-                } else { Ok(()) };
-                let saved_id = if kind == "notation" || kind == "repairPaper" { value["id"].as_str() } else { value["active"].as_str() }
-                    .unwrap_or_default().to_string();
-                Ok((saved_id, if kind == "notation" { "notation" } else { "paper" }, linked.err()))
-            })();
-            if result.as_ref().err().is_some_and(|error| ["后台任务已取消","已取消未提交","后台任务响应超时","保存仍在进行","正在保存或恢复","尚待恢复"].iter().any(|marker|error.contains(*marker))) {
-                cancel.store(true,std::sync::atomic::Ordering::Release);
-            }
-            results.push(match result {
-                Ok((id, saved_kind, Some(warning))) => serde_json::json!({"name":name,"ok":true,"id":id,"kind":saved_kind,"warning":warning}),
-                Ok((id, saved_kind, None)) => serde_json::json!({"name":name,"ok":true,"id":id,"kind":saved_kind}),
-                Err(error) => serde_json::json!({"name":name,"ok":false,"error":error})
-            });
-        }
-        let stopped = cancel.load(std::sync::atomic::Ordering::Relaxed);
-        if let Ok(mut map) = registry.lock() { map.remove(&batch_id); }
-        Ok(Some(serde_json::json!({"results":results,"stopped":stopped,"total":total})))
-    }).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-fn cancel_library_score_import(
-    state: tauri::State<'_, State>,
-    batch_id: String,
-) -> Result<(), String> {
-    let map = state.score_imports.lock().map_err(|_| "导入队列正忙")?;
-    if let Some(flag) = map.get(&batch_id) {flag.store(true, std::sync::atomic::Ordering::Relaxed);}
-    Ok(())
-}
-#[tauri::command]
 async fn export_interface_settings(state:tauri::State<'_,State>,contents:String)->Result<Option<String>,String>{
  let lease=score_edit::reserve(&state,"interface-settings-export")?;
  if contents.len()>1_000_000{return Err("界面设置备份超过 1 MB".into());}
@@ -463,14 +339,6 @@ async fn export_interface_settings(state:tauri::State<'_,State>,contents:String)
  tauri::async_runtime::spawn_blocking(move||{let _lease=lease;panthesia_core::utils::atomic_file::write(&path,contents.as_bytes()).map_err(|e|e.to_string())?;Ok(Some(path.to_string_lossy().to_string()))}).await.map_err(|e|e.to_string())?
 }
 
-#[tauri::command]
-async fn library_list(state:tauri::State<'_,State>)->Result<serde_json::Value,String> {
-    let rows=state.songs.clone();let data=state.data.clone();
-    tauri::async_runtime::spawn_blocking(move|| {
-        let rows=rows.lock().map_err(|e|e.to_string())?.clone();
-        Ok(serde_json::json!({"songs":library::enriched(&rows,&data)}))
-    }).await.map_err(|e|e.to_string())?
-}
 
 #[tauri::command]
 fn engine_state(state: tauri::State<'_, State>) -> panthesia_engine::Snapshot {
@@ -520,14 +388,6 @@ async fn start_practice_demo(
         .await.map_err(|e| e.to_string())?
 }
 #[tauri::command]
-async fn music_file_exists(path:PathBuf)->Result<bool,String>{
-    tauri::async_runtime::spawn_blocking(move||match std::fs::metadata(path){
-        Ok(value)=>Ok(value.is_file()),
-        Err(error) if error.kind()==std::io::ErrorKind::NotFound=>Ok(false),
-        Err(error)=>Err(error.to_string()),
-    }).await.map_err(|error|error.to_string())?
-}
-#[tauri::command]
 async fn read_notation(state:tauri::State<'_,State>,request:panthesia_engine::NotationReadRequest)->Result<serde_json::Value,String>{
     let engine=state.engine.clone();tauri::async_runtime::spawn_blocking(move||engine.read_notation(request)).await.map_err(|e|e.to_string())?
 }
@@ -565,26 +425,6 @@ async fn engine_command(
     state: tauri::State<'_, State>,
     command: Command,
 ) -> Result<serde_json::Value, String> {
-    if matches!(command,Command::LibraryMonitorStatus){return serde_json::to_value(state.monitor.status()?).map_err(|e|e.to_string());}
-    if let Command::SetLibraryMonitor{enabled}=command {state.monitor.set_enabled(enabled)?;return serde_json::to_value(state.monitor.status()?).map_err(|e|e.to_string());}
-    if matches!(command, Command::LibraryFolders) {
-        return library::folder_status(&state.data);
-    }
-    if matches!(
-        command,
-        Command::RefreshLibrary | Command::RemoveLibraryFolder { .. }
-    ) {
-        if let Command::RemoveLibraryFolder{path}=command {library::remove_folder(&state.data,&path)?;}
-        state.monitor.refresh()?;
-        return Ok(serde_json::json!({"songs":state.monitor.rows()?,"scheduled":true}));
-    }
-    let paths = library::command_paths(&command);
-    if !paths.is_empty() {
-        let known = state.engine.command(Command::Collection)?;
-        let indexed = state.engine.command(Command::LibraryWorkspace)?;
-        let songs = state.songs.lock().map_err(|e| e.to_string())?;
-        library::validate_repository_paths(&state.data,paths, &songs, &known, &indexed)?;
-    }
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || engine.command(command))
         .await
@@ -599,54 +439,6 @@ async fn link_score_source(state:tauri::State<'_,State>,midi_path:String,content
         if let Some(id)=expected_engine {engine.check_engine(&id)?;}
         engine.command(Command::LinkScoreSource{midi_path:midi_path.into(),content_id,version_id,path,default_bpm:0}).map(Some)
     }).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-async fn import_midi(state: tauri::State<'_, State>, choose_only: Option<bool>) -> Result<Option<serde_json::Value>, String> {
-    let _close_lease=score_edit::reserve(&state,"native-import-midi")?;
-    let _close_worker=_close_lease.clone();
-
-    let Some(file) = file_dialog(&state.data,"music")
-        .set_title("打开 MIDI 或乐谱")
-        .add_filter(
-            "MIDI / MusicXML",
-            &["mid", "midi", "musicxml", "xml", "mxl"],
-        )
-        .pick_file()
-        .await
-    else {
-        return Ok(None);
-    };
-    let path = file.path().to_path_buf();remember_location(&state.data,"music",file.path(),false);
-    let title = path
-        .file_stem()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-    if choose_only.unwrap_or(false) {
-        let extension = path.extension().unwrap_or_default().to_string_lossy().to_ascii_lowercase();
-        let kind = if ["xml", "musicxml", "mxl"].contains(&extension.as_str()) { "score" } else { "midi" };
-        return Ok(Some(serde_json::json!({"path":path,"title":title,"kind":kind})));
-    }
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || {let _close_worker=_close_worker;
-        let extension = path
-            .extension()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_ascii_lowercase();
-        if ["xml", "musicxml", "mxl"].contains(&extension.as_str()) {
-            let size = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
-            if size > panthesia_core::source_score_window::ASSET_LIMIT as u64 {
-                return Err("原谱资产超过 64 MiB".into());
-            }
-            engine.command(Command::ImportScoreOriginal {path,default_bpm:120})
-        } else {
-            engine.command(Command::Load { path, title })
-        }
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map(Some)
 }
 #[tauri::command]
 async fn export_midi(state: tauri::State<'_, State>) -> Result<Option<String>, String> {
@@ -834,126 +626,7 @@ async fn export_annotated_score(state: tauri::State<'_, State>, request: serde_j
     let saved=tauri::async_runtime::spawn_blocking(move||{let _lease=lease;export_files::write(&root,&path,&artifact.bytes,"musicxml")}).await.map_err(|e|e.to_string())??;
     remember_location(&state.data,"exportScore",file.path(),false);Ok(Some(saved))
 }
-#[tauri::command]
-async fn pick_package(state:tauri::State<'_,State>)->Result<Option<panthesia_engine::package_preview::PackagePreview>,String> {
-    let _close_lease=score_edit::reserve(&state,"native-pick-package")?;
-    let _close_worker=_close_lease.clone();
 
-    let Some(file)=file_dialog(&state.data,"piece").set_title("选择曲目包").add_filter("Panthesia 曲目包", &["neopiece"]).pick_file().await else {return Ok(None);};
-    let path=file.path().to_path_buf();remember_location(&state.data,"piece",file.path(),false);let engine=state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || {let _close_worker=_close_worker;
-        use std::io::Read;
-        let mut bytes=Vec::new();
-        std::fs::File::open(&path).map_err(|e|e.to_string())?.take(256_000_001).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
-        if bytes.len()>256_000_000 {return Err("曲目包超过 256 MB".into());}
-        let mut result=engine.stage_package(bytes)?;
-        result.file_name=Some(path.file_name().unwrap_or_default().to_string_lossy().into_owned());Ok(Some(result))
-    }).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-async fn stage_package(state:tauri::State<'_,State>,bytes:Vec<u8>)->Result<panthesia_engine::package_preview::PackagePreview,String> {
-    let engine=state.engine.clone();tauri::async_runtime::spawn_blocking(move ||engine.stage_package(bytes)).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-async fn export_package(state: tauri::State<'_, State>) -> Result<Option<String>, String> {
-    media_export_bridge::legacy_save(&state, panthesia_engine::media_export::MediaExportKind::Package).await
-}
-
-#[tauri::command]
-async fn repair_midi(state:tauri::State<'_,State>,content_id:String,from:String,choose_only:Option<bool>)->Result<Option<serde_json::Value>,String>{
-    let _close_lease=score_edit::reserve(&state,"native-repair-midi")?;
-
- let Some(file)=file_dialog(&state.data,"repair").set_title("选择同一曲目的新位置").add_filter("MIDI", &["mid","midi"]).pick_file().await else{return Ok(None);};
- let to=file.path().to_path_buf();remember_location(&state.data,"repair",file.path(),false);let engine=state.engine.clone();
- if choose_only==Some(true) { return Ok(Some(serde_json::json!(to))); }
- tauri::async_runtime::spawn_blocking(move||{let _close_worker=_close_lease;engine.command(Command::RelinkLibrary{items:vec![panthesia_engine::library_repairs::RelinkItem{content_id,from:PathBuf::from(from),to}]}).map(Some)}).await.map_err(|e|e.to_string())?
-}
-#[tauri::command]
-async fn relocate_midi(
-    state: tauri::State<'_, State>,
-    content_id: String,
-) -> Result<Option<serde_json::Value>, String> {
-    let _close_lease=score_edit::reserve(&state,"native-relocate-midi")?;
-    let _close_worker=_close_lease.clone();
-
-    let Some(file) = file_dialog(&state.data,"repair")
-        .set_title("重新定位原 MIDI 文件")
-        .add_filter("MIDI", &["mid", "midi"])
-        .pick_file()
-        .await
-    else {
-        return Ok(None);
-    };
-    let path = file.path().to_path_buf();remember_location(&state.data,"repair",file.path(),false);
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || {let _close_worker=_close_worker;
-        let parsed = panthesia_music::MidiFile::new(&path)?;
-        if parsed.content_id != content_id {
-            return Err("所选文件的内容与原曲目不同，请通过打开 MIDI 导入为新曲目".into());
-        }
-        let collection = engine.command(Command::Collection)?;
-        let indexed = engine.command(Command::LibraryWorkspace)?;
-        let original = collection["songs"]
-            .as_array()
-            .and_then(|rows| {
-                rows.iter()
-                    .find(|r| r["contentId"].as_str() == Some(&content_id))
-            })
-            .and_then(|r| r["path"].as_str())
-            .or_else(|| {
-                indexed["entries"]
-                    .as_object()
-                    .and_then(|entries| {
-                        entries
-                            .values()
-                            .find(|e| e["contentId"].as_str() == Some(&content_id))
-                    })
-                    .and_then(|e| e["path"].as_str())
-            });
-        if let Some(original) = original {
-            let result=engine.command(Command::RelinkLibrary{items:vec![panthesia_engine::library_repairs::RelinkItem{content_id:content_id.clone(),from:original.into(),to:path.clone()}]})?;
-            if let Some(item)=result["results"].as_array().and_then(|items|items.first()){
-                if item["ok"]==false{return Err(item["error"].as_str().unwrap_or("路径关联未完成，请查看日志").to_owned());}
-            }
-        }
-        let title = path
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into();
-        engine.command(Command::LoadIndexed { path, title, content_id }).map(Some)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-#[tauri::command]
-async fn import_folder(state: tauri::State<'_, State>) -> Result<Option<usize>, String> {
-    let _close_lease=score_edit::reserve(&state,"native-import-folder")?;
-
-    let Some(folder) = file_dialog(&state.data,"library")
-        .set_title("添加 MIDI 曲库文件夹")
-        .pick_folder()
-        .await
-    else {
-        return Ok(None);
-    };
-    remember_location(&state.data,"library",folder.path(),true);
-    let data = state.data.clone();
-    let path = folder.path().to_owned();
-    let rows = tauri::async_runtime::spawn_blocking({let lease=_close_lease.clone();move || {let _close_worker=lease;library::add_folder(&data, path)}})
-        .await
-        .map_err(|e| e.to_string())??;
-    let mut songs = state.songs.lock().map_err(|e| e.to_string())?;
-    let mut added = 0;
-    for row in rows {
-        if !songs.iter().any(|s| s.path == row.path) {
-            songs.push(row);
-            added += 1;
-        }
-    }
-    state.monitor.refresh()?;
-    Ok(Some(added))
-}
 fn startup_failure(error: impl std::fmt::Display) -> ! {
     let identity = build_info::startup_label();
     let reason = error.to_string();
@@ -998,9 +671,6 @@ fn main() {
         .manage(open_requests::Queue::default())
         .setup(|app| {
             let result: Result<(), Box<dyn std::error::Error>> = (|| {
-            let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\Datasets"));
             let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT").map(PathBuf::from).unwrap_or_else(|| panthesia_core::product::profile_root(&app.path().app_data_dir().expect("application data location")));
             let data_lock = DataRootLock::acquire(&data)?;
             let data = data_lock.root().to_path_buf();
@@ -1010,12 +680,10 @@ fn main() {
             let selected_font=saved.unwrap_or_else(||font.clone());
             let status=soundfont_status(&selected_font,&font,warning);
             let engine = Engine::start_with_soundfont_fallback(data.clone(), data_lock, selected_font.clone(), Some(font.clone()), false)?;
-            let songs=std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-            let monitor=engine.start_library_monitor(root,songs.clone());
             app.manage(score_batch_export::Sessions::default());
             app.manage(score_export_bridge::Cache::default());
             app.manage(file_transfer::Sessions::default());
-            app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), closing:Default::default(), close_allowed:Default::default(), allow_closing_drafts:Default::default(), desktop_close:Default::default(), engine, songs,monitor,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), score_imports:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
+            app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), closing:Default::default(), close_allowed:Default::default(), allow_closing_drafts:Default::default(), desktop_close:Default::default(), engine,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), score_imports:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
             if !headless_check() {
                 if let Some(window) = app.get_webview_window("main") {
                     window.show()?;
@@ -1058,7 +726,6 @@ fn main() {
             audiveris_paper::recognize_paper_with_audiveris,
             audiveris_paper::save_recognized_score_for_edit,
             save_generated_score_for_edit,
-            library_list,
             engine_state,
             engine_state_frame,
             play_live_notes,
@@ -1074,47 +741,28 @@ fn main() {
             adjust_playback,
             edit_practice,
             read_practice,
-            map_score,notation_document,read_notation,music_file_exists,
+            map_score,notation_document,read_notation,
             read_history,
             
             
             start_practice_demo,
             located_paper_bridge::begin_located_paper_upload,located_paper_bridge::write_located_paper_chunk,located_paper_bridge::finish_located_paper_upload,located_paper_bridge::cancel_located_paper_upload,
-            import_midi,
-            music_import_bridge::begin_music_import, music_import_bridge::write_music_import,
-            music_import_bridge::prepare_exercise,
-            music_import_bridge::prepare_package,
-            music_import_bridge::refresh_package_preview,
-            music_import_bridge::finish_music_import, music_import_bridge::read_music_import,
-            music_import_bridge::cancel_music_import,
             link_score_source,
             export_midi,
             export_annotated_score,
             export_paper_page,
             export_paper_book,
-            export_package,
-            pick_package,
-            stage_package,
-            relocate_midi,
-            repair_midi,
             score_attachment_bytes,
             import_score_attachments,
             pick_paper_source,
             pick_song_file,
-            import_library_scores,
             desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,
-            file_transfer::begin_package_stage,
-            file_transfer::write_package_stage_chunk,
-            file_transfer::finish_package_stage,
-            file_transfer::cancel_package_stage,
             file_transfer::begin_score_input,
             file_transfer::write_score_input_chunk,
             file_transfer::cancel_score_input,
             
             
             export_interface_settings,
-            cancel_library_score_import,
-            import_folder,
             native_startup_check
         ])
         .on_page_load(|window, payload| {
@@ -1221,7 +869,7 @@ mod musescore_tests {
         let data=std::env::temp_dir().join(format!("neothesia-musescore-preview-{}",std::process::id()));
         let data_lock=DataRootLock::acquire(&data).unwrap();
         let engine=Engine::start(data.clone(),data_lock,PathBuf::new(),true).unwrap();
-        let song=engine.command(Command::Load{path:input.clone(),title:"MuseScore fixture".into()}).unwrap();
+        let song=engine.command(Command::OpenFile{path:input.clone()}).unwrap();
         let preview=engine.command(Command::PreviewScoreBytesRoute{
             bytes,name:"MuseScore 转谱初稿.musicxml".into(),
             content_id:song["contentId"].as_str().unwrap().into(),

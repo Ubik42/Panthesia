@@ -111,9 +111,6 @@ fn allowed_relative(relative: &str) -> bool {
         let (id,index)=stem.split_once("-restored-").map_or((stem,None),|(id,index)|(id,Some(index)));
         return valid_hash(id)&&index.is_none_or(|i|!i.is_empty()&&i.len()<=3&&i.bytes().all(|b|b.is_ascii_digit()));
     }
-    if parts.len() >= 3 && parts[0] == "packages" && valid_hash(parts[1]) {
-        return crate::piece_package::valid_asset_path(relative);
-    }
     if parts.len() == 2 && matches!(parts[0], "imports" | "song-assets") {
         let Some(stem) = parts[1].strip_suffix(".mid") else {
             return false;
@@ -141,9 +138,6 @@ fn allowed_relative(relative: &str) -> bool {
     }
     if parts.len() == 2 && parts[0] == "metadata-imports" {
         return parts[1].strip_suffix(".json").is_some_and(valid_hash);
-    }
-    if parts.len() == 2 && parts[0] == "metadata-claims" {
-        return parts[1].strip_suffix(".json").is_some_and(crate::metadata_claims::valid_id);
     }
     if parts.len() == 2 && parts[0] == "catalog-import-results" {
         return parts[1].strip_suffix(".json").is_some_and(valid_hash);
@@ -306,9 +300,9 @@ fn apply(data: &Path, mut intent: Intent) -> Result<(), String> {
             return Err("资料恢复校验记录无效".into());
         }
         let path = entry.target.path(data)?;
-        if !crate::piece_package::insert_asset_path(
+        if !insert_asset_path(
             &mut destinations,
-            &crate::library_workspace::key(&path),
+            &crate::data_locks::key(&path),
         ) {
             return Err("资料恢复目标重复".into());
         }
@@ -391,7 +385,7 @@ pub(crate) fn commit_at(
     observed: Vec<Observation>,
     begin: impl FnOnce() -> Result<(), String>,
 ) -> Result<(), String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "练习资料正忙")?;
     recover(data)?;
     if pending(data) {
@@ -446,9 +440,9 @@ pub(crate) fn commit_at(
     for write in writes {
         let target = Target::from_path(data, &write.path)?;
         let destination = target.path(data)?;
-        if !crate::piece_package::insert_asset_path(
+        if !insert_asset_path(
             &mut destinations,
-            &crate::library_workspace::key(&destination),
+            &crate::data_locks::key(&destination),
         ) {
             return Err("保存目标有重复文件或文件与目录冲突，未发布保存内容".into());
         }
@@ -492,4 +486,17 @@ pub(crate) fn commit_at(
     begin()?;
     save_intent(data, &intent)?;
     apply(data, intent)
+}
+
+/// Add a destination key; refuses duplicates and a file that is also a folder of another.
+fn insert_asset_path(paths: &mut BTreeSet<String>, path: &str) -> bool {
+    let key = path.replace('\\', "/").to_lowercase();
+    if paths.contains(&key) || key.char_indices().any(|(index, c)| c == '/' && paths.contains(&key[..index])) {
+        return false;
+    }
+    let prefix = format!("{key}/");
+    if paths.range(prefix.clone()..).next().is_some_and(|candidate| candidate.starts_with(&prefix)) {
+        return false;
+    }
+    paths.insert(key)
 }

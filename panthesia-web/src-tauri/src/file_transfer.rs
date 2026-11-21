@@ -14,7 +14,6 @@ const MAX: u64 = 256_000_000;
 const CHUNK: usize = 1_048_576;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TransferKind {
-    Package,
     ScoreInput,
     LocatedPaper,
 }
@@ -188,14 +187,6 @@ fn insert(sessions: &Sessions, transfer: Transfer) -> Result<String, String> {
     all.insert(id.clone(), transfer);
     Ok(id)
 }
-#[tauri::command]
-pub fn begin_package_stage(
-    state: tauri::State<'_, crate::State>,
-    sessions: tauri::State<'_, Sessions>,
-    size: u64,
-) -> Result<String, String> {
-    begin_stage_upload(&state.data, &sessions, size, TransferKind::Package)
-}
 fn begin_stage_upload(
     data: &std::path::Path,
     sessions: &Sessions,
@@ -226,20 +217,6 @@ fn begin_stage_upload(
         },
     )
 }
-#[tauri::command]
-pub async fn write_package_stage_chunk(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-    offset: u64,
-    bytes: Vec<u8>,
-) -> Result<(), String> {
-    let sessions = sessions.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        write_stage_chunk(&sessions, &session, offset, &bytes, TransferKind::Package)
-    })
-    .await
-    .map_err(|error| error.to_string())?
-}
 fn write_stage_chunk(
     sessions: &Sessions,
     session: &str,
@@ -266,33 +243,6 @@ fn take_upload(sessions: &Sessions, id: &str, kind: TransferKind) -> Result<Tran
     }
     all.remove(id).ok_or("文件传输会话已结束".into())
 }
-#[tauri::command]
-pub async fn finish_package_stage(
-    state: tauri::State<'_, crate::State>,
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-) -> Result<panthesia_engine::package_preview::PackagePreview, String> {
-    let mut transfer = take_upload(&sessions, &session, TransferKind::Package)?;
-    let engine = state.engine.clone();
-    tauri::async_runtime::spawn_blocking(move || engine.stage_package(transfer.staged_bytes()?))
-        .await
-        .map_err(|error| error.to_string())?
-}
-#[tauri::command]
-pub fn cancel_package_stage(
-    sessions: tauri::State<'_, Sessions>,
-    session: String,
-) -> Result<(), String> {
-    let mut all = sessions.0.lock().map_err(|error| error.to_string())?;
-    if all
-        .get(&session)
-        .is_some_and(|transfer| transfer.kind != TransferKind::Package)
-    {
-        return Err("文件传输类型不匹配".into());
-    }
-    all.remove(&session);
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {
@@ -307,7 +257,7 @@ mod tests {
             .open(&path)
             .unwrap();
         let mut transfer = Transfer {
-            kind: TransferKind::Package,
+            kind: TransferKind::ScoreInput,
             touched: Instant::now(),
             file: Some(file),
             temp: Some(path.clone()),
@@ -328,7 +278,7 @@ mod tests {
             insert(
                 &sessions,
                 Transfer {
-                    kind: TransferKind::Package,
+                    kind: TransferKind::ScoreInput,
                     touched: Instant::now(),
                     file: None,
                     temp: None,
@@ -342,7 +292,7 @@ mod tests {
             insert(
                 &sessions,
                 Transfer {
-                    kind: TransferKind::Package,
+                    kind: TransferKind::ScoreInput,
                     touched: Instant::now(),
                     file: None,
                     temp: None,

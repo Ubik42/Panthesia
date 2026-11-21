@@ -71,8 +71,8 @@ fn write(data: &Path, value: &Locations) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 fn promote(paths: &mut Vec<PathBuf>, path: PathBuf) {
-    let key = crate::library_workspace::key(&path);
-    paths.retain(|p| crate::library_workspace::key(p) != key);
+    let key = crate::data_locks::key(&path);
+    paths.retain(|p| crate::data_locks::key(p) != key);
     paths.insert(0, path);
     paths.truncate(20);
 }
@@ -86,7 +86,7 @@ pub fn remember(data: &Path, kind: &str, path: &Path, folder: bool) -> Result<()
     if !path.is_absolute() || path.as_os_str().len() > 32768 || !path.is_dir() {
         return Err("文件位置不可用".into());
     }
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "文件位置正忙")?;
     let mut value = read(data)?;
     promote(value.kinds.entry(kind.into()).or_default(), path.to_owned());
@@ -179,8 +179,8 @@ fn inspect_for(
     if let Some(kind) = kind {
         validate(kind)?;
     }
-    let lock = crate::library_workspace::lock_for(data)?;
-    let guard = crate::library_workspace::wait_for(&lock, check)?;
+    let lock = crate::data_locks::lock_for(data)?;
+    let guard = crate::data_locks::wait_for(&lock, check)?;
     let value = read(data)?;
     drop(guard);
     describe(&value, None, kind, check)
@@ -212,8 +212,8 @@ pub(crate) fn update_checked(
     before_commit: impl FnOnce() -> Result<(), String>,
 ) -> Result<FileLocationListing, String> {
     validate(kind)?;
-    let lock = crate::library_workspace::lock_for(data)?;
-    let guard = crate::library_workspace::wait_for(&lock, check)?;
+    let lock = crate::data_locks::lock_for(data)?;
+    let guard = crate::data_locks::wait_for(&lock, check)?;
     let mut value = read(data)?;
     let actual = revision(&value, kind)?;
     if expected.is_some_and(|version| version != actual) {
@@ -225,17 +225,17 @@ pub(crate) fn update_checked(
         let paths = value.kinds.entry(kind.into()).or_default();
         if clear {
             if let Some(path) = path {
-                let key = crate::library_workspace::key(&path);
-                paths.retain(|p| crate::library_workspace::key(p) != key);
+                let key = crate::data_locks::key(&path);
+                paths.retain(|p| crate::data_locks::key(p) != key);
             } else {
                 paths.clear();
             }
         } else {
             let path = path.ok_or("请选择已记录的文件位置")?;
-            let key = crate::library_workspace::key(&path);
+            let key = crate::data_locks::key(&path);
             let registered = paths
                 .iter()
-                .find(|p| crate::library_workspace::key(p) == key)
+                .find(|p| crate::data_locks::key(p) == key)
                 .ok_or("此位置未登记，请通过文件选择窗口使用一次")?
                 .clone();
             if !registered.is_dir() {

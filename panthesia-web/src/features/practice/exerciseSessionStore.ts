@@ -1,25 +1,35 @@
 import { createPersistentSession } from "../../app/createPersistentSession";
 import {
-  boundedText as text,
-  readPreparedSong as song,
-  readPreparationReceipt,
-} from "../imports/preparationPersistence";
-import type {
-  ImportedSong,
-  MusicReceipt,
-} from "../../engine/commands.generated";
-import {
   defaultExercise,
   type ExerciseDraft,
+  type ExerciseResult,
 } from "./exerciseGenerationClient";
+
+const text = (value: unknown, limit: number): value is string =>
+  typeof value === "string" && value.length <= limit;
+function song(value: unknown): ExerciseResult | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Partial<ExerciseResult>;
+  return typeof row.contentId === "string" && typeof row.title === "string"
+    ? { contentId: row.contentId, title: row.title, importWarnings: Array.isArray(row.importWarnings) ? row.importWarnings.filter((w): w is string => typeof w === "string") : [] }
+    : undefined;
+}
+/** Generation is synchronous now; the field stays for drafts saved by older versions. */
+export interface ExerciseReceipt {
+  id: string;
+  taskId?: string;
+  phase: string;
+  engineId: string;
+  cancellable?: boolean;
+}
 
 export interface ExerciseSession {
   spec: ExerciseDraft;
   presetName: string;
   phase: "editing" | "working" | "review" | "ready" | "error";
   busy: boolean;
-  receipt?: MusicReceipt;
-  result?: ImportedSong;
+  receipt?: ExerciseReceipt;
+  result?: ExerciseResult;
   error: string;
   message: string;
   dirty: boolean;
@@ -76,49 +86,16 @@ function restore(saved: string | null): ExerciseSession {
         ...fresh,
         storageError: "保存的技术练习参数无效，已使用默认参数；原草稿保留。",
       };
-    const previous = readPreparationReceipt(row.receipt, "exercise");
-    const savedResult = song(row.result);
-    if (
-      (row.receipt != null && !previous) ||
-      (row.result != null && !savedResult) ||
-      (savedResult &&
-        previous?.song &&
-        savedResult.contentId !== previous.song.contentId)
-    )
-      return {
-        ...fresh,
-        spec,
-        presetName: text(row.presetName, 80) ? row.presetName : "",
-        storageError:
-          "技术练习的参数、回执或结果需要核对，原记录已保留，可复制原文后处理。",
-      };
-    const result =
-      savedResult ??
-      (previous?.phase === "done" ? (previous.song ?? undefined) : undefined);
-    const interrupted =
-      ["working", "review"].includes(row.phase ?? "") ||
-      (previous &&
-        [
-          "uploading",
-          "queued",
-          "running",
-          "committing",
-          "unconfirmed",
-        ].includes(previous.phase));
+    const result = song(row.result);
     return {
       ...fresh,
       spec,
       presetName: text(row.presetName, 80) ? row.presetName : "",
       dirty: row.dirty === true,
-      phase: result ? "ready" : interrupted ? "review" : "editing",
+      phase: result ? "ready" : "editing",
       result,
-      receipt: previous,
       refreshPending: !!result,
-      message: result
-        ? "已恢复生成结果，可以打开原练习。"
-        : interrupted
-          ? "上次生成中断，请继续读取原请求；原参数保留。"
-          : "已恢复上次的练习参数。",
+      message: result ? "已恢复生成结果，可以打开原练习。" : "已恢复上次的练习参数。",
     };
   } catch {
     return {

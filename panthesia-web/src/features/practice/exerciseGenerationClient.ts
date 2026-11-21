@@ -1,10 +1,12 @@
 import { api, type LoadedSong } from "../../api";
-import type {
-  ExerciseSpec,
-  ImportedSong,
-} from "../../engine/commands.generated";
-import type { MusicPreparationOptions } from "../imports/musicImportClient";
-import { prepareSongOperation } from "../imports/preparedSongClient";
+import type { ExerciseSpec } from "../../engine/commands.generated";
+
+/** The generated exercise as it was opened. */
+export interface ExerciseResult {
+  contentId: string;
+  title: string;
+  importWarnings: string[];
+}
 
 export type ExerciseDraft = Required<ExerciseSpec>;
 export const defaultExercise = (): ExerciseDraft => ({
@@ -52,25 +54,16 @@ export function exerciseValidation(spec: ExerciseSpec): string | null {
     return "速度应为 20 到 240 BPM。";
   return null;
 }
-/** An admitted generation is resumed by identity. Its parameters are never submitted twice. */
-export async function generateExercise(
-  spec: ExerciseSpec,
-  options: MusicPreparationOptions = {},
-): Promise<ImportedSong> {
+/** Generate and open the exercise. */
+export async function generateExercise(spec: ExerciseSpec): Promise<{ result: ExerciseResult; engineId?: string }> {
   const invalid = exerciseValidation(spec);
-  if (invalid && !options.receipt) throw new Error(invalid);
-  return prepareSongOperation(
-    {
-      kind: "exercise",
-      name: "技术练习",
-      supported: (state) => !!state.exerciseGenerationVersion,
-      submit: (engineId, requestId, createdAtMs) =>
-        api.prepareExercise({ engineId, requestId, createdAtMs, spec }),
-      legacy: (engineId) =>
-        api.commandForEngine<LoadedSong>(engineId, { type: "generate", spec }),
-    },
-    options,
-  );
+  if (invalid) throw new Error(invalid);
+  const before = await api.state();
+  const song = await api.command<LoadedSong>({ type: "generate", spec });
+  return {
+    result: { contentId: song.contentId, title: song.title, importWarnings: [] },
+    engineId: before.stateOrder?.engineId,
+  };
 }
 
 /** A compact musical preview derived from the selected values, with no playback or storage side effects. */

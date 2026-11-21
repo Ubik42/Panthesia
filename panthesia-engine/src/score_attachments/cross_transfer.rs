@@ -62,9 +62,8 @@ fn verify_assets(data: &Path, cid: &str, book: &Attachment) -> Result<(), String
     Ok(())
 }
 pub fn sources(data: &Path, target_cid: &str) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "谱面资料正在使用")?;
-    let index = crate::library_workspace::Workspace::load(data)?;
     let root = data.join("score-attachments");
     let mut result = Vec::new();
     if !root.exists() {
@@ -90,23 +89,12 @@ pub fn sources(data: &Path, target_cid: &str) -> Result<Value, String> {
         if books.is_empty() {
             continue;
         }
-        let known = index
-            .entries
-            .values()
-            .find(|e| e.content_id.as_ref() == Some(&store.content_id));
-        let title = known
-            .and_then(|e| e.metadata.title.clone())
-            .or_else(|| {
-                known.and_then(|e| e.path.file_stem().map(|x| x.to_string_lossy().into_owned()))
-            })
-            .unwrap_or_else(|| {
-                format!(
-                    "{} · 演奏 {}",
-                    store.attachments.first().map(|a|a.name.as_str()).unwrap_or("本机谱面"),
-                    store.content_id.chars().take(8).collect::<String>()
-                )
-            });
-        result.push(json!({"contentId":store.content_id,"title":title,"path":known.map(|e|&e.path),"attachments":books}));
+        let title = format!(
+            "{} · 演奏 {}",
+            store.attachments.first().map(|a| a.name.as_str()).unwrap_or("本机谱面"),
+            store.content_id.chars().take(8).collect::<String>()
+        );
+        result.push(json!({"contentId":store.content_id,"title":title,"path":null,"attachments":books}));
     }
     result.sort_by(|a, b| a["title"].as_str().cmp(&b["title"].as_str()));
     Ok(json!({"sources":result}))
@@ -145,7 +133,7 @@ impl crate::Player {
             file.musical_time = self.original_grid.as_ref().ok_or("原始小节网格不存在")?.materialize();
             file
         } else {
-            crate::library::verified_file(&self.data, cid, loaded.source_path.clone().into_iter())?
+            crate::music_file::verified_file(&self.data, cid, loaded.source_path.clone().into_iter())?
         };
         let path = self.annotation_path(loaded)?;
         let sidecar = if panthesia_core::library::metadata_sidecar_path(&path).exists() {
@@ -171,7 +159,7 @@ impl crate::Player {
         source: &str,
         target: &str,
     ) -> Result<Value, String> {
-        let lock = crate::library_workspace::lock_for(&self.data)?;
+        let lock = crate::data_locks::lock_for(&self.data)?;
         let _guard = lock.lock().map_err(|_| "谱面资料正在使用")?;
         let (grid, measures) = self.cross_paper_grid(cid)?;
         let (a, store, at) = read_pair(&self.data, cid, source_cid, source, target)?;
@@ -205,7 +193,7 @@ impl crate::Player {
         {
             return Err("请选择需要迁移的批注或小节对应".into());
         }
-        let lock = crate::library_workspace::lock_for(&self.data)?;
+        let lock = crate::data_locks::lock_for(&self.data)?;
         let _guard = lock.lock().map_err(|_| "谱面资料正在使用")?;
         let (grid, measures) = self.cross_paper_grid(cid)?;
         let (source, mut store, at) = read_pair(

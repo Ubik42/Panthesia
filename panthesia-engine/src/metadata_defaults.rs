@@ -27,9 +27,7 @@ fn snapshot(value: &SongSidecar, cid: &str) -> Result<MetadataDefaultsView, Stri
     Ok(MetadataDefaultsView { content_id: cid.into(), value: value.metadata.clone(), layers: value.metadata_layers.clone(), proof })
 }
 pub fn reset(data: &Path, path: &Path, cid: &str, fields: Vec<String>, expected: SongMetadata, proof: &str) -> Result<serde_json::Value, String> {
-    let history_path=path;
-    let owned=crate::owned_annotations::retain(data,path,cid,&||Ok(()))?;
-    let path=owned.as_path();
+    let _ = data;
     let mut value = sidecar(path, cid)?;
     let observed = snapshot(&value, cid)?;
     if observed.proof != proof || observed.value != expected {
@@ -38,19 +36,8 @@ pub fn reset(data: &Path, path: &Path, cid: &str, fields: Vec<String>, expected:
     let layers = value.metadata_layers.as_mut().ok_or("这首曲目尚未导入来源默认资料")?;
     layers.reset(&fields)?;
     value.metadata = layers.resolve(&value.metadata);
-    let history = if value.metadata != expected {
-        Some(crate::metadata_history::prepare(data, history_path, cid, expected, value.metadata.clone(), None)?)
-    } else { None };
-    if let Err(error) = library::save_song_sidecar(path, cid, value.clone()) {
-        if let Some(id) = &history { let _ = crate::metadata_history::finish(data, history_path, id, false); }
-        return Err(error.to_string());
-    }
-    let mut warnings = Vec::<String>::new();
-    if let Some(id) = history {
-        if let Err(error) = crate::metadata_history::finish(data, history_path, &id, true) {
-            warnings.push(format!("资料已恢复，历史写入状态尚未确认：{error}"));
-        }
-    }
+    library::save_song_sidecar(path, cid, value.clone()).map_err(|error| error.to_string())?;
+    let warnings = Vec::<String>::new();
     Ok(serde_json::json!({"status":"saved","contentId":cid,"value":value.metadata,"warnings":warnings}))
 }
 

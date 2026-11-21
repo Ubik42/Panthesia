@@ -1,6 +1,5 @@
 //! Generated annotation caches are inspected without creating or repairing files.
 use crate::{
-    import_storage,
     load_pipeline::{Assets, Watch},
     preferences::ScoreVersion,
 };
@@ -66,35 +65,13 @@ impl Prepared {
         check()?;
         let id = blake3::hash(&bytes).to_hex().to_string();
         let mut watches = Vec::new();
-        let (destination, source) = import_storage::planned_annotations(
-            &data.join("library/assets/exercises"),
-            &file.content_id,
-            &id,
-            &file.content_id,
-            |path| {
-                check()?;
-                watches.push(Watch::capture(path)?);
-                Ok(())
-            },
-        )?;
-        let source = if panthesia_core::utils::atomic_file::is_file(
-            &library::metadata_sidecar_path(&source),
-        ) {
-            source
-        } else {
-            import_storage::planned_annotations(
-                &data.join("song-assets"),
-                &file.content_id,
-                &id,
-                &file.content_id,
-                |path| {
-                    check()?;
-                    watches.push(Watch::capture(path)?);
-                    Ok(())
-                },
-            )?
-            .1
-        };
+        let _ = id;
+        // Generated exercises are cached under the data root: `library/assets/exercises/<cid>.mid`
+        // keeps their hand and finger edits in the owned annotation document.
+        let destination = data.join("library/assets/exercises").join(format!("{}.mid", file.content_id));
+        let source = destination.clone();
+        watches.push(Watch::capture(&destination)?);
+        watches.push(Watch::capture(&library::metadata_sidecar_path(&destination))?);
         if let Ok(sidecar) = library::load_song_sidecar(&source, &file.content_id) {
             if let Some(score) = sidecar.score {
                 watches.push(Watch::capture(&library::resolve_score_path(
@@ -120,25 +97,22 @@ impl Prepared {
         }
         Ok(())
     }
-    pub fn store(&self, data: &Path, cid: &str) -> Result<(), String> {
-        let id = blake3::hash(&self.bytes).to_hex().to_string();
-        let stored = import_storage::store_with_identity(
-            &data.join("library/assets/exercises"),
-            cid,
-            &id,
-            cid,
-            &self.bytes,
-        )?;
-        if stored.path != self.destination {
-            return Err("生成练习的附加资料位置已变化，请重新打开练习".into());
+    pub fn store(&self, _data: &Path, cid: &str) -> Result<(), String> {
+        use panthesia_core::utils::atomic_file;
+        if !atomic_file::is_file(&self.destination) {
+            if let Some(parent) = self.destination.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            atomic_file::write(&self.destination, &self.bytes).map_err(|e| e.to_string())?;
         }
-        crate::song_repository::SongRepository::open(data)?.prepare_generated_annotations(
-            &self.source,
-            &stored.path,
-            cid,
-            self.assets.sidecar.clone(),
-        )?;
-        panthesia_core::song_annotations::bind_legacy_bytes(&stored.path,cid,&self.bytes,&||Ok(())).map_err(|e|e.to_string())?;
+        if !atomic_file::is_file(&library::metadata_sidecar_path(&self.destination)) {
+            if let Some(initial) = self.assets.sidecar.clone() {
+                library::save_song_sidecar(&self.destination, cid, initial).map_err(|e| e.to_string())?;
+            }
+        }
+        if atomic_file::is_file(&library::metadata_sidecar_path(&self.destination)) {
+            panthesia_core::song_annotations::bind_legacy_bytes(&self.destination, cid, &self.bytes, &|| Ok(())).map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 }

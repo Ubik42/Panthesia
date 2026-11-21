@@ -237,7 +237,7 @@ export async function performRecoveryAction(
         );
       if (
         !(await destination.command(
-          { type: "load", path: fresh.recordingPath, title: "自由演奏录音" },
+          { type: "openFile", path: fresh.recordingPath },
           true,
         ))
       )

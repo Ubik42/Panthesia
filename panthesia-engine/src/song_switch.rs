@@ -3,34 +3,13 @@ use crate::*;
 use serde_json::Value;
 
 pub(crate) enum Input {
-    Import(import_pipeline::Input),
-    CompactImport(import_pipeline::Input),
     Practice(Command),
     ScopedPractice { command: Command, scope: practice_edit::Scope, catalog_revision: Option<String> },
-    Package {
-        bytes: Vec<u8>,
-        policy: String,
-    },
-    StagedPackage { token: String, policy: String },
     Exercise(ExerciseSpec),
     File(load_pipeline::Input),
     Recording(PathBuf),
-    LibraryOpen(crate::library_operations::LibraryOpenSource),
-    Library {
-        path: PathBuf,
-        content_id: String,
-        kind: String,
-        id: String,
-    },
 }
 impl Input {
-    fn install_package(reader: &mut Player, bytes: Vec<u8>, policy: String, token: &background_tasks::TaskToken) -> Result<Value, String> {
-        token.stage("decoding")?;
-        let fingerprint = blake3::hash(&bytes).to_hex().to_string();
-        let result = reader.import_portable_package_checked(bytes, policy,&||token.check())?;
-        token.source(reader.file.as_ref().ok_or("曲目包未生成演奏曲目")?.content_id.clone(), fingerprint)?;
-        Ok(result)
-    }
     fn install_file(
         reader: &mut Player,
         input: load_pipeline::Input,
@@ -55,7 +34,6 @@ impl Input {
         prepared: load_pipeline::Prepared,
         token: &background_tasks::TaskToken,
     ) -> Result<(), String> {
-        let prepared=prepared.retain_assets(&reader.data,&mut reader.preferences,&||token.check())?;
         token.source(
             prepared.file.content_id.clone(),
             prepared
@@ -118,32 +96,11 @@ impl Input {
             }
             _ => {}
         }
-        let compact_import = !describe_song || matches!(&self, Self::CompactImport(_));
+        let compact_import = !describe_song || false;
         match self {
-            Self::LibraryOpen(source) => reader.apply_library_open(source, token),
-            Self::Import(input) | Self::CompactImport(input) => {
-                let prepared = import_pipeline::prepare_checked(input, &|| token.check())?;
-                token.source(prepared.content_id(), prepared.fingerprint())?;
-                token.check()?;
-                if compact_import {
-                    reader.install_import_described(prepared, false)
-                } else {
-                    reader.install_import(prepared)
-                }
-            }
             Self::Practice(command) | Self::ScopedPractice { command, .. } => {
                 reader.command(command)
             }
-            Self::StagedPackage {
-                token: staged,
-                policy,
-            } => {
-                token.stage("reading")?;
-                let bytes = crate::package_loading::read_staged(&reader.data, &staged)?;
-                token.check()?;
-                Self::install_package(reader, bytes, policy, token)
-            }
-            Self::Package { bytes, policy } => Self::install_package(reader, bytes, policy, token),
             Self::Exercise(spec) => {
                 let prepared = exercise_loading::prepare_checked(spec, &|| token.check())?;
                 let versions = reader
@@ -174,7 +131,7 @@ impl Input {
                 }
             }
             Self::Recording(path) => {
-                let title = library::recording_title(&path);
+                let title = crate::music_file::recording_title(&path);
                 Self::install_file(
                     reader,
                     load_pipeline::Input::File {
@@ -197,32 +154,6 @@ impl Input {
                 } else {
                     Ok(Value::Null)
                 }
-            }
-            Self::Library {
-                path,
-                content_id,
-                kind,
-                id,
-            } => {
-                let result = reader.open_library_score_checked(
-                    path,
-                    content_id,
-                    kind,
-                    id,
-                    &|| token.check(),
-                    describe_song,
-                )?;
-                if let Some(file) = &reader.file {
-                    token.source(
-                        file.content_id.clone(),
-                        reader
-                            .notation
-                            .as_ref()
-                            .map(|s| s.source_fingerprint.clone())
-                            .unwrap_or_else(|| file.content_id.clone()),
-                    )?;
-                }
-                Ok(result)
             }
         }
     }
@@ -398,7 +329,7 @@ impl Drop for Lease {
 impl Engine {
     pub(super) fn commit_song_switch(
         &self,
-        origin: import_pipeline::Origin,
+        origin: Origin,
         prepared: Input,
         token: background_tasks::TaskToken,
     ) -> Result<Value, String> {
@@ -440,7 +371,6 @@ impl Engine {
                 asset_storage::commit(&data, writes, observed)?;
                 Ok(serde_json::json!({"ok":true}))
             })?;
-            outcome.register_published_source(&self.data);
             Ok(outcome)
         })();
         lease.finish(result)
@@ -461,30 +391,12 @@ impl Engine {
             engine.commit_song_switch(origin, input, token)
         })
     }
-    pub(super) fn open_library_score_task(
-        &self,
-        path: PathBuf,
-        content_id: String,
-        kind: String,
-        id: String,
-    ) -> Result<Value, String> {
-        self.song_switch_task(
-            Input::Library {
-                path,
-                content_id: content_id.clone(),
-                kind,
-                id,
-            },
-            "打开曲库谱面",
-            Some(content_id),
-        )
-    }
 }
 impl Player {
     pub(super) fn begin_song_switch(
         &mut self,
         id: String,
-        origin: &import_pipeline::Origin,
+        origin: &Origin,
     ) -> Result<asset_edit::Context, String> {
         self.check_unsaved_switch()?;
         self.check_switch_origin(origin, "切换")?;
@@ -494,5 +406,49 @@ impl Player {
             return Err("曲目准备期间已开始演奏，请暂停并松开琴键后重试".into());
         }
         self.begin_asset_edit(id, false, true, true)
+    }
+}
+
+/// The song and score revision a switch was prepared against.
+pub(crate) struct Origin {
+    pub content_id: Option<String>,
+    pub revision: u64,
+}
+impl Player {
+    pub(super) fn check_unsaved_switch(&self) -> Result<(), String> {
+        let score = self.matcher.snapshot();
+        if self.has_save_error()
+            && !self.state.saved
+            && score.matched_notes + score.wrong_notes + score.missed_notes > 0
+        {
+            return Err("本轮保存失败，演奏结果仍保留在当前曲目中。请先重试保存本轮结果，再切换曲目或练习条件".into());
+        }
+        Ok(())
+    }
+    /// Pause and record the current song before a switch is prepared elsewhere.
+    pub(crate) fn begin_import(&mut self) -> Result<Origin, String> {
+        self.check_unsaved_switch()?;
+        if self.recorder.is_recording() {
+            return Err("请先停止录音，再切换曲目或练习设置".into());
+        }
+        self.panic();
+        if matches!(self.state.status.as_str(), "playing" | "countIn") {
+            self.state.status = "paused".into();
+        }
+        Ok(Origin {
+            content_id: self.file.as_ref().map(|f| f.content_id.clone()),
+            revision: self.score_revision,
+        })
+    }
+    pub(crate) fn check_switch_origin(&self, origin: &Origin, action: &str) -> Result<(), String> {
+        if self.recorder.is_recording() {
+            return Err(format!("请先停止录音，再{action}曲目"));
+        }
+        if self.file.as_ref().map(|f| &f.content_id) != origin.content_id.as_ref()
+            || self.score_revision != origin.revision
+        {
+            return Err(format!("{action}准备期间曲目或谱面已切换，请重新{action}"));
+        }
+        Ok(())
     }
 }

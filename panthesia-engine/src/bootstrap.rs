@@ -2,7 +2,7 @@
 use crate::{Engine, Player, Snapshot};
 use crate::{
     background_tasks, data_root_lock, device_catalog,
-    input_runtime, library_index, library_operations, music_import, pending_save, playback_memory,
+    input_runtime, pending_save, playback_memory,
     runtime_request, sound_runtime, startup, state_order, storage_control,
 };
 use std::{
@@ -46,7 +46,6 @@ impl Engine {
             silent,
         )?;
         let player_input = input.clone();
-        let indexer = library_index::Indexer::start(data.clone());
         let engine_data = data.clone();
         let (tx, rx) = mpsc::channel::<runtime_request::Request>();
         let (control_tx, control_rx) = mpsc::channel::<runtime_request::Request>();
@@ -106,10 +105,7 @@ impl Engine {
         });
         let engine = Self {
             notation_readers: crate::notation_reader::Store::default(),
-            catalog_rows:Arc::new(Mutex::new(None)),
             paper_navigation: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            music_imports: music_import::Store::new(engine_data.clone()),
-            library_opens: library_operations::Store::default(),
             engine_id,
             startup,
             devices,
@@ -129,7 +125,6 @@ impl Engine {
             storage_tasks,
             pending_saves,
             state,
-            indexer,
             data: engine_data,
             _data_lock: data_lock,
         };

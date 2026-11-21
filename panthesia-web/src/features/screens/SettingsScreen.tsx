@@ -2,12 +2,11 @@ import { MusicDeviceList, type DeviceObject } from "./MusicDeviceList";
 import type { Snapshot } from "../../api";
 import { useState } from "react";
 import { ScreenHeader } from "./ScreenHeader";
-const sections = ["音乐设备", "歌曲目录", "外观与操作", "其他"] as const;
+const sections = ["音乐设备", "外观与操作", "其他"] as const;
 export function SettingsScreen({
   back,
   devices,
   duet,
-  folders,
   display,
   logs,
   about,
@@ -22,7 +21,6 @@ export function SettingsScreen({
   engineId?: string;
   visible: boolean;
   duet: () => void;
-  folders: () => void;
   display: (
     section?: "display" | "appearance" | "keyboard" | "shortcuts" | "backup",
   ) => void;
@@ -54,14 +52,6 @@ export function SettingsScreen({
               disabled={disabled}
               open={devices}
             />
-          )}
-          {section === "歌曲目录" && (
-            <>
-              <h2>歌曲目录</h2>
-              <button disabled={disabled} onClick={folders}>
-                歌曲文件夹<span>查看已登记目录，添加或移除扫描位置</span>
-              </button>
-            </>
           )}
           {section === "外观与操作" && (
             <>

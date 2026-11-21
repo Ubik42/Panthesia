@@ -82,7 +82,7 @@ impl Player {
         let file = self.file.as_ref().ok_or("请先选择曲目")?;
         let path = self.annotation_path(file)?;
         if self.exercise.is_none() {
-            let actual = library::read_midi(&path)?;
+            let actual = crate::music_file::read_midi(&path)?;
             if actual.content_id != file.content_id {
                 return Err("曲目文件已改变，请重新打开曲目后编辑小节".into());
             }
@@ -137,7 +137,7 @@ impl Player {
         value: Option<MeterMap>,
         proof: &str,
     ) -> Result<serde_json::Value, String> {
-        let lock = library_workspace::lock_for(&self.data)?;
+        let lock = data_locks::lock_for(&self.data)?;
         let _guard = lock.lock().map_err(|_| "曲目资料正在使用")?;
         let preview = self.preview_meter_map(content_id, value.as_ref())?;
         if preview["proof"].as_str() != Some(proof) {

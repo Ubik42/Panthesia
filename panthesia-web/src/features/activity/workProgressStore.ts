@@ -13,8 +13,6 @@ import { practiceEditorSessions, practiceDraftDirty } from "../practice/practice
 import { meterEditorSessions, meterHasInput } from "../practice/meterEditorStore";
 import { handEditorSessions, handHasInput } from "../practice/handEditorStore";
 import type { createScoreWorkspaceStore } from "../scores/scoreWorkspaceStore";
-import type { createImportQueueStore } from "../imports/importQueueStore";
-import type { createPackageSessionStore } from "../imports/packageSessionStore";
 import type { createExerciseSessionStore } from "../practice/exerciseSessionStore";
 import type { createEditDraftStore } from "../editing/editDraftStore";
 import type { MediaExportKind } from "../../engine/commands.generated";
@@ -75,8 +73,6 @@ export interface WorkEntry {
 }
 export interface WorkSources {
   scores: ReturnType<typeof createScoreWorkspaceStore>;
-  imports: ReturnType<typeof createImportQueueStore>;
-  piecePackage: ReturnType<typeof createPackageSessionStore>;
   exercise: ReturnType<typeof createExerciseSessionStore>;
   edits: ReturnType<typeof createEditDraftStore>;
 }
@@ -126,110 +122,6 @@ export function collectWork(
       version:
         entry.version ??
         JSON.stringify([entry.phase, entry.subject, entry.detail]),
-    });
-  const imports = sources.imports.getSnapshot();
-  if (imports.items.length || imports.error || imports.storageError || imports.refreshPending) {
-    const done = imports.items.filter((item) => item.state === "done").length;
-    const review = imports.items.filter(
-      (item) => item.state === "review" || item.state === "error",
-    ).length;
-    add({
-      id: "imports",
-      problem: problem(
-        imports.storageError || imports.error ||
-          imports.items.find((item) => item.state === "error")?.message ||
-          (imports.refreshPending ? "文件已处理，曲库列表仍需重新读取。" : ""),
-        imports.refreshPending ? "refresh" : "processing",
-      ),
-      keywords: imports.items
-        .map(
-          (item) =>
-            `${item.source.name} ${item.song?.title ?? ""} ${item.message}`,
-        )
-        .join("\n"),
-      title: "导入曲目",
-      target: "imports",
-      subject: `${imports.items.length} 份文件`,
-      phase:
-        imports.busy ||
-        imports.items.some((item) =>
-          preparationRunning(item.receipt?.id, item.receipt?.phase),
-        )
-          ? "running"
-          : imports.storageError || imports.error || review || imports.refreshPending
-            ? "attention"
-            : done < imports.items.length
-              ? "waiting"
-              : "completed",
-      detail:
-        imports.storageError || imports.error ||
-        (imports.refreshPending
-          ? "文件已处理，曲库列表还需重新读取。"
-          : `已完成 ${done} 份${review ? `，${review} 份需要核对` : ""}${done < imports.items.length ? "。打开队列可继续剩余文件。" : "，可查看导入结果。"}`),
-      requestEngineIds: [
-        ...new Set(
-          imports.items
-            .filter((item) => item.state !== "done")
-            .flatMap((item) => (item.receipt ? [item.receipt.engineId] : [])),
-        ),
-      ],
-      version: JSON.stringify([
-        imports.items.map((item) => [item.id, item.state, item.receipt?.id]),
-        imports.refreshPending,
-        imports.error,
-        imports.storageError,
-      ]),
-    });
-  }
-  const piece = sources.piecePackage.getSnapshot();
-  if (
-    piece.summary ||
-    piece.receipt ||
-    piece.error ||
-    piece.storageError ||
-    piece.busy
-  )
-    add({
-      requestEngineIds: piece.receipt ? [piece.receipt.engineId] : [],
-      id: "package",
-      problem: piece.storageError
-        ? problem(piece.storageError, "input")
-        : problem(
-            piece.error ||
-              (piece.refreshPending ? "曲目包已保存，界面列表仍需更新。" : ""),
-            piece.result ? "refresh" : "processing",
-          ),
-      title: "曲目包",
-      target: "package",
-      subject: piece.fileName || piece.summary?.title || "曲目与练习资料",
-      phase:
-        piece.busy ||
-        preparationRunning(piece.receipt?.id, piece.receipt?.phase)
-          ? "running"
-          : piece.storageError ||
-              piece.error ||
-              piece.refreshPending ||
-              piece.phase === "review"
-            ? "attention"
-            : piece.result
-              ? "completed"
-              : "waiting",
-      detail:
-        piece.storageError ||
-        piece.error ||
-        piece.message ||
-        (piece.refreshPending
-          ? "曲目包已处理，界面列表待更新。"
-          : "预览与原提交记录保留，可继续导入或核对结果。"),
-      version: JSON.stringify([
-        piece.summary?.token,
-        piece.receipt?.id,
-        piece.phase,
-        piece.result?.contentId,
-        piece.error,
-        piece.storageError,
-        piece.refreshPending,
-      ]),
     });
   const exercise = sources.exercise.getSnapshot();
   if (
@@ -846,8 +738,6 @@ export function createWorkProgressStore(sources: WorkSources) {
           activitySignal.subscribe(schedule),
           deviceTasks.subscribe(schedule),
           ...[
-            sources.imports,
-            sources.piecePackage,
             sources.exercise,
             sources.edits,
           ].map((source) => source.subscribe(schedule)),

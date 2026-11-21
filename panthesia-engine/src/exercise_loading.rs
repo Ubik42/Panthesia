@@ -174,7 +174,7 @@ mod tests {
     }
     fn commit(
         player: &mut Player,
-        origin: crate::import_pipeline::Origin,
+        origin: crate::song_switch::Origin,
         prepared: Prepared,
         cancel: bool,
     ) -> Result<serde_json::Value, String> {
@@ -204,42 +204,6 @@ mod tests {
         release.send(()).unwrap();
         let _ = worker.join().unwrap();
         result
-    }
-    #[test]
-    fn public_generate_recent_and_history_restore_personal_annotations() {
-        let (player, cid, _) = seeded(true, false);
-        let data = player.data.clone();
-        drop(player);
-        let lock = DataRootLock::acquire(&data).unwrap();
-        let engine = Engine::start(data, lock, std::path::PathBuf::new(), true).unwrap();
-        for command in [
-            Command::Generate {
-                spec: ExerciseSpec::default(),
-            },
-            Command::OpenRecent {
-                content_id: cid.clone(),
-            },
-        ] {
-            let song = engine.command(command).unwrap();
-            assert_eq!(song["contentId"], cid);
-            assert!(
-                song["notes"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|n| n["index"] == 0 && n["finger"] == 4 && n["part"] == "left")
-            );
-        }
-        let tasks = engine.command(Command::Tasks).unwrap();
-        assert!(
-            tasks
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter(|t| t["label"] == "生成技术练习与恢复资料" && t["state"] == "succeeded")
-                .count()
-                >= 2
-        );
     }
     #[test]
     fn generated_score_preparation_restores_owned_bytes_and_checks_source_changes() {

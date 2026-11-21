@@ -105,16 +105,12 @@ export function useMediaExport(
       await engine(true);
       if (controller.signal.aborted || !alive.current) return;
       if (api.desktop) {
-        const path = await (kind !== "package"
-          ? kind === "practiceMidi" ? Promise.reject(new Error("练习版导出需要当前版本桌面端，请重新启动新版软件")) : api.export()
-          : api.exportPackage());
+        const path = await (kind === "practiceMidi" ? Promise.reject(new Error("练习版导出需要当前版本桌面端，请重新启动新版软件")) : api.export());
         slot.update({
           message: path ? `已保存：${path}` : "保存已取消，原曲目资料保留。",
         });
       } else {
-        const blob = await (kind !== "package"
-          ? kind === "practiceMidi" ? api.command<{bytes:number[]}>({type:"exportPracticeVariant"}).then(value=>new Blob([new Uint8Array(value.bytes)],{type:"audio/midi"})) : api.downloadMidi(source.contentId, controller.signal)
-          : api.downloadPackage(source.contentId, controller.signal));
+        const blob = await (kind === "practiceMidi" ? api.command<{bytes:number[]}>({type:"exportPracticeVariant"}).then(value=>new Blob([new Uint8Array(value.bytes)],{type:"audio/midi"})) : api.downloadMidi(source.contentId, controller.signal));
         if (!controller.signal.aborted && alive.current) {
           download(
             blob,
@@ -122,7 +118,7 @@ export function useMediaExport(
               Array.from(source.title.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_"))
                 .slice(0, 100)
                 .join("") || "曲目"
-            }.${kind !== "package" ? "mid" : "neopiece"}`,
+            }.mid`,
           );
           slot.update({ message: "文件已生成，请查看下载文件。" });
         }
@@ -185,9 +181,7 @@ export function useMediaExport(
           kind:
             action === "save"
               ? "mediaSave"
-              : kind !== "package"
-                ? "midiExport"
-                : "packageExport",
+              : "midiExport",
           createdAtMs: Date.now(),
         };
         slot.update({ job: request, status: undefined });

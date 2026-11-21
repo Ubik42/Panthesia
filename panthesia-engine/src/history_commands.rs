@@ -4,17 +4,6 @@ use serde_json::{Value, json};
 
 
 impl Player {
-    pub(super) fn set_library_collection(&mut self,path:&PathBuf,content_id:&str,favorite:Option<bool>,queued:Option<bool>) -> Result<Value,String> {
-        if content_id.len()!=64 || !content_id.bytes().all(|b|b.is_ascii_hexdigit()) || favorite.is_some()==queued.is_some() {return Err("请选择一项有效的曲目收藏或队列操作".into());}
-        let mut workspace=crate::library_workspace::Workspace::load(&self.data)?;
-        let entry=if path.is_file(){workspace.inspect(path.clone(),true)?}else{workspace.entries.get(&crate::library_workspace::key(path)).cloned().ok_or("未知文件位置，请先检查文件")?};
-        if entry.content_id.as_deref()!=Some(content_id) {return Err("文件内容已改变，请重新检查并选择曲目".into());}
-        let title=entry.metadata.title.clone().unwrap_or_else(||path.file_stem().unwrap_or_default().to_string_lossy().into());
-        if let Some(enabled)=favorite {self.history.set_favorite(content_id,&title,Some(path.clone()),enabled).map_err(|e|e.to_string())?;}
-        if let Some(enabled)=queued {self.history.set_queued(content_id,&title,Some(path.clone()),enabled).map_err(|e|e.to_string())?;}
-        let library=self.history.song(content_id).map(|s|&s.library);
-        Ok(json!({"favorite":library.is_some_and(|l|l.favorite),"queuePosition":library.and_then(|l|l.queue_position)}))
-    }
 
     pub(super) fn practice_time(&self,content_id:&str,from:u64,to:u64)->Result<Value,String>{self.practice_time_checked(content_id,from,to,||Ok(()))}
     pub(super) fn practice_time_checked(&self,content_id:&str,from:u64,to:u64,check:impl Fn()->Result<(),String>)->Result<Value,String>{

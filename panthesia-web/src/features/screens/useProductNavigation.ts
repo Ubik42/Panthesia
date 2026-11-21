@@ -1,20 +1,13 @@
 import { useRef } from "react";
-import type { EngineCommand, SongRow } from "../../api";
+import type { EngineCommand } from "../../api";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
 import type { useProductScreens } from "./useProductScreens";
 /** Guarded engine transitions and page transitions form one navigation operation. */
 export function useProductNavigation(options: {
   screens: ReturnType<typeof useProductScreens>;
   changeWorkspace: (next: Workspace, signal?: AbortSignal) => Promise<boolean>;
-  load: (
-    row: SongRow,
-    contentId: string | undefined,
-    location: "selected",
-  ) => Promise<boolean>;
   run: (command: EngineCommand) => Promise<boolean>;
   clearLiveNotes: () => void;
-  prepareBrowser: () => void;
-  prepareSong: () => void;
   closeMenu: () => void;
 }) {
   const current = useRef(options);
@@ -30,15 +23,6 @@ export function useProductNavigation(options: {
     }
   };
   return {
-    chooseSongs: (signal?: AbortSignal) =>
-      navigate(async (o) => {
-        if (!(await o.changeWorkspace("library", signal)) || signal?.aborted)
-          return false;
-        o.prepareBrowser();
-        o.screens.browse();
-        o.closeMenu();
-        return true;
-      }),
     resumePractice: (signal?: AbortSignal) =>
       navigate(async (o) => {
         if (!(await o.changeWorkspace("practice", signal)) || signal?.aborted)
@@ -52,15 +36,6 @@ export function useProductNavigation(options: {
         if (!(await o.changeWorkspace("library"))) return false;
         o.clearLiveNotes();
         o.screens.home();
-        o.closeMenu();
-        return true;
-      }),
-    openSongSetup: (row: SongRow) =>
-      navigate(async (o) => {
-        if (!(await o.load(row, row.contentId ?? undefined, "selected")))
-          return false;
-        o.prepareSong();
-        o.screens.show("setup");
         o.closeMenu();
         return true;
       }),

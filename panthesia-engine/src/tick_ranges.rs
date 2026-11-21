@@ -251,11 +251,7 @@ mod tests {
         let xml = format!(
             "<score-partwise><part-list><score-part id='P1'><part-name>Piano</part-name></score-part></part-list><part id='P1'><measure number='1'><attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><direction><sound tempo='120'/></direction>{notes}</measure><measure number='2'><direction><sound tempo='60'/></direction>{notes}</measure></part></score-partwise>"
         );
-        p.command(Command::ImportScore {
-            bytes: xml.into_bytes(),
-            name: "beats.musicxml".into(),
-            default_bpm: 120,
-        })
+        p.import_score(xml.into_bytes(), "beats.musicxml".into(), 120)
         .unwrap();
         p.command(Command::Mode {
             value: "wait".into(),

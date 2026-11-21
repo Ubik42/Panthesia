@@ -1,6 +1,5 @@
 import { SongOptionsDialog } from "./SongOptionsDialog";
 import { PracticeVariantPanel } from "../practice/PracticeVariantPanel";
-import { SongEditionBar } from "../practice/SongEditionBar";
 import { ScoresDialog } from "../../ScoresDialog";
 import { MeterDialog } from "../../MeterDialog";
 import { HandsDialog } from "../../HandsDialog";
@@ -21,7 +20,6 @@ export function SongEditorHost({
   loopEnd,
   applyVariant,
   execute,
-  openPerformance,
 }: {
   song: LoadedSong | null;
   editors: ReturnType<typeof useSongEditors>;
@@ -35,11 +33,6 @@ export function SongEditorHost({
   loopEnd: number;
   applyVariant: (value: Variant) => Promise<boolean>;
   execute: (command: EngineCommand) => Promise<boolean>;
-  openPerformance: (
-    path: string,
-    contentId: string,
-    title: string,
-  ) => Promise<boolean>;
 }) {
   const {
     songOptions,
@@ -61,16 +54,6 @@ export function SongEditorHost({
               song={song}
               disabled={disabled}
               apply={applyVariant}
-            />
-          )}
-          {song && (
-            <SongEditionBar
-              song={song}
-              active={songOptions}
-              disabled={disabled}
-              execute={execute}
-              openPerformance={openPerformance}
-              manage={() => setScoresDialog(true)}
             />
           )}
         </SongOptionsDialog>

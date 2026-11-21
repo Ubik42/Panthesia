@@ -399,10 +399,7 @@ mod paged_tests {
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut player = Player::new(root.join("profile"), PathBuf::new(), true);
         player
-            .command(Command::Load {
-                path,
-                title: "Own window".into(),
-            })
+            .load_file(path, "Own window".into())
             .unwrap();
         let view = player.score_view_payload(Some(0), None, false).unwrap();
         let file = player.file.as_ref().unwrap();
@@ -496,10 +493,7 @@ mod paged_tests {
         let path = root.join("own.mid");
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut p = Player::new(root.join("profile"), PathBuf::new(), true);
-        p.command(Command::Load {
-            path,
-            title: "Page mapping".into(),
-        })
+        p.load_file(path, "Page mapping".into())
         .unwrap();
         let file = p.file.as_ref().unwrap();
         let engraving =

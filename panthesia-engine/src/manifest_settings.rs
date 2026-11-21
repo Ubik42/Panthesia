@@ -54,8 +54,6 @@ impl Player {
         if self.exercise.is_some()
             || !is_music_file(path)
             || panthesia_core::song_annotations::document_path(path).is_some()
-            || crate::song_repository::SongRepository::managed_path(&self.data, &file.content_id)
-                .is_ok_and(|owned| owned.is_file())
         {
             return None;
         }

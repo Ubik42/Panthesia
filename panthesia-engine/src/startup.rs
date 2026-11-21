@@ -38,6 +38,21 @@ pub enum StartupWarningKind {
     History,
     Settings,
 }
+/// Where the last song came from, so a startup warning can offer to open it again.
+#[derive(Clone, PartialEq, serde::Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum SongSource {
+    File {
+        path: String,
+        title: String,
+        #[serde(rename = "contentId")]
+        content_id: Option<String>,
+    },
+    Recent {
+        #[serde(rename = "contentId")]
+        content_id: String,
+    },
+}
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartupWarning {
@@ -45,12 +60,12 @@ pub struct StartupWarning {
     pub kind: StartupWarningKind,
     pub title: String,
     pub detail: String,
-    pub source: Option<crate::library_operations::LibraryOpenSource>,
+    pub source: Option<SongSource>,
 }
-fn song_source(prefs: &Preferences) -> Option<crate::library_operations::LibraryOpenSource> {
+fn song_source(prefs: &Preferences) -> Option<SongSource> {
     if prefs.exercise.is_some() {
         return prefs.last_content_id.as_ref().map(|id| {
-            crate::library_operations::LibraryOpenSource::Recent {
+            SongSource::Recent {
                 content_id: id.clone(),
             }
         });
@@ -58,7 +73,7 @@ fn song_source(prefs: &Preferences) -> Option<crate::library_operations::Library
     prefs
         .path
         .as_ref()
-        .map(|path| crate::library_operations::LibraryOpenSource::File {
+        .map(|path| SongSource::File {
             path: path.to_string_lossy().into(),
             title: prefs.title.clone(),
             content_id: prefs.last_content_id.clone(),
@@ -134,7 +149,7 @@ impl Control {
         kind: StartupWarningKind,
         title: &str,
         detail: String,
-        source: Option<crate::library_operations::LibraryOpenSource>,
+        source: Option<SongSource>,
     ) {
         if let Ok(mut status) = self.status.lock() {
             status.warnings.retain(|warning| warning.id != id);
@@ -221,7 +236,7 @@ impl Data {
         loaded
     }
     fn read_base(data: &std::path::Path) -> Self {
-        let lock = match library_workspace::lock_for(data) {
+        let lock = match data_locks::lock_for(data) {
             Ok(lock) => lock,
             Err(error) => return Self::failed(data, error),
         };
@@ -374,20 +389,6 @@ impl Prepared {
                 return prepared.materialize_for_startup(root,versions).map(|p|Some(Song::Exercise(p)));
             }
             if let Some(path) = data.preferences.path.clone() {
-                if path.parent().and_then(|p| p.canonicalize().ok()).as_deref() == Some(root)
-                    && matches!(
-                        path.file_name().and_then(|v| v.to_str()),
-                        Some(
-                            "five-finger.mid"
-                                | "c-major-scale.mid"
-                                | "bass-five-finger.mid"
-                                | "parallel-five-finger.mid"
-                                | "basic-chords.mid"
-                        )
-                    )
-                {
-                    library::builtin_rows(root)?;
-                }
                 let names = |id: &str| {
                     Ok(data
                         .preferences
@@ -430,7 +431,6 @@ impl Prepared {
         })();
         let prepared=prepared.and_then(|song|{
             match song {
-                Some(Song::File(file))=>file.retain_assets(root,&mut data.preferences,&check).map(|file|Some(Song::File(file))),
                 other=>Ok(other),
             }
         });
@@ -740,13 +740,13 @@ impl Player {
                             (&preferences.path, self.file.as_ref())
                         {
                             if let Some(actual) = &file.source_path {
-                                if library_workspace::key(original)
-                                    != library_workspace::key(actual)
+                                if data_locks::key(original)
+                                    != data_locks::key(actual)
                                 {
                                     control.warn("songLocation", StartupWarningKind::SongLocation,
                                         "上次曲目已从其他位置恢复",
                                         format!("原位置：{}；已从 {} 读取同一内容。原文件与附加资料保留。", original.display(), actual.display()),
-                                        Some(crate::library_operations::LibraryOpenSource::File {
+                                        Some(SongSource::File {
                                             path: actual.to_string_lossy().into(), title: self.title.clone(), content_id: Some(file.content_id.clone()),
                                         }));
                                 }
@@ -776,7 +776,7 @@ impl Player {
                             .as_ref()
                             .and_then(|file| {
                                 file.source_path.as_ref().map(|path| {
-                                    crate::library_operations::LibraryOpenSource::File {
+                                    SongSource::File {
                                         path: path.to_string_lossy().into(),
                                         title: self.title.clone(),
                                         content_id: Some(file.content_id.clone()),

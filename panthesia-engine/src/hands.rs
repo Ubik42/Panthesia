@@ -470,11 +470,7 @@ mod tests {
         let mut player = Player::new(root, std::path::PathBuf::new(), true);
         let xml = r#"<score-partwise><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>1</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note><note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration></note><note><chord/><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration></note></measure></part></score-partwise>"#;
         player
-            .command(Command::ImportScore {
-                bytes: xml.as_bytes().to_vec(),
-                name: "crossed.musicxml".into(),
-                default_bpm: 100,
-            })
+            .import_score(xml.as_bytes().to_vec(), "crossed.musicxml".into(), 100)
             .unwrap();
         let file = player.file.as_ref().unwrap();
         let track = file
@@ -538,11 +534,7 @@ mod tests {
         let mut player = Player::new(root, std::path::PathBuf::new(), true);
         let xml = r#"<score-partwise><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>1</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note><note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration></note><note><chord/><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note></measure></part></score-partwise>"#;
         player
-            .command(Command::ImportScore {
-                bytes: xml.as_bytes().to_vec(),
-                name: "hand-span.musicxml".into(),
-                default_bpm: 100,
-            })
+            .import_score(xml.as_bytes().to_vec(), "hand-span.musicxml".into(), 100)
             .unwrap();
         let file = player.file.as_ref().unwrap();
         let track = file

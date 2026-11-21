@@ -79,8 +79,8 @@ impl Engine {
             // The worker retains these roots even if playback rejects an outdated installation.
             let retained = (context.file.clone(), context.notes.clone());
             token.stage("readingScore")?;
-            let lock = library_workspace::lock_for(&engine.data)?;
-            let guard = library_workspace::wait_for(&lock, &check)?;
+            let lock = data_locks::lock_for(&engine.data)?;
+            let guard = data_locks::wait_for(&lock, &check)?;
             let position = score_attachments::navigation_position(
                 &engine.data,
                 &content,
@@ -157,7 +157,7 @@ impl Player {
             _ => return Err("谱页定位操作无效".into()),
         };
         let file = self.file.as_ref().ok_or("请先选择曲目")?;
-        let lock = library_workspace::lock_for(&self.data)?;
+        let lock = data_locks::lock_for(&self.data)?;
         let _guard = lock.lock().map_err(|_| "谱页目录正忙")?;
         let position = score_attachments::navigation_position(
             &self.data,

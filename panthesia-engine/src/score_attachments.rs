@@ -133,7 +133,7 @@ pub fn edit_annotation(
     draft: Option<AnnotationDraft>,
     expected: Option<Annotation>,
 ) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let mut s = load(data, cid)?;
     let a = s
@@ -200,7 +200,7 @@ pub fn edit_annotation(
 }
 /// Replace only this page's freehand marks; text and highlights remain independent.
 pub fn edit_ink(data:&Path,cid:&str,book:&str,asset:&str,page:usize,expected:Vec<Annotation>,strokes:Vec<Annotation>)->Result<Value,String>{
- let lock=crate::library_workspace::lock_for(data)?;let _guard=lock.lock().map_err(|_|"谱页目录正忙")?;
+ let lock=crate::data_locks::lock_for(data)?;let _guard=lock.lock().map_err(|_|"谱页目录正忙")?;
  let mut store=load(data,cid)?;let a=store.attachments.iter_mut().find(|a|a.id==book).ok_or("谱面版本不存在")?;
  if !a.pages.iter().any(|p|p.id==asset)||page==0||page>5000||a.format=="images"&&page!=1{return Err("谱页身份或页码无效".into());}
  let same=|n:&Annotation|n.asset_id==asset&&n.page==page&&n.ink.is_some();
@@ -326,7 +326,7 @@ pub fn validate_note_anchors(anchors:&[NoteAnchor],format:&str,pages:&[PageAsset
     Ok(())
 }
 pub fn edit_note_anchor(data:&Path,cid:&str,book:&str,track:usize,index:usize,draft:Option<NoteAnchorDraft>,expected:Option<NoteAnchor>,grid:&str)->Result<Value,String>{
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut store=load(data,cid)?;let a=store.attachments.iter_mut().find(|a|a.id==book).ok_or("谱面版本不存在")?;
     let current=a.note_anchors.iter().position(|n|n.track==track&&n.index==index);
     if current.and_then(|i|a.note_anchors.get(i))!=expected.as_ref(){return Err("音符位置已在其他窗口改变，请重新打开谱面".into())}
@@ -341,7 +341,7 @@ pub fn edit_note_anchor(data:&Path,cid:&str,book:&str,track:usize,index:usize,dr
 /// the submitted identities stay untouched, including hand-placed anchors.
 pub fn batch_note_anchors(data:&Path,cid:&str,book:&str,edits:Vec<NoteAnchorEdit>,grid:&str)->Result<Value,String>{
     if edits.is_empty()||edits.len()>10000 {return Err("请提交 1 至 10000 个音符位置".into());}
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut store=load(data,cid)?;
     let a=store.attachments.iter_mut().find(|a|a.id==book).ok_or("谱面版本不存在")?;
     let mut identities=std::collections::BTreeSet::new();
@@ -391,7 +391,7 @@ pub fn create_located_paper(data:&Path,cid:&str,name:&str,pages:Vec<Vec<u8>>,anc
     }
     let mapping=Mapping{grid:grid.into(),enabled:true,anchors:measures.into_iter().map(|(measure,(page,region))|PageAnchor{measure,page,region:Some(region)}).collect()};
     mapping.validate("images",assets.len())?;
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut store=load(data,cid)?;
     let base=blake3::hash(format!("located-paper:{cid}:{source_fingerprint}:{}",assets.iter().map(|a|a.id.as_str()).collect::<Vec<_>>().join(":")).as_bytes()).to_hex().to_string();
     let prefix=format!("{base}-");
@@ -564,7 +564,7 @@ fn describe(data: &Path, s: &Store) -> Result<Value, String> {
     Ok(v)
 }
 pub fn list(data: &Path, cid: &str) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     describe(data, &load(data, cid)?)
 }
@@ -678,7 +678,7 @@ fn source_bytes(path:&Path)->Result<Vec<u8>,String>{
 }
 fn attachment_baseline(a:&Attachment)->String {blake3::hash(&serde_json::to_vec(a).unwrap()).to_hex().to_string()}
 pub fn link_source(data:&Path,cid:&str,book:&str,asset:&str,path:Option<PathBuf>,baseline:Option<&str>)->Result<Value,String>{
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut store=load(data,cid)?;
     let a=store.attachments.iter_mut().find(|a|a.id==book).ok_or("谱面版本不存在")?;
     if baseline.is_some_and(|b|b!=attachment_baseline(a)){return Err("谱面或原件关联已改变，请刷新列表".into());}
@@ -691,7 +691,7 @@ pub fn link_source(data:&Path,cid:&str,book:&str,asset:&str,path:Option<PathBuf>
     save(data,&store)?;describe(data,&store)
 }
 pub fn inspect_sources(data:&Path,cid:&str,book:&str)->Result<Value,String>{
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let store=load(data,cid)?;
     drop(_g);let a=store.attachments.iter().find(|a|a.id==book).ok_or("谱面版本不存在")?;
     let rows:Vec<_>=a.pages.iter().enumerate().map(|(i,p)|{
@@ -708,7 +708,7 @@ pub fn inspect_sources(data:&Path,cid:&str,book:&str)->Result<Value,String>{
     Ok(json!({"rows":rows,"baseline":attachment_baseline(a)}))
 }
 pub fn preview_source(data:&Path,cid:&str,book:&str,asset:&str,fingerprint:&str)->Result<Value,String>{
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let store=load(data,cid)?;
     drop(_g);let a=store.attachments.iter().find(|a|a.id==book).ok_or("谱面版本不存在")?;
     let source=a.sources.get(asset).ok_or("原件关联已改变，请重新检查")?;
@@ -727,7 +727,7 @@ pub fn read_source_preview(data:&Path,cid:&str,hash:&str,k:&str)->Result<(Vec<u8
     Ok((bytes,k.into()))
 }
 pub fn apply_source(data:&Path,cid:&str,book:&str,asset:&str,fingerprint:&str,baseline:&str,action:&str)->Result<Value,String>{
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut store=load(data,cid)?;let at=store.attachments.iter().position(|a|a.id==book).ok_or("谱面版本不存在")?;
     let old=&store.attachments[at];
     if attachment_baseline(old)!=baseline {return Err("谱面、批注、对应或原件位置已改变，请重新检查".into());}
@@ -769,7 +769,7 @@ pub fn set_mapping_checked(
     mapping: Option<Mapping>,
     expected: Option<MappingExpectation>,
 ) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let mut s = load(data, cid)?;
     let a = s
@@ -793,7 +793,7 @@ fn transfer_id(source:&str,target:&str,id:&str)->String {blake3::hash(format!("p
 fn transfer_baseline(source:&Attachment,target:&Attachment)->String {blake3::hash(format!("{}:{}",attachment_baseline(source),attachment_baseline(target)).as_bytes()).to_hex().to_string()}
 pub fn preview_transfer(data:&Path,cid:&str,source:&str,target:&str)->Result<Value,String>{
     if source==target{return Err("请选择不同的来源谱面".into());}
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let s=load(data,cid)?;let a=s.attachments.iter().find(|a|a.id==source).ok_or("来源谱面不存在")?;
     let b=s.attachments.iter().find(|a|a.id==target).ok_or("目标谱面不存在")?;
     let described=describe(data,&s)?;let books=described["attachments"].as_array().unwrap();
@@ -802,7 +802,7 @@ pub fn preview_transfer(data:&Path,cid:&str,source:&str,target:&str)->Result<Val
 }
 pub fn apply_transfer(data:&Path,cid:&str,request:PaperTransfer)->Result<Value,String>{
     if request.source==request.target || request.annotations.len()>2000 || request.anchors.len()>5000 || (request.annotations.is_empty()&&request.anchors.is_empty()){return Err("请选择来源谱面和要迁移的批注或小节对应".into());}
-    let lock=crate::library_workspace::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
+    let lock=crate::data_locks::lock_for(data)?;let _g=lock.lock().map_err(|_|"谱页目录正忙")?;
     let mut s=load(data,cid)?;let source=s.attachments.iter().find(|a|a.id==request.source).ok_or("来源谱面不存在")?.clone();
     let target=s.attachments.iter_mut().find(|a|a.id==request.target).ok_or("目标谱面不存在")?;
     if transfer_baseline(&source,target)!=request.baseline{return Err("来源或目标谱面资料已改变，请重新审阅迁移".into());}
@@ -839,7 +839,7 @@ pub fn add(
 ) -> Result<Value, String> {
     let k = kind(&bytes)?.to_owned();
     let name = title(name)?;
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let mut s = load(data, cid)?;
     let hash = blake3::hash(&bytes).to_hex().to_string();
@@ -923,7 +923,7 @@ pub fn read(data: &Path, cid: &str, id: &str, page: usize) -> Result<(Vec<u8>, S
     read_expected(data, cid, id, page, None)
 }
 pub fn read_expected(data: &Path, cid: &str, id: &str, page: usize, expected_asset: Option<&str>) -> Result<(Vec<u8>, String), String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let s = load(data, cid)?;
     drop(_g);
@@ -957,7 +957,7 @@ pub(crate) fn update_with_pages(
     data: &Path, cid: &str, id: Option<&str>, action: &str, name: Option<&str>,
     view: Option<View>, page: usize, direction: i32, expected_pages: Option<&[String]>,
 ) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let mut s = load(data, cid)?;
     if action == "select" {
@@ -1179,106 +1179,6 @@ mod tests {
         let _=std::fs::remove_dir_all(root);
     }
     #[test]
-    fn annotation_identity_conflicts_merge_and_page_removal(){
-        let root=std::env::temp_dir().join(format!("paper-notes-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let cid="annotations";
-        let s=add(&root,cid,"教师谱",b"\x89PNG\r\n\x1a\nfirst".to_vec(),None).unwrap();let book=s["active"].as_str().unwrap();let asset=s["attachments"][0]["pages"][0]["id"].as_str().unwrap().to_owned();
-        let d=AnnotationDraft{asset_id:asset.clone(),page:1,x:0.2,y:0.3,text:"这里换指 3→1".into(),color:"yellow".into(),width:None,height:None,ink:None};
-        let s=edit_annotation(&root,cid,book,None,Some(d.clone()),None).unwrap();let note:Annotation=serde_json::from_value(s["attachments"][0]["annotations"][0].clone()).unwrap();
-        let mut changed=d.clone();changed.text="放松手腕，保持连奏".into();changed.width=Some(0.4);changed.height=Some(0.1);edit_annotation(&root,cid,book,Some(&note.id),Some(changed.clone()),Some(note.clone())).unwrap();
-        assert!(edit_annotation(&root,cid,book,Some(&note.id),Some(d.clone()),Some(note.clone())).is_err());let before=list(&root,cid).unwrap();let mut lone=changed.clone();lone.height=None;assert!(edit_annotation(&root,cid,book,None,Some(lone),None).is_err());let mut wide=changed.clone();wide.width=Some(0.9);assert!(edit_annotation(&root,cid,book,None,Some(wide),None).is_err());let mut bad=d.clone();bad.x=2.;assert!(edit_annotation(&root,cid,book,None,Some(bad),None).is_err());assert_eq!(list(&root,cid).unwrap(),before);
-        add(&root,cid,"二页",b"\x89PNG\r\n\x1a\nsecond".to_vec(),Some(book)).unwrap();update(&root,cid,Some(book),"movePage",None,None,0,1).unwrap();assert_eq!(list(&root,cid).unwrap()["attachments"][0]["annotations"][0]["assetId"],asset);
-        let mut files=std::collections::BTreeMap::new();let (papers,active)=export_package(&root,cid,&mut files).unwrap();let target=root.join("target");import_package(&target,cid,&papers,active,&files,"merge").unwrap();import_package(&target,cid,&papers,active,&files,"merge").unwrap();assert_eq!(list(&target,cid).unwrap()["attachments"][0]["annotations"].as_array().unwrap().len(),1);assert_eq!(list(&target,cid).unwrap()["attachments"][0]["annotations"][0]["width"],serde_json::json!(0.4_f32));
-        update(&root,cid,Some(book),"removePage",None,None,1,0).unwrap();assert!(list(&root,cid).unwrap()["attachments"][0].get("annotations").is_none());
-    }
-    #[test]
-    fn ink_page_transaction_conflicts_undo_package_and_transfer(){
-        let root=std::env::temp_dir().join(format!("paper-ink-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let cid="ink-test";
-        let initial=add(&root,cid,"教师谱",b"\x89PNG\r\n\x1a\nink-page".to_vec(),None).unwrap();let book=initial["active"].as_str().unwrap().to_owned();let asset=initial["attachments"][0]["pages"][0]["id"].as_str().unwrap().to_owned();
-        edit_annotation(&root,cid,&book,None,Some(AnnotationDraft{asset_id:asset.clone(),page:1,x:0.2,y:0.2,text:"已有提示".into(),color:"blue".into(),width:None,height:None,ink:None}),None).unwrap();
-        let mark=Annotation{id:"ink-a".into(),asset_id:asset.clone(),page:1,x:0.1,y:0.2,width:Some(0.3),height:Some(0.2),text:"".into(),color:"red".into(),ink:Some(InkStroke{points:vec![[0.,0.],[1.,1.]],thickness:0.0022})};let mut second=mark.clone();second.id="ink-b".into();second.y=0.6;
-        let strokes=vec![mark.clone(),second.clone()];let saved=edit_ink(&root,cid,&book,&asset,1,vec![],strokes.clone()).unwrap();assert_eq!(saved["attachments"][0]["annotations"].as_array().unwrap().len(),3);
-        assert!(edit_ink(&root,cid,&book,&asset,1,vec![],vec![]).is_err());let mut bad=mark.clone();bad.ink.as_mut().unwrap().points[1][0]=2.;assert!(edit_ink(&root,cid,&book,&asset,1,strokes.clone(),vec![bad]).is_err());assert_eq!(list(&root,cid).unwrap()["attachments"][0]["annotations"].as_array().unwrap().len(),3);
-        edit_ink(&root,cid,&book,&asset,1,strokes.clone(),vec![]).unwrap();let erased=list(&root,cid).unwrap();assert_eq!(erased["attachments"][0]["annotations"][0]["text"],"已有提示");edit_ink(&root,cid,&book,&asset,1,vec![],strokes.clone()).unwrap();
-        let mut files=std::collections::BTreeMap::new();let (papers,active)=export_package(&root,cid,&mut files).unwrap();let target=root.join("import");import_package(&target,cid,&papers,active,&files,"replace").unwrap();assert_eq!(list(&target,cid).unwrap()["attachments"][0]["annotations"][1]["ink"]["points"],json!([[0.,0.],[1.,1.]]));
-        let dest=add(&root,cid,"新版谱",b"\x89PNG\r\n\x1a\nnew-ink-page".to_vec(),None).unwrap();let dest_book=dest["active"].as_str().unwrap().to_owned();let dest_asset=dest["attachments"].as_array().unwrap().iter().find(|a|a["id"]==dest_book).unwrap()["pages"][0]["id"].as_str().unwrap().to_owned();let preview=preview_transfer(&root,cid,&book,&dest_book).unwrap();
-        apply_transfer(&root,cid,PaperTransfer{source:book,target:dest_book.clone(),baseline:preview["baseline"].as_str().unwrap().into(),annotations:vec![TransferAnnotation{id:mark.id,asset_id:dest_asset,page:1,x:0.3,y:0.4}],anchors:vec![],replace_anchors:false}).unwrap();let after=list(&root,cid).unwrap();let copied=&after["attachments"].as_array().unwrap().iter().find(|a|a["id"]==dest_book).unwrap()["annotations"][0];assert_eq!(copied["ink"]["points"],json!([[0.,0.],[1.,1.]]));assert_eq!(copied["x"].as_f64().unwrap() as f32,0.3f32);
-    }
-    #[test]
-    fn mapping_reorder_remove_and_package_keep_page_identity() {
-        let root = std::env::temp_dir().join(format!(
-            "paper-map-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        let cid = "mapping-score";
-        let first = add(&root, cid, "谱页一", b"\x89PNG\r\n\x1a\none".to_vec(), None).unwrap();
-        let id = first["active"].as_str().unwrap();
-        add(
-            &root,
-            cid,
-            "谱页二",
-            b"\x89PNG\r\n\x1a\ntwo".to_vec(),
-            Some(id),
-        )
-        .unwrap();
-        let map = Mapping {
-            grid: "grid-v1-test".into(),
-            enabled: true,
-            anchors: vec![
-                PageAnchor {
-                    measure: 1,
-                    page: 1, region:Some(PageRegion{x:0.2,y:0.3,width:0.4,height:0.1}),
-                },
-                PageAnchor {
-                    measure: 5,
-                    page: 2, region:None,
-                },
-                PageAnchor {
-                    measure: 9,
-                    page: 1, region:None,
-                },
-            ],
-        };
-        let mut invalid=map.clone();invalid.anchors[0].region.as_mut().unwrap().width=0.9;
-        assert!(set_mapping(&root,cid,id,Some(invalid)).is_err());
-        let old:PageAnchor=serde_json::from_value(json!({"measure":1,"page":1})).unwrap();assert!(old.region.is_none());
-        set_mapping(&root, cid, id, Some(map.clone())).unwrap();
-        assert_eq!(
-            list(&root, cid).unwrap()["attachments"][0]["mapping"]["anchors"][2]["page"],
-            1
-        );
-        let bad = Mapping {
-            anchors: vec![PageAnchor {
-                measure: 1,
-                page: 3, region:None,
-            }],
-            ..map.clone()
-        };
-        assert!(set_mapping(&root, cid, id, Some(bad)).is_err());
-        update(&root, cid, Some(id), "movePage", None, None, 0, 1).unwrap();
-        let data = list(&root, cid).unwrap();
-        assert_eq!(data["attachments"][0]["mapping"]["anchors"][0]["page"], 2);
-        assert_eq!(data["attachments"][0]["mapping"]["anchors"][1]["page"], 1);
-        assert_eq!(data["attachments"][0]["mapping"]["anchors"][0]["region"]["width"].as_f64().unwrap() as f32,0.4f32);
-        let mut files = std::collections::BTreeMap::new();
-        let (papers, active) = export_package(&root, cid, &mut files).unwrap();
-        let target = root.join("import");
-        import_package(&target, cid, &papers, active, &files, "replace").unwrap();
-        assert_eq!(
-            list(&target, cid).unwrap()["attachments"][0]["mapping"]["grid"],
-            "grid-v1-test"
-        );
-        update(&root, cid, Some(id), "removePage", None, None, 0, 0).unwrap();
-        let data = list(&root, cid).unwrap();
-        let a = data["attachments"][0]["mapping"]["anchors"]
-            .as_array()
-            .unwrap();
-        assert_eq!(a.len(), 2);
-        assert!(a.iter().all(|a| a["page"] == 1));
-    }
-    #[test]
     fn copies_reading_state_reordering_and_identity_are_durable() {
         let root = std::env::temp_dir().join(format!(
             "score-attachments-{}-{:?}",
@@ -1343,228 +1243,9 @@ mod tests {
     }
 }
 
-pub fn export_package(
-    data: &Path,
-    cid: &str,
-    files: &mut std::collections::BTreeMap<String, Vec<u8>>,
-) -> Result<(Vec<crate::piece_package::Paper>, Option<usize>), String> {
-    export_package_checked(data, cid, files, &|| Ok(()))
-}
-pub fn export_package_checked(
-    data: &Path, cid: &str, files: &mut std::collections::BTreeMap<String, Vec<u8>>,
-    check: &dyn Fn() -> Result<(), String>,
-) -> Result<(Vec<crate::piece_package::Paper>, Option<usize>), String> {
-    check()?;
-    let store = load(data, cid)?;
-    let active = store
-        .attachments
-        .iter()
-        .position(|a| Some(&a.id) == store.active.as_ref());
-    let mut papers = vec![];
-    let mut total = 0usize;
-    let existing_size = files.values().map(|bytes| bytes.len() as u64).sum::<u64>();
-    for (i, a) in store.attachments.iter().enumerate() {
-        check()?;
-        let mut pages = vec![];
-        for (j, p) in a.pages.iter().enumerate() {
-            check()?;
-            total = total.checked_add(p.size).ok_or("曲目包谱页大小无效")?;
-            if total > 240_000_000 {return Err("曲目包谱页超过 240 MB，请先减少不需要的谱面版本".into());}
-            if existing_size + total as u64 > 512_000_000 {return Err("曲目包展开大小超出范围，请先减少不需要的谱面版本".into());}
-            let bytes = panthesia_core::utils::atomic_file::read_limited(&asset_path(data, cid, p)?,MAX_BYTES)
-                .map_err(|e| format!("谱页 {} 无法打包：{e}", p.name))?;
-            if blake3::hash(&bytes).to_hex().as_str() != p.id {
-                return Err(format!("谱页 {} 校验失败", p.name));
-            }
-            check()?;
-            let path = format!("papers/{i}/{j}.{}", p.kind);
-            pages.push(crate::piece_package::asset(
-                path.clone(),
-                p.name.clone(),
-                &bytes,
-            ));
-            files.insert(path, bytes);
-        }
-        papers.push(crate::piece_package::Paper {
-            name: a.name.clone(),
-            format: a.format.clone(),
-            pages,
-            view: a.view.clone(),
-            mapping: a.mapping.clone(),
-            annotations: a.annotations.clone(),
-            note_anchors: a.note_anchors.clone(),
-        });
-    }
-    Ok((papers, active))
-}
-pub fn validate_package(
-    papers: &[crate::piece_package::Paper],
-    active: Option<usize>,
-    files: &std::collections::BTreeMap<String, Vec<u8>>,
-) -> Result<(), String> {
-    if papers.len() > 40 || active.is_some_and(|i| i >= papers.len()) {
-        return Err("曲目包谱页目录无效".into());
-    }
-    let mut total = 0usize;
-    for p in papers {
-        title(&p.name)?;
-        validate_annotations(
-            &p.annotations,
-            &p.format,
-            &p.pages.iter().map(|a| a.hash.clone()).collect::<Vec<_>>(),
-        )?;
-        validate_note_anchors(&p.note_anchors,&p.format,&p.pages.iter().map(|a|PageAsset{id:a.hash.clone(),name:a.name.clone(),kind:String::new(),size:a.size}).collect::<Vec<_>>())?;
-        if let Some(m) = &p.mapping {
-            m.validate(&p.format, p.pages.len())?;
-        }
-        if p.pages.is_empty()
-            || p.pages.len() > 80
-            || !["pdf", "images"].contains(&p.format.as_str())
-            || (p.format == "pdf" && p.pages.len() != 1)
-            || p.view.page == 0
-            || p.view.page > 5000
-            || !(25..=300).contains(&p.view.zoom)
-            || ![0, 90, 180, 270].contains(&p.view.rotation)
-            || (p.format == "images" && p.view.page > p.pages.len())
-        {
-            return Err("曲目包谱页或阅读设置无效".into());
-        }
-        for a in &p.pages {
-            title(&a.name)?;
-            let bytes = files.get(&a.path).ok_or("曲目包缺少谱页")?;
-            let k = kind(bytes)?;
-            if !a.path.starts_with("papers/")
-                || (p.format == "pdf") != (k == "pdf")
-                || !a.path.ends_with(&format!(".{k}"))
-            {
-                return Err("曲目包谱页类型不一致".into());
-            }
-            total = total.checked_add(bytes.len()).ok_or("谱页大小无效")?;
-        }
-    }
-    if total > 240_000_000 {
-        return Err("曲目包谱页超过 240 MB".into());
-    }
-    Ok(())
-}
-pub fn import_package(
-    data: &Path,
-    cid: &str,
-    papers: &[crate::piece_package::Paper],
-    active: Option<usize>,
-    files: &std::collections::BTreeMap<String, Vec<u8>>,
-    policy: &str,
-) -> Result<(), String> {
-    validate_package(papers, active, files)?;
-    let mut store = load(data, cid)?;
-    if policy == "replace" {
-        store.attachments.clear();
-        store.active = None;
-    }
-    let mut incoming = vec![];
-    let mut blobs = vec![];
-    for p in papers {
-        let pages: Vec<PageAsset> = p
-            .pages
-            .iter()
-            .map(|a| PageAsset {
-                id: a.hash.clone(),
-                name: a.name.clone(),
-                kind: kind(&files[&a.path]).unwrap().into(),
-                size: a.size,
-            })
-            .collect();
-        let existing = store
-            .attachments
-            .iter()
-            .find(|a| {
-                a.name == p.name
-                    && a.format == p.format
-                    && a.pages
-                        .iter()
-                        .map(|p| &p.id)
-                        .eq(pages.iter().map(|p| &p.id))
-            })
-            .map(|a| a.id.clone());
-        let id = if let Some(id) = existing {
-            let local = store.attachments.iter_mut().find(|a| a.id == id).unwrap();
-            for note in &p.annotations {
-                if !local.annotations.iter().any(|n| {
-                    n.id == note.id
-                        || (n.asset_id == note.asset_id
-                            && n.page == note.page
-                            && n.x == note.x
-                            && n.y == note.y
-                            && n.text == note.text
-                            && n.color == note.color)
-                }) {
-                    local.annotations.push(note.clone());
-                }
-            }
-            validate_annotations(
-                &local.annotations,
-                &local.format,
-                &local.pages.iter().map(|p| p.id.clone()).collect::<Vec<_>>(),
-            )?;
-            for note in &p.note_anchors {
-                if let Some(local_note)=local.note_anchors.iter().find(|n|n.track==note.track&&n.index==note.index){
-                    if local_note!=note {return Err("曲目包音符位置与本地标记冲突，请选择替换导入".into());}
-                } else {local.note_anchors.push(note.clone());}
-            }
-            validate_note_anchors(&local.note_anchors,&local.format,&local.pages)?;
-            id
-        } else {
-            let signature = serde_json::to_vec(&pages).map_err(|e| e.to_string())?;
-            let base = blake3::hash(&signature).to_hex().to_string();
-            let mut id = base.clone();
-            let mut suffix = 1;
-            while store.attachments.iter().any(|a| a.id == id) {
-                suffix += 1;
-                id = format!("{base}-{suffix}");
-            }
-            store.attachments.push(Attachment {
-                id: id.clone(),
-                name: p.name.clone(),
-                format: p.format.clone(),
-                pages: pages.clone(),
-                view: p.view.clone(),
-                mapping: p.mapping.clone(),
-                annotations: p.annotations.clone(),
-                note_anchors: p.note_anchors.clone(),
-                sources: Default::default(),
-            });
-            id
-        };
-        for (a, page) in p.pages.iter().zip(&pages) {
-            blobs.push((asset_path(data, cid, page)?, &files[&a.path]));
-        }
-        incoming.push(id);
-    }
-    if store.attachments.len() > 40
-        || store
-            .attachments
-            .iter()
-            .flat_map(|a| &a.pages)
-            .map(|p| p.size)
-            .sum::<usize>()
-            > 240_000_000
-    {
-        return Err("合并后谱页超出上限，请整理后再导入".into());
-    }
-    if store.active.is_none() {
-        store.active = active
-            .and_then(|i| incoming.get(i).cloned())
-            .or_else(|| store.attachments.first().map(|a| a.id.clone()));
-    }
-    std::fs::create_dir_all(folder(data, cid)?).map_err(|e| e.to_string())?;
-    for (path, bytes) in blobs {
-        panthesia_core::utils::atomic_file::write(&path, bytes).map_err(|e| e.to_string())?;
-    }
-    save(data, &store)
-}
 
 pub fn list_verified(data: &Path, cid: &str) -> Result<Value, String> {
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let store = load(data, cid)?;
     drop(_g);
@@ -1611,7 +1292,7 @@ pub fn repair(
     bytes: Vec<u8>,
 ) -> Result<Value, String> {
     let k = kind(&bytes)?;
-    let lock = crate::library_workspace::lock_for(data)?;
+    let lock = crate::data_locks::lock_for(data)?;
     let _g = lock.lock().map_err(|_| "谱页目录正忙")?;
     let s = load(data, cid)?;
     let a = s

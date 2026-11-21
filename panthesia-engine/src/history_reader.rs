@@ -25,7 +25,7 @@ fn wait_read_context<T>(
 pub(crate) fn supports(command: &Command) -> bool {
     matches!(
         command,
-        Command::Collection | Command::LibraryRepairs { .. } | Command::PracticeTime { .. }
+        Command::PracticeTime { .. }
     )
 }
 #[derive(serde::Deserialize)]
@@ -69,17 +69,12 @@ impl Context {
         atomic_file::capture_readonly(
             Arc::new(move |path: &std::path::Path| asset_storage::captures(&data, path)),
             || {
-                if let Command::LibraryRepairs { query, kind, include_resolved, offset, limit } = &command {
-                    let known = crate::library_repairs::history_locations(&self.history, &check)?;
-                    return crate::library_repairs::query_checked(&self.data, &known, query, kind, *include_resolved, *offset, *limit, false, &check);
-                }
                 let mut reader = Player::empty(self.data, PathBuf::new(), true);
                 reader.history = self.history;
                 reader.file = self.file;
                 reader.state.latency = self.latency;
                 // Dispatch only read methods, with no playback-command side effects or implicit saves.
                 match command {
-                    Command::Collection => reader.collection_checked(&check),
                     Command::PracticeTime { content_id, from, to } => {
                         reader.practice_time_checked(&content_id, from, to, &check)
                     }
@@ -135,11 +130,10 @@ impl Engine {
         let engine = self.clone();
         let (label, content) = match &command {
             Command::PracticeTime { content_id, .. } => ("汇总练习时长", Some(content_id.clone())),
-            Command::Collection => ("读取收藏与最近练习", None),
             _ => ("读取曲目文件位置", None),
         };
         let work = move |token: background_tasks::TaskToken| {
-            token.stage(if matches!(command, Command::LibraryRepairs { .. }) { "readingLibrary" } else { "readingHistory" })?;
+            token.stage(if false { "readingLibrary" } else { "readingHistory" })?;
             let (reply, receiver) = mpsc::sync_channel(1);
             engine.tx.send(runtime_request::Request::HistoryQueryContext {
                 current_song, reply,

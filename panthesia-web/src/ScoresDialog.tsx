@@ -35,7 +35,6 @@ import {
 } from "./features/scores/ScoreVersionBrowser";
 import "./features/scores/scoreManagerWorkspace.css";
 import { api, type LoadedSong } from "./api";
-import { CurrentSongProject } from "./features/scores/SongProjectSummary";
 import { PaperScore, type PaperAttachment } from "./PaperScore";
 import {
   ScoreRoutePreview,
@@ -829,11 +828,6 @@ export function ScoresDialog({
             <X size={18} />
           </button>
         </div>
-        <details className="score-manager-project">
-          <summary>歌曲、演奏版本与当前练习</summary>
-        <CurrentSongProject contentId={song.contentId} path={song.sourcePath}
-          revision={JSON.stringify([versions.map(v=>[v.id,v.active,v.fingerprint]),conversion.drafts.length])}/>
-        </details>
         {localBusy && (
           <p className="score-manager-local-progress" role="status">
             正在{conversion.localAction || "处理谱面"}…

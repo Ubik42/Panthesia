@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
 /** Product pages own presentation; the existing workspace adapter owns guarded engine transitions. */
 export function useProductScreens(workspace: Workspace) {
-  const [front, setFront] = useState<"home" | "settings" | "folders" | null>(
+  const [front, setFront] = useState<"home" | "settings" | null>(
     "home",
   );
   const [practice, setPractice] = useState<
@@ -19,7 +19,6 @@ export function useProductScreens(workspace: Workspace) {
     splitTrack,
     home: () => setFront("home"),
     settings: () => setFront("settings"),
-    folders: () => setFront("folders"),
     browse: () => setFront(null),
     resume: () => setFront(null),
     show,

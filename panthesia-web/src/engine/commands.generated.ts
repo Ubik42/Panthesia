@@ -14,53 +14,6 @@ export interface SongCatalog {
   "performances": Array<CatalogPerformance>;
 }
 
-export interface MetadataSourceCandidate {
-  "path": string;
-  "name": string;
-  "sourceId": string | null;
-  "size": number;
-  "songs": number;
-  "matchedPaths": Array<string>;
-  "applied": number;
-  "updates": number;
-  "pending": boolean;
-  "error": string | null;
-}
-
-export interface MetadataDiscovery {
-  "updatedAt": number;
-  "files": Array<MetadataSourceCandidate>;
-  "errors": Array<string>;
-}
-
-export interface ImportOptions {
-  "overwrite": boolean;
-  "fingers": boolean;
-  "hands": boolean;
-  "groups": boolean;
-}
-
-export interface ImportRow {
-  "path": string;
-  "contentId": string;
-  "title": string;
-  "matched": boolean;
-  "fields": Array<string>;
-  "fingers": number;
-  "hands": number;
-  "groups": Array<Array<string>>;
-  "warnings": Array<string>;
-  "blocked": boolean;
-  "sourceUpdated": boolean;
-}
-
-export interface ImportPreview {
-  "proof": string;
-  "sourceSongs": number;
-  "matched": number;
-  "rows": Array<ImportRow>;
-}
-
 export interface Variant {
   "transpose"?: number;
   "quantize"?: number;
@@ -156,26 +109,6 @@ export interface RepertoireRegistry {
   "notations": Record<string, NotationEdition>;
 }
 
-export interface RepertoireEdit {
-  "expected": string;
-  "contentId": string;
-  "workId"?: string | null;
-  "independent"?: boolean | null;
-  "title"?: string | null;
-  "composer"?: string | null;
-  "catalogue"?: string | null;
-  "notationId"?: string | null;
-  "quality"?: ScoreQuality | null;
-  "source"?: string | null;
-}
-
-export interface RepertoireView {
-  "registry": RepertoireRegistry;
-  "revision": string;
-  "notationStatuses": Record<string, string>;
-  "project": SongProject | null;
-}
-
 export interface StartupStatus {
   "stage": string;
   "active": boolean;
@@ -190,11 +123,15 @@ export interface StartupWarning {
   "kind": StartupWarningKind;
   "title": string;
   "detail": string;
-  "source": LibraryOpenSource | null;
+  "source": SongSource | null;
 }
 
 export const StartupWarningKindValues = ["song", "skippedSong", "songAssets", "songLocation", "soundfont", "input", "output", "history", "settings"] as const;
 export type StartupWarningKind = typeof StartupWarningKindValues[number];
+
+export type SongSource =
+  | { "kind": "file"; "path": string; "title": string; "contentId": string | null; }
+  | { "kind": "recent"; "contentId": string; };
 
 export interface PreparationOrigin {
   "contentId"?: string | null;
@@ -205,70 +142,6 @@ export interface PreparationOrigin {
 
 export const PreparationPhaseValues = ["queued", "running", "committing", "done", "released", "cancelled", "error", "unconfirmed"] as const;
 export type PreparationPhase = typeof PreparationPhaseValues[number];
-
-export interface LibraryOpenRequest {
-  "engineId": string;
-  "id": string;
-  "createdAtMs": number;
-  "origin": PreparationOrigin;
-  "source": LibraryOpenSource;
-}
-
-export type LibraryOpenSource =
-  | { "kind": "originalScore"; "path": string; "defaultBpm": number; }
-  | { "kind": "file"; "path": string; "title": string; "contentId"?: string | null; }
-  | { "kind": "recent"; "contentId": string; }
-  | { "kind": "relocated"; "path": string; "title": string; "contentId": string; "from"?: string | null; }
-  | { "kind": "recording"; "path": string; }
-  | { "kind": "score"; "path": string; "contentId": string; "scoreKind": LibraryScoreKind; "id": string; "selection"?: LibraryScoreSelection | null; };
-
-export const LibraryScoreKindValues = ["notation", "paper"] as const;
-export type LibraryScoreKind = typeof LibraryScoreKindValues[number];
-
-export const LibraryRangeModeValues = ["loop", "range"] as const;
-export type LibraryRangeMode = typeof LibraryRangeModeValues[number];
-
-export interface LibraryRouteVisit {
-  "ordinal": number;
-  "measure": number;
-  "start": number;
-  "end": number;
-}
-
-export interface LibraryScoreSelection {
-  "first": LibraryRouteVisit;
-  "last": LibraryRouteVisit;
-  "mode": LibraryRangeMode;
-  "fingerprint": string;
-}
-
-export const LibraryOpenViewValues = ["practice", "notation", "paper", "range"] as const;
-export type LibraryOpenView = typeof LibraryOpenViewValues[number];
-
-export interface LibraryPrepared {
-  "source": LibraryOpenSource;
-  "contentId": string;
-  "scoreRevision": number;
-  "sourcePath": string | null;
-  "view": LibraryOpenView;
-  "importWarnings": Array<string>;
-}
-
-export interface LibraryOpenResult {
-  "libraryPrepared": LibraryPrepared;
-}
-
-export interface LibraryOpenReceipt {
-  "request": LibraryOpenRequest;
-  "phase": PreparationPhase;
-  "stage": string;
-  "taskId": string | null;
-  "result": LibraryOpenResult | null;
-  "hasResult": boolean;
-  "error": string | null;
-  "warning": string | null;
-  "cancellable": boolean;
-}
 
 export interface StorageRecovery {
   "checked": boolean;
@@ -492,160 +365,6 @@ export interface MappingExpectation {
   "pages": Array<string>;
 }
 
-export interface LibraryPathState {
-  "contentId": string;
-  "path": string;
-  "linkedTo": string | null;
-  "ignored": boolean;
-  "preferredPath": string | null;
-  "known": boolean;
-  "revision": number;
-}
-
-export interface RelinkItem {
-  "contentId": string;
-  "from": string;
-  "to": string;
-}
-
-export interface ReplacementReview {
-  "oldContentId": string;
-  "newContentId": string;
-  "action": string;
-  "target": string | null;
-}
-
-export interface MidiReplacementRow {
-  "path": string;
-  "title": string;
-  "oldContentId": string;
-  "newContentId": string;
-  "oldNotes": number;
-  "newNotes": number;
-  "oldDuration": number;
-  "newDuration": number;
-  "oldTracks": number;
-  "newTracks": number;
-  "candidates": Array<string>;
-  "review": ReplacementReview | null;
-  "reviewed": boolean;
-  "available": boolean;
-  "error": string | null;
-}
-
-export interface MidiReplacementPage {
-  "rows": Array<MidiReplacementRow>;
-  "total": number;
-  "offset": number;
-  "limit": number;
-  "revision": number;
-}
-
-export interface ReplacementComparison {
-  "matched": number;
-  "oldOnly": number;
-  "newOnly": number;
-}
-
-export interface MidiReplacementPreview {
-  "path": string;
-  "oldContentId": string;
-  "newContentId": string;
-  "oldNotes": number;
-  "newNotes": number;
-  "oldDuration": number;
-  "newDuration": number;
-  "oldTracks": number;
-  "newTracks": number;
-  "candidates": Array<string>;
-  "exact": ReplacementComparison | null;
-  "oldSource": string | null;
-  "token": string;
-  "revision": number;
-  "review": ReplacementReview | null;
-}
-
-export interface RepairLocation {
-  "path": string;
-  "present": boolean;
-  "available": boolean;
-  "verified": boolean;
-  "reason": string;
-  "resolved": boolean;
-  "ignored": boolean;
-  "relinkedTo": string | null;
-  "primary": boolean;
-  "rating": number;
-  "hasScore": boolean;
-}
-
-export interface RepairGroup {
-  "contentId": string;
-  "title": string;
-  "primaryPath": string | null;
-  "preferredPath": string | null;
-  "paths": Array<RepairLocation>;
-  "candidates": Array<string>;
-  "missing": number;
-  "unverified": number;
-  "available": number;
-  "resolved": number;
-}
-
-export interface RepairInventory {
-  "groups": Array<RepairGroup>;
-  "total": number;
-  "missingFiles": number;
-  "duplicateGroups": number;
-  "unverifiedFiles": number;
-  "resolvedFiles": number;
-  "replacementCount": number;
-  "offset": number;
-  "limit": number;
-  "revision": number;
-}
-
-export interface LibraryRepairResult {
-  "contentId": string;
-  "from": string;
-  "to": string;
-  "ok": boolean;
-  "error"?: string;
-  "warnings"?: Array<string>;
-}
-
-export interface LibraryRelinkResult {
-  "results": Array<LibraryRepairResult>;
-  "revision": number;
-}
-
-export interface MetadataHistoryClaim {
-  "version": number;
-  "requestId": string;
-  "sourcePath": string;
-  "contentId": string;
-  "targetPath": string;
-  "fingerprint": string;
-  "records": number;
-  "added": number;
-}
-
-export interface PendingMetadataRow {
-  "sourcePath": string;
-  "contentId": string;
-  "title": string | null;
-  "records": number;
-  "fingerprint": string;
-  "candidates": Array<string>;
-}
-
-export interface PendingMetadataPage {
-  "rows": Array<PendingMetadataRow>;
-  "total": number;
-  "offset": number;
-  "limit": number;
-}
-
 export interface ReadScope {
   "channel": string;
   "sequence": number;
@@ -681,7 +400,7 @@ export interface ReplayClip {
   "performanceRevision"?: string;
 }
 
-export const MediaExportKindValues = ["midi", "practiceMidi", "package"] as const;
+export const MediaExportKindValues = ["midi", "practiceMidi"] as const;
 export type MediaExportKind = typeof MediaExportKindValues[number];
 
 export interface MediaExportInput {
@@ -921,118 +640,6 @@ export interface ScoreJobStatus {
   "preparedExport": ScoreExportResult | null;
   "mediaExport": MediaExportDraft | null;
   "cancellable": boolean;
-}
-
-export interface PackagePreviewRequest {
-  "engineId": string;
-  "token": string;
-}
-
-export interface PackagePaperPreview {
-  "name": string;
-  "format": string;
-  "pages": number;
-  "mappingPoints": number;
-  "autoTurn": boolean;
-  "annotations": number;
-}
-
-export interface PackageTrackPreview {
-  "id": number;
-  "name": string;
-  "color": string | null;
-}
-
-export interface PackageMetadataPreview {
-  "composer": string | null;
-  "notes": string | null;
-  "tags": Array<string>;
-}
-
-export interface PackageProvenancePreview {
-  "source": string | null;
-  "license": string | null;
-  "sourceUrl": string | null;
-}
-
-export interface PackagePerformancePreview {
-  "contentId": string;
-  "label": string;
-  "title": string;
-  "scores": number;
-  "papers": number;
-}
-
-export interface PackagePreview {
-  "performances": Array<PackagePerformancePreview>;
-  "token": string;
-  "engineId": string;
-  "fileName": string | null;
-  "papers": Array<PackagePaperPreview>;
-  "ladders": Array<string>;
-  "title": string;
-  "contentId": string;
-  "metadata": PackageMetadataPreview;
-  "scores": Array<string>;
-  "fingerings": number;
-  "fingerActions": number;
-  "trackSounds": number;
-  "trackAppearances": Array<PackageTrackPreview>;
-  "hands": number;
-  "notePlayback": number;
-  "passages": Array<string>;
-  "bookmarks": Array<string>;
-  "groups": Array<Array<string>>;
-  "rating": number;
-  "existing": boolean;
-  "provenance": PackageProvenancePreview | null;
-}
-
-export interface ExerciseRequest {
-  "engineId": string;
-  "requestId": string;
-  "createdAtMs"?: number | null;
-  "spec": ExerciseSpec;
-}
-
-export const PackagePolicyValues = ["merge", "keep", "replace"] as const;
-export type PackagePolicy = typeof PackagePolicyValues[number];
-
-export interface PackageRequest {
-  "engineId": string;
-  "requestId": string;
-  "createdAtMs"?: number | null;
-  "token": string;
-  "policy": PackagePolicy;
-}
-
-export const MusicKindValues = ["midi", "score", "exercise", "package"] as const;
-export type MusicKind = typeof MusicKindValues[number];
-
-export const MusicPhaseValues = ["uploading", "queued", "running", "committing", "done", "cancelled", "error", "unconfirmed"] as const;
-export type MusicPhase = typeof MusicPhaseValues[number];
-
-export interface ImportedSong {
-  "contentId": string;
-  "title": string;
-  "sourcePath": string;
-  "importWarnings": Array<string>;
-  "catalogOnly": boolean;
-}
-
-export interface MusicReceipt {
-  "id": string;
-  "engineId": string;
-  "name": string;
-  "kind": MusicKind;
-  "phase": MusicPhase;
-  "received": number;
-  "size": number;
-  "taskId": string | null;
-  "song": ImportedSong | null;
-  "error": string | null;
-  "cancellable": boolean;
-  "catalogOnly": boolean;
 }
 
 export interface StateOrder {
@@ -1750,24 +1357,11 @@ export type EngineCommand =
   | { type: "exportPracticeVariant" }
   | { type: "audioDevices" }
   | { type: "audioDevice"; "name"?: string | null }
-  | { type: "songPreview"; "path": string }
-  | { type: "startSongAudition"; "path": string; "id": string }
-  | { type: "stopSongAudition"; "id": string }
   | { type: "startInstrumentPreview"; "id": string; "content_id": string; "track": number; "program"?: number | null }
+  | { type: "stopSongAudition"; "id": string }
   | { type: "songAuditionState"; "id": string }
-  | { type: "readRepertoire"; "path"?: string | null; "content_id"?: string | null }
-  | { type: "songCatalog" }
-  | { type: "inspectNotation"; "path": string; "content_id": string; "version_id": string }
-  | { type: "editRepertoire"; "request": RepertoireEdit }
-  | { type: "startLibraryOpen"; "request": LibraryOpenRequest }
-  | { type: "readLibraryOpen"; "id": string; "metadata_only"?: boolean }
-  | { type: "cancelLibraryOpen"; "id": string }
-  | { type: "releaseLibraryOpen"; "id": string }
-  | { type: "metadataTemplates" }
   | { type: "readMetadataDefaults" }
   | { type: "resetMetadataDefaults"; "fields": Array<string>; "expected": SongMetadata; "proof": string }
-  | { type: "resetLibraryMetadataDefaults"; "path": string; "content_id": string; "fields": Array<string>; "expected": SongMetadata; "proof": string }
-  | { type: "updateMetadataTemplate"; "name": string; "rules"?: unknown | null; "expected": number }
   | { type: "fileLocations" }
   | { type: "fileLocationsFor"; "kind": string }
   | { type: "updateFileLocation"; "kind": string; "path"?: string | null; "clear": boolean; "expected"?: string | null }
@@ -1790,16 +1384,6 @@ export type EngineCommand =
   | { type: "panic" }
   | { type: "recording"; "active": boolean }
   | { type: "exportMidi" }
-  | { type: "pendingMetadataHistory" }
-  | { type: "pendingMetadataHistoryPage"; "query": string; "offset": number; "limit": number }
-  | { type: "readLibraryPath"; "content_id": string; "path": string }
-  | { type: "readMetadataHistoryClaim"; "request_id": string }
-  | { type: "claimPendingMetadataHistory"; "source_path": string; "content_id": string; "target_path": string; "request_id"?: string | null; "expected"?: string | null }
-  | { type: "exportPackage" }
-  | { type: "exportPackageFile" }
-  | { type: "importStagedPackage"; "token": string; "policy": string }
-  | { type: "inspectPackage"; "bytes": Array<number> }
-  | { type: "importPackage"; "bytes": Array<number>; "policy": string }
   | { type: "vstEditor" }
   | { type: "score" }
   | { type: "sourceScore" }
@@ -1815,13 +1399,6 @@ export type EngineCommand =
   | { type: "previewScoreVersionRoute"; "id": string; "content_id": string; "include_document"?: boolean }
   | { type: "previewScoreBytesRoute"; "bytes": Array<number>; "name": string; "content_id": string }
   | { type: "saveScoreVersion"; "bytes": Array<number>; "name": string; "content_id": string }
-  | { type: "libraryScores"; "path": string; "content_id": string }
-  | { type: "previewLibraryScoreRoute"; "path": string; "content_id": string; "id": string }
-  | { type: "checkLibraryScoreImport"; "path": string; "content_id": string; "bytes": Array<number>; "kind": string; "target"?: string | null }
-  | { type: "updateLibraryPaper"; "path": string; "content_id": string; "id": string; "action": string; "page": number; "direction": number; "expected_pages"?: Array<string> | null }
-  | { type: "addLibraryScore"; "path": string; "content_id": string; "name": string; "bytes": Array<number>; "kind": string; "target"?: string | null; "page"?: number }
-  | { type: "manageLibraryScore"; "path": string; "content_id": string; "kind": string; "id": string; "action": string; "name"?: string | null }
-  | { type: "openLibraryScore"; "path": string; "content_id": string; "kind": string; "id": string }
   | { type: "scoreAttachments"; "content_id": string }
   | { type: "linkPaperSource"; "content_id": string; "book": string; "asset": string; "path"?: string | null; "baseline"?: string | null }
   | { type: "paperSourceUpdates" }
@@ -1916,53 +1493,14 @@ export type EngineCommand =
   | { type: "exercisePresets" }
   | { type: "saveExercisePreset"; "name": string; "spec": ExerciseSpec }
   | { type: "removeExercisePreset"; "id": string }
-  | { type: "libraryWorkspace" }
-  | { type: "inspectSong"; "path": string; "force"?: boolean }
-  | { type: "inspectSongs"; "paths": Array<string>; "force"?: boolean }
-  | { type: "libraryGroup"; "id"?: string | null; "name": string; "parent"?: string | null }
-  | { type: "removeLibraryGroup"; "id": string }
-  | { type: "assignLibrary"; "paths": Array<string>; "group"?: string | null; "rating"?: number | null }
-  | { type: "unassignLibrary"; "paths": Array<string>; "group": string }
-  | { type: "libraryMetadataHistory"; "path": string; "content_id": string }
-  | { type: "previewSynthesiaMetadata"; "bytes": Array<number>; "paths": Array<string>; "options": ImportOptions }
-  | { type: "discoverSynthesiaMetadata"; "paths": Array<string>; "refresh"?: boolean }
-  | { type: "previewDiscoveredSynthesiaMetadata"; "source_path": string; "source_id": string; "paths": Array<string>; "options": ImportOptions }
-  | { type: "importDiscoveredSynthesiaMetadata"; "source_path": string; "source_id": string; "paths": Array<string>; "options": ImportOptions; "expected": string }
-  | { type: "importSynthesiaMetadata"; "bytes": Array<number>; "paths": Array<string>; "options": ImportOptions; "expected": string }
-  | { type: "previewMetadataRestore"; "path": string; "content_id": string; "id": string }
-  | { type: "restoreLibraryMetadata"; "path": string; "content_id": string; "id": string; "fields": Array<string>; "expected": SongMetadata }
-  | { type: "previewLibraryMetadata"; "path": string; "content_id"?: string | null; "rules": unknown }
-  | { type: "readLibraryMetadata"; "path": string; "content_id"?: string | null }
-  | { type: "saveLibraryMetadata"; "path": string; "content_id": string; "value": SongMetadata; "expected": SongMetadata }
-  | { type: "updateSongMetadata"; "path": string; "value": SongMetadata }
-  | { type: "libraryRepairs"; "query"?: string; "kind"?: string; "include_resolved"?: boolean; "offset"?: number; "limit"?: number }
-  | { type: "midiReplacements"; "query"?: string; "include_reviewed"?: boolean; "offset"?: number; "limit"?: number }
-  | { type: "previewMidiReplacement"; "path": string; "old_content_id": string; "new_content_id": string }
-  | { type: "decideMidiReplacement"; "path": string; "old_content_id": string; "new_content_id": string; "token": string; "action": string; "target"?: string | null }
-  | { type: "relinkLibrary"; "items": Array<RelinkItem> }
-  | { type: "setLibraryPrimary"; "content_id": string; "path"?: string | null }
-  | { type: "restoreLibraryPath"; "content_id": string; "path": string }
-  | { type: "ignoreLibraryPath"; "content_id": string; "path": string }
-  | { type: "libraryMonitorStatus" }
-  | { type: "setLibraryMonitor"; "enabled": boolean }
-  | { type: "libraryFolders" }
-  | { type: "refreshLibrary" }
-  | { type: "indexLibrary"; "paths": Array<string>; "force": boolean }
-  | { type: "indexStatus" }
-  | { type: "pauseIndex" }
-  | { type: "resumeIndex" }
-  | { type: "cancelIndex" }
-  | { type: "removeLibraryFolder"; "path": string }
   | { type: "metadata" }
   | { type: "editMetadata"; "value": SongMetadata; "expected": SongMetadata }
   | { type: "setMetadata"; "value": SongMetadata }
-  | { type: "load"; "path": string; "title": string }
   | { type: "openFile"; "path": string }
   | { type: "songFiles" }
+  | { type: "recentFiles" }
+  | { type: "forgetRecentFile"; "path": string }
   | { type: "editSongFile"; "action": string; "path"?: string | null; "id"?: string | null; "role"?: string | null; "stem"?: string | null; "label"?: string | null }
-  | { type: "loadIndexed"; "path": string; "title": string; "content_id": string }
-  | { type: "importScore"; "bytes": Array<number>; "name": string; "default_bpm": number }
-  | { type: "importMidi"; "bytes": Array<number>; "name": string }
   | { type: "currentSong" }
   | { type: "session" }
   | { type: "tasks" }
@@ -1978,13 +1516,7 @@ export type EngineCommand =
   | { type: "saveBookmark"; "content_id": string; "id"?: string | null; "name": string; "tick": number }
   | { type: "removeBookmark"; "content_id": string; "id": string }
   | { type: "practiceTime"; "content_id": string; "from": number; "to": number }
-  | { type: "setLibraryCollection"; "path": string; "content_id": string; "favorite"?: boolean | null; "queued"?: boolean | null }
-  | { type: "collection" }
-  | { type: "favorite"; "enabled": boolean }
-  | { type: "queue"; "enabled": boolean }
-  | { type: "moveQueue"; "direction": number }
   | { type: "volume"; "value": number }
-  | { type: "openRecent"; "content_id": string }
   | { type: "loop"; "start": number; "end": number; "enabled": boolean }
   | { type: "play" }
   | { type: "pause" }

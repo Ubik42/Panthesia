@@ -370,7 +370,6 @@ fn prepare(
     {
         cancel.store(true, Ordering::Release);
     }
-    state.monitor.pause_for_close(cancelled.clone())?;
     idle_native(window, &cancelled)?;
     let performance_inputs = state.engine.prepare_desktop_close(cancelled.clone())?;
     let mut report = prepare_ui(window, id, 2, &cancelled)?;
@@ -406,7 +405,6 @@ fn resume(window: &Window, id: &str, error: Option<String>) {
     state.allow_closing_drafts.store(false, Ordering::Release);
     state.engine.cancel_close();
     state.score_jobs.resume_after_close();
-    state.monitor.resume_after_close();
     state.desktop_close.finish(id);
     state.closing.store(false, Ordering::Release);
     let _ = window.emit("neothesia-close-resumed", id);

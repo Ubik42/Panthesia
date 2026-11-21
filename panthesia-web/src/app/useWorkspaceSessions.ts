@@ -4,9 +4,7 @@ import { getInterfaceWorkbench, hasInterfaceInput } from "../features/settings/i
 import { createWorkProgressStore } from "../features/activity/workProgressStore";
 import { createFingeringWorkbenchStore } from "../features/fingering/fingeringWorkbenchStore";
 import { createEditDraftStore } from "../features/editing/editDraftStore";
-import { createImportQueueStore } from "../features/imports/importQueueStore";
 import { createExerciseSessionStore } from "../features/practice/exerciseSessionStore";
-import { createPackageSessionStore } from "../features/imports/packageSessionStore";
 import { createScoreWorkspaceStore } from "../features/scores/scoreWorkspaceStore";
 import { hasUnsavedScoreExports } from "../features/scores/scoreExportStore";
 import { hasWorkingMediaExports } from "../features/exports/mediaExportStore";
@@ -19,9 +17,7 @@ import { pendingMeterEditors, flushMeterEditors } from "../features/practice/met
 import { pendingHandEditors, flushHandEditors } from "../features/practice/handEditorStore";
 import { registerCloseParticipant } from "./closePreparation";
 import { useDesktopClose } from "./useDesktopClose";
-import { createLibraryCache } from "../features/library/useLibraryReads";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { LibraryBrowse } from "../features/library/libraryBrowse";
+import { useEffect, useState } from "react";
 
 /** Navigation owns durable cursors and session caches; drafts keep their own save rules. */
 export function useWorkspaceSessions() {
@@ -47,19 +43,10 @@ export function useWorkspaceSessions() {
     };
   }, [browse]);
   const [edits] = useState(createEditDraftStore);
-  const [imports] = useState(createImportQueueStore);
   const [exercise] = useState(createExerciseSessionStore);
-  const [piecePackage] = useState(createPackageSessionStore);
   const [fingeringWorkbench] = useState(createFingeringWorkbenchStore);
   const [scores] = useState(createScoreWorkspaceStore);
-  const [libraryReads] = useState(() => {
-    const cache = createLibraryCache();
-    const initial = browse.initialLibrary();
-    if (initial?.topKey) cache.positions.set(initial.topKey, initial.top);
-    if (initial?.detailTopKey) cache.positions.set(initial.detailTopKey, initial.detailTop ?? 0);
-    return cache;
-  });
-  const [workProgress] = useState(() => createWorkProgressStore({ scores, imports, piecePackage, exercise, edits }));
+  const [workProgress] = useState(() => createWorkProgressStore({ scores, exercise, edits }));
   useEffect(() => {
     const interfaceSettings = getInterfaceSettings(), interfaceWorkbench = getInterfaceWorkbench();
     const releases = [
@@ -93,26 +80,13 @@ export function useWorkspaceSessions() {
       registerCloseParticipant("exercise-workbench", { label: "技术练习输入", pending: () => {
         const state = exercise.getSnapshot(); return state.storageError && (state.dirty || state.receipt || state.result) ? state.storageError : null;
       } }),
-      registerCloseParticipant("package-workbench", { label: "曲目包工作进度", pending: () => {
-        const state = piecePackage.getSnapshot(); return state.storageError && (state.summary || state.receipt || state.result) ? state.storageError : null;
-      } }),
-      registerCloseParticipant("ordinary-imports", { label: "导入队列", prepare: () => imports.retrySave(), pending: () => {
-        const state = imports.getSnapshot();
-        if (state.storageError) return state.storageError;
-        if (state.busy) return "当前文件仍在导入。返回队列可暂停；已保存的队列和原文件继续保留。";
-        return null;
-      } }),
       registerCloseParticipant("score-workbench", { label: "谱面工作台", pending: scores.closeSummary }),
       registerCloseParticipant("score-exports", { label: "个人标记谱", pending: () => hasUnsavedScoreExports() ? "还有尚未另存的标记谱或未结束的导出，当前成品缓存会在退出后释放。" : null }),
       registerCloseParticipant("media-exports", { label: "曲目导出", pending: () => hasWorkingMediaExports() ? "MIDI 或曲目包导出尚未结束，请返回查看原任务。已保留的成品会继续保存。" : null }),
       registerCloseParticipant("paper-reading", { label: "谱页阅读位置", prepare: flushPaperViewDrafts, pending: () => hasUnstoredPaperViews() ? "当前阅读位置尚未暂存，可返回谱页重试或复制输入。" : null }),
-      registerCloseParticipant("library-repairs", { label: "文件位置修复", pending: () => {
-        const state = libraryReads.repairDraftStatus();
-        return state?.storageError && (Object.keys(state.selected).length || Object.keys(state.unconfirmed).length || state.refreshPending) ? state.storageError : null;
-      } }),
     ];
     return () => releases.forEach((release) => release());
-  }, [edits, fingeringWorkbench, exercise, piecePackage, imports, scores, libraryReads]);
+  }, [edits, fingeringWorkbench, exercise, scores]);
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       if (edits.getSnapshot().pending) edits.flush();
@@ -122,19 +96,13 @@ export function useWorkspaceSessions() {
         hasUnstoredPaperViews() ||
         !!pendingPracticeEditorDrafts() ||
         (!!editStatus.error && editStatus.count > 0) ||
-        imports.getSnapshot().busy ||
-        !!imports.getSnapshot().storageError ||
         exercise.getSnapshot().busy ||
         exercise.getSnapshot().phase === "review" ||
         (!!exercise.getSnapshot().storageError &&
           (exercise.getSnapshot().dirty || exercise.getSnapshot().receipt || exercise.getSnapshot().result)) ||
-        piecePackage.getSnapshot().busy ||
         scores.hasWorking() ||
         hasUnsavedScoreExports() ||
-        hasWorkingMediaExports() ||
-        piecePackage.getSnapshot().phase === "review" ||
-        (!!piecePackage.getSnapshot().storageError &&
-          (!!piecePackage.getSnapshot().summary || !!piecePackage.getSnapshot().receipt || !!piecePackage.getSnapshot().result))
+        hasWorkingMediaExports()
       ) {
         event.preventDefault();
         event.returnValue = "";
@@ -143,30 +111,18 @@ export function useWorkspaceSessions() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [
-    imports,
     exercise,
-    piecePackage,
     scores,
     edits,
   ]);
-  const library = useRef<LibraryBrowse | undefined>(browse.initialLibrary());
-  const rememberLibrary = useCallback((value: LibraryBrowse) => {
-    library.current = value;
-    browse.rememberLibrary(value);
-  }, [browse]);
   return {
     desktopClose,
     browse,
     workProgress,
     edits,
-    imports,
     exercise,
-    piecePackage,
     scores,
     fingeringWorkbench,
-    libraryReads,
     metadata: edits.metadata,
-    library: library.current,
-    rememberLibrary,
   };
 }

@@ -28,8 +28,6 @@ interface Props {
   recent: ApplicationCommandId[];
   context: string;
   shortcut: string | null;
-  libraryUnavailable: string | null;
-  searchLibrary: (query: string, signal: AbortSignal) => Promise<boolean>;
   close: () => void;
   used: (id: ApplicationCommandId) => void;
   silence: () => void | Promise<void>;
@@ -39,8 +37,6 @@ export function ActionSearch({
   recent,
   context,
   shortcut,
-  libraryUnavailable,
-  searchLibrary,
   close,
   used,
   silence,
@@ -61,10 +57,8 @@ export function ActionSearch({
     actions,
     close,
     used,
-    searchLibrary,
-    libraryUnavailable,
   });
-  latest.current = { actions, close, used, searchLibrary, libraryUnavailable };
+  latest.current = { actions, close, used };
   const id = useId();
   const groups = useMemo(() => {
     if (query.trim())
@@ -163,15 +157,6 @@ export function ActionSearch({
     const action = latest.current.actions.find((item) => item.id === key);
     if (action) return activate(key, action.run, action.unavailable);
   };
-  const findInLibrary = () => {
-    const text = query.trim();
-    if (!text) return;
-    return activate(
-      "library",
-      (signal) => latest.current.searchLibrary(text, signal),
-      latest.current.libraryUnavailable,
-    );
-  };
   const stopSound = async () => {
     if (stopping.current) return;
     stopping.current = true;
@@ -222,7 +207,6 @@ export function ActionSearch({
     ) {
       event.preventDefault();
       event.stopPropagation();
-      void findInLibrary();
       return;
     }
     if (
@@ -417,20 +401,6 @@ export function ActionSearch({
             </div>
           ))}
         </div>
-        {query.trim() && (
-          <div className="action-search-library">
-            <button
-              title={`去曲库搜索：${query.trim()}`}
-              disabled={!!running || !!libraryUnavailable}
-              onClick={() => void findInLibrary()}
-            >
-              <Search size={15} />
-              <span>去曲库搜索“{query.trim()}”</span>
-              <kbd>Shift + Enter</kbd>
-            </button>
-            {libraryUnavailable && <span>{libraryUnavailable}</span>}
-          </div>
-        )}
         <div
           className="action-search-message"
           role={error ? "alert" : "status"}

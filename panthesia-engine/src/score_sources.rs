@@ -1,6 +1,6 @@
 //! Local original-file links are deliberately separate from portable score copies.
 use crate::{
-    library_scores, library_workspace,
+    library_scores,
     notation::ScoreAsset,
     preferences::{Preferences, ScoreVersion},
     *,
@@ -127,7 +127,7 @@ pub(super) fn register(
     let id = blake3::hash(format!("{cid}\n{version_id}").as_bytes())
         .to_hex()
         .to_string();
-    let lock = library_workspace::lock_for(data)?;
+    let lock = data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "原谱关联资料正忙")?;
     let mut store = load(data)?;
     store.entries.retain(|_, s| version(&prefs, s).is_some());
@@ -292,7 +292,7 @@ pub fn preview(data: &Path, id: &str, expected: &str) -> Result<Value, String> {
 pub(super) fn acknowledge(data: &Path, id: &str, expected: &str) -> Result<Value, String> {
     let (source, bytes) = checked(data, id, expected)?;
     let hash = blake3::hash(&bytes).to_hex().to_string();
-    let lock = library_workspace::lock_for(data)?;
+    let lock = data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "原谱关联资料正忙")?;
     let mut store = load(data)?;
     let current = store.entries.get_mut(id).ok_or("原谱关联已取消")?;
@@ -307,7 +307,7 @@ pub(super) fn acknowledge(data: &Path, id: &str, expected: &str) -> Result<Value
     Ok(json!({"kept":true}))
 }
 pub(super) fn unlink(data: &Path, id: &str, path: &Path) -> Result<Value, String> {
-    let lock = library_workspace::lock_for(data)?;
+    let lock = data_locks::lock_for(data)?;
     let _guard = lock.lock().map_err(|_| "原谱关联资料正忙")?;
     let mut store = load(data)?;
     if store.entries.get(id).is_some_and(|s| s.path != path) {
@@ -386,43 +386,7 @@ impl Player {
         path: PathBuf,
         bpm: u16,
     ) -> Result<Value, String> {
-        let bytes = read_original(&path)?;
-        let hash = blake3::hash(&bytes).to_hex().to_string();
-        let name = path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-        let result = self.command(Command::ImportScore {
-            bytes,
-            name: name.clone(),
-            default_bpm: bpm,
-        })?;
-        self.finish_original_import(path, bpm, hash, name, result)
-    }
-    pub(crate) fn finish_original_import(&mut self, path: PathBuf, bpm: u16, hash: String, name: String, result: Value) -> Result<Value, String> {
-        let cid = result["contentId"].as_str().ok_or("导入曲目身份缺失")?;
-        let midi = PathBuf::from(result["sourcePath"].as_str().ok_or("导入曲目位置缺失")?);
-        let version = self
-            .preferences
-            .score_versions
-            .get(cid)
-            .and_then(|v| {
-                v.iter()
-                    .rev()
-                    .find(|v| v.content_id == hash && v.name == name)
-            })
-            .ok_or("导入谱面版本缺失")?
-            .id
-            .clone();
-        let linked = self.link_score_source(midi.clone(), cid.to_string(), version, path, bpm);
-        let mut result = result;
-        if let Err(e) = linked {
-            let mut warnings = result["importWarnings"].as_array().cloned().unwrap_or_default();
-            warnings.push(json!(format!("曲目已导入，原文件关联未完成：{e}")));
-            result["importWarnings"] = json!(warnings);
-        }
-        Ok(result)
+        self.open_score_path(&path, bpm)
     }
     pub(super) fn apply_score_source(
         &mut self,
@@ -447,11 +411,7 @@ impl Player {
             .to_string_lossy()
             .to_string();
         let (cid, midi, version, result) = if mode == "performance" {
-            let result = self.command(Command::ImportScore {
-                bytes,
-                name: name.clone(),
-                default_bpm: source.default_bpm,
-            })?;
+            let result = self.open_score_bytes(bytes, &name, source.default_bpm)?;
             let cid = result["contentId"]
                 .as_str()
                 .ok_or("曲目身份缺失")?
@@ -741,10 +701,7 @@ mod tests {
         let current = player.command(Command::CurrentSong).unwrap();
         assert!(current["notes"][0]["finger"].is_null());
         player
-            .command(Command::Load {
-                path: midi,
-                title: "旧曲目".into(),
-            })
+            .load_file(midi, "旧曲目".into())
             .unwrap();
         assert_eq!(
             player.command(Command::CurrentSong).unwrap()["notes"][0]["finger"],

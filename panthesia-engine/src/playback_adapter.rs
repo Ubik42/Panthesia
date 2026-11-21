@@ -190,10 +190,7 @@ mod tests {
         let path = root.join("own.mid");
         std::fs::write(&path, include_bytes!("../assets/five-finger.mid")).unwrap();
         let mut p = Player::new(root.join("profile"), PathBuf::new(), true);
-        p.command(Command::Load {
-            path,
-            title: "Transport fixture".into(),
-        })
+        p.load_file(path, "Transport fixture".into())
         .unwrap();
         p.command(Command::CountIn { bars: 0 }).unwrap();
         p.command(Command::Mode {

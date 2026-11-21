@@ -248,7 +248,7 @@ mod tests {
         let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work").join(format!("held-demo-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         let mut p=Player::new(data,PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2"),true);
         let xml=br#"<score-partwise><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>2</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note><backup><duration>8</duration></backup><forward><duration>4</duration></forward><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><voice>2</voice></note><note><pitch><step>F</step><octave>4</octave></pitch><duration>2</duration><voice>2</voice></note></measure></part></score-partwise>"#;
-        p.command(Command::ImportScore{bytes:xml.to_vec(),name:"持音示范单元.musicxml".into(),default_bpm:120}).unwrap();
+        p.import_score(xml.to_vec(), "持音示范单元.musicxml".into(), 120).unwrap();
         for t in &mut p.config.tracks{t.practice_part=PracticePart::RightHand;}
         p.note_hands.clear();
         let file=p.file.as_ref().unwrap();let content_id=file.content_id.clone();let track=file.tracks.iter().find(|t|!t.notes.is_empty()).unwrap();let track_id=track.track_id;
@@ -275,7 +275,7 @@ mod tests {
         let mut player=Player::new(data,PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2"),true);
         let attrs="<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>";
         let xml=format!("<score-partwise version=\"4.0\"><part-list><score-part id=\"P1\"><part-name>旋律</part-name></score-part><score-part id=\"P2\"><part-name>持音</part-name></score-part></part-list><part id=\"P1\"><measure number=\"1\">{attrs}<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part><part id=\"P2\"><measure number=\"1\">{attrs}<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part></score-partwise>");
-        player.command(Command::ImportScore{bytes:xml.into_bytes(),name:"联合示范.musicxml".into(),default_bpm:120}).unwrap();
+        player.import_score(xml.into_bytes(), "联合示范.musicxml".into(), 120).unwrap();
         for track in &mut player.config.tracks {track.practice_part=PracticePart::RightHand;}
         player.note_hands.clear();
         let file=player.file.as_ref().unwrap();

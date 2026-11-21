@@ -1,6 +1,6 @@
 import { pathKey } from "../../engine/pathIdentity";
 import type { CollectionSong, SongRow } from "../../api";
-import type { LibraryOpenLocation } from "../library/libraryOpen";
+type LibraryOpenLocation = "recent" | "selected";
 
 export type PracticeLibraryTab = "all" | "favorites" | "recent" | "queue";
 export interface PracticeLibraryBrowse {

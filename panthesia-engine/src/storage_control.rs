@@ -19,11 +19,7 @@ pub(super) fn allowed(command: &Command) -> bool {
     matches!(
         command,
         Command::Panic
-            | Command::ReadLibraryOpen { .. }
-            | Command::CancelLibraryOpen { .. }
             | Command::Pause
-            | Command::StopSongAudition { .. }
-            | Command::SongAuditionState { .. }
             | Command::StopFingerDemo { .. }
             | Command::FingerDemoState
             | Command::CurrentSong

@@ -5,19 +5,17 @@ send({ type: "play" });
 send({ type: "speed", value: 0.75 });
 send({ type: "note", pitch: 60, active: true, velocity: 90 });
 send({ type: "prepareMeasurePart", contentId: "song", measure: 1, part: "RightHand", trackId: 0 });
-const open: CommandOf<"openRecent"> = { type: "openRecent", content_id: "song" };
+const open: CommandOf<"openFile"> = { type: "openFile", path: "song.mid" };
 send(open);
 
 // @ts-expect-error Unknown command names must fail at the caller.
 send({ type: "paly" });
 // @ts-expect-error Speed requires a numeric value.
 send({ type: "speed", value: "0.75" });
-// @ts-expect-error Indexed songs require a content identity.
-send({ type: "loadIndexed", path: "song.mid", title: "练习曲" });
 // @ts-expect-error A UI-only alias must not replace the wire field name.
-send({ type: "openRecent", contentId: "song" });
-// @ts-expect-error Required identities cannot be null.
-send({ type: "openRecent", content_id: null });
+send({ type: "forgetRecentFile", filePath: "song.mid" });
+// @ts-expect-error Required paths cannot be null.
+send({ type: "openFile", path: null });
 
 const exercise: CommandOf<"generate">["spec"] = {
   tonic: 0, tonality: "Major", pattern: "Scale", direction: "UpAndDown", hands: "Both", octaves: 1, tempo_bpm: 60,

@@ -48,11 +48,7 @@ mod tests {
                     .as_nanos()
             ));
         let mut p = Player::new(std::path::absolute(path).unwrap(), PathBuf::new(), true);
-        p.command(Command::ImportScore {
-            bytes: XML.as_bytes().to_vec(),
-            name: "partial.musicxml".into(),
-            default_bpm: 120,
-        })
+        p.import_score(XML.as_bytes().to_vec(), "partial.musicxml".into(), 120)
         .unwrap();
         p
     }

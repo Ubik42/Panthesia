@@ -33,7 +33,6 @@ pub(crate) fn supports(command: &Command) -> bool {
             | Command::ApplyScoreSource { .. }
             | Command::AcknowledgeScoreSource { .. }
             | Command::UnlinkScoreSource { .. }
-            | Command::ManageLibraryScore { .. }
             | Command::PairScore { .. }
             | Command::ActivateScore { .. }
             | Command::DetachScore { .. }
@@ -52,20 +51,18 @@ pub(crate) fn supports(command: &Command) -> bool {
             | Command::ApplyPaperTransfer { .. }
             | Command::ApplyCrossPaperTransfer { .. }
             | Command::AddScoreAttachment { .. }
-            | Command::UpdateLibraryPaper { .. }
-    ) || crate::library_edits::supports(command) || matches!(command, Command::AddLibraryScore { .. })
+
+    )
         || matches!(command,Command::UpdateScoreAttachment{action,..} if action!="view")
 }
 pub(crate) fn reads(command: &Command) -> bool {
-    crate::library_edits::reads(command) || matches!(
+    matches!(
         command,
         Command::ScoreSources { .. }
             | Command::PreviewScoreSource { .. }
             | Command::InspectPaperSources { .. }
             | Command::PreviewPaperSource { .. }
-            | Command::LibraryScores { .. }
-            | Command::PreviewLibraryScoreRoute { .. }
-            | Command::CheckLibraryScoreImport { .. }
+
     )
 }
 pub(crate) fn runtime_reads(command: &Command) -> bool {
@@ -99,7 +96,7 @@ fn needs_registry(command: &Command) -> bool {
             | Command::ScoreVersions
             | Command::RenameScoreVersion { .. }
             | Command::SavePaperPractice { .. }
-    ) || matches!(command,Command::AddLibraryScore{kind,..}|Command::ManageLibraryScore{kind,..} if kind=="notation")
+    )
 }
 fn needs_runtime(command: &Command) -> bool {
     needs_registry(command)
@@ -117,10 +114,7 @@ fn changes_song(command: &Command) -> bool {
 }
 fn affects_current(command: &Command, cid: Option<&str>, result: &Value) -> bool {
     let target = match command {
-        Command::AddLibraryScore { kind, .. } if kind != "notation" => None,
         Command::LinkScoreSource { content_id, .. }
-        | Command::ManageLibraryScore { content_id, .. }
-        | Command::AddLibraryScore { content_id, .. }
         | Command::SaveScoreVersion { content_id, .. }
         | Command::RemoveScoreVersion { content_id, .. }
         | Command::RenameScoreVersion { content_id, .. }
@@ -218,60 +212,6 @@ fn execute(reader: &mut Player, command: Command) -> Result<Value, String> {
                 expected_pages.as_deref(),
             )
         }
-        Command::UpdateLibraryPaper {
-            path,
-            content_id,
-            id,
-            action,
-            page,
-            direction,
-            expected_pages,
-        } => {
-            library_scores::location(data, &path, &content_id)?;
-            if !["movePage", "removePage"].contains(&action.as_str()) {
-                return Err("谱页整理操作无效".into());
-            }
-            score_attachments::update_with_pages(
-                data,
-                &content_id,
-                Some(&id),
-                &action,
-                None,
-                None,
-                page,
-                direction,
-                expected_pages.as_deref(),
-            )
-        }
-        Command::AddLibraryScore {
-            path,
-            content_id,
-            name,
-            bytes,
-            kind,
-            target,
-            page,
-        } if kind != "notation" => {
-            library_scores::location(data, &path, &content_id)?;
-            match kind.as_str() {
-                "paper" => score_attachments::add(data, &content_id, &name, bytes, None),
-                "append" => score_attachments::add(
-                    data,
-                    &content_id,
-                    &name,
-                    bytes,
-                    Some(target.as_deref().ok_or("未指定图片谱面")?),
-                ),
-                "repairPaper" => score_attachments::repair(
-                    data,
-                    &content_id,
-                    target.as_deref().ok_or("未指定待修复谱面")?,
-                    page,
-                    bytes,
-                ),
-                _ => Err("谱面导入类型无效".into()),
-            }
-        }
         other => reader.command(other),
     }
 }
@@ -309,15 +249,6 @@ pub(crate) struct Outcome {
     switch: Option<crate::song_switch::Playback>,
 }
 impl Outcome {
-    pub(super) fn register_published_source(&mut self,data:&std::path::Path){
-        let Some((path,cid,title))=self.switch.as_ref().and_then(|s|s.source_descriptor()) else{return;};
-        if panthesia_core::song_annotations::document_path(&path).is_none(){return;}
-        let result=crate::song_repository::SongRepository::open(data).and_then(|mut repository|repository.retain(&path,&cid,&title,"",&||Ok(())));
-        if let Err(error)=result{
-            let warning=format!("曲目已保存，后台将继续更新曲库：{error}");
-            self.warning=Some(self.warning.take().map_or_else(||warning.clone(),|old|format!("{old}\n{warning}")));
-        }
-    }
 }
 impl Context {
     pub(super) fn score_identity(&self) -> Option<(String, u64)> {
@@ -546,27 +477,6 @@ impl Context {
         ),
         String,
     > {
-        if crate::library_edits::supports(&command) {
-            token.stage("preparingLibrary")?;
-            let selected = self.data.clone();
-            let selector =
-                Arc::new(move |path: &std::path::Path| asset_storage::captures(&selected, path));
-            let (result, writes, observed) = atomic_file::capture_matching(selector, || {
-                let result = crate::library_edits::execute(command, &self.data, &|| token.check())?;
-                token.check()?;
-                Ok::<_, String>(Outcome {
-                    preferences: None,
-                    history: None,
-                    practice: None,
-                    result,
-                    notation: None,
-                    warning: None,
-                    revision: None,
-                    switch: None,
-                })
-            });
-            return Ok((result?, writes, observed));
-        }
         token.stage("preparingScore")?;
         let registry = needs_registry(&command);
         let data = self.data.clone();
@@ -600,13 +510,6 @@ impl Context {
                     }
                 }
                 self.validate_registry()?;
-            }
-            if let Command::AddLibraryScore { bytes, kind, .. } = &command {
-                if kind == "notation" {
-                    let score = panthesia_core::musicxml::import_musicxml_document(bytes)
-                        .map_err(|e| e.to_string())?;
-                    panthesia_core::score_performance::normalized(&score)?;
-                }
             }
             let switch = changes_song(&command);
             let base_revision = self.revision;
@@ -730,12 +633,9 @@ impl Engine {
         let engine = self.clone();
         let paper_receipt = paper_receipt_read(&command);
         let editor_read = crate::practice_edit::reads(&command);
-        let library_read = crate::library_edits::reads(&command);
         self.tasks.run(
             if paper_receipt {
                 "核对纸谱练习段保存结果"
-            } else if library_read {
-                crate::library_edits::label(&command)
             } else if matches!(command, Command::Metadata) {
                 "读取曲目信息"
             } else if editor_read {
@@ -743,7 +643,7 @@ impl Engine {
             } else {
                 "读取原谱资料"
             },
-            crate::library_edits::content(&command),
+            None,
             move |token| {
                 let check_receipt_ready = || -> Result<(), String> {
                     if paper_receipt && (engine.imports_in_flight.load(Ordering::Acquire) > 0 || engine.pending_saves.status().pending) {
@@ -752,20 +652,14 @@ impl Engine {
                     Ok(())
                 };
                 check_receipt_ready()?;
-                token.stage(if library_read {
-                    "readingLibrary"
-                } else if editor_read {
+                token.stage(if editor_read {
                     "preparingPractice"
                 } else {
                     "readingScore"
                 })?;
                 token.check()?;
                 let _observation = engine.observe_writers();
-                let result = if library_read {
-                    // Library queries never publish their transient index changes.
-                    // Candidate scans do not retain every MIDI as a transaction input.
-                    crate::library_edits::read(command, &engine.data, &|| token.check())?
-                } else if runtime_reads(&command) || crate::practice_edit::reads(&command) {
+                let result = if runtime_reads(&command) || crate::practice_edit::reads(&command) {
                     let (reply, receiver) = mpsc::sync_channel(1);
                     let editor = crate::practice_edit::reads(&command);
                     let registry = editor || paper_receipt
@@ -817,13 +711,9 @@ impl Engine {
     }
     pub(super) fn asset_edit_task(&self, command: Command) -> Result<Value, String> {
         static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-        let library = crate::library_edits::supports(&command);
-        let label = if library {
-            crate::library_edits::label(&command)
-        } else {
-            "保存谱面资料"
-        };
-        let content = crate::library_edits::content(&command);
+        let library = false;
+        let label = "保存谱面资料";
+        let content: Option<String> = None;
         let id = format!(
             "{}-{}-{}",
             if library {
