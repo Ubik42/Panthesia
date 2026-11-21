@@ -1,19 +1,5 @@
 // Generated from panthesia-engine/src/protocol.rs. Do not edit.
 // Migrated domains follow Rust serde names and input defaults; remaining domains use unknown.
-export interface CatalogPerformance {
-  "contentId": string;
-  "workId": string;
-  "title": string;
-  "composer": string;
-  "label": string;
-  "notationCount": number;
-}
-
-export interface SongCatalog {
-  "revision": string;
-  "performances": Array<CatalogPerformance>;
-}
-
 export interface Variant {
   "transpose"?: number;
   "quantize"?: number;
@@ -39,22 +25,6 @@ export interface PracticeEdition {
   "transform": Variant;
 }
 
-export interface ProjectNotation {
-  "edition": NotationEdition;
-  "active": boolean;
-  "status": string;
-  "generation": NotationGeneration | null;
-}
-
-export interface SongProject {
-  "work": MusicalWork;
-  "performance": PerformanceEdition;
-  "practice": PracticeEdition;
-  "notations": Array<ProjectNotation>;
-  "generations": Array<NotationGeneration>;
-  "issues": Array<string>;
-}
-
 export interface NotationCapabilities {
   "fingerprint": string;
   "format": string;
@@ -71,42 +41,6 @@ export interface NotationCapabilities {
   "identity": string;
   "preservedOnly": Array<string>;
   "formatChanges": Array<string>;
-}
-
-export const ScoreQualityValues = ["original", "proofread", "automaticDraft", "unreviewed"] as const;
-export type ScoreQuality = typeof ScoreQualityValues[number];
-
-export interface MusicalWork {
-  "id": string;
-  "title": string;
-  "composer": string;
-  "catalogue": string;
-}
-
-export interface PerformanceEdition {
-  "contentId": string;
-  "workId": string;
-  "label": string;
-  "locations": Array<string>;
-}
-
-export interface NotationEdition {
-  "id": string;
-  "contentId": string;
-  "performanceId": string;
-  "versionId": string;
-  "name": string;
-  "path": string;
-  "quality": ScoreQuality;
-  "source": string;
-  "registered": boolean;
-}
-
-export interface RepertoireRegistry {
-  "version": number;
-  "works": Record<string, MusicalWork>;
-  "performances": Record<string, PerformanceEdition>;
-  "notations": Record<string, NotationEdition>;
 }
 
 export interface StartupStatus {

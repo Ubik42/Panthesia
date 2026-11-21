@@ -8,11 +8,9 @@ const source = readFileSync(new URL("../../panthesia-engine/src/protocol.rs", im
 const target = new URL("../src/engine/commands.generated.ts", import.meta.url);
 
 const domains = [
-  ["../../panthesia-core/src/song_catalog.rs", ["CatalogPerformance", "SongCatalog"], "output"],
   ["../../panthesia-core/src/practice_transform.rs", ["Variant"]],
-  ["../../panthesia-core/src/song_project.rs", ["NotationGeneration", "PracticeEdition", "ProjectNotation", "SongProject"], "output"],
+  ["../../panthesia-core/src/song_project.rs", ["NotationGeneration", "PracticeEdition"], "output"],
   ["../../panthesia-core/src/score_document.rs", ["NotationCapabilities"], "output"],
-  ["../../panthesia-core/src/repertoire.rs", ["ScoreQuality", "MusicalWork", "PerformanceEdition", "NotationEdition", "RepertoireRegistry"], "output"],
   ["../../panthesia-engine/src/startup.rs", ["StartupStatus", "StartupWarning", "StartupWarningKind"], "output"],
   ["../../panthesia-engine/src/startup.rs", ["SongSource"], "output"],
   ["../../panthesia-engine/src/storage_status.rs", ["StorageOperation", "StorageStatus"], "output"],
