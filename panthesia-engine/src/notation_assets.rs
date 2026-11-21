@@ -45,13 +45,16 @@ pub(crate) fn resolve(data: &Path, hash: &str) -> Option<PathBuf> {
     if !valid(hash) {
         return None;
     }
-    let root = data.join("library/assets/notation");
-    for extension in ["musicxml", "mxl"] {
-        let path = root.join(format!("{hash}.{extension}"));
-        if verified_asset(&path, hash) {
-            return Some(path);
+    // Score copies live in `scores/`; copies made by older versions remain readable.
+    for root in [data.join("scores"), data.join("library/assets/notation")] {
+        for extension in ["musicxml", "mxl"] {
+            let path = root.join(format!("{hash}.{extension}"));
+            if verified_asset(&path, hash) {
+                return Some(path);
+            }
         }
     }
+    let root = data.join("library/assets/notation");
     let entries = std::fs::read_dir(&root).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
@@ -75,7 +78,7 @@ pub(crate) fn retain(data: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
     if let Some(path) = resolve(data, &hash) {
         return Ok(path);
     }
-    let root = data.join("library/assets/notation");
+    let root = data.join("scores");
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     let extension = if bytes.starts_with(b"PK") {
         "mxl"
