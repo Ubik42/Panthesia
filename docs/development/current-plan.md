@@ -1,15 +1,17 @@
 # Panthesia 开发计划
 
-版本：2026-11-21 / 2。本文件是唯一任务队列与长期目标。进度流水写在 [progress.md](progress.md)，调研依据见 [research-2026-11.md](research-2026-11.md)。旧 B00–B07 计划已结束，内容在 git 历史（`main` 分支 9561452 之前）。
+版本：2026-11-21 / 3。本文件是唯一任务队列与长期目标。进度流水写在 [progress.md](progress.md)，调研依据见 [research-2026-11.md](research-2026-11.md)。旧 B00–B07 计划已结束，内容在 git 历史（`main` 分支 9561452 之前）。
 
 ## 1. 长期目标
 
 Panthesia 是开源的 Windows 钢琴练习软件。核心是好的练琴体验，数据有什么用什么。
 
-1. **练琴体验**：交互逐屏参照 Synthesia（主页 → 选曲 → 歌曲设置 → 演奏），视觉质量高于参照。瀑布、琴键、光效、虚拟双手、和弦级数、歌词在一个流畅的舞台中，每个图层可以分别开关。
+**定位（2026-11-21 用户决定）**：Panthesia 是"打开一首歌就能练"的专用程序，不做曲库管理。曲库的浏览、整理、标签、规则由通用文件库 Ouro（`D:\Manage\_tools\Serpent`，原 Serpent）承担；Ouro 把 MIDI、MusicXML 与 `.panthesia` 的打开方式指向 Panthesia。歌曲数据跟着文件走，写在文件旁边的 `.panthesia` 清单中（3.7）。技术栈保持 Rust + Tauri + React。
+
+1. **练琴体验**：打开文件即进入演奏；演奏舞台参照 Synthesia，视觉质量高于参照。瀑布、琴键、光效、虚拟双手、和弦级数、歌词在一个流畅的舞台中，每个图层可以分别开关。
 2. **分层歌曲模型**：一首歌只要有一份可播放的演奏就能练。谱面、量化版本、转调、段落、和弦级数、指法、歌词、伴奏音频都是可选图层；有就显示，没有就隐藏，需要时由算法或 AI 在后台生成。
 3. **统一来源**：MIDI、MusicXML、ABC、音频转录结果进入同一个歌曲模型；派生版本对任意来源都可用。
-4. **可靠的资料**：歌曲、标注和设置不会因文件移动、版本变化或重新分析而丢失；人工修改永远不被自动结果覆盖。
+4. **可靠的资料**：歌曲、标注和设置不会因文件移动、版本变化或重新分析而丢失；人工修改永远不被自动结果覆盖。数据与文件放在一起，换机器、换软件、用 Git 都能带走。
 
 ## 2. 现状诊断（2026-11-21 扫描）
 
@@ -60,7 +62,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 - 人工结果（`human`）不被自动重算覆盖；`generated` 结果在工具版本变化时可重算。
 - 图层存在与否决定界面：没有和弦层就不显示级数开关的结果，提示可以"分析和弦"。
 - 外部文件按内容哈希关联，改名、移动后仍匹配。
-- 现有 `library/annotations/<contentId>.json`（手别、指法、小节设置）迁入 `layers`，保留 v2 读取。
+- 现有集中存储中的标注（`library/annotations/<contentId>.json`、`web-preferences.json` 中的段落、书签、变调与量化）迁移到文件旁的 `.panthesia` 清单（3.7、R2）。
 
 ### 3.2 统一音乐模型与导入
 
@@ -70,7 +72,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
   - MusicXML → Score IR → Performance；和弦符号（`<harmony>`）、歌词进入图层。
   - ABC → Score IR → Performance（新写解析器，覆盖 ABC 2.1 常用子集：头字段、音符/时值、和弦符号、多声部 `V:`、反复）。
   - 音频转录结果（Transkun 输出 + DuET 谱面）作为 performance + score + stems 一起导入。
-- **歌曲包识别**：导入一个目录或文件时识别同目录的伴生文件，归入同一首歌：`vocals.wav` / `*_人声.wav`、`source/*.mp3`、`score.musicxml`、`versions/*_原调_*`、`*_C大调_*`、POP909 的 `chord_midi.txt` / `key_audio.txt` / `beat_midi.txt`、文件名中的 `BPM97 Bmajor`。识别结果按规则给出，不按标题猜测合并不同演奏。
+- **歌曲包识别**：打开一个目录或文件时识别相关文件，结果在用户确认或修改后写入 `.panthesia` 清单：`vocals.wav` / `*_人声.wav`、`source/*.mp3`、`score.musicxml`、`versions/*_原调_*`、`*_C大调_*`、POP909 的 `chord_midi.txt` / `key_audio.txt` / `beat_midi.txt`、文件名中的 `BPM97 Bmajor`。识别结果按规则给出，不按标题猜测合并不同演奏。
 - 谱面渲染只有一条路：Score IR → MusicXML → Verovio。`practice_engraving` 改为输出 Score IR。
 - 转调同时修改调号与拼写；量化保留原始演奏可返回。
 - 元数据收敛为一套类型，替换 `song_project` / `repertoire` / `SongSidecar` / `song_catalog`。
@@ -93,26 +95,21 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 ### 3.4 引擎
 
-- 主线只保留练琴所需：导入、歌曲仓库、播放会话、声音、记谱、标注、分析服务。评分时代模块与历史回放移出主线（保存在 `feature/assessment-lab`）。
-- 一套存储事务：SQLite 事务 + 内容寻址文件，替换五套机制。
+- 主线只保留练琴所需：打开文件、清单读写、播放会话、声音、记谱、分析服务。评分时代模块与历史回放移出主线（保存在 `feature/assessment-lab`）。
+- **不再有集中曲库**：删除歌曲仓库 `songs.sqlite3`、内容寻址副本存储 `library/assets`、目录缓存、`library-workspace.json`、`library-monitor-files.json`、导入复制流程。打开文件时直接读原文件，不复制。
+- 本地只保留属于用户本人、不属于歌曲的数据：练习历史与时长、每首歌上次的速度与位置、最近打开列表（按演奏文件的 BLAKE3 关联）；以及可重算的缓存（谱面渲染、分析中间结果）。
 - `lib.rs` 按领域拆分。
 - 状态推送：引擎发出状态帧，前端通过 Tauri 事件订阅。
 - 音频：伴奏音轨经 signalsmith-stretch（MIT）保持音高变速；伴奏开启时音频样本位置为主时钟。
 
 ### 3.5 前端与演奏舞台
 
-- **两种界面形态**（用户 2026-11-21 决定）：
-  - **曲库工作台**：参照 Serpent（`D:\manage\_tools\Serpent`）的布局与交互，不沿用其美术。取代原 Synthesia 式的主页 / 选曲 / 歌曲设置三屏。
+- **三个界面**：
+  - **启动页**：最近打开、打开文件 / 文件夹、拖入。不做曲库浏览、筛选、标签。
+  - **歌曲设置**：查看与编辑本首歌的清单内容：演奏版本选择、轨道与手别、谱面配对、伴奏文件、图层状态（有 / 缺失 / 生成）、段落与书签。
   - **演奏舞台**：全屏，保留 Synthesia 式的演奏布局（顶部工具条、时间线、谱面、瀑布、琴键）。
-- **工作台布局**：
-  - 顶栏：后退 / 前进（所有标签页共享一条历史）、工作区标签页、全局搜索、左右栏开关。
-  - 左栏：入口（最近练习、全部曲目、导入收件箱）→ 曲库文件夹树（扫描根，带曲目计数，原地重命名，拖放）→ 标签树（层级，原地编辑，拖曲目到标签即打标）→ 自动任务（分组列表 + 开关，点击打开参数配置窗口；对应分析服务：和弦识别、伴奏对齐、生成谱面、手别分离、目录扫描）。
-  - 中栏：标题与计数、视图切换（列表：标题 / 艺人 / 时长 / BPM / 调 / 已有图层徽标；网格：卡片）、尺寸滑块、筛选条（标签、调、BPM 范围、时长、已有图层、来源）、排序、多选（Shift / Ctrl / 框选）、右键菜单。
-  - 右栏 Inspector：曲目信息（可编辑）、版本（原调 / 转调 / 量化，切换采用）、图层状态（谱面、和弦、歌词、伴奏、指法：已有 / 缺失 / 生成按钮）、音轨与手别摘要、练习入口（观看 / 左手 / 右手 / 双手 → 进入演奏舞台）、文件位置。多选时显示混合值并批量编辑。
-  - 搜索语法：`field:value`、`-` 排除、`|` 或、括号、引号；字段如 `key:D`、`bpm:>90`、`has:chords`、`tag:流行`。
-  - 栏宽拖拽、拖过最小宽度自动隐藏、双击复位；宽度持久化；窄窗口时两侧栏变浮层。
-- **从 Serpent 移植**（MIT，可并入 GPL，NOTICE 记录来源与提交）：栏宽拖拽与自动隐藏、工作区标签页与共享历史模型、虚拟化窗口与网格几何、尺寸档位、选择与框选、搜索表达式解析器、标签树模型、自动任务分组模型、键盘 roving 焦点、Popover。全部是纯 TS 模块，带单测，类型泛化为 `Item` / `Location` 后接入。Serpent 的 App.tsx 单体组装方式、全局 CSS 与 props 传递不移植。
-- **状态**：zustand 领域 store（library、selection、workspace、playback、settings）；工作区标签页快照（位置、筛选、搜索、选择、滚动）由 workspace store 管理；选择驱动 Inspector。组件直接订阅，不逐层传 props。
+- **打开方式**：命令行参数、Windows 文件关联（`.mid`、`.midi`、`.musicxml`、`.mxl`、`.panthesia`）、单实例（已运行时把文件交给现有窗口）、拖入文件或文件夹，都直接进入演奏或歌曲设置。
+- **状态**：zustand 领域 store（song、playback、settings）。组件直接订阅，不逐层传 props。
 - **传输**：`api.ts` 只有 `send(command)` 一个出口，启动时选定 Tauri 或 HTTP（浏览器调试与 Playwright 用）。
 - **设计系统**：`tokens.css` 单一来源；基础组件 Button、IconButton、Toggle、Slider、Select、Popover、Menu、Dialog、List、Card；组件样式与组件同目录，只用 token。
 - **目录**：`src/app`、`src/ui`、`src/screens/<屏幕>`、`src/stage`、`src/notation`、`src/engine`。`src/` 根目录不放业务组件。
@@ -141,13 +138,79 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 回归测试分三类：解析（全部样本可导入、无 panic）、往返（MusicXML / ABC → Score IR → MusicXML 不丢音）、分析精度（POP909 和弦识别准确率作为基线数字，逐版本比较）。
 
+### 3.7 数据跟随文件：`.panthesia` 清单
+
+用户 2026-11-21 决定：歌曲数据尽量跟着文件走。打开文件时，数据直接从文件旁边取。
+
+**格式**：`.panthesia` 是 UTF-8 JSON 文本，用相对路径引用素材文件，自身保存歌曲数据。
+
+```json
+{
+  "format": "panthesia-song",
+  "version": 1,
+  "title": "Oz",
+  "artist": "yama",
+  "files": [
+    { "id": "perf", "role": "performance", "path": "yama - Oz - BPM76 - Gmajor.mid", "blake3": "…", "bytes": 18234 },
+    { "id": "acc", "role": "stem", "stem": "accompaniment", "path": "../「ACG」CHORUS PIANO #1 AUDIO/yama - Oz - BPM76 - Gmajor.wav", "blake3": "…" },
+    { "id": "vox", "role": "stem", "stem": "vocals", "path": "../「ACG」CHORUS PIANO #1 AUDIO/yama - Oz - BPM76 - Gmajor_人声.wav", "blake3": "…" }
+  ],
+  "performances": [ { "id": "main", "file": "perf", "label": "原版", "noteIdentity": "smf-track-noteon-v1" } ],
+  "default": { "performance": "main" },
+  "layers": {
+    "keys":  { "items": [ { "tick": 0, "key": "G:maj" } ], "provenance": { "origin": "imported", "tool": "filename" } },
+    "hands": { "tracks": { "0": "right", "1": "left" }, "provenance": { "origin": "human" } }
+  },
+  "variants": [],
+  "alignments": [],
+  "extensions": {}
+}
+```
+
+**规则**
+
+| 项 | 规定 |
+| --- | --- |
+| 文件引用 | `role`：`performance`、`score`、`paper`（PDF / 图片谱）、`stem`（`vocals` / `accompaniment` / `piano` …）、`source`（原音频 / 视频）、`annotation-source`（如 POP909 的 `chord_midi.txt`）。路径相对清单，用 `/` 分隔；可带 `range`（起止秒），用于引用长音视频中的一段。每个引用记录 BLAKE3 与字节数 |
+| 图层 | 沿用 3.1 的图层与来源信息（`provenance`、`confidence`、`status`）；引用音符时使用 NoteId，并与所属演奏文件的哈希绑定 |
+| 兼容 | `version` 只在不兼容时递增；读写时保留未知字段与 `extensions` 原样；新增文件角色与图层不需要改版本 |
+| 写入 | 原子替换（临时文件 + 重命名）；只在用户第一次修改某首歌时创建，扫描、打开、分析都不自动生成清单 |
+| 一致性 | 打开时校验引用的哈希：演奏文件被外部修改 → 按 NoteId 协议重映射图层，无法映射的部分标为未匹配并提示；引用丢失 → 先在清单所在目录树内按哈希查找，找到后更新路径 |
+| 生成者 | 其他工具（如 `D:\Music\_tools\music-transcription`）可以在导出时直接写清单；格式说明与 JSON Schema 放在 `docs/development/panthesia-format.md` |
+
+**放置**
+
+| 情况 | 位置 | Ouro 中的行为 |
+| --- | --- | --- |
+| 单个 MIDI / MusicXML | 主文件旁边，同名：`七里香.mid` → `七里香.panthesia` | 伴生文件，随主文件移动、改名、删除 |
+| 歌曲文件夹 | 文件夹根目录 `song.panthesia` | 随文件夹移动 |
+
+**打开时的查找顺序**：打开文件 X → ① 同目录同名 `.panthesia` → ② 同目录或向上两级中引用了 X 的 `song.panthesia` → ③ 没有清单，直接演奏；第一次修改时在 X 旁边创建同名清单。打开 `.panthesia` 本身 → 按清单的 `default` 打开。
+
+**对 `D:\Music\MIDI` 各区的覆盖（2026-11-21 实地查看）**
+
+| 区 | 结构 | 清单形态 |
+| --- | --- | --- |
+| B 站曲目（如 `Ai-Ai-Ai_BV16b6RBpE6T`） | 根目录 `piano_raw.mid`、`source/` 原音视频、`stems/`、`exports/<运行>/`（`piano_raw.mid`、`score.mid`、`score.musicxml`、`piano.wav`、`vocals.wav`）、`exports/latest.json`、多次 `runs/` | 文件夹清单：引用根 MIDI、选定一次导出的谱面与人声；新的导出不自动替换，在歌曲设置中切换采用 |
+| `Look at the Sky` | 根 MIDI、`versions/`（原调 / C 大调 × 自动对齐 / 乐谱量化）、`source/` mp3 | 文件夹清单：多个 `performances`，标注各自版本 |
+| 周杰伦 126 首 | 每首一个文件夹，多数 1 个 MIDI，`七里香` 有 14 个版本 | 单文件时用同名清单；多版本文件夹用文件夹清单列出全部版本 |
+| KAIRCI ACG | MIDI 在 `#N MIDI`，伴奏与 `_人声.wav` 在相邻的 `#N AUDIO`；含 `._` 系统文件 | MIDI 旁的同名清单，用 `../` 引用伴奏与人声；文件名中的 BPM 与调写入 `keys` / tempo 图层（来源 `filename`）；忽略 `._*` |
+| Datasets（POP909、MAESTRO、Hooktheory 等） | 只读数据集，标注在旁边的 txt / json | 默认不写清单；打开时由导入器读取旁边的标注（POP909 `chord_midi.txt` 等）作为 `imported` 图层；用户修改时才创建清单 |
+| SNH48 PDF 谱 | PDF、`.omr`、`.mxl`、识谱 MIDI | 文件夹清单：`paper` 引用 PDF，`score` 引用 MXL，`performance` 引用 MIDI |
+| Output | 交付物与压缩包 | 不处理 |
+
+**`.neopiece` 的新定位**：只用于导出与分享：把清单和它引用的文件打成一个包，路径改写为包内路径。导入 `.neopiece` 时解包到用户选择的文件夹，生成文件夹清单。
+
+**与 Ouro 的配合**：Ouro 的 PF 阶段提供伴生文件与按类型打开方式（见 Ouro `docs/进度.md` 3.6）。Panthesia 提供一个 Ouro 插件（TypeScript）：MIDI / MusicXML 格式处理器（时长、BPM、调、轨道数）、钢琴卷帘缩略图、读取 `.panthesia` 中的标题与已有图层作为字段、登记 `.panthesia` 为伴生扩展名、"用 Panthesia 练习"打开方式。插件源码放在本仓库 `integrations/ouro-plugin/`。
+
 ## 4. 阶段
 
 | 阶段 | 内容 | 完成条件 | 状态 |
 | --- | --- | --- | --- |
 | R0 基线清理 | 删除死 crate、旧原生应用、前端不可达代码、重复文档；重写计划；磁盘清理 | 构建通过；文档只有一套计划 | 已完成 |
-| R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；合并存储事务；拆分 `lib.rs`；删除一次性迁移代码；DuET 独立 venv 与可配置路径 | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
-| R2 曲库工作台与设计系统 | tokens、基础组件、zustand store、单一 `send()`、状态推送；移植 Serpent 工作台模块；三栏外壳、文件夹 / 标签树、列表 / 网格、筛选与搜索、Inspector、工作区标签页；工作台 → 演奏舞台的进入与返回 | `App.tsx` < 300 行；CSS 全部基于 token；旧主页 / 选曲 / 歌曲设置三屏删除；180 首以上曲库流畅浏览；视觉验收 | 待开始 |
+| R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；拆分 `lib.rs`；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
+| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习历史、最近打开与缓存；迁移真实资料（见下方 R2 任务分解）；前端：tokens、基础组件、zustand store、单一 `send()`、状态推送，启动页与歌曲设置，删除曲库相关界面 | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`App.tsx` < 300 行；CSS 全部基于 token；`cargo test --workspace` 能跑完且全部通过 | 待开始 |
+| RO Ouro 插件 | `integrations/ouro-plugin/`（TypeScript）：MIDI / MusicXML 格式处理器、钢琴卷帘缩略图、清单字段读取、`.panthesia` 伴生登记、"用 Panthesia 练习"打开方式 | 在 Ouro 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Ouro 中移动 MIDI 时清单一起移动 | 待开始（依赖 Ouro PF 阶段） |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 待开始 |
 | R4 分层歌曲模型与统一导入 | `panthesia-notation`；Song 图层与来源信息；ABC 导入；MIDI meta（歌词、标记、调号）读入；歌曲包识别；元数据收敛；语料回归 | 第 3.6 节样本全部可导入；同一首歌从 MIDI / MusicXML / ABC 进入后都能播放、显示谱面、转调、量化 | 待开始（可与 R2 并行） |
 | R5 谱面显示 | 谱面窗口化、跟随、只读阅读器；从 Score IR 生成 | 长谱流畅翻页与跟随；转调后谱面与演奏一致 | 待开始 |
@@ -157,7 +220,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R9 自由演奏与录音 | UI08：录音、量化保存、重开 | 录音保存为歌曲后可正常练习 | 待开始 |
 | R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 待开始 |
 
-顺序：R1 → R2 → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3。单会话连续执行时按 R1 → R2 → R4 → R3 → R5 → R6 → R7 → R8 → R9 → R10 推进。
+顺序：R1 → R2 → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 Ouro 的 PF 阶段（约第 3–4 周）。单会话连续执行时按 R1 → R2 → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Ouro PF 完成前跳过。
 
 ### R1 任务分解
 
@@ -167,22 +230,37 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 2. **历史回放与表现记录**：engine 的 `history_*`（loading 1028、commands 539、reader 448、replay_loading 611 等）、`performance_archive*`、`replay_*`；core 的 `practice_history`（2220 行）中仅供回放的部分；前端 `features/review/`、`HistoryDialog` 相关、`Notation.tsx` 中的 ScoreHistoryReview 与 HistoryReplayTransport、对应 spec。录音（R9 需要）与普通播放捕获不删。
 3. **一次性迁移**：`legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration`、`library_repairs` 及 examples 中的迁移脚本。保留 `.neothesia.ron` 与 Synthesia 资料的**导入器**（它们是导入来源，不是迁移）。先确认真实资料在当前格式下读取不依赖这些模块。
 4. **`practice_backup*`**（约 4000 行）：判断是否只服务于评分历史；是则删除，否则收缩为"歌曲与资产备份"，与整歌归档（`song_archive`）合并为一条路径。
-5. **存储事务合并**：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。同时修复两个已知缺陷：引擎启动后长时间处于忙碌状态、拒绝普通命令（`storage_control::check_command`，导致约 120 个 engine 测试失败）；`package_commands` 测试死锁。完成标准：`cargo test --workspace` 能跑完且全部通过。
+5. **存储事务合并（已移到 R2，改为删除集中曲库）**：R1 只在测试被阻塞时修复两个已知缺陷（引擎启动后长时间忙碌、`package_commands` 死锁）。原内容：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。同时修复两个已知缺陷：引擎启动后长时间处于忙碌状态、拒绝普通命令（`storage_control::check_command`，导致约 120 个 engine 测试失败）；`package_commands` 测试死锁。完成标准：`cargo test --workspace` 能跑完且全部通过。
 6. **拆分 `lib.rs`**（4438 行）：`Player` 与命令分派分离，按领域分模块（library、playback、sound、notation、import、annotations）。
 7. **前端残留**：删除对已删命令的调用、`api.ts` 中对应函数、生成协议后不再存在的类型；`npm run protocol:generate` 重新生成。
 8. **后台工具**：DuET 使用独立 venv；`duet_runtime.rs` 中 Python 与模型路径改为设置项，删除 `D:\cs\...` 硬编码默认值。
 9. **收尾**：engine 目标 < 5 万行；清除全部 dead-code 警告；更新 `architecture-decisions.md` 中与已删模块相关的条目。
 
+### R2 任务分解
+
+1. **格式**：`docs/development/panthesia-format.md` 与 JSON Schema；Rust 类型（serde，保留未知字段）；读、校验、原子写；哈希校验与目录树内修复；NoteId 重映射接入。单元测试覆盖 3.7 表中每一区的样例清单（在 `work/` 下的语料副本上生成）。
+2. **打开**：命令行参数、文件关联、单实例转交、拖入；查找顺序按 3.7；没有清单时直接演奏；首次修改时创建同名清单。
+3. **歌曲设置**：在清单上编辑版本选择、轨道与手别、谱面配对、伴奏文件、段落与书签；保存即写清单。
+4. **删除集中曲库**：`song_repository`、`import_storage` 副本存储、`song_catalog` / `catalog_rows`、`library-workspace.json`、`library-monitor-files.json`、`locations`、五套存储机制（`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection`、`desktop_close.rs`）；本地新增练习数据目录（历史、时长、上次速度与位置、最近打开，按 BLAKE3 关联）与缓存目录。同时消除启动忙碌与 `package_commands` 死锁。
+5. **迁移真实资料**（需用户授权后执行，先在备份副本上跑通）：
+   - 有用户数据的歌曲（2026-11-21：轨道分配 15 首、谱面配对 5 首、元数据 5 首；`web-preferences.json` 中段落、书签、变调与量化、会话设置约 12 首）：在其原始位置（`locations` 中仍存在的路径，优先 `D:\Music\MIDI`）旁写清单。
+   - 只存在于副本存储、找不到原文件的歌曲：连同清单导出到 `D:\Music\MIDI\Panthesia导出\`。
+   - 练习历史与时长迁入新的本地练习数据目录。
+   - 15 个未匹配的旧身份原样保留在备份中，不合并。
+   - 核对：每首迁移歌曲能从新位置打开，图层与设置一致；核对通过后移除旧 `library/`（备份保留）。
+6. **前端**：tokens、基础组件、zustand store、单一 `send()`、状态推送；启动页与歌曲设置；删除曲库、选曲、导入收件箱等界面与对应协议命令。
+
 ## 5. 固定约束（用户决定）
 
-- 曲库与管理界面采用 Serpent 式三栏工作台的布局与交互（2026-11-21 起，取代 Synthesia 式主页 / 选曲 / 歌曲设置）；演奏舞台保留 Synthesia 式布局（参考图 `work/original-product-reset/references`，不随包分发）。只借布局与交互，美术自行设计。Panthesia 品牌、简体中文。
+- 曲库管理由 Ouro 承担，Panthesia 不做曲库界面（2026-11-21 起，取代同日"Serpent 式三栏工作台"的决定）。Panthesia 只有启动页、歌曲设置与演奏舞台；演奏舞台保留 Synthesia 式布局（参考图 `work/original-product-reset/references`，不随包分发），美术自行设计。Panthesia 品牌、简体中文。
+- 数据跟随文件：歌曲数据写在文件旁的 `.panthesia` 清单中（3.7）；本地只保存练习历史、最近打开与缓存。技术栈保持 Rust + Tauri + React。
 - 速度单位为 BPM。
-- 删除"入门练习"分类与八秒试听。工作台的"全部曲目"入口与右侧 Inspector 属于新布局，取代原先对"全部歌曲"分类与常驻预览侧栏的删除决定；Inspector 显示详情与操作，不自动试听。
+- 删除"入门练习"分类与八秒试听。
 - 文件操作放在右键菜单（资源管理器定位、查看版本）。
 - 主线只有连续播放与等待按键两种模式。评分、达标、日课、晋级、历史回放与表现记录只在 `feature/assessment-lab`。
 - 数据不要求完整：缺少的图层不阻塞练习，界面只显示存在的内容。
 - 后台能力（转录、分离、DuET、分析、转调量化、扫描）只从歌曲设置或全局设置的二级入口进入；演奏舞台不放任务卡、版本栏、诊断信息。
-- 选曲直接按文件实际状态打开；缺失只在曲目行标记。
+- 按文件实际状态打开；清单引用的文件缺失时在歌曲设置中标记，不阻塞演奏。
 - 皮肤、特效、标签、和弦、歌词图层在"显示"设置中开关。
 - 虚拟双手自行实现；不复制或移植 pygame-piano-animator（无许可证）的代码、参数与权重。
 - 浏览器调试模式保留，收在单一 `send()` 之后。

@@ -2,6 +2,8 @@
 
 开源 Windows 钢琴练习软件。Tauri 2（Rust）+ React 19 + Vite。GPL-3.0，部分初始代码来自 Neothesia（见 NOTICE.md）。
 
+定位（2026-11-21）：打开一首歌就能练的专用程序，不做曲库管理。曲库由 Ouro（`D:\Manage\_tools\Serpent`）管理并按文件类型打开 Panthesia。歌曲数据写在文件旁的 `.panthesia` 清单中（`current-plan.md` 3.7）；本地只保存练习历史、最近打开与缓存。
+
 ## 先读
 
 1. `docs/development/current-plan.md`：长期目标、目标架构、当前阶段。唯一任务队列。
@@ -17,7 +19,7 @@
 | `panthesia-music` | MIDI 解析、tick 时间图、稳定 NoteId、Performance |
 | `panthesia-keyboard` | 琴键范围与几何 |
 | `panthesia-core` | MusicXML / Score IR、反复展开、对齐、转调量化、制谱、指法、曲库格式（纯函数，无 IO） |
-| `panthesia-engine` | 有状态运行时：歌曲仓库（SQLite）、导入、播放会话、声音（oxisynth/cpal、MIDI、VST3）、记谱准备。`panthesia-service` 是浏览器调试用的 HTTP 服务 |
+| `panthesia-engine` | 有状态运行时：歌曲仓库（SQLite，R2 删除，改为 `.panthesia` 清单）、导入、播放会话、声音（oxisynth/cpal、MIDI、VST3）、记谱准备。`panthesia-service` 是浏览器调试用的 HTTP 服务 |
 | `panthesia-vst3` | VST3 宿主 |
 | `panthesia-web/src-tauri` | 桌面程序 `panthesia-desktop`，Tauri 命令桥 |
 | `panthesia-web/src` | 前端 |

@@ -2,6 +2,17 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · 定位调整：外部演奏程序与数据跟随文件
+
+- 用户决定：Panthesia 不做曲库管理，曲库由 Ouro（原 Serpent，`D:\Manage\_tools\Serpent`）承担；Panthesia 作为外部演奏程序，由 Ouro 按文件类型打开。技术栈保持 Rust + Tauri + React。
+- 用户决定：歌曲数据跟着文件走。新增 `.panthesia` 清单格式（current-plan.md 3.7）：JSON，相对路径引用素材，保存图层与设置；单文件用同名清单，歌曲文件夹用 `song.panthesia`；只在首次修改时创建。
+- 调研现有存储：集中库在 `%APPDATA%\com.ubik.neothesia`，1,385 份 MIDI 副本；有用户数据的歌曲约 20 首（轨道分配 15、谱面配对 5、元数据 5，另有约 12 首的段落、书签、变调与会话设置）。
+- 实地查看 `D:\Music\MIDI` 各区结构，3.7 节逐区给出清单形态（KAIRCI 伴奏与 MIDI 分处相邻文件夹、周杰伦多版本、B 站多次导出、数据集只读）。
+- 计划改动：R2 由"曲库工作台"改为"清单存储与打开文件"（含删除集中曲库与真实资料迁移）；新增 RO（Ouro 插件，依赖 Ouro PF 阶段）；R1 的存储事务合并移到 R2。
+- 更新 interaction-model.md 开头说明、research-2026-11.md 第 8 节、AGENTS.md。
+
+下一入口：R1 第 1 项（评分时代命令与模块删除）。
+
 ## 2026-11-21 · 交接准备与界面方向调整
 
 - `bilibili_toolkit` 提交 9c6e7b6（分块 Range 下载 + 镜像切换，以及之前未提交的 ASR 工作）。

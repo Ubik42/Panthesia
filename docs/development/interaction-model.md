@@ -1,4 +1,4 @@
-> 2026-11-21 起：曲库与管理界面（原 UI00–UI03、UI07、UI09）改为 Serpent 式三栏工作台，规格见 current-plan.md 第 3.5 节。本文件中的演奏舞台（UI04–UI06、UI08）规范继续有效。
+> 2026-11-21 起：曲库与管理界面（原 UI00–UI03、UI07、UI09）不再由 Panthesia 提供，曲库由 Ouro 管理；Panthesia 只保留启动页、歌曲设置与演奏舞台，规格见 current-plan.md 第 3.5、3.7 节。本文件中的演奏舞台（UI04–UI06、UI08）规范继续有效。
 
 # Synthesia 界面与交互复刻规范
 
