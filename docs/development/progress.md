@@ -2,6 +2,20 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R1 第 1、2、4、7 项：删除评分时代功能（提交 59f9686）
+
+- 引擎：删除评分轮次保存、日课、速度阶梯、表现目标、学习资料、弱项练习、历史回放 / 批阅 / 问题重练、练习备份及其协议命令（`practice_policy.rs` 一并删除）。`Mode` 只接受 wait / listen（flow 视为 listen）；状态快照去掉 routine、ladder、adaptive、表现目标与循环重启字段。
+- 用户数据：`web-preferences.json` 中这些功能的键（ladderPresets、routines、songExpressionGoals、loopRestartErrors 等）经已有的 `extensions` 映射原样读回、写回；`library-workspace.json` 的 `learning` 改为不解析的 JSON 原样保留；前端 localStorage 草稿中的 annotations / learning / expressions 同样原样保留。曲目包中的 ladders 读取时忽略、导出时不再写。
+- 保留并迁出：指法示范的取消队列与 `replay_index`（示范仍在用）；测试夹具 `seeded` 移到 `test_fixtures.rs`。
+- 桌面端：删除备份、历史片段、评语、日课的 Tauri 命令与 `backup_operations.rs`；`practice_backup_bridge.rs` 去掉备份部分后改名 `file_transfer.rs`；便携检查的 save / restore / resume-plan 阶段依赖评分轮次与日课，连同 `scripts/verify-portable.ps1` 删除，`--headless-check` 保留。
+- 前端：删除 review / routines / backups 目录、历史与日课对话框、表现目标控件、学习资料对话框、反馈对话框等，以及因此不可达的 29 个文件和 18 个对应 spec；App、Notation、草稿中心、工作进度、浏览位置等去掉相关状态与入口。
+- 检查：`cargo check --workspace --all-targets` 通过（剩 `legacy_exercise_history.rs` 3 个死代码警告，第 3 项删除）；`npm run build` 通过。
+- 规模：engine 约 51.5k 行（R1 目标 < 50k）。
+
+未完成：`PaperScore` 的 historyFocus 可选属性仍在（已无调用方传入）；部分主线 spec 仍模拟已删命令，RF 跑 Playwright 时一并修。
+
+下一入口：R1 第 3 项（一次性迁移代码）。
+
 ## 2026-11-21 · 瘦身目标与先删后改
 
 - R2 完成条件增加 `panthesia-engine` ≤ 3 万行：职责缩小为"打开文件、练习"后，评分、日课、历史回放、备份、集中曲库、导入流水线、目录缓存与五套存储机制都应删除。
