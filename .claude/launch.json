@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "service",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set PANTHESIA_DATA_ROOT=D:\Music\_tools\Panthesia\work\web-preview-data&& cargo run -q -p panthesia-engine --bin panthesia-service -- --silent"],
+      "port": 32124
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "panthesia-web", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}

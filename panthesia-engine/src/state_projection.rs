@@ -3,14 +3,24 @@ use crate::*;
 use std::sync::Condvar;
 use std::time::Duration;
 
-/// The latest snapshot with a revision that grows on every publish.
+/// The latest snapshot with a revision that grows whenever its content changes. The state
+/// order (a capture sequence that grows on every publish) does not count as a change.
 pub(crate) struct StateFeed {
     slot: Mutex<(u64, Snapshot)>,
+    content: Mutex<blake3::Hash>,
     published: Condvar,
+}
+fn content_hash(snapshot: &mut Snapshot) -> blake3::Hash {
+    let order = snapshot.state_order.take();
+    let hash = blake3::hash(&serde_json::to_vec(snapshot).unwrap_or_default());
+    snapshot.state_order = order;
+    hash
 }
 impl StateFeed {
     pub(crate) fn new(first: Snapshot) -> Self {
-        Self { slot: Mutex::new((1, first)), published: Condvar::new() }
+        let mut first = first;
+        let content = Mutex::new(content_hash(&mut first));
+        Self { slot: Mutex::new((1, first)), content, published: Condvar::new() }
     }
     pub(crate) fn snapshot(&self) -> Snapshot {
         self.slot.lock().map(|slot| slot.1.clone()).unwrap_or_default()
@@ -28,12 +38,18 @@ impl StateFeed {
 
 /// Compute outside the shared-state lock. Readers never wait for musical projections.
 pub(super) fn publish(player: &Player, shared: &StateFeed) {
-    let next = player.snapshot();
+    let mut next = player.snapshot();
+    let hash = content_hash(&mut next);
+    let changed = shared.content.lock().is_ok_and(|mut last| std::mem::replace(&mut *last, hash) != hash);
     let old = shared.slot.lock().ok().map(|mut slot| {
-        slot.0 += 1;
+        if changed {
+            slot.0 += 1;
+        }
         std::mem::replace(&mut slot.1, next)
     });
-    shared.published.notify_all();
+    if changed {
+        shared.published.notify_all();
+    }
     player.retire(old);
 }
 

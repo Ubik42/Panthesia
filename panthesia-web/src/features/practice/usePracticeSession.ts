@@ -197,7 +197,8 @@ export function usePracticeSession() {
               !identity.current.accepts(session.state)))
         )
           return;
-        installed?.(installSession(session, liveAtStart));
+        const snapshot = installSession(session, liveAtStart);
+        installed?.(snapshot);
       } catch (failure) {
         if (
           !alive.current ||
