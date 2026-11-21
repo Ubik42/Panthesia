@@ -5,20 +5,15 @@ use std::{
 };
 pub const KINDS: &[(&str, &str)] = &[
     ("music", "曲目与乐谱"),
-    ("library", "曲库文件夹"),
     ("notation", "MusicXML 乐谱"),
     ("audiveris", "Audiveris 程序"),
     ("musescore", "MuseScore 程序"),
     ("soundfont", "钢琴音源"),
     ("paper", "PDF 与图片"),
-    ("piece", "曲目包"),
-    ("backup", "练习备份"),
     ("exportMidi", "MIDI 导出"),
     ("exportScore", "乐谱导出"),
     ("exportPaper", "谱页导出"),
-    ("exportPiece", "曲目包导出"),
     ("exportBackup", "练习备份导出"),
-    ("repair", "重新定位文件"),
 ];
 #[derive(Default, Serialize, Deserialize)]
 struct Locations {

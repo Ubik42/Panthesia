@@ -166,51 +166,22 @@ pub fn save_current(
     encode(&path, &doc)
 }
 
-/// This layout is the repository's owned-asset contract. External MIDI never matches
-/// a bare filename: the complete library/assets/midi hierarchy is required.
+/// Annotations of a generated exercise: `exercises/<cid>.mid` keeps them in
+/// `exercises/annotations/<cid>.json` (an exercise's content id comes from its parameters, not
+/// its bytes, so it cannot use a manifest). Every other song uses its `.panthesia` manifest.
 pub fn document_path(midi: &Path) -> Option<PathBuf> {
-    let stem = midi.file_stem()?.to_str()?;
-    let id = match stem.split_once("-restored-") {
-        Some((id, index))
-            if !index.is_empty()
-                && index.len() <= 3
-                && index.bytes().all(|b| b.is_ascii_digit()) =>
-        {
-            id
-        }
-        Some(_) => return None,
-        None => stem,
-    };
+    let id = midi.file_stem()?.to_str()?;
     if midi.extension()? != "mid"
         || id.len() != 64
-        || !id
-            .bytes()
-            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        || !id.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
     {
         return None;
     }
     let directory = midi.parent()?;
-    // Generated exercises cached in the data folder: `exercises/<cid>.mid` keeps its
-    // annotations in `exercises/annotations/<cid>.json`.
-    let library_layout = directory.parent().and_then(Path::file_name).is_some_and(|v| v == "assets");
-    if directory.file_name().is_some_and(|v| v == "exercises") && !library_layout {
-        return Some(directory.join("annotations").join(format!("{id}.json")));
-    }
-    if !["midi", "exercises"]
-        .iter()
-        .any(|name| directory.file_name().is_some_and(|v| v == *name))
-    {
-        return None;
-    }
-    let assets = directory.parent()?;
-    if assets.file_name()? != "assets" {
-        return None;
-    }
-    let library = assets.parent()?;
-    if library.file_name()? != "library" {
-        return None;
-    }
-    Some(library.join("annotations").join(format!("{id}.json")))
+    directory
+        .file_name()
+        .is_some_and(|v| v == "exercises")
+        .then(|| directory.join("annotations").join(format!("{id}.json")))
 }
 
 fn decode(path: &Path, content_id: &str) -> Result<(Document, Vec<u8>), MetadataError> {
@@ -251,25 +222,6 @@ fn source(midi: &Path) -> Result<panthesia_music::MidiFile, MetadataError> {
     let bytes = atomic_file::read_dependency(midi, LIMIT).map_err(MetadataError::Read)?;
     let file = panthesia_music::MidiFile::from_path_bytes(midi, &bytes)
         .map_err(MetadataError::InvalidNoteIdentity)?;
-    if midi
-        .parent()
-        .and_then(Path::file_name)
-        .is_some_and(|v| v == "midi")
-    {
-        let expected = midi
-            .file_stem()
-            .and_then(|v| v.to_str())
-            .unwrap_or_default()
-            .split("-restored-")
-            .next()
-            .unwrap_or_default();
-        if file.content_id != expected {
-            return Err(MetadataError::ContentMismatch {
-                expected: expected.into(),
-                actual: file.content_id,
-            });
-        }
-    }
     Ok(file)
 }
 /// A read-only projection also protects v1 documents before their background adoption.

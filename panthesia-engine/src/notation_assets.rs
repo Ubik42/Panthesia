@@ -6,15 +6,7 @@ use std::{
 };
 const LIMIT: usize = panthesia_core::source_score_window::ASSET_LIMIT;
 pub(crate) fn display_name(path: &Path) -> String {
-    let directory = path.parent();
-    if directory.is_some_and(|p| p.ends_with("library/assets/notation")) {
-        "配套乐谱".into()
-    } else {
-        path.file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into_owned()
-    }
+    path.file_name().unwrap_or_default().to_string_lossy().into_owned()
 }
 fn verified_asset(path: &Path, hash: &str) -> bool {
     use std::io::Read;
@@ -45,30 +37,10 @@ pub(crate) fn resolve(data: &Path, hash: &str) -> Option<PathBuf> {
     if !valid(hash) {
         return None;
     }
-    // Score copies live in `scores/`; copies made by older versions remain readable.
-    for root in [data.join("scores"), data.join("library/assets/notation")] {
-        for extension in ["musicxml", "mxl"] {
-            let path = root.join(format!("{hash}.{extension}"));
-            if verified_asset(&path, hash) {
-                return Some(path);
-            }
-        }
-    }
-    let root = data.join("library/assets/notation");
-    let entries = std::fs::read_dir(&root).ok()?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if entry.file_type().is_ok_and(|v| v.is_file())
-            && path.file_stem().is_some_and(|s| {
-                s.to_string_lossy()
-                    .starts_with(&format!("{hash}-restored-"))
-            })
-            && verified_asset(&path, hash)
-        {
-            return Some(path);
-        }
-    }
-    None
+    ["musicxml", "mxl"]
+        .iter()
+        .map(|extension| data.join("scores").join(format!("{hash}.{extension}")))
+        .find(|path| verified_asset(path, hash))
 }
 pub(crate) fn retain(data: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
     if bytes.is_empty() || bytes.len() > LIMIT {
@@ -192,15 +164,7 @@ pub(crate) fn retain_editions(
             if !versions.iter().any(|v| v.content_id == score.content_id) {
                 versions.push(crate::preferences::ScoreVersion {
                     id: crate::library_scores::associated_id(&path, &score.content_id),
-                    name: if source.starts_with(data.join("library/assets/notation")) {
-                        "配套乐谱".into()
-                    } else {
-                        source
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .into()
-                    },
+                    name: display_name(&source),
                     path: path.clone(),
                     content_id: score.content_id.clone(),
                 });

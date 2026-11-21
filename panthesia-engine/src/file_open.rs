@@ -165,7 +165,7 @@ mod tests {
         assert_eq!(reopened["opened"]["manifest"]["title"], "五指练习");
         let marks = engine.command(Command::Bookmarks).unwrap();
         assert!(marks.to_string().contains("副歌"), "{marks}");
-        assert!(!data.join("library/assets/midi").join(format!("{cid}.mid")).exists(), "not copied into the library");
+        assert!(!data.join("library").exists(), "not copied into a library");
         // Companion files are listed in the manifest with paths relative to it.
         std::fs::create_dir_all(songs.join("audio")).unwrap();
         std::fs::write(songs.join("audio").join("acc.wav"), b"RIFF").unwrap();

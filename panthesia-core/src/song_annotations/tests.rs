@@ -49,7 +49,7 @@ fn fixture() -> (PathBuf, panthesia_music::MidiFile) {
             .unwrap()
             .as_nanos()
     ));
-    let path = root.join("library/assets/midi").join(format!("{cid}.mid"));
+    let path = root.join("exercises").join(format!("{cid}.mid"));
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, &bytes).unwrap();
     let file = panthesia_music::MidiFile::from_path_bytes(&path, &bytes).unwrap();
