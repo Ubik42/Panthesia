@@ -109,8 +109,8 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
   - **歌曲设置**：查看与编辑本首歌的清单内容：演奏版本选择、轨道与手别、谱面配对、伴奏文件、图层状态（有 / 缺失 / 生成）、段落与书签。
   - **演奏舞台**：全屏，保留 Synthesia 式的演奏布局（顶部工具条、时间线、谱面、瀑布、琴键）。
 - **打开方式**：命令行参数、Windows 文件关联（`.mid`、`.midi`、`.musicxml`、`.mxl`、`.panthesia`）、单实例（已运行时把文件交给现有窗口）、拖入文件或文件夹，都直接进入演奏或歌曲设置。
-- **状态**：zustand 领域 store（song、playback、settings）。组件直接订阅，不逐层传 props。
-- **传输**：`api.ts` 只有 `send(command)` 一个出口，启动时选定 Tauri 或 HTTP（浏览器调试与 Playwright 用）。
+- **状态**：引擎推送状态与任务列表（桌面为 Tauri 事件，浏览器调试为长轮询），界面不轮询。领域状态用 `useSyncExternalStore` 外部 store（`playbackStore` 按字段订阅，设置、任务同样），应用级状态由 `app/useAppModel` 组合后经 `AppContext` 提供，组件直接读取，不逐层传 props。不另引入 zustand：现有外部 store 已覆盖其用途（2026-11-21 决定）。
+- **传输**：`api.ts` 中 `local()` 是浏览器调试的唯一 HTTP 出口，`call()` 在 Tauri 命令与服务路径间选择；类型由 Rust 生成。
 - **设计系统**：`tokens.css` 单一来源；基础组件 Button、IconButton、Toggle、Slider、Select、Popover、Menu、Dialog、List、Card；组件样式与组件同目录，只用 token。
 - **目录**：`src/app`、`src/ui`、`src/screens/<屏幕>`、`src/stage`、`src/notation`、`src/engine`。`src/` 根目录不放业务组件。
 - **舞台渲染器**：一个 WebGL2 渲染器负责瀑布、琴键、光效（实例化），Canvas 2D 只作回退。图层顺序：背景 → 小节线与段落标记 → 音符块与标签 → 光效 → 琴键 → 虚拟双手 → 文字叠层（和弦、歌词、调、速度）。
