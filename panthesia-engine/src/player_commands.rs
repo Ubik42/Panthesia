@@ -889,7 +889,7 @@ impl Player {
                         serde_json::json!({"message":"请先在连续模式下按节拍器演奏至少 24 个音符","suggested":null}),
                     );
                 }
-                let timing = self.matcher.summary().timing;
+                let timing = self.matcher.timing();
                 let (message, suggested) =
                     match timing_calibration_status(timing, self.state.latency) {
                         C::Suggested(s) => (
