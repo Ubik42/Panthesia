@@ -6,7 +6,7 @@
 
 - 格式说明 `docs/development/panthesia-format.md` 与 `panthesia-format.schema.json`：顶层字段、文件角色、演奏 / 谱面、图层（hands、fingering、playback、meter、keys、chords、sections、beats、lyrics、tempo、passages、bookmarks）、派生版本、设置。音符引用写作 `[track, onset, pitch]`，音高用于在演奏文件变化后核对。
 - `panthesia-core::manifest`：类型（各层对象均保留未知字段）、解析（接受 BOM，更新版本只读）、校验（编号唯一、引用存在、相对路径只用 `/`、stem 必填、confidence / status 取值、音符引用格式）、序列化、`reconcile_notes`（不存在或音高不符的音符引用移入图层 `unmatched`，不删除）。
-- `panthesia-engine::manifest_store`：查找顺序（同名清单 → 同级及向上两级中引用该文件的 `song.panthesia`；清单损坏时报错而非替换）、原子写入、BLAKE3 校验、在清单目录树内按大小与哈希找回移动的文件（忽略 `._*`，最多检查 5 万个文件）、相对路径计算（大小写不敏感，去除 `\?\` 前缀）。
+- `panthesia-engine::manifest_store`：查找顺序（同名清单 → 同级及向上两级中引用该文件的 `song.panthesia`；清单损坏时报错而非替换）、原子写入、BLAKE3 校验、在清单目录树内按大小与哈希找回移动的文件（忽略 `._*`，最多检查 5 万个文件）、相对路径计算（大小写不敏感，去除 `\\?\` 前缀）。
 - 测试：core 5 个、engine 4 个单元测试；`corpus_manifests`（`--ignored`）在 `work/` 下复制 `D:\Music\MIDI` 各区样本，按 3.7 表生成 B 站、Look at the Sky、七里香、KAIRCI、POP909、SNH48 六种清单，验证写入、查找、校验与移动后找回；语料目录未写入任何文件。
 - 决定：图层载荷在 Rust 中保持 JSON，只对共用字段与 `notes` 做类型校验；具体图层在接入功能时再加类型化读取，避免为尚未使用的图层先写结构。
 
