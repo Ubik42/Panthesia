@@ -77,12 +77,7 @@ export function PracticeTransport({
   const [bpmText, setBpmText] = useState<string | null>(null);
   const [bpmError, setBpmError] = useState("");
   const playing = ["playing", "countIn"].includes(state.status);
-  const recital = ["recital", "memory"].includes(state.mode);
-  const speedUnavailable =
-    !connected ||
-    !available ||
-    state.recording ||
-    (recital && ["playing", "paused", "countIn"].includes(state.status));
+  const speedUnavailable = !connected || !available || state.recording;
   const speedLocked = busy || speedUnavailable;
   const playLabel = playing
     ? "暂停"

@@ -25,7 +25,7 @@ import {
 import type { Shortcuts, ShortcutAction } from "./shortcuts";
 
 export type CommandRequirement =
-  "engine" | "idle" | "loaded" | "song" | "editable" | "score";
+  "engine" | "idle" | "loaded" | "song" | "score";
 export type CommandGroup = "工作区" | "练习与编排" | "曲目与乐谱" | "应用设置";
 interface CommandDefinition {
   id: string;
@@ -107,7 +107,7 @@ const definitions = [
     group: "练习与编排",
     icon: Target,
     keywords: "片段 分段 循环 passage loop",
-    needs: ["engine", "idle", "song", "editable"],
+    needs: ["engine", "idle", "song"],
     shortcut: "passages",
   },
   {
@@ -117,7 +117,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: Hand,
     keywords: "手指 指法 建议 双手 fingering zhifa shouzhi",
-    needs: ["engine", "idle", "song", "editable"],
+    needs: ["engine", "idle", "song"],
     featured: true,
   },
   {
@@ -127,7 +127,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: KeyboardMusic,
     keywords: "左手 右手 双手 分手 hands track",
-    needs: ["engine", "idle", "song", "editable"],
+    needs: ["engine", "idle", "song"],
   },
   {
     id: "meter",
@@ -136,7 +136,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: SlidersHorizontal,
     keywords: "节拍 拍号 弱起 小节 节奏 meter",
-    needs: ["engine", "idle", "song", "editable"],
+    needs: ["engine", "idle", "song"],
   },
   {
     id: "scores",

@@ -189,8 +189,9 @@ pub fn is_control_command(command: &Command) -> bool {
         | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. })
 }
 
+/// The human part plays against the clock (continuous accompaniment), not note by note.
 pub fn is_timed_mode(mode: &str) -> bool {
-    matches!(mode, "flow" | "recital" | "memory")
+    mode == "flow"
 }
 /// Mainline exposes two modes; any older stored or internal mode reads as listen.
 pub(crate) fn public_mode(value: &str) -> &'static str {

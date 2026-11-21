@@ -194,9 +194,7 @@ export function Piano({
       previous = frame;
       const matches = !song || frame.contentId === song.contentId;
       const live =
-        frame.mode === "memory"
-          ? { ...frame, required: [] }
-          : matches
+        matches
             ? frame
             : { ...frame, status: "paused", required: [], pressed: [] };
       latest.current = {

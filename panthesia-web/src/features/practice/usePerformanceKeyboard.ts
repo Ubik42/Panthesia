@@ -1,38 +1,38 @@
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  type Dispatch,
-  type SetStateAction,
-  type MutableRefObject,
-  type RefObject,
+useCallback,
+useEffect,
+useRef,
+type Dispatch,
+type SetStateAction,
+type MutableRefObject,
+type RefObject,
 } from "react";
 import {
-  api,
-  type Snapshot,
-  type EngineCommand,
-  type LoadedSong,
+api,
+type Snapshot,
+type EngineCommand,
+type LoadedSong,
 } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
 import { keyboardMap } from "../settings/displayPreferences";
-import { eventShortcut, shortcutActions } from "../../app/shortcuts";
+import { eventShortcut,shortcutActions } from "../../app/shortcuts";
 import {
-  isCapturingKeys,
-  isComposingKey,
-  isTextEntry,
-  visibleDialogs,
-  topInputScope,
-  topPopup,
+isCapturingKeys,
+isComposingKey,
+isTextEntry,
+visibleDialogs,
+topInputScope,
+topPopup,
 } from "../../app/inputOwnership";
-import { capturePlaybackSource, samePlaybackSource } from "./playbackCommands";
+import { capturePlaybackSource,samePlaybackSource } from "./playbackCommands";
 import {
-  normalizePreviewBars,
-  resolveKeyboardViewport,
-  zoomKeyboardViewport,
-  panKeyboardViewport,
-  viewportRange,
+normalizePreviewBars,
+resolveKeyboardViewport,
+zoomKeyboardViewport,
+panKeyboardViewport,
+viewportRange,
 } from "./keyboardViewport";
-import { seekableMeasures, activeMeasures } from "./practicePresentation";
+import { seekableMeasures,activeMeasures } from "./practicePresentation";
 import type { PlaybackStore } from "./playbackStore";
 import type { BookmarkNavigation } from "./SongBookmarks";
 /** Musical keys and operation shortcuts share one input owner and cancellation generation. */
@@ -246,21 +246,6 @@ export function usePerformanceKeyboard({
       if (shortcut) {
         e.preventDefault();
         const current = playback.getSnapshot();
-        const disallowed = (c: Snapshot) =>
-          [
-            "previousMeasure",
-            "nextMeasure",
-            "slower",
-            "faster",
-            "metronome",
-            "loop",
-          ].includes(shortcut.id) &&
-          shortcut.id !== "metronome" &&
-          ["recital", "memory"].includes(c.mode);
-        if (disallowed(current)) {
-          setError("当前完整演奏、计划或阶梯中，请用该练习的控制操作。");
-          return;
-        }
         const execute = (build: (latest: Snapshot) => EngineCommand) => {
           const generation = shortcutGeneration.current;
           const scope = keyboardContext.current.scope;
@@ -282,10 +267,6 @@ export function usePerformanceKeyboard({
                 throw new Error("曲目已改变，已取消上一首曲目的快捷键操作。");
               if (Date.now() - createdAt > 2000)
                 throw new Error("快捷键请求已过期，请在当前练习中重新按键。");
-              if (disallowed(latest))
-                throw new Error(
-                  "当前完整演奏、计划或阶梯中，请用该练习的控制操作。",
-                );
               const ready = await run(build(latest), false, createdAt);
               if (!ready && generation === shortcutGeneration.current)
                 shortcutGeneration.current++;
@@ -299,10 +280,7 @@ export function usePerformanceKeyboard({
             });
         };
         if (shortcut.id.startsWith("bookmark")) {
-          if (
-            !["recital", "memory"].includes(current.mode)
-          )
-            bookmarkNavigation.current?.jump(Number(shortcut.id.slice(8)) - 1);
+          bookmarkNavigation.current?.jump(Number(shortcut.id.slice(8)) - 1);
           return;
         }
         switch (shortcut.id) {

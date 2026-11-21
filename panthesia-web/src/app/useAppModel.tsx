@@ -139,7 +139,7 @@ export function useAppModel() {
   useEffect(() => {
     if (!scoreToolRequest) return;
     const actual = playback.getSnapshot();
-    if (workspace !== "practice" || view !== "score" || actual.mode === "memory" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
+    if (workspace !== "practice" || view !== "score" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
   }, [scoreToolRequest, workspace, view, state.contentId, progressEngineId, state.mode, playback]);
   const selectionSong = useRef(song?.contentId ?? null);
   useEffect(() => {
@@ -157,14 +157,6 @@ export function useAppModel() {
   }, [song?.contentId, song?.scoreRevision, song?.annotationRevision, song?.notes]);
   useEffect(() => { if (!fingeringDialog) setFingeringDraft(null); }, [fingeringDialog]);
   const { pianoViewport, pianoRange, changePianoViewport, outsidePianoRange } = useKeyboardViewport(display, setDisplay, song?.notes, state.input);
-  const recital = ["recital", "memory"].includes(state.mode);
-  const attemptLocked = recital && ["playing", "paused", "countIn"].includes(state.status);
-  useEffect(() => {
-    if (state.mode === "memory") {
-      setSelectedNote(null);
-      setEditFingers(false);
-    }
-  }, [state.mode]);
   const [loopStart, setLoopStart] = useState(1),
     [loopEnd, setLoopEnd] = useState(0);
   const practiceRange=usePracticeRange(song,playback);
@@ -414,7 +406,6 @@ export function useAppModel() {
     idle: state.recording ? "请先停止并保存当前录音。" : null,
     loaded: !song ? "请先打开一首曲目。" : null,
     song: !song || !song.notes.length ? "请先打开一首可演奏的曲目。" : null,
-    editable: attemptLocked ? "请先结束当前计划、阶梯或完整演奏，再修改练习条件。" : null,
     score: !song?.hasScore ? "请先在乐谱管理中配对 MusicXML 或 MXL 乐谱。" : null,
   }, display.shortcuts);
   const openingActive = opening;
@@ -528,7 +519,6 @@ export function useAppModel() {
     pianoRange,
     changePianoViewport,
     outsidePianoRange,
-    recital,
     loopStart,
     setLoopStart,
     loopEnd,

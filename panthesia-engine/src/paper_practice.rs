@@ -60,9 +60,6 @@ impl Player {
         book: &str,
         measure: usize,
     ) -> Result<Value, String> {
-        if matches!(self.state.mode.as_str(), "recital" | "memory") {
-            return Err("请先结束完整演奏或背谱，再建立纸谱练习段".into());
-        }
         let file = self
             .file
             .as_ref()

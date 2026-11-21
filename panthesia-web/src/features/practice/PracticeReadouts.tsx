@@ -71,11 +71,6 @@ export function PracticeStageReadout({
           </span>
         )}
       </div>
-      {state.mode === "memory" && (
-        <div className="recital-caption">
-          背谱：目标音符、谱面和指法提示已隐藏
-        </div>
-      )}
       {connected &&
         state.status === "playing" &&
         state.mode === "wait" &&

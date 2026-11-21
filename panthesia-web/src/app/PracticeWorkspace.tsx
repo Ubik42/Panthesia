@@ -1,6 +1,6 @@
 import { useApp } from "./AppContext";
 import { PerformanceTools } from "../features/practice/PerformanceTools";
-import { topInputScope, topPopup } from "./inputOwnership";
+import { topInputScope,topPopup } from "./inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
 import { PlaybackView } from "../features/practice/PlaybackView";
 import { PracticeStageReadout } from "../features/practice/PracticeReadouts";
@@ -9,7 +9,7 @@ import { PracticeTransport } from "../features/practice/PracticeTransport";
 import { PracticeWelcome } from "../features/practice/PracticeWelcome";
 
 import { X } from "lucide-react";
-import { api, pitchName } from "../api";
+import { api,pitchName } from "../api";
 import { PracticeTimeline } from "../features/practice/PracticeTimeline";
 import { Notation } from "../features/scores/Notation";
 import { PaperScore } from "../features/scores/PaperScore";
@@ -61,7 +61,6 @@ export function PracticeWorkspace() {
     pianoRange,
     changePianoViewport,
     outsidePianoRange,
-    recital,
     practiceRange,
     run,
     action,
@@ -119,7 +118,6 @@ export function PracticeWorkspace() {
                   openingActive,
                   connected,
                   startupReady,
-                  editable: !recital,
                 }}
                 keyboard={{
                   range: pianoRange,
@@ -200,11 +198,11 @@ export function PracticeWorkspace() {
             store={playback}
             song={song}
             busy={busy || openingActive}
-            disabled={!connected || state.recording || recital}
+            disabled={!connected || state.recording}
             seek={(position) => adjustRealtime({ type: "seek", position })}
           />
           <PracticeStage
-            combined={view === "combined" && state.mode !== "memory"}
+            combined={view === "combined"}
             axis={
               display.practiceSplitAxis === "auto"
                 ? "rows"
@@ -228,20 +226,14 @@ export function PracticeWorkspace() {
           >
             <div
               className="practice-stage-keyboard"
-              hidden={
-                view !== "keyboard" &&
-                view !== "combined" &&
-                state.mode !== "memory"
-              }
+              hidden={view !== "keyboard" && view !== "combined"}
               role="region"
               aria-label="瀑布与琴键区域"
             >
               {productScreens.screen === "performance" &&
-                (view === "keyboard" ||
-                  view === "combined" ||
-                  state.mode === "memory") && (
+                (view === "keyboard" || view === "combined") && (
                   <Piano
-                    song={state.mode === "memory" ? null : song}
+                    song={song}
                     state={playback.getSnapshot()}
                     store={playback}
                     onNote={pointerNote}
@@ -260,16 +252,14 @@ export function PracticeWorkspace() {
                     onSelect={
                       practiceRange.picking
                         ? practiceRange.pick
-                        : editFingers && !recital
+                        : editFingers
                           ? setSelectedNote
                           : undefined
                     }
                     practiceRange={practiceRange.range}
                   />
                 )}
-              {(view === "keyboard" ||
-                view === "combined" ||
-                state.mode === "memory") &&
+              {(view === "keyboard" || view === "combined") &&
                 (song || state.recording) && (
                   <PracticeStageReadout
                     store={playback}
@@ -281,17 +271,13 @@ export function PracticeWorkspace() {
             </div>
             <div
               className="practice-stage-notation"
-              hidden={
-                (view !== "score" && view !== "combined") ||
-                state.mode === "memory"
-              }
+              hidden={view !== "score" && view !== "combined"}
               role="region"
               aria-label="五线谱区域"
             >
               {productScreens.screen === "performance" &&
                 (view === "score" || view === "combined") &&
-                song &&
-                state.mode !== "memory" && (
+                song && (
                   <PlaybackView
                     store={playback}
                     contentId={song?.contentId ?? null}
@@ -323,8 +309,8 @@ export function PracticeWorkspace() {
                             if (ok) productScreens.show("parts");
                           });
                         }}
-                        edit={editFingers && !recital}
-                        canEdit={!recital}
+                        edit={editFingers}
+                        canEdit
                         onEdit={(value) => {
                           if (value) practiceRange.cancelPicking();
                           setEditFingers(value);
@@ -336,8 +322,7 @@ export function PracticeWorkspace() {
             </div>
             {productScreens.screen === "performance" &&
               view === "paper" &&
-              song &&
-              state.mode !== "memory" && (
+              song && (
                 <PlaybackView
                   store={playback}
                   contentId={song?.contentId ?? null}
@@ -357,8 +342,7 @@ export function PracticeWorkspace() {
               )}
             {selectedNote &&
               view !== "score" &&
-              view !== "combined" &&
-              state.mode !== "memory" && (
+              view !== "combined" && (
                 <div className="finger-editor">
                   <span>
                     {pitchName(selectedNote.pitch)} · 当前指法{" "}

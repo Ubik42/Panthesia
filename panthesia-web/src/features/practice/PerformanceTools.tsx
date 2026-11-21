@@ -49,7 +49,6 @@ export function PerformanceTools({
     openingActive: boolean;
     connected: boolean;
     startupReady: boolean;
-    editable: boolean;
   };
   keyboard: {
     range: KeyboardRange;
@@ -80,7 +79,7 @@ export function PerformanceTools({
     fingering: () => void;
   };
 }) {
-  const { busy, openingActive, connected, startupReady, editable } =
+  const { busy, openingActive, connected, startupReady } =
     status;
   const {
     range: pianoRange,
@@ -125,7 +124,7 @@ export function PerformanceTools({
         </button>
         <button
           className={editFingers ? "selected" : ""}
-          disabled={!song || !editable}
+          disabled={!song}
           onClick={() => {
             setEditFingers(!editFingers);
             clearSelection();
@@ -134,7 +133,7 @@ export function PerformanceTools({
           编辑指法
         </button>
         <button
-          disabled={!song || busy || !editable}
+          disabled={!song || busy}
           onClick={() => {
             open.fingering();
           }}
@@ -222,9 +221,7 @@ export function PerformanceTools({
         disabled={!song}
       >
         {" "}
-        {(view === "keyboard" ||
-          view === "combined" ||
-          state.mode === "memory") && (
+        {(view === "keyboard" || view === "combined") && (
           <KeyboardRangeControls
             value={display}
             range={pianoRange}
@@ -281,8 +278,7 @@ export function PerformanceTools({
                 busy ||
                 openingActive ||
                 !connected ||
-                state.recording ||
-                !editable
+                state.recording
               }
               seek={(position) => adjustRealtime({ type: "seek", position })}
               loop={(start, end, enabled) =>

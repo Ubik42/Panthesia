@@ -860,14 +860,6 @@ button.icon-button {
   overflow-wrap: anywhere;
 }
 .app-notice button { flex: none; }
-.recital-caption {
-  position: absolute;
-  top: 48px;
-  left: 18px;
-  color: var(--blue-78);
-  font-size: 13px;
-  pointer-events: none;
-}
 
 .paper-manager-tabs,.paper-selector,.paper-controls,.paper-version-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.paper-manager-tabs{padding:0 0 12px;border-bottom:1px solid var(--border,var(--blue-37));margin-bottom:12px}.paper-score{position:relative;display:flex;flex-direction:column;gap:10px;min-height:0;height:100%;background:var(--gray-24)}.paper-manage{height:min(65vh,660px);background:transparent}.paper-selector{flex-shrink:0;padding:8px}.paper-selector label{display:flex;align-items:center;gap:8px}.paper-selector select{min-width:200px;max-width:420px}.paper-reader{display:flex;flex:1;min-height:180px;flex-direction:column;gap:8px}.paper-controls{flex-shrink:0;padding:8px 12px;border-top:1px solid var(--blue-37);border-bottom:1px solid var(--blue-37);background:var(--gray-29)}.paper-controls label{display:flex;align-items:center;gap:5px;white-space:nowrap}.paper-controls input{width:65px}.paper-controls select{width:110px}.paper-sheet-scroll{position:relative;overflow:auto;flex:1;min-height:160px;text-align:center;padding:16px;background:var(--gray-21);outline-offset:-3px}.paper-sheet-scroll canvas{display:block;margin:0 auto;box-shadow:0 3px 18px color-mix(in oklab, var(--gray-0) 47%, transparent);background:var(--gray-100);max-width:none}.paper-loading{position:sticky;left:0;top:12px;padding:6px 12px;background:color-mix(in oklab, var(--blue-32) 93%, transparent);color:var(--green-93)}.paper-empty{padding:40px 16px;color:var(--gray-75);text-align:center}.paper-import-results{max-height:90px;overflow:auto;padding:8px 12px;border:1px solid var(--blue-39)}.paper-import-results p{margin:3px 0}.paper-version-actions input{flex:1;min-width:140px}.paper-version-actions span{color:var(--gray-75);font-size:11px}.paper-password{display:flex;gap:8px}.paper-score .dialog-error{margin:4px 8px}.piano-stage:has(>.paper-score){display:grid;grid-template-rows:150px minmax(200px,1fr)}.piano-stage:has(>.paper-score)>.paper-score{min-height:0}@media(max-width:850px){.paper-selector select{max-width:240px}.paper-controls{gap:5px}.paper-controls button{padding:5px 8px}.paper-manage{height:60vh}}
 
