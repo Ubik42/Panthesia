@@ -49,6 +49,7 @@ cd panthesia-web; npm run build          # 协议校验 + tsc + vite
 5. **继续**：直接开始下一批。阶段完成后按第 4 节顺序进入下一阶段。
 6. **停下来问用户的情况只有**：要删除或改写用户数据而无法回退；要做计划外的产品范围变化；要推送、发布或调用付费服务；同一问题连续三次方案失败。其他技术决定自行判断，并在 `progress.md` 写明理由。
 
+已授权（2026-11-21）：R2 的真实资料迁移（在原文件旁写 `.panthesia` 清单、导出只在副本存储中的歌曲、迁移练习历史、核对通过后移除旧 `library/`）可以直接执行，不再询问。条件：执行前重新完整备份 `%APPDATA%\com.ubik.neothesia`；先在备份副本上跑通；Panthesia 已退出；逐首核对能从新位置打开且图层与设置一致；任何一首不一致就停止、从备份恢复并报告。
 用户数据：真实资料在 `%APPDATA%\com.ubik.neothesia`（旧 ID，由 `product::profile_root` 选中），备份在 `work/user-data-backup/com.ubik.neothesia-20261121.zip`。开发测试一律设置 `PANTHESIA_DATA_ROOT` 指向 `work/` 下的临时目录，不在真实资料上做实验。迁移代码必须先在其副本上跑通。
 
 测试语料：`D:\Music\MIDI`（见 `current-plan.md` 第 3.6 节），只读。

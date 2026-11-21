@@ -2,6 +2,12 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · 迁移授权
+
+- 用户授权 R2 的真实资料迁移，执行时不再询问；条件写在 AGENTS.md。已确认本机账户对 `%APPDATA%\com.ubik.neothesia` 与 `D:\Music\MIDI` 有修改权限，Claude 全局权限模式为 `bypassPermissions`。
+
+下一入口：R1 第 1 项（评分时代命令与模块删除）。
+
 ## 2026-11-21 · 定位调整：外部演奏程序与数据跟随文件
 
 - 用户决定：Panthesia 不做曲库管理，曲库由 Ouro（原 Serpent，`D:\Manage\_tools\Serpent`）承担；Panthesia 作为外部演奏程序，由 Ouro 按文件类型打开。技术栈保持 Rust + Tauri + React。

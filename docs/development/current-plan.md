@@ -242,7 +242,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 2. **打开**：命令行参数、文件关联、单实例转交、拖入；查找顺序按 3.7；没有清单时直接演奏；首次修改时创建同名清单。
 3. **歌曲设置**：在清单上编辑版本选择、轨道与手别、谱面配对、伴奏文件、段落与书签；保存即写清单。
 4. **删除集中曲库**：`song_repository`、`import_storage` 副本存储、`song_catalog` / `catalog_rows`、`library-workspace.json`、`library-monitor-files.json`、`locations`、五套存储机制（`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection`、`desktop_close.rs`）；本地新增练习数据目录（历史、时长、上次速度与位置、最近打开，按 BLAKE3 关联）与缓存目录。同时消除启动忙碌与 `package_commands` 死锁。
-5. **迁移真实资料**（需用户授权后执行，先在备份副本上跑通）：
+5. **迁移真实资料**（用户 2026-11-21 已授权，执行时不再询问；先在备份副本上跑通，再对真实资料执行）：
    - 有用户数据的歌曲（2026-11-21：轨道分配 15 首、谱面配对 5 首、元数据 5 首；`web-preferences.json` 中段落、书签、变调与量化、会话设置约 12 首）：在其原始位置（`locations` 中仍存在的路径，优先 `D:\Music\MIDI`）旁写清单。
    - 只存在于副本存储、找不到原文件的歌曲：连同清单导出到 `D:\Music\MIDI\Panthesia导出\`。
    - 练习历史与时长迁入新的本地练习数据目录。
