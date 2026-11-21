@@ -2,6 +2,22 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 5、7 项（一）：删除集中曲库（提交 ad4d606）
+
+- 引擎删除：歌曲仓库与副本存储、导入流水线与收据、目录登记、曲库工作区（分组、评分、首选路径）、文件夹扫描 / 监视 / 索引、曲库修复与 MIDI 替换、元数据模板 / 历史 / 声明、Synthesia 元数据批量导入、作品目录（repertoire）、收藏与队列、非当前歌曲的曲库谱面、八秒试听、`.neopiece` 曲目包。协议命令 252 → 175。
+- 保留并迁出：`music_file`（读 MIDI）、`data_locks`（资料目录锁与路径键）、`library_scores`（当前歌曲的谱面配对与谱面版本）、`song_audition`（轨道设置页的乐器试听）。
+- MusicXML 打开：生成的演奏、原谱副本与清单放在资料目录 `cache/scores/<哈希>/`，同一份谱面再次打开时复用（`score_open.rs`）。清单写在 MusicXML 旁边要等 R4 统一导入。
+- 技术练习直接用 `generate` 命令生成，缓存在 `library/assets/exercises/<cid>.mid`；前端去掉收据、恢复、取消流程。
+- 最近打开：`recent-files.json`（资料目录），`OpenFile` 成功时记录；新命令 `RecentFiles` / `ForgetRecentFile`。主页改为"打开乐曲…"、最近打开（右键移除）、自由演奏、设置；应用菜单去掉"曲库"组，"文件"组提供打开乐曲、当前曲目信息、歌曲文件与版本。
+- 桌面端删除曲库监视、添加扫描文件夹、修复与重定位 MIDI、曲目包传输、导入桥；`--headless-check` 改为打开内置五指练习（写入资料目录 `startup-check/`）。
+- 前端删除选曲页、文件夹管理、导入队列与导入对话框、曲目包对话框、版本栏与演奏管理、作品目录客户端等（按 import 图删除不可达文件）。曲目信息只对当前打开的歌曲编辑。
+- 测试：删除只测已删功能的测试 25 个；其余用测试专用的 `load_file` / `import_score` 代替 `Load` / `ImportScore` 作为准备步骤。
+- 检查：`cargo check --workspace --all-targets` 通过（有若干死代码警告，存储机制删除时一并清理）；`npm run build` 通过。
+- 规模：engine 50.5k → 34.4k 行。
+- 用户数据：旧 `library/`、`songs.sqlite3`、`library-workspace.json` 不再被读取，原样留在资料目录，由第 6 项迁移后移除。
+
+下一入口：R2 第 5 项（二）：删除五套存储机制（`asset_edit` 的延迟写入、`pending_save`、`operation_journal`、`round_storage`、`settings_storage`、`storage_control`、`storage_recovery`、`storage_close`、`asset_storage`、桌面 `desktop_close.rs`），写入改为直接原子写；消除启动忙碌；清理警告；拆分 `lib.rs`。
+
 ## 2026-11-21 · R2 第 4 项：`probe` 子命令（提交 f4b8205）
 
 - `Panthesia.exe probe <文件> [--json] [--thumbnail <png>] [--size 宽x高]`：在桌面程序 `main` 最前面处理，不启动窗口、不锁资料目录、不经过单实例转交。实现在 `panthesia-engine::probe`，输出字段写在 `panthesia-format.md` 末节。
