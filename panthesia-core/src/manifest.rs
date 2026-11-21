@@ -247,9 +247,10 @@ impl Manifest {
     }
     pub fn to_bytes(&self) -> Result<Vec<u8>, ManifestError> {
         self.validate()?;
-        let mut bytes = serde_json::to_vec_pretty(self).map_err(|e| ManifestError::Syntax(e.to_string()))?;
-        bytes.push(b'\n');
-        Ok(bytes)
+        let pretty = serde_json::to_string_pretty(self).map_err(|e| ManifestError::Syntax(e.to_string()))?;
+        let mut text = compact_short(&pretty, 100);
+        text.push('\n');
+        Ok(text.into_bytes())
     }
 
     pub fn validate(&self) -> Result<(), ManifestError> {
@@ -356,6 +357,45 @@ impl Manifest {
     pub fn layer_performance<'a>(&'a self, layer: &'a Layer) -> &'a str {
         layer.performance.as_deref().unwrap_or(&self.default.performance)
     }
+    /// Layer key of `name` for `performance`: the plain name for the default performance,
+    /// `name:performance` for the others, so each version keeps its own layers.
+    pub fn layer_key(&self, name: &str, performance: &str) -> String {
+        if performance == self.default.performance { name.into() } else { format!("{name}:{performance}") }
+    }
+    pub fn layer_for(&self, name: &str, performance: &str) -> Option<&Layer> {
+        self.layers.get(&self.layer_key(name, performance)).filter(|l| self.layer_performance(l) == performance)
+    }
+    /// Settings of `performance`: top-level `settings` for the default performance,
+    /// `settings.performances.<id>` for the others.
+    pub fn settings_for(&self, performance: &str) -> Option<&Map<String, Value>> {
+        if performance == self.default.performance {
+            return Some(&self.settings);
+        }
+        self.settings.get("performances")?.get(performance)?.as_object()
+    }
+    pub fn settings_for_mut(&mut self, performance: &str) -> &mut Map<String, Value> {
+        if performance == self.default.performance {
+            return &mut self.settings;
+        }
+        let all = self.settings.entry("performances").or_insert_with(|| Value::Object(Map::new()));
+        if !all.is_object() {
+            *all = Value::Object(Map::new());
+        }
+        let entry = all.as_object_mut().unwrap().entry(performance).or_insert_with(|| Value::Object(Map::new()));
+        if !entry.is_object() {
+            *entry = Value::Object(Map::new());
+        }
+        entry.as_object_mut().unwrap()
+    }
+    /// Drop empty per-performance settings objects.
+    pub fn prune_settings(&mut self) {
+        if let Some(Value::Object(all)) = self.settings.get_mut("performances") {
+            all.retain(|_, v| v.as_object().is_none_or(|o| !o.is_empty()));
+            if all.is_empty() {
+                self.settings.remove("performances");
+            }
+        }
+    }
     pub fn references(&self, relative: &str) -> bool {
         self.files.iter().any(|f| f.path == relative)
     }
@@ -388,6 +428,78 @@ impl Manifest {
         }
         moved
     }
+}
+
+/// Pretty JSON in which every array or object whose one-line form fits in `width` characters
+/// is written on one line, so note rows read as `{"note": [0, 12, 60], "finger": 3}`.
+fn compact_short(pretty: &str, width: usize) -> String {
+    let mut out = String::with_capacity(pretty.len());
+    let mut openers: Vec<usize> = Vec::new();
+    let mut in_string = false;
+    let mut escaped = false;
+    for c in pretty.chars() {
+        out.push(c);
+        if in_string {
+            match (escaped, c) {
+                (true, _) => escaped = false,
+                (false, '\\') => escaped = true,
+                (false, '"') => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '"' => in_string = true,
+            '[' | '{' => openers.push(out.len() - 1),
+            ']' | '}' => {
+                let Some(start) = openers.pop() else { continue };
+                if !out[start..].contains('\n') {
+                    continue;
+                }
+                let line = one_line(&out[start..]);
+                if line.chars().count() <= width {
+                    out.truncate(start);
+                    out.push_str(&line);
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+/// Join a pretty-printed JSON fragment into one line: `[1, 2]`, `{"a": 1, "b": [2]}`.
+fn one_line(segment: &str) -> String {
+    let mut line = String::with_capacity(segment.len());
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut chars = segment.chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_string {
+            line.push(c);
+            match (escaped, c) {
+                (true, _) => escaped = false,
+                (false, '\\') => escaped = true,
+                (false, '"') => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        if c == '\n' {
+            while chars.peek() == Some(&' ') {
+                chars.next();
+            }
+            let closing = matches!(chars.peek(), Some(']' | '}'));
+            if line.ends_with(',') || !(line.ends_with('[') || line.ends_with('{') || closing) {
+                line.push(' ');
+            }
+            continue;
+        }
+        if c == '"' {
+            in_string = true;
+        }
+        line.push(c);
+    }
+    line
 }
 
 /// Manifest file name for a single music file: `七里香.mid` → `七里香.panthesia`.

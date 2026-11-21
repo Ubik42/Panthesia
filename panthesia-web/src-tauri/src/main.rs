@@ -284,6 +284,20 @@ async fn native_startup_check(
 async fn score_attachment_bytes(state:tauri::State<'_,State>,content_id:String,id:String,page:usize,preview_kind:Option<String>,expected_asset:Option<String>)->Result<tauri::ipc::Response,String>{
  let data=state.data.clone();tauri::async_runtime::spawn_blocking(move||(if let Some(kind)=preview_kind{panthesia_engine::score_attachments::read_source_preview(&data,&content_id,&id,&kind)}else{panthesia_engine::score_attachments::read_expected(&data,&content_id,&id,page,expected_asset.as_deref())}).map(|(bytes,_)|tauri::ipc::Response::new(bytes))).await.map_err(|e|e.to_string())?
 }
+/// Pick a file to list in the current song's manifest, starting in the song's folder.
+#[tauri::command]
+async fn pick_song_file(state:tauri::State<'_,State>,kind:String,near:Option<PathBuf>)->Result<Option<String>,String>{
+    let _close_lease=score_edit::reserve(&state,"native-pick-song-file")?;
+    let mut dialog=file_dialog(&state.data,"music");
+    if let Some(folder)=near.as_deref().and_then(std::path::Path::parent).filter(|p|p.is_dir()){dialog=dialog.set_directory(folder);}
+    let dialog=match kind.as_str(){
+        "performance"=>dialog.set_title("选择同一首歌的另一个 MIDI 版本").add_filter("MIDI", &["mid","midi","kar"]),
+        "paper"=>dialog.set_title("选择谱页原件").add_filter("谱页", &["pdf","png","jpg","jpeg","webp"]),
+        _=>dialog.set_title("选择伴奏、人声或原音频").add_filter("音频与视频", &["wav","mp3","flac","ogg","m4a","aac","opus","mp4","mkv","webm"]),
+    };
+    let Some(file)=dialog.pick_file().await else{return Ok(None)};
+    Ok(Some(file.path().to_string_lossy().into()))
+}
 #[tauri::command]
 async fn pick_paper_source(state:tauri::State<'_,State>)->Result<Option<String>,String>{
     let _close_lease=score_edit::reserve(&state,"native-pick-paper-source")?;
@@ -1060,6 +1074,7 @@ fn main() {
             score_attachment_bytes,
             import_score_attachments,
             pick_paper_source,
+            pick_song_file,
             import_library_scores,
             desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,
             file_transfer::begin_package_stage,

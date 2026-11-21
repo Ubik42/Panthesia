@@ -74,22 +74,22 @@ pub(crate) enum Request {
 }
 
 pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
+    let barrier=match &request {
+        Request::PlaybackAdjustment(..) => true,
+        Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
+        Request::InputCommit{..}|Request::SoundOutputCommit{..}|Request::SoundFontLiveCommit{..}|Request::CatalogCommit{..}|Request::AssetEditFinish{..}|Request::RegisterImportedScore{..}|Request::RecordingSaveFinish {..}|Request::BasicCommit(..)=>true,
+        #[cfg(test)]
+        Request::LoadCommit(..)|Request::ExerciseCommit(..)|Request::ImportCommit(..)=>true,
+        _=>false,
+    };
+    // Per-song preferences of a song at its own location go back to its manifest.
+    let run=|player:&mut Player|{handle_inner(player,request,shared);if barrier{player.sync_manifest_settings();}};
     if let Some(pipeline)=player.pending_saves.clone() {
-        {
-            let barrier=match &request {
-                Request::PlaybackAdjustment(..) => true,
-                Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopSongAudition{..}|Command::SongAuditionState{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
-                Request::InputCommit{..}|Request::SoundOutputCommit{..}|Request::SoundFontLiveCommit{..}|Request::CatalogCommit{..}|Request::AssetEditFinish{..}|Request::RegisterImportedScore{..}|Request::RecordingSaveFinish {..}|Request::BasicCommit(..)=>true,
-                #[cfg(test)]
-                Request::LoadCommit(..)|Request::ExerciseCommit(..)|Request::ImportCommit(..)=>true,
-                _=>false,
-            };
-            let (writes,replies)=crate::pending_save::capture(&pipeline,||handle_inner(player,request,shared));
-            pipeline.enqueue(writes,replies,barrier);
-            return;
-        }
+        let (writes,replies)=crate::pending_save::capture(&pipeline,||run(player));
+        pipeline.enqueue(writes,replies,barrier);
+        return;
     }
-    handle_inner(player,request,shared);
+    run(player);
 }
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {

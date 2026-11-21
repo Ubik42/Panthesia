@@ -102,9 +102,9 @@
 | 图层 | 内容 |
 | --- | --- |
 | `hands` | `tracks`：`{ "轨道序号": "left" \| "right" \| "other" }`；`notes`：`[{ "note": [t, o, p], "part": "left" }]` |
-| `fingering` | `notes`：`[{ "note": [t, o, p], "finger": 1–5 }]`；`changes`：持音换指 `[{ "note": [t,o,p], "atTick": …, "from": 1–5, "to": 1–5 }]` |
-| `playback` | 逐音演奏者：`notes`：`[{ "note": [t,o,p], "player": "auto" \| "human" }]` |
-| `meter` | 拍号与弱起修正：`pickupTicks`、`segments`：`[{ "measure", "numerator", "denominator" }]` |
+| `fingering` | `notes`：`[{ "note": [t, o, p], "finger": 1–5 }]`；`changes`：持音换指 `[{ "note": [t,o,p], "before": [t,o,p], "atTick": …, "from": 1–5, "to": 1–5, "hand": "left" \| "right", "rateMilli" }]`（`before` 为换指前一个音，`rateMilli` 缺省 1000） |
+| `playback` | 逐音演奏者：`notes`：`[{ "note": [t,o,p], "player": "auto" \| "human" \| "mute" }]` |
+| `meter` | 拍号与弱起修正：`pickupTicks`、`segments`：`[{ "measure", "numerator", "denominator", "displayStart" }]`、`measureLengths`：`[{ "measure", "ticks" }]`；旧式整体修正写在 `correction`：`{ "numerator", "denominator", "pickupTicks" }` |
 | `keys` | `items`：`[{ "tick", "key": "G:maj" }]` |
 | `chords` | `items`：`[{ "tick", "endTick", "chord": "C:maj7/E" }]`（Harte 语法） |
 | `sections` | `items`：`[{ "tick", "endTick", "label": "主歌" }]` |
@@ -115,6 +115,8 @@
 | `bookmarks` | `items`：`[{ "id", "name", "tick" }]` |
 
 未知图层原样保留。
+
+**多个演奏**：图层键 `名称` 属于默认演奏；其他演奏的同名图层用键 `名称:演奏id`，并写 `performance` 字段，例如 `"hands:v2": { "performance": "v2", … }`。
 
 ## 派生版本 `variants`
 
@@ -130,9 +132,23 @@
 
 | 键 | 说明 |
 | --- | --- |
-| `practice` | `mode`（`wait` / `listen`）、`speed`、`countIn`、`metronome`、`hands`、`latency` |
-| `tracks` | `{ "轨道序号": { "visible", "player", "color", "name", "sound": { "program", "volume" } } }` |
+| `practice` | `mode`（`wait` / `listen`）、`countIn`、`metronome`、`hands`、`latency`、`rounds`、`tracks`（`[{ trackId, mode, visible }]`）、`parts` |
+| `tracks` | `{ "轨道序号": { "name", "color", "handColors", "sound": { "volume", "pan", "program" } } }` |
+| `variant` | 当前采用的转调、量化与速度参数 |
+| `fingeringProfiles` | 各轨道的手型（指法计算用） |
+| `performances` | 非默认演奏的设置：`{ "演奏id": { 同上各键 } }` |
 | `lastPosition` | 上次停止的位置（tick） |
+
+## 谱面配对与程序数据
+
+- 配对的谱面写为 `files[]` 中 `role: "score"` 的引用和 `scores[]` 中编号为 `score` 的项，`default.score` 指向它；对齐分析快照写在该项的 `analysis` 字段。
+- 格式尚未规定的 Panthesia 自身数据写在 `extensions.panthesia`（目前为元数据来源层 `metadataLayers`）。
+
+## 写入时机（Panthesia）
+
+- 文件在旧集中曲库之外时，手别、指法、逐音演奏者、小节、谱面配对、元数据、练习段、书签、轨道外观与音色、变调量化、手型保存即写入清单；第一次保存这些数据时创建同名清单。
+- 只改练习设置（模式、预备拍、节拍器等）不会创建清单；已有清单时一并写入。
+- 读写清单在同一进程内串行，避免两处保存互相覆盖。
 
 ## 生成者
 

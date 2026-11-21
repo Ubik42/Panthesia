@@ -386,6 +386,8 @@ pub enum Command {
         title: String,
     },
     OpenFile { path: PathBuf },
+    SongFiles,
+    EditSongFile { action: String, #[serde(default)] path: Option<PathBuf>, #[serde(default)] id: Option<String>, #[serde(default)] role: Option<String>, #[serde(default)] stem: Option<String>, #[serde(default)] label: Option<String> },
     LoadIndexed {
         path: PathBuf,
         title: String,

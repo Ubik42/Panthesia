@@ -14,6 +14,7 @@ export function SongSetupScreen({
   sound,
   scores,
   settings,
+  files,
   start,
 }: {
   song: LoadedSong;
@@ -25,6 +26,7 @@ export function SongSetupScreen({
   sound: () => void;
   scores: () => void;
   settings: () => void;
+  files: () => void;
   start: (mode: "listen" | "wait", hands: string) => Promise<boolean>;
 }) {
   const [choice,setChoice]=useState(()=>({mode:(store.getSnapshot().mode==="listen"?"listen":"wait") as "listen"|"wait",hand:store.getSnapshot().hands}));
@@ -50,7 +52,7 @@ export function SongSetupScreen({
           歌曲
         </button>
         <h1>{song.title}</h1>
-        <ToolbarMore label="更多" icon={<Settings2 size={23}/>} disabled={disabled||pending}><button onClick={sound}>键盘与音源…</button><button onClick={scores}>谱面…</button><button onClick={settings}>转调、量化与练习设置…</button><button onClick={menu}>其他操作…</button></ToolbarMore>
+        <ToolbarMore label="更多" icon={<Settings2 size={23}/>} disabled={disabled||pending}><button onClick={sound}>键盘与音源…</button><button onClick={scores}>谱面…</button><button onClick={settings}>转调、量化与练习设置…</button><button onClick={files}>歌曲文件与版本…</button><button onClick={menu}>其他操作…</button></ToolbarMore>
       </header>
       <div className="synthesia-setup-body">
         <section className="synthesia-listen-options">

@@ -64,8 +64,10 @@ mod source_notation;
 mod history_reader;
 mod json_stream;
 mod replay_index;
-pub mod manifest_store;
+pub use panthesia_core::manifest_store;
 mod file_open;
+mod manifest_settings;
+mod song_files;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;
@@ -349,6 +351,8 @@ struct Player {
     end_hold: f64,
     previous_mode: Option<String>,
     finger_undo: practice_edit::FingerUndo,
+    /// Last manifest projection of per-song preferences: (content id, values).
+    manifest_settings: Option<(String, manifest_settings::Projection)>,
 }
 impl Player {
     #[cfg(test)]
@@ -432,6 +436,7 @@ impl Player {
             end_hold: 0.,
             previous_mode: None,
             finger_undo: Default::default(),
+            manifest_settings: None,
             config: SongConfig::default(),
             fingers: FingerAssignments::default(),
             exercise: None,
@@ -499,6 +504,16 @@ impl Player {
             Some(prepared) => (prepared.assets, prepared.timeline),
             None => (None, load_pipeline::Timeline::new(&file)?),
         };
+        self.manifest_settings = None;
+        if plan.is_none() {
+            if let Some(path) = file.source_path.clone() {
+                if panthesia_core::song_annotations::document_path(&path).is_none()
+                    && !song_repository::SongRepository::managed_path(&self.data, &file.content_id).is_ok_and(|p| p.is_file())
+                {
+                    self.apply_manifest_settings(&path, &file.content_id);
+                }
+            }
+        }
         self.panic();
         self.original_grid = Some(file.musical_time.clone().into());
         self.meter_correction = None;
@@ -2090,6 +2105,11 @@ impl Player {
                 self.preferences.calibrations.insert(key, milliseconds);
             }
             Command::OpenFile { .. } => return Err("打开文件应由引擎调用线程处理".into()),
+            Command::SongFiles => return self.song_files(),
+            Command::EditSongFile { action, path, id, role, stem, label } => {
+                let edit = song_files::SongFileEdit::parse(&action, path, id, role, stem, label)?;
+                return self.edit_song_file(edit);
+            }
             Command::Load { path, title } => {
                 let file = library::read_midi(&path)?;
                 self.install(file, title, None)?;

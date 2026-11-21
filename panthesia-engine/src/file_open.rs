@@ -152,6 +152,33 @@ mod tests {
         assert!(plain["opened"]["manifest"].is_null());
         assert!(!songs.join("sub").join("five.panthesia").exists(), "opening never creates a manifest");
 
+        // The first edit creates a same-name manifest; reopening restores from it.
+        let sibling = songs.join("sub").join("five.panthesia");
+        let cid = panthesia_music::MidiFile::new(&midi).unwrap().content_id;
+        engine.command(Command::SaveBookmark { content_id: cid.clone(), id: None, name: "副歌".into(), tick: 480 }).unwrap();
+        let saved = manifest_store::read(&sibling).unwrap().manifest;
+        assert_eq!(saved.layers["bookmarks"].body["items"][0]["name"], "副歌");
+        assert_eq!(saved.files[0].path, "five.mid");
+        engine.command(Command::SetMetadata { value: panthesia_core::library::SongMetadata { title: Some("五指练习".into()), ..Default::default() } }).unwrap();
+        let saved = manifest_store::read(&sibling).unwrap().manifest;
+        assert_eq!(saved.title.as_deref(), Some("五指练习"));
+        assert_eq!(saved.layers["bookmarks"].body["items"][0]["name"], "副歌", "annotation saves keep other data");
+        let reopened = engine.open_file(midi.clone()).unwrap();
+        assert_eq!(reopened["opened"]["manifest"]["title"], "五指练习");
+        let marks = engine.command(Command::Bookmarks).unwrap();
+        assert!(marks.to_string().contains("副歌"), "{marks}");
+        assert!(!data.join("library/assets/midi").join(format!("{cid}.mid")).exists(), "not copied into the library");
+        // Companion files are listed in the manifest with paths relative to it.
+        std::fs::create_dir_all(songs.join("audio")).unwrap();
+        std::fs::write(songs.join("audio").join("acc.wav"), b"RIFF").unwrap();
+        let listed = engine.command(Command::EditSongFile { action: "add".into(), path: Some(songs.join("audio").join("acc.wav")), id: None, role: Some("stem".into()), stem: Some("accompaniment".into()), label: None }).unwrap();
+        assert_eq!(listed["files"][1]["relative"], "../audio/acc.wav", "{listed}");
+        let id = listed["files"][1]["id"].as_str().unwrap().to_string();
+        assert!(engine.command(Command::EditSongFile { action: "remove".into(), path: None, id: Some("perf".into()), role: None, stem: None, label: None }).is_err());
+        let listed = engine.command(Command::EditSongFile { action: "remove".into(), path: None, id: Some(id), role: None, stem: None, label: None }).unwrap();
+        assert_eq!(listed["files"].as_array().unwrap().len(), 1);
+        std::fs::remove_file(&sibling).unwrap();
+
         // Folder manifest whose reference is stale: the file is found by hash and the path updated.
         let (hash, bytes) = manifest_store::hash_file(&midi).unwrap();
         let mut manifest = Manifest::for_performance("old/five.mid", &hash, bytes, Some("五指".into()));

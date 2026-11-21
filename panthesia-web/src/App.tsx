@@ -53,6 +53,7 @@ import { PracticeTransport } from "./features/practice/PracticeTransport";
 import { PracticeWelcome } from "./features/practice/PracticeWelcome";
 import { type BookmarkNavigation } from "./features/practice/SongBookmarks";
 import { SongSetupScreen } from "./features/practice/SongSetupScreen";
+import { SongFilesDialog } from "./features/screens/SongFilesDialog";
 import { useLiveNotes } from "./features/practice/useLiveNotes";
 import {usePerformanceSize} from "./features/practice/usePerformanceSize";
 import { usePracticeSession } from "./features/practice/usePracticeSession";
@@ -418,6 +419,7 @@ export default function App() {
     fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, importDialog, packageDialog, !!mediaExport]);
   // Files opened from Explorer, Ouro, the command line or a drop open directly from their own location.
+  const [songFilesOpen, setSongFilesOpen] = useState(false);
   const openRequestsBusy = useRef(false);
   const takeOpenRequests = useCallback(async () => {
     if (openRequestsBusy.current || !connected || !startupReady) return;
@@ -427,7 +429,13 @@ export default function App() {
       const path = paths.at(-1);
       if (!path) return;
       if (!(await changeWorkspace("practice"))) return;
-      if (await run({ type: "openFile", path }, true)) productScreens.show("performance");
+      if (!(await run({ type: "openFile", path }, true))) return;
+      productScreens.show("performance");
+      // Report manifest problems once; details are in the song files dialog.
+      const files = await api.command<{ files?: { missing: boolean }[]; unmatched?: number }>({ type: "songFiles" }).catch(() => null);
+      const missing = files?.files?.filter((file) => file.missing).length ?? 0;
+      const problems = [missing ? `${missing} 个文件缺失` : "", files?.unmatched ? `${files.unmatched} 条标注无法对应到音符` : ""].filter(Boolean);
+      if (problems.length) setError(`歌曲清单中${problems.join("，")}；可在歌曲设置的“歌曲文件与版本”中查看。`);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     } finally {
@@ -1023,7 +1031,8 @@ export default function App() {
       {startupReady && <div className="product-settings-host" hidden={productScreens.screen!=="settings"} inert={productScreens.screen!=="settings"}><SettingsScreen state={state} engineId={progressEngineId} visible={productScreens.screen==="settings"&&!settings&&!displayDialog} back={()=>productScreens.home()} devices={device=>openSoundSettings(device)} duet={()=>{setSettingsTab("duet");setSettingsReturnToScores(false);setSettings(true);}} folders={()=>productScreens.folders()} display={section=>{setDisplaySection(section);setDisplayDialog(true);}} logs={()=>void api.openLogs().catch(e=>setError(String(e)))} about={()=>setAboutOpen(true)} disabled={busy||!connected}/></div>}
       {startupReady && productScreens.screen==="folders" && <FolderManager changed={refreshWithCollection} backLabel="设置" close={()=>productScreens.settings()}/>}
 
-      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void chooseSongs();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
+      {workspace === "practice" && songSetup && song && <SongSetupScreen song={song} store={playback} disabled={busy || openingActive || !connected} back={()=>{void chooseSongs();}} menu={()=>setAppMenuOpen(v=>!v)} hands={()=>productScreens.show("parts")} sound={()=>openSoundSettings()} scores={()=>setScoresDialog(true)} settings={()=>setSongOptions(true)} files={()=>setSongFilesOpen(true)} start={async(mode,hands)=>{if(await run({type:"hands",value:hands}) && await run({type:"mode",value:mode}) && await run({type:"play"})){productScreens.show("performance");return true;}return false;}} />}
+      {songFilesOpen && song && <SongFilesDialog close={()=>setSongFilesOpen(false)} openVersion={path=>run({type:"openFile",path},true)}/>}
       {workspace==="practice" && productScreens.screen==="parts" && song && <TrackSetupScreen song={song} disabled={busy||openingActive||!connected} builtin={!state.outputId} pianoOnly={/default\.sf2$/i.test(state.soundfont??"")} back={()=>productScreens.show("setup")} custom={track=>{const t=song.tracks.find(t=>t.id===track);if(t&&!t.visible){void run({type:"track",id:t.id,mode:t.mode,part:t.part,visible:true},true).then(ok=>{if(ok)productScreens.split(track);});}else productScreens.split(track);}} command={value=>run(value,true)}/>}
       {workspace==="practice" && productScreens.screen==="split" && song && productScreens.splitTrack!==null && <HandSplitScreen key={`${song.contentId}:${productScreens.splitTrack}`} song={song} trackId={productScreens.splitTrack} disabled={busy||openingActive||!connected} back={()=>productScreens.show("parts")} command={value=>run(value,true)}/>}
       {workspace==="practice" && productScreens.screen==="freePlay" && <main className="product-freeplay product-page"><ScreenHeader title="自由演奏" back={()=>void goHome()} backDisabled={state.recording||busy} backLabel="主页"><button disabled={busy||!connected} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}>{state.recording?"停止并保存录音":"录音"}</button><button onClick={()=>openSoundSettings()}>设置</button></ScreenHeader><div className="product-freeplay-stage"><Piano song={null} state={playback.getSnapshot()} store={playback} onNote={pointerNote} canInteract={()=>!keyboardContext.current.paused&&!topInputScope()&&!topPopup(null)} keyboardRange={pianoRange} keyboardViewport={pianoViewport} display={display}/></div></main>}

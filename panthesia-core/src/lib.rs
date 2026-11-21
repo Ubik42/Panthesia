@@ -5,6 +5,8 @@ pub use panthesia_keyboard;
 
 pub mod product;
 pub mod manifest;
+pub mod manifest_store;
+pub mod manifest_sidecar;
 pub mod practice_transform;
 pub mod practice_score;
 pub mod source_score_window;

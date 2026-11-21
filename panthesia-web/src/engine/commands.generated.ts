@@ -1958,6 +1958,8 @@ export type EngineCommand =
   | { type: "setMetadata"; "value": SongMetadata }
   | { type: "load"; "path": string; "title": string }
   | { type: "openFile"; "path": string }
+  | { type: "songFiles" }
+  | { type: "editSongFile"; "action": string; "path"?: string | null; "id"?: string | null; "role"?: string | null; "stem"?: string | null; "label"?: string | null }
   | { type: "loadIndexed"; "path": string; "title": string; "content_id": string }
   | { type: "importScore"; "bytes": Array<number>; "name": string; "default_bpm": number }
   | { type: "importMidi"; "bytes": Array<number>; "name": string }

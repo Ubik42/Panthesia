@@ -105,7 +105,6 @@ impl Assets {
         };
         match library::load_song_sidecar(path, &file.content_id) {
             Ok(sidecar) => {
-                let sidecar=if panthesia_core::song_annotations::document_path(path).is_none(){panthesia_core::song_annotations::project_legacy(sidecar,&file.source).map_err(|e|e.to_string())?}else{sidecar};
                 if sidecar.meter_map.is_some() || sidecar.meter.is_some() {
                     match Player::sidecar_grid(file, &sidecar) {
                         Ok(grid) => result.grid = Some(grid),
@@ -378,6 +377,9 @@ impl Prepared {
         self.check()?;check()?;
         let source=self.file.source_path.as_ref().ok_or("曲目缺少来源")?;
         let cid=self.file.content_id.clone();
+        // A song not yet in the central library stays at its own location; its data is kept in
+        // the `.panthesia` manifest beside it (current-plan 3.7).
+        if !crate::song_repository::SongRepository::managed_path(data,&cid)?.is_file(){return Ok(self);}
         let owned=crate::song_repository::SongRepository::open(data)?.retain_with_parts(source,&cid,&self.title,"",preferences.songs.get(&cid).map(|s|&s.parts),check)?;
         let versions=preferences.score_versions.entry(cid.clone()).or_default();
         crate::notation_assets::retain_editions(data,&cid,&owned,versions)?;

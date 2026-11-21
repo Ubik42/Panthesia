@@ -1,7 +1,7 @@
 //! `.panthesia` manifests on disk: lookup next to a music file, atomic writes, hash checks
 //! and recovery of moved references inside the manifest's own folder tree.
-use panthesia_core::manifest::{self, FileRef, Manifest, ManifestError};
-use panthesia_core::utils::atomic_file;
+use crate::manifest::{self, FileRef, Manifest, ManifestError};
+use crate::utils::atomic_file;
 use std::path::{Component, Path, PathBuf};
 
 /// Folder levels searched upwards for a `song.panthesia` that references the opened file.
@@ -63,6 +63,52 @@ pub fn locate(music: &Path) -> Result<Option<Located>, String> {
         folder = current.parent();
     }
     Ok(None)
+}
+
+/// Serializes every read-modify-write of manifests in this process.
+static EDIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Read, change and write the manifest that refers to `music` under one process-wide lock.
+/// `f` receives the manifest and the performance id of `music` in it. Without a manifest,
+/// `create` makes a same-name one beside `music` (current-plan 3.7: created on the first edit);
+/// otherwise nothing happens and `Ok(None)` is returned. `f` returns whether to write.
+pub fn edit<T>(
+    music: &Path,
+    create: bool,
+    f: impl FnOnce(&mut Manifest, &str, &Path) -> Result<(T, bool), String>,
+) -> Result<Option<(T, PathBuf)>, String> {
+    let _guard = EDIT.lock().unwrap_or_else(|e| e.into_inner());
+    let mut found = match locate(music)? {
+        Some(found) => found,
+        None if create => {
+            let path = sibling_path(music).ok_or("文件名无法读取")?;
+            let name = music.file_name().and_then(|n| n.to_str()).ok_or("文件名无法读取")?;
+            let (hash, bytes) = hash_file(music)?;
+            Located { path, manifest: Manifest::for_performance(name, &hash, bytes, None), read_only: false }
+        }
+        None => return Ok(None),
+    };
+    if found.read_only {
+        return Err("歌曲清单来自更新版本的程序，当前版本不写回".into());
+    }
+    let dir = found.path.parent().ok_or("清单所在目录无法读取")?.to_path_buf();
+    let performance = performance_of(&found, music).ok_or("歌曲清单未列出这个演奏文件")?;
+    let (value, changed) = f(&mut found.manifest, &performance, &dir)?;
+    if changed {
+        write(&found)?;
+    }
+    Ok(Some((value, found.path)))
+}
+
+/// The id of the performance whose file is `music`, if the manifest lists it.
+pub fn performance_of(found: &Located, music: &Path) -> Option<String> {
+    let dir = found.path.parent()?;
+    let rel = relative_path(dir, music)?;
+    let m = &found.manifest;
+    m.performances
+        .iter()
+        .find(|p| m.file(&p.file).is_some_and(|f| f.path.eq_ignore_ascii_case(&rel)))
+        .map(|p| p.id.clone())
 }
 
 /// Where a manifest for `music` is created on first edit: beside it, same name.
@@ -238,7 +284,7 @@ mod tests {
         let nested = root.join("versions").join("c");
         std::fs::create_dir_all(&nested).unwrap();
         let music = nested.join("song.mid");
-        std::fs::write(&music, include_bytes!("../assets/five-finger.mid")).unwrap();
+        std::fs::write(&music, include_bytes!("../../panthesia-engine/assets/five-finger.mid")).unwrap();
         assert!(locate(&music).unwrap().is_none());
 
         let folder = Located { path: root.join(manifest::FOLDER_NAME), manifest: manifest_for(&root, &music), read_only: false };
@@ -265,12 +311,12 @@ mod tests {
     fn check_reports_changes_and_relinks_moved_files_inside_the_tree() {
         let root = temp("check");
         let music = root.join("a.mid");
-        std::fs::write(&music, include_bytes!("../assets/five-finger.mid")).unwrap();
+        std::fs::write(&music, include_bytes!("../../panthesia-engine/assets/five-finger.mid")).unwrap();
         let mut m = manifest_for(&root, &music);
         assert_eq!(check(&root, &mut m), Check::default());
 
         std::fs::create_dir_all(root.join("moved")).unwrap();
-        std::fs::write(root.join("moved").join("._a.mid"), include_bytes!("../assets/five-finger.mid")).unwrap();
+        std::fs::write(root.join("moved").join("._a.mid"), include_bytes!("../../panthesia-engine/assets/five-finger.mid")).unwrap();
         std::fs::rename(&music, root.join("moved").join("renamed.mid")).unwrap();
         let report = check(&root, &mut m);
         assert_eq!(report.relinked, vec![("perf".to_string(), "moved/renamed.mid".to_string())]);
@@ -298,11 +344,11 @@ mod tests {
         std::fs::remove_dir_all(&root).unwrap();
     }
     /// Builds one manifest per corpus area of current-plan 3.7 on copies under `work/`.
-    /// Run with `cargo test -p panthesia-engine corpus_manifests -- --ignored`.
+    /// Run with `cargo test -p panthesia-core corpus_manifests -- --ignored`.
     #[test]
     #[ignore]
     fn corpus_manifests() {
-        use panthesia_core::manifest::{Layer, Origin, Provenance};
+        use crate::manifest::{Layer, Origin, Provenance};
         let corpus = PathBuf::from(std::env::var("PANTHESIA_CORPUS").unwrap_or_else(|_| r"D:\Music\MIDI".into()));
         if !corpus.is_dir() {
             return;

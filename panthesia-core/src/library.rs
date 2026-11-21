@@ -191,6 +191,8 @@ pub enum MetadataError {
     Serialize(#[source] ron::Error),
     #[error("could not save metadata sidecar: {0}")]
     Write(#[source] io::Error),
+    #[error("{0}")]
+    Manifest(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -389,8 +391,13 @@ fn normalized_text(value: Option<String>) -> Option<String> {
     })
 }
 
+/// Where the annotations of `midi_path` are stored: the owned annotation document inside the
+/// library, otherwise the `.panthesia` manifest that refers to the file (or the same-name
+/// manifest that the first edit creates).
 pub fn metadata_sidecar_path(midi_path: &Path) -> PathBuf {
-    crate::song_annotations::document_path(midi_path).unwrap_or_else(||legacy_metadata_sidecar_path(midi_path))
+    if let Some(path)=crate::song_annotations::document_path(midi_path){return path;}
+    if let Ok(Some(found))=crate::manifest_store::locate(midi_path){return found.path;}
+    crate::manifest_store::sibling_path(midi_path).unwrap_or_else(||legacy_metadata_sidecar_path(midi_path))
 }
 pub fn legacy_metadata_sidecar_path(midi_path: &Path) -> PathBuf {
     let mut name = midi_path
@@ -414,7 +421,43 @@ pub fn load_song_sidecar(
     expected_content_id: &str,
 ) -> Result<SongSidecar, MetadataError> {
     if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::read(&path,expected_content_id,midi_path);}
-    load_legacy_song_sidecar(midi_path,expected_content_id)
+    if let Some(found)=crate::manifest_store::locate(midi_path).map_err(MetadataError::Manifest)?{
+        return load_manifest_sidecar(&found,midi_path,expected_content_id);
+    }
+    // Annotations written by older versions beside the file; indices use the legacy protocol.
+    let legacy=load_legacy_song_sidecar(midi_path,expected_content_id)?;
+    let bytes=crate::utils::atomic_file::read_dependency(midi_path,32_000_000).map_err(MetadataError::Read)?;
+    let file=panthesia_music::MidiFile::from_path_bytes(midi_path,&bytes).map_err(MetadataError::InvalidNoteIdentity)?;
+    crate::song_annotations::project_legacy(legacy,&file.source)
+}
+fn manifest_source(midi_path:&Path,expected_content_id:&str)->Result<panthesia_music::MidiFile,MetadataError>{
+    let bytes=crate::utils::atomic_file::read_dependency(midi_path,32_000_000).map_err(MetadataError::Read)?;
+    let file=panthesia_music::MidiFile::from_path_bytes(midi_path,&bytes).map_err(MetadataError::InvalidNoteIdentity)?;
+    if file.content_id!=expected_content_id{
+        return Err(MetadataError::ContentMismatch{expected:expected_content_id.into(),actual:file.content_id});
+    }
+    Ok(file)
+}
+fn load_manifest_sidecar(found:&crate::manifest_store::Located,midi_path:&Path,expected_content_id:&str)->Result<SongSidecar,MetadataError>{
+    let Some(performance)=crate::manifest_store::performance_of(found,midi_path) else {
+        return Err(MetadataError::Read(io::Error::new(io::ErrorKind::NotFound,"歌曲清单未列出这个演奏文件")));
+    };
+    let file=manifest_source(midi_path,expected_content_id)?;
+    let dir=found.path.parent().unwrap_or(Path::new(""));
+    normalize_song_sidecar(crate::manifest_sidecar::read(&found.manifest,&performance,&file.source,dir))
+}
+/// Write annotations into the manifest of `midi_path`, creating a same-name manifest beside the
+/// file when none refers to it yet (current-plan 3.7: created on the first edit).
+fn save_manifest_sidecar(midi_path:&Path,content_id:&str,sidecar:SongSidecar)->Result<PathBuf,MetadataError>{
+    let sidecar=normalize_song_sidecar(sidecar)?;
+    let file=manifest_source(midi_path,content_id)?;
+    crate::manifest_store::edit(midi_path,true,|manifest,performance,dir|{
+        let before=manifest.clone();
+        crate::manifest_sidecar::write(manifest,performance,&sidecar,&file.source,midi_path,dir)?;
+        Ok(((),*manifest!=before))
+    }).map_err(MetadataError::Manifest)?
+        .map(|(_,path)|path)
+        .ok_or_else(||MetadataError::Manifest("歌曲清单无法创建".into()))
 }
 pub fn load_legacy_song_sidecar(midi_path:&Path,expected_content_id:&str)->Result<SongSidecar,MetadataError>{
     let path = legacy_metadata_sidecar_path(midi_path);
@@ -568,11 +611,13 @@ fn existing_sidecar_or_default(
     midi_path: &Path,
     content_id: &str,
 ) -> Result<SongSidecar, MetadataError> {
-    if crate::utils::atomic_file::is_file(&metadata_sidecar_path(midi_path)) {
-        load_song_sidecar(midi_path, content_id)
-    } else {
-        Ok(SongSidecar::default())
+    match load_song_sidecar(midi_path, content_id) {
+        Err(MetadataError::Read(e)) if e.kind() == io::ErrorKind::NotFound => Ok(SongSidecar::default()),
+        other => other,
     }
+}
+fn is_music_file(path: &Path) -> bool {
+    path.extension().and_then(|e| e.to_str()).is_some_and(|e| ["mid", "midi", "kar"].contains(&e.to_ascii_lowercase().as_str()))
 }
 
 pub fn save_song_sidecar(
@@ -581,6 +626,7 @@ pub fn save_song_sidecar(
     sidecar: SongSidecar,
 ) -> Result<PathBuf, MetadataError> {
     if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::write(&path,content_id,sidecar,midi_path);}
+    if is_music_file(midi_path){return save_manifest_sidecar(midi_path,content_id,sidecar);}
     validate_metadata_layers(sidecar.metadata_layers.as_ref(), &sidecar.metadata)?;
     let path = metadata_sidecar_path(midi_path);
     let sidecar = MetadataSidecar {
