@@ -2,6 +2,17 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · 计划审查修正
+
+- 第 2 节删去"SQLite 歌曲仓库与内容寻址资产"的保留项，与 R2 删除集中曲库一致。
+- `lib.rs` 拆分从 R1 移到 R2：在删除集中曲库之后进行，避免先拆出 library、annotations 模块再删除。
+- R1 删除历史回放读取代码前，数据原样留在备份中；R2 迁移时只原样归档到练习数据目录 `legacy/`，不解析。
+- R2 只做存储、打开与迁移；新增 RF"前端基础"阶段承接 tokens、store、单一 `send()`、状态推送与界面重写。
+- Ouro 插件改为薄插件，调用 R2 新增的 `panthesia probe` 子命令，MIDI 与清单解析只在 Rust 中实现一次。
+- 新增 `GOAL.md` 作为长期任务入口。
+
+下一入口：R1（会话暂停时有未提交的 R1 删除改动，继续前先核对 `git status`）。
+
 ## 2026-11-21 · 迁移授权
 
 - 用户授权 R2 的真实资料迁移，执行时不再询问；条件写在 AGENTS.md。已确认本机账户对 `%APPDATA%\com.ubik.neothesia` 与 `D:\Music\MIDI` 有修改权限，Claude 全局权限模式为 `bypassPermissions`。

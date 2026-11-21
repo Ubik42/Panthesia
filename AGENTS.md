@@ -6,6 +6,7 @@
 
 ## 先读
 
+0. `GOAL.md`：长期目标、授权与启动方式。
 1. `docs/development/current-plan.md`：长期目标、目标架构、当前阶段。唯一任务队列。
 2. `docs/development/progress.md`：最近一轮做了什么、下一入口。
 3. `docs/development/interaction-model.md`：界面参照与用户授权的差异。

@@ -24,7 +24,7 @@ Panthesia 是开源的 Windows 钢琴练习软件。核心是好的练琴体验�
 | 后台工具 | — | 转录链路在仓库外（`D:\Music\_tools\music-transcription`）；DuET 借用 Transkun 的 venv，模型路径硬编码 `D:\cs\...` |
 | 测试 | 110 个 Playwright spec | 需要手动启动 Vite 与 HTTP 引擎；依赖中文文案与 CSS 类名；没有基于真实语料的回归 |
 
-保留价值高的部分：`panthesia-music`（tick 时间、稳定 NoteId）、PlaybackSession、SQLite 歌曲仓库与内容寻址资产、MusicXML 解析与反复展开、Verovio 渲染链、MIDIVisualizer 光效着色器、Synthesia 参考截图与交互规范。
+保留价值高的部分：`panthesia-music`（tick 时间、稳定 NoteId）、PlaybackSession、MusicXML 解析与反复展开、Verovio 渲染链、MIDIVisualizer 光效着色器、Synthesia 参考截图与交互规范。
 
 ## 3. 目标架构
 
@@ -104,7 +104,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 ### 3.5 前端与演奏舞台
 
-- **三个界面**：
+- **三个界面**（RF 阶段按新结构重写）：
   - **启动页**：最近打开、打开文件 / 文件夹、拖入。不做曲库浏览、筛选、标签。
   - **歌曲设置**：查看与编辑本首歌的清单内容：演奏版本选择、轨道与手别、谱面配对、伴奏文件、图层状态（有 / 缺失 / 生成）、段落与书签。
   - **演奏舞台**：全屏，保留 Synthesia 式的演奏布局（顶部工具条、时间线、谱面、瀑布、琴键）。
@@ -201,16 +201,17 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 **`.neopiece` 的新定位**：只用于导出与分享：把清单和它引用的文件打成一个包，路径改写为包内路径。导入 `.neopiece` 时解包到用户选择的文件夹，生成文件夹清单。
 
-**与 Ouro 的配合**：Ouro 的 PF 阶段提供伴生文件与按类型打开方式（见 Ouro `docs/进度.md` 3.6）。Panthesia 提供一个 Ouro 插件（TypeScript）：MIDI / MusicXML 格式处理器（时长、BPM、调、轨道数）、钢琴卷帘缩略图、读取 `.panthesia` 中的标题与已有图层作为字段、登记 `.panthesia` 为伴生扩展名、"用 Panthesia 练习"打开方式。插件源码放在本仓库 `integrations/ouro-plugin/`。
+**与 Ouro 的配合**：Ouro 的 PF 阶段提供伴生文件与按类型打开方式（见 Ouro `docs/进度.md` 3.6）。Panthesia 提供一个 Ouro 插件，放在本仓库 `integrations/ouro-plugin/`。插件只做转接：调用 `panthesia probe` 取得时长、BPM、调、轨道数、清单中的标题与已有图层，以及钢琴卷帘缩略图；登记 `.panthesia` 为伴生扩展名；注册"用 Panthesia 练习"打开方式。MIDI 与清单的解析只在 Rust 中实现一次。
 
 ## 4. 阶段
 
 | 阶段 | 内容 | 完成条件 | 状态 |
 | --- | --- | --- | --- |
 | R0 基线清理 | 删除死 crate、旧原生应用、前端不可达代码、重复文档；重写计划；磁盘清理 | 构建通过；文档只有一套计划 | 已完成 |
-| R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；拆分 `lib.rs`；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
-| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习历史、最近打开与缓存；迁移真实资料（见下方 R2 任务分解）；前端：tokens、基础组件、zustand store、单一 `send()`、状态推送，启动页与歌曲设置，删除曲库相关界面 | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`App.tsx` < 300 行；CSS 全部基于 token；`cargo test --workspace` 能跑完且全部通过 | 待开始 |
-| RO Ouro 插件 | `integrations/ouro-plugin/`（TypeScript）：MIDI / MusicXML 格式处理器、钢琴卷帘缩略图、清单字段读取、`.panthesia` 伴生登记、"用 Panthesia 练习"打开方式 | 在 Ouro 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Ouro 中移动 MIDI 时清单一起移动 | 待开始（依赖 Ouro PF 阶段） |
+| R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造与 `lib.rs` 拆分移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
+| R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Ouro 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；`cargo test --workspace` 能跑完且全部通过 | 待开始 |
+| RF 前端基础 | tokens、基础组件、zustand store（song、playback、settings）、单一 `send()`、状态推送替代 80 ms 轮询；启动页与歌曲设置按新结构重写；`src/` 根目录散落的对话框归入 `src/screens` | `App.tsx` < 300 行；CSS 全部基于 token，无硬编码颜色与 `!important`；不再轮询；Playwright 关键流程通过 | 待开始 |
+| RO Ouro 插件 | `integrations/ouro-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Ouro 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Ouro 中移动 MIDI 时清单一起移动 | 待开始（依赖 Ouro PF 阶段） |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 待开始 |
 | R4 分层歌曲模型与统一导入 | `panthesia-notation`；Song 图层与来源信息；ABC 导入；MIDI meta（歌词、标记、调号）读入；歌曲包识别；元数据收敛；语料回归 | 第 3.6 节样本全部可导入；同一首歌从 MIDI / MusicXML / ABC 进入后都能播放、显示谱面、转调、量化 | 待开始（可与 R2 并行） |
 | R5 谱面显示 | 谱面窗口化、跟随、只读阅读器；从 Score IR 生成 | 长谱流畅翻页与跟随；转调后谱面与演奏一致 | 待开始 |
@@ -220,18 +221,18 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R9 自由演奏与录音 | UI08：录音、量化保存、重开 | 录音保存为歌曲后可正常练习 | 待开始 |
 | R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 待开始 |
 
-顺序：R1 → R2 → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 Ouro 的 PF 阶段（约第 3–4 周）。单会话连续执行时按 R1 → R2 → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Ouro PF 完成前跳过。
+顺序：R1 → R2 → RF → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 R2 的 `probe` 子命令与 Ouro 的 PF 阶段（约第 3–4 周）。单会话连续执行时按 R1 → R2 → RF → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Ouro PF 完成前跳过，完成后插入。
 
 ### R1 任务分解
 
 按顺序做，每项完成即提交：
 
 1. **评分时代命令**：`panthesia-engine/src/practice_policy.rs` 拒绝的命令（Save、Feedback、SongExpressionGoal、Ladder、Routine、ComposePassages、AcceptWeakPractice、HistoryProblemPlan、MultiProblemPlan、SongLearning）从 `protocol.rs` 删除，连同实现模块：`routine_*`（commands 1715、edit 687、loading 684、reader 231、protocol 171 行）、`ladder_commands`、`weak_practice`、`expression_goal`、`expression_review`、`song_learning`、`song_learning_evidence`、`history_problem_plan`、`history_problem_cuts`、`history_multi_plan`、`round_analysis`；core 的 `speed_ladder`。`Mode`/`Adaptive`/`LoopRestartErrors` 的归一化改为协议层只接受 wait/listen。最后删除 `practice_policy.rs`。
-2. **历史回放与表现记录**：engine 的 `history_*`（loading 1028、commands 539、reader 448、replay_loading 611 等）、`performance_archive*`、`replay_*`；core 的 `practice_history`（2220 行）中仅供回放的部分；前端 `features/review/`、`HistoryDialog` 相关、`Notation.tsx` 中的 ScoreHistoryReview 与 HistoryReplayTransport、对应 spec。录音（R9 需要）与普通播放捕获不删。
+2. **历史回放与表现记录**（删除前把 `%APPDATA%\com.ubik.neothesia` 中对应的数据文件原样保留在备份里；R2 迁移时只原样归档、不解析，所以删除读取代码不影响迁移）：engine 的 `history_*`（loading 1028、commands 539、reader 448、replay_loading 611 等）、`performance_archive*`、`replay_*`；core 的 `practice_history`（2220 行）中仅供回放的部分；前端 `features/review/`、`HistoryDialog` 相关、`Notation.tsx` 中的 ScoreHistoryReview 与 HistoryReplayTransport、对应 spec。录音（R9 需要）与普通播放捕获不删。
 3. **一次性迁移**：`legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration`、`library_repairs` 及 examples 中的迁移脚本。保留 `.neothesia.ron` 与 Synthesia 资料的**导入器**（它们是导入来源，不是迁移）。先确认真实资料在当前格式下读取不依赖这些模块。
 4. **`practice_backup*`**（约 4000 行）：判断是否只服务于评分历史；是则删除，否则收缩为"歌曲与资产备份"，与整歌归档（`song_archive`）合并为一条路径。
 5. **存储事务合并（已移到 R2，改为删除集中曲库）**：R1 只在测试被阻塞时修复两个已知缺陷（引擎启动后长时间忙碌、`package_commands` 死锁）。原内容：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。同时修复两个已知缺陷：引擎启动后长时间处于忙碌状态、拒绝普通命令（`storage_control::check_command`，导致约 120 个 engine 测试失败）；`package_commands` 测试死锁。完成标准：`cargo test --workspace` 能跑完且全部通过。
-6. **拆分 `lib.rs`**（4438 行）：`Player` 与命令分派分离，按领域分模块（library、playback、sound、notation、import、annotations）。
+6. **拆分 `lib.rs`**：移到 R2 第 5 项，在删除集中曲库之后进行，避免先拆出 library、annotations 模块再删除。
 7. **前端残留**：删除对已删命令的调用、`api.ts` 中对应函数、生成协议后不再存在的类型；`npm run protocol:generate` 重新生成。
 8. **后台工具**：DuET 使用独立 venv；`duet_runtime.rs` 中 Python 与模型路径改为设置项，删除 `D:\cs\...` 硬编码默认值。
 9. **收尾**：engine 目标 < 5 万行；清除全部 dead-code 警告；更新 `architecture-decisions.md` 中与已删模块相关的条目。
@@ -240,15 +241,16 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 1. **格式**：`docs/development/panthesia-format.md` 与 JSON Schema；Rust 类型（serde，保留未知字段）；读、校验、原子写；哈希校验与目录树内修复；NoteId 重映射接入。单元测试覆盖 3.7 表中每一区的样例清单（在 `work/` 下的语料副本上生成）。
 2. **打开**：命令行参数、文件关联、单实例转交、拖入；查找顺序按 3.7；没有清单时直接演奏；首次修改时创建同名清单。
-3. **歌曲设置**：在清单上编辑版本选择、轨道与手别、谱面配对、伴奏文件、段落与书签；保存即写清单。
-4. **删除集中曲库**：`song_repository`、`import_storage` 副本存储、`song_catalog` / `catalog_rows`、`library-workspace.json`、`library-monitor-files.json`、`locations`、五套存储机制（`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection`、`desktop_close.rs`）；本地新增练习数据目录（历史、时长、上次速度与位置、最近打开，按 BLAKE3 关联）与缓存目录。同时消除启动忙碌与 `package_commands` 死锁。
-5. **迁移真实资料**（用户 2026-11-21 已授权，执行时不再询问；先在备份副本上跑通，再对真实资料执行）：
+3. **歌曲设置**：在现有界面上接入清单：编辑版本选择、轨道与手别、谱面配对、伴奏文件、段落与书签，保存即写清单（界面结构的重写在 RF）。
+4. **`probe` 子命令**：`panthesia probe <路径> --json [--thumbnail <png 路径>]`，输出时长、BPM、调、轨道数、已有清单中的标题与图层，可选生成钢琴卷帘缩略图；不启动窗口。
+5. **删除集中曲库并拆分 `lib.rs`**：`song_repository`、`import_storage` 副本存储、`song_catalog` / `catalog_rows`、`library-workspace.json`、`library-monitor-files.json`、`locations`、五套存储机制（`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection`、`desktop_close.rs`）；本地新增练习数据目录（历史、时长、上次速度与位置、最近打开，按 BLAKE3 关联）与缓存目录。同时消除启动忙碌与 `package_commands` 死锁。删除完成后拆分 `lib.rs`：`Player` 与命令分派分离，按领域分模块（manifest、playback、sound、notation、open、practice）。
+6. **迁移真实资料**（用户 2026-11-21 已授权，执行时不再询问；先在备份副本上跑通，再对真实资料执行）：
    - 有用户数据的歌曲（2026-11-21：轨道分配 15 首、谱面配对 5 首、元数据 5 首；`web-preferences.json` 中段落、书签、变调与量化、会话设置约 12 首）：在其原始位置（`locations` 中仍存在的路径，优先 `D:\Music\MIDI`）旁写清单。
    - 只存在于副本存储、找不到原文件的歌曲：连同清单导出到 `D:\Music\MIDI\Panthesia导出\`。
-   - 练习历史与时长迁入新的本地练习数据目录。
+   - 练习历史与时长：主线仍能读取的数据（时长、会话设置）转入新的本地练习数据目录；R1 已删除读取代码的历史回放数据原样归档到练习数据目录的 `legacy/`，不解析。
    - 15 个未匹配的旧身份原样保留在备份中，不合并。
    - 核对：每首迁移歌曲能从新位置打开，图层与设置一致；核对通过后移除旧 `library/`（备份保留）。
-6. **前端**：tokens、基础组件、zustand store、单一 `send()`、状态推送；启动页与歌曲设置；删除曲库、选曲、导入收件箱等界面与对应协议命令。
+7. **前端清理**：删除曲库、选曲、导入收件箱等界面与对应协议命令；启动页提供最近打开与打开文件。前端结构重写在 RF。
 
 ## 5. 固定约束（用户决定）
 
