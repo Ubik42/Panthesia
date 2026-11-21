@@ -1,0 +1,609 @@
+import { usePerformanceKeyboard } from "../features/practice/usePerformanceKeyboard";
+import { useSongEditors } from "../features/screens/useSongEditors";
+import { openWorkEntry } from "../features/activity/workNavigation";
+import { useScorePairing } from "../features/scores/useScorePairing";
+import { usePracticeToolNavigation } from "../features/screens/usePracticeToolNavigation";
+import { usePlaybackActions } from "../features/practice/usePlaybackActions";
+import type { DeviceObject } from "../features/screens/MusicDeviceList";
+import { useProductNavigation } from "../features/screens/useProductNavigation";
+import { applicationCommands,type ApplicationCommandId } from "./applicationCommands";
+import { installDiagnostics } from "./diagnostics";
+import { isComposingKey,isVisibleInput,topInputScope,topPopup } from "./inputOwnership";
+import { performRecoveryAction,type RecoveryHost } from "./recovery/recoveryActions";
+import type { RecoveryAction,RecoveryIssue } from "./recovery/sessionRecoveryModel";
+import { createSessionRecoveryStore } from "./recovery/sessionRecoveryStore";
+import type { SongWorkspaceTarget } from "./songWorkspaceVisit";
+import { useDialogFocus } from "./useDialogFocus";
+import { useWorkspaceSessions } from "./useWorkspaceSessions";
+import type { DisplayPreferences } from "../features/settings/displayPreferences";
+import type { MediaExportKind } from "../engine/commands.generated";
+import { pathKey } from "../engine/pathIdentity";
+import type { WorkEntry } from "../features/activity/workProgressStore";
+import { resolveKeyboardViewport,viewportRange,type KeyboardViewport } from "../features/practice/keyboardViewport";
+import { type BookmarkNavigation } from "../features/practice/SongBookmarks";
+import { useLiveNotes } from "../features/practice/useLiveNotes";
+import { usePerformanceSize } from "../features/practice/usePerformanceSize";
+import { usePracticeSession } from "../features/practice/usePracticeSession";
+import type { ScoreToolRequest } from "../features/scores/scoreToolRequest";
+import { useSongOpening } from "../features/screens/useSongOpening";
+import { useProductScreens } from "../features/screens/useProductScreens";
+import { getInterfaceSettings } from "../features/settings/interfaceSettingsStore";
+import { getInterfaceWorkbench } from "../features/settings/interfaceWorkbenchStore";
+
+import { useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore } from "react";
+import {
+api,type LoadedSong
+} from "../api";
+import {
+useWorkspaceNavigation,
+type Workspace,
+} from "./useWorkspaceNavigation";
+import { matchesSong } from "../engine/stateOrder";
+import type { MediaExportSource } from "../features/exports/mediaExportStore";
+import { usePracticeRange } from "../features/practice/usePracticeRange";
+const normalize = pathKey;
+
+
+/** Session, navigation and actions of the application window; the view reads them through AppContext. */
+export function useAppModel() {
+  useEffect(installDiagnostics, []);
+  const [appMenuOpen,setAppMenuOpen]=useState(false);
+
+  useEffect(() => {
+    if (!appMenuOpen) return;
+    const pointer = (event: MouseEvent) => {
+      const target = event.target as Element;
+      const toggle = target.closest('button[aria-label="应用菜单"]');
+      const menu = target.closest(".workspace-topbar");
+      if (!toggle && (!menu || target.closest("button"))) setAppMenuOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAppMenuOpen(false);
+    };
+    window.addEventListener("click", pointer);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("click", pointer);
+      window.removeEventListener("keydown", key);
+    };
+  }, [appMenuOpen]);
+
+  const releaseInput = useRef<() => void>(() => {});
+  const inputOwnership = useDialogFocus(() => releaseInput.current());
+  const workspaceSessions = useWorkspaceSessions();
+  const navigation = useWorkspaceNavigation();
+  const { workspace } = navigation;
+  const productScreens=useProductScreens(workspace);
+  const songSetup=productScreens.screen==="setup";
+  const setSongSetup=productScreens.setSongSetup;
+  const bookmarkNavigation = useRef<BookmarkNavigation>(null);
+  const interfaceSettings = getInterfaceSettings();
+  const display = useSyncExternalStore(
+    interfaceSettings.subscribe,
+    interfaceSettings.getPreferences,
+  );
+  const setDisplay = interfaceSettings.setPreferences;
+  const [displayDialog, setDisplayDialog] = useState(false);
+  const [displaySection,setDisplaySection]=useState<"display"|"appearance"|"keyboard"|"shortcuts"|"backup"|undefined>(undefined);
+  useEffect(() => {
+    document.documentElement.style.zoom = String(display.uiScale / 100);
+    document.documentElement.style.setProperty(
+      "--ui-scale",
+      String(display.uiScale / 100),
+    );
+    return () => {
+      document.documentElement.style.zoom = "";
+      document.documentElement.style.removeProperty("--ui-scale");
+    };
+  }, [display.uiScale]);
+  const performanceSize=usePerformanceSize();
+  const productActions=useRef<{browse:(signal?:AbortSignal)=>Promise<boolean>;resume:(signal?:AbortSignal)=>Promise<boolean>}>({browse:async()=>false,resume:async()=>false});
+  const view = display.practiceView;
+  const setView = useCallback((next: string | ((previous: string) => string)) => setDisplay(previous => ({ ...previous,
+    practiceView: (typeof next === "function" ? next(previous.practiceView) : next) as DisplayPreferences["practiceView"],
+  })), [setDisplay]);
+  const seconds = display.previewBars;
+  const setSeconds = (value: number) =>
+    setDisplay((previous) => ({ ...previous, previewBars: value }));
+  const {
+    playback,
+    getBoundSong,
+    state,
+    setState,
+    song,
+    refreshSession,
+    refreshConfirmedSession,
+    refreshOpenedSession,
+    installSession,
+    binding,
+    reading,
+    connected,
+    health,
+    refreshProblem,
+    error,
+    setError,
+    refresh,
+  } = usePracticeSession();
+  const editors=useSongEditors(song);
+  const {songOptions,setSongOptions,scoresDialog,setScoresDialog,meterDialog,setMeterDialog,handsDialog,setHandsDialog,fingeringDialog,setFingeringDialog,fingeringWorkbenchOpen,setFingeringWorkbenchOpen}=editors;
+  const songOpeningActive = useRef(false);
+  const { onNote, pointerNote, clear: clearLiveNotes } = useLiveNotes(playback, connected && !binding && !workspaceSessions.desktopClose.status, setError,
+    () => !songOpeningActive.current && !document.hidden && !topInputScope() && !topPopup(null));
+  const [sessionRecovery] = useState(() => createSessionRecoveryStore(health, workspaceSessions.workProgress));
+  const startupReady = state.startup?.ready ?? true;
+  const [requestPending, setBusy] = useState(false);
+  const [scoreToolRequest, setScoreToolRequest] = useState<ScoreToolRequest | null>(null);
+  const clearScoreToolRequest = useCallback(() => setScoreToolRequest(null), []);
+  const progressEngineId = useSyncExternalStore(playback.subscribe, playback.getEngineId, playback.getEngineId);
+  useEffect(() => {
+    workspaceSessions.workProgress.setContext({ engineId: progressEngineId, connected, closing: !!workspaceSessions.desktopClose.status });
+  }, [workspaceSessions.workProgress, progressEngineId, connected, !!workspaceSessions.desktopClose.status]);
+  const operationBusy = !!workspaceSessions.desktopClose.status || requestPending || Boolean(state.storage?.operation) || Boolean(state.storage?.error);
+  const busy = operationBusy || binding;
+  useEffect(() => {
+    sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, closing: !!workspaceSessions.desktopClose.status, title: song?.title, path: song?.sourcePath, state });
+  }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, !!workspaceSessions.desktopClose.status, song?.title, song?.sourcePath, state]);
+  const [commandsOpen, setCommandsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [editDraftsOpen, setEditDraftsOpen] = useState(false);
+  const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
+  const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
+  const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
+  const [settingsDevice,setSettingsDevice]=useState<DeviceObject|undefined>();
+  function openSoundSettings(device?:DeviceObject){setSettingsDevice(device);setSettingsTab("sound");setSettingsReturnToScores(false);setSettings(true);}
+  const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
+  const [settings, setSettings] = useState(false),
+    [editFingers, setEditFingers] = useState(false),
+    [selectedNote, setSelectedNote] = useState<
+      LoadedSong["notes"][number] | null
+    >(null),
+    [exerciseDialog, setExerciseDialog] = useState(false),
+    [metadata, setMetadata] = useState(false),
+    [fingeringDraft, setFingeringDraft] = useState<import("../features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
+    [passageDialog, setPassageDialog] = useState(false),
+    [progressOpen, setProgressOpen] = useState(false),
+    [recoveryOpen, setRecoveryOpen] = useState(false),
+    [paperRevision, setPaperRevision] = useState(0),
+    [mediaExport, setMediaExport] = useState<(MediaExportSource & { kind?: MediaExportKind }) | null>(null),
+    [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!scoreToolRequest) return;
+    const actual = playback.getSnapshot();
+    if (workspace !== "practice" || view !== "score" || actual.mode === "memory" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
+  }, [scoreToolRequest, workspace, view, state.contentId, progressEngineId, state.mode, playback]);
+  const selectionSong = useRef(song?.contentId ?? null);
+  useEffect(() => {
+    const previousSong = selectionSong.current;
+    selectionSong.current = song?.contentId ?? null;
+    setSelectedNote(previous => {
+      if (!previous || !song) return null;
+      // History navigation can install a new song and select its note in one action.
+      if (song.notes.includes(previous)) return previous;
+      if (previousSong !== song.contentId) return null;
+      return song.notes.find(note => note.track === previous.track && note.index === previous.index
+        && note.pitch === previous.pitch && Math.abs(note.start - previous.start) < 0.000001
+        && Math.abs(note.duration - previous.duration) < 0.000001) ?? null;
+    });
+  }, [song?.contentId, song?.scoreRevision, song?.annotationRevision, song?.notes]);
+  useEffect(() => { if (!fingeringDialog) setFingeringDraft(null); }, [fingeringDialog]);
+  const pianoViewport = useMemo(() => resolveKeyboardViewport(display, song?.notes ?? [], state.input),
+    [display.range, display.keyboardViewport, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
+  const pianoRange = useMemo(()=>viewportRange(pianoViewport),[pianoViewport]);
+  const changePianoViewport = (viewport:KeyboardViewport) => {
+    const range=viewportRange(viewport);
+    setDisplay(previous=>({...previous,range:"custom",keyboardViewport:viewport,keyboardLow:range.low,keyboardHigh:range.high}));
+  };
+  const pianoPitchCounts = useMemo(()=>{
+    const counts=Array<number>(129).fill(0);
+    for(const note of song?.notes??[])counts[note.pitch+1]++;
+    for(let pitch=1;pitch<counts.length;pitch++)counts[pitch]+=counts[pitch-1];
+    return counts;
+  },[song?.notes]);
+  const outsidePianoRange = pianoPitchCounts[pianoRange.low]+pianoPitchCounts[128]-pianoPitchCounts[pianoRange.high+1];
+  const recital = ["recital", "memory"].includes(state.mode);
+  const attemptLocked = recital && ["playing", "paused", "countIn"].includes(state.status);
+  useEffect(() => {
+    if (state.mode === "memory") {
+      setSelectedNote(null);
+      setEditFingers(false);
+    }
+  }, [state.mode]);
+  const [loopStart, setLoopStart] = useState(1),
+    [loopEnd, setLoopEnd] = useState(0);
+  const practiceRange=usePracticeRange(song,playback);
+  const requestBusy = useRef(false);
+  useEffect(() => {
+    setLoopStart(
+      song?.measures.find((m) => m.start === state.passage?.start)?.number ?? 1,
+    );
+    setLoopEnd(
+      state.passage
+        ? (song?.measures.find((m) => m.end >= state.passage!.end)?.number ?? 1)
+        : (song?.measures.length ?? 1),
+    );
+  }, [
+    song?.contentId,
+    song?.duration,
+    state.passage?.start,
+    state.passage?.end,
+  ]);
+  useEffect(() => {
+    if (!song?.fingerActions?.length) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void api.session()
+        .then((session) => {
+          if (!cancelled && session.song?.contentId === song.contentId)
+            installSession(session);
+        })
+        .catch(() => {});
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [state.speed, song?.engineId, song?.contentId, !!song?.fingerActions?.length, installSession]);
+  const {run,action,adjustRealtime,playbackAdjustments}=usePlaybackActions({
+    session:{playback,getBoundSong,setState,setError,refreshOpenedSession},
+    song,binding,connected,startupReady,requestBusy,songOpeningActive,setBusy,setNotice,clearLiveNotes,
+  });
+  const changeWorkspace = useCallback(async (next: Workspace, signal?: AbortSignal) => {
+    if (signal?.aborted) return false;
+    if (next === workspace) return navigation.navigate(next);
+    if (requestBusy.current || busy || !startupReady || state.recording) return false;
+    clearLiveNotes();
+    const originEngine = playback.getEngineId();
+    const changed = await navigation.request(next, async (from, to) => {
+      if (from === "practice" && to !== "practice") {
+        if (!(await run({type:"pause"}))) return false;
+
+      }
+      const live = playback.getSnapshot();
+      return originEngine === live.stateOrder?.engineId && !requestBusy.current &&
+        !live.recording && live.startup?.ready !== false && !live.storage?.operation;
+    }, signal);
+    return changed;
+  }, [busy, startupReady, state.recording, workspace, navigation.pending, navigation.navigate, navigation.request, run, clearLiveNotes, playback]);
+  const currentPracticeTarget: SongWorkspaceTarget | null = song && !binding && matchesSong(state, song) &&
+    (progressEngineId ?? null) === (song.engineId ?? null)
+    ? { contentId: song.contentId, title: song.title, path: song.sourcePath } : null;
+  const workspaceUnavailable = workspaceSessions.desktopClose.status ? "正在保存并关闭软件。"
+    : binding ? "正在读取当前练习，完成后可切换工作区。"
+    : state.storage?.operation ? "正在保存练习资料，完成后可切换工作区。"
+    : state.storage?.error ? "练习资料保存需要处理，请查看恢复入口。"
+    : requestPending ? "正在处理当前操作，完成后可切换工作区。"
+    : !startupReady ? "启动恢复完成后可切换工作区。"
+    : state.recording ? "请先停止录音，再切换工作区。"
+    : null;
+  const currentPracticeUnavailable = workspaceUnavailable ?? (!connected ? "练习室重新连接后可打开或继续曲目。"
+    : !currentPracticeTarget && song ? "正在读取当前练习，读齐后可继续。" : null);
+  const resumeEditingSong = async (contentId: string, path?: string) => {
+    if (!(await changeWorkspace("practice"))) return false;
+    if (playback.getSnapshot().contentId !== contentId) {
+      if (!path || !(await openPathRef.current(path))) return false;
+    }
+    return playback.getSnapshot().contentId === contentId;
+  };
+  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
+    fingeringDialog, passageDialog, handsDialog, meterDialog,
+    scoresDialog, !!mediaExport]);
+  const [songFilesOpen, setSongFilesOpen] = useState(false);
+  const { recentFiles, forgetRecent, opening, openPath, chooseFile } = useSongOpening({
+    connected, startupReady, busy, recording: state.recording, song, playback, requestBusy, songOpeningActive,
+    changeWorkspace, clearLiveNotes, run, setNotice, setError,
+    showOpened: (screen) => { setView("keyboard"); productScreens.show(screen); },
+  });
+  const openPathRef = useRef(openPath);
+  openPathRef.current = openPath;
+  const {openPracticeTool,launchPracticeTool}=usePracticeToolNavigation({toolContext,changeWorkspace,playback,run,setError});
+  useEffect(() => {
+    if (api.desktop || !state.storage?.pending) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [state.storage?.pending]);
+  const scorePairing=useScorePairing({song,playback,run,setView,setError});
+  const keyboardPaused=!!workspaceSessions.desktopClose.status||!startupReady||Boolean(state.storage?.operation)||workspace!=="practice"||!["performance","freePlay"].includes(productScreens.screen)||inputOwnership.modal||inputOwnership.popup;
+  const shortcutScope=JSON.stringify([song?.engineId,song?.contentId,song?.scoreRevision,workspace,loopStart,loopEnd]);
+  const {keyboardContext,invalidateKeyboardActions}=usePerformanceKeyboard({
+    display,setDisplay,song,playback,getBoundSong,keyboardPaused,shortcutScope,ownershipRevision:inputOwnership.revision,songOpeningActive,
+    run,action,setState,setError,onNote,clearLiveNotes,loopStart,loopEnd,bookmarkNavigation,
+    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>setDisplayDialog(true),passages:()=>launchPracticeTool(()=>setPassageDialog(true))},
+  });
+  releaseInput.current=()=>{invalidateKeyboardActions();clearLiveNotes();};
+  useEffect(() => {
+    const escapeWorkspace = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || isComposingKey(event) ||
+          event.ctrlKey || event.altKey || event.metaKey || topInputScope() || topPopup(null)) return;
+      const back = [...document.querySelectorAll<HTMLButtonElement>("button[data-dialog-escape]")].find(isVisibleInput);
+      const close = back ?? [...document.querySelectorAll<HTMLButtonElement>("button[data-workspace-close]")].find(isVisibleInput);
+      if (!close) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!close.matches(":disabled") && close.getAttribute("aria-disabled") !== "true") close.click();
+    };
+    window.addEventListener("keydown", escapeWorkspace);
+    return () => window.removeEventListener("keydown", escapeWorkspace);
+  }, []);
+  const exportMidi = () => {
+    if (song) setMediaExport({contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId});
+  };
+  const fullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else
+      void document.documentElement
+        .requestFullscreen()
+        .catch(() => setError("当前窗口无法进入全屏"));
+  };
+  const openWork=(entry:WorkEntry,signal:AbortSignal)=>openWorkEntry(entry,signal,{
+    unavailable:target=>{
+      if(workspaceSessions.desktopClose.status)return "正在准备退出，请返回窗口后继续。";
+      
+      if(["scores","score","passage","hands","meter"].includes(target)){
+        if(!connected||binding||!startupReady)return "练习室正在恢复，完成后可返回来源曲目。";
+        if(state.recording)return "请先停止并保存录音，再返回来源曲目。";
+        if(operationBusy)return "当前资料正在保存，完成后可接续任务。";
+      }
+      return null;
+    },
+    prepare:(source,signal)=>{
+      if(signal.aborted)return Promise.resolve(false);
+      return resumeEditingSong(source.contentId,source.path);
+    },
+    current:getBoundSong,snapshot:playback.getSnapshot,scores:workspaceSessions.scores,
+    openEditor:(target,signal)=>openPracticeTool(signal,()=>{
+      if(target==="passage")setPassageDialog(true);else if(target==="hands")setHandsDialog(true);else setMeterDialog(true);
+    }),
+    openScores:()=>setScoresDialog(true),
+    openScore:request=>{setView("score");productScreens.show("performance");setScoreToolRequest(request);},
+    openSimple:target=>{
+      if(target==="devices")openSoundSettings();
+      else if(target==="exercise")setExerciseDialog(true);
+      else if(target==="drafts")setEditDraftsOpen(true);
+    },
+    openInterface:()=>{
+      const draft=getInterfaceWorkbench(),input=draft.getSnapshot(),settings=interfaceSettings.getSnapshot();
+      if(settings.protected||settings.error||input.storageError||input.preview||input.error||input.preparedExport&&!["saved","requested"].includes(input.preparedExport.phase))draft.update({section:"backup"});
+      setDisplayDialog(true);
+    },
+    openMedia:entry=>setMediaExport({contentId:entry.source.contentId,title:entry.source.title||entry.subject,path:entry.source.path,engineId:playback.getEngineId(),kind:entry.mediaKind}),
+    done:()=>setProgressOpen(false),
+  });
+  const openRecovery = () => { clearLiveNotes(); setProgressOpen(false); setRecoveryOpen(true); };
+  const recoveryHost = useRef<RecoveryHost | null>(null);
+  recoveryHost.current = {
+    snapshot: playback.getSnapshot,
+    commandPending: () => requestBusy.current,
+    command: run,
+    refresh: refreshProblem,
+    syncState: async () => {
+      setState(await api.state());
+    },
+    startupSong: async (warning, signal) => {
+      const source = warning.source;
+      if (source?.kind !== "file" || signal?.aborted)
+        throw new Error("上次的曲目没有保留文件位置，请重新打开乐曲。");
+      const opened = await openPathRef.current(source.path);
+      if (opened) setRecoveryOpen(false);
+      return opened;
+    },
+    library: async () => { await goHomeRef.current(); return true; },
+    locateStartupSong: async (_warning, signal) => {
+      if (signal?.aborted) return false;
+      const opened = await chooseFile();
+      if (opened) setRecoveryOpen(false);
+      return opened;
+    },
+    practice: (signal) => {
+      return changeWorkspace("practice", signal);
+    },
+    work: async (id, signal) => {
+      const entry = workspaceSessions.workProgress
+        .getSnapshot()
+        .rows.find((entry) => entry.id === id);
+      return entry ? openWork(entry, signal) : null;
+    },
+    devices: () => {
+      setRecoveryOpen(false);
+      openSoundSettings();
+    },
+    progress: () => {
+      setRecoveryOpen(false);
+      setProgressOpen(true);
+    },
+    close: () => setRecoveryOpen(false),
+  };
+  const recoverSession = useCallback(
+    (issue: RecoveryIssue, action: RecoveryAction, signal?: AbortSignal) =>
+      performRecoveryAction(
+        sessionRecovery,
+        () => {
+          if (!recoveryHost.current)
+            throw new Error("恢复入口尚未准备好，请重新打开。");
+          return recoveryHost.current;
+        },
+        issue,
+        action,
+        signal,
+      ),
+    [sessionRecovery],
+  );
+  const commandActions = applicationCommands({
+    sessionRecovery: () => { openRecovery(); return true; },
+    workProgress: () => { clearLiveNotes(); setProgressOpen(true); return true; },
+    library: (signal) => productActions.current.browse(signal),
+    practice: (signal) => productActions.current.resume(signal),
+    play: async (signal) => {
+      if (!(await productActions.current.resume(signal)) || signal.aborted) return false;
+      productScreens.show("performance");
+      return run({ type: ["playing", "countIn"].includes(playback.getSnapshot().status) ? "pause" : "play" });
+    },
+    import: async () => { await chooseFile(); return true; },
+    exercise: (signal) => openPracticeTool(signal, () => setExerciseDialog(true), false),
+    passages: (signal) => openPracticeTool(signal, () => setPassageDialog(true)),
+    fingering: (signal) => openPracticeTool(signal, () => { setSelectedNote(null); setFingeringDialog(true); }),
+    hands: (signal) => openPracticeTool(signal, () => setHandsDialog(true), false),
+    meter: (signal) => openPracticeTool(signal, () => setMeterDialog(true), false),
+    scores: (signal) => openPracticeTool(signal, () => setScoresDialog(true), false),
+    metadata: (signal) => openPracticeTool(signal, () => { setMetadataDraftPath(null); setMetadata(true); }, false),
+    keyboard: (signal) => openPracticeTool(signal, () => setView("keyboard"), false),
+    score: (signal) => openPracticeTool(signal, () => setView("score"), false),
+    libraryPanel: async () => { await chooseFile(); return true; },
+    inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
+    devices: () => openSoundSettings(),
+    display: () => setDisplayDialog(true),
+    silence: () => action({ type: "panic" }),
+  }, {
+    engine: !connected ? "练习室连接中断，请等待重新连接。" : binding ? "正在读取当前练习，请稍后再试。" : !startupReady ? "练习室正在恢复，完成后可使用。" : operationBusy ? "正在处理练习资料，请等待当前操作完成。" : null,
+    idle: state.recording ? "请先停止并保存当前录音。" : null,
+    loaded: !song ? "请先打开一首曲目。" : null,
+    song: !song || !song.notes.length ? "请先打开一首可演奏的曲目。" : null,
+    editable: attemptLocked ? "请先结束当前计划、阶梯或完整演奏，再修改练习条件。" : null,
+    score: !song?.hasScore ? "请先在乐谱管理中配对 MusicXML 或 MXL 乐谱。" : null,
+  }, display.shortcuts);
+  const openingActive = opening;
+  songOpeningActive.current = openingActive;
+  useEffect(() => {
+    if (openingActive) {
+      playbackAdjustments.cancel();
+      invalidateKeyboardActions();
+      clearLiveNotes();
+    }
+  }, [openingActive, clearLiveNotes]);
+  const {goHome,openFreePlay,resumePractice}=useProductNavigation({
+    screens:productScreens,changeWorkspace,run,clearLiveNotes,closeMenu:()=>setAppMenuOpen(false),
+  });
+  const goHomeRef=useRef(goHome);goHomeRef.current=goHome;
+  productActions.current={browse:goHome,resume:resumePractice};
+  return {
+    appMenuOpen,
+    setAppMenuOpen,
+    workspaceSessions,
+    workspace,
+    productScreens,
+    songSetup,
+    setSongSetup,
+    bookmarkNavigation,
+    display,
+    setDisplay,
+    displayDialog,
+    setDisplayDialog,
+    displaySection,
+    setDisplaySection,
+    performanceSize,
+    view,
+    setView,
+    seconds,
+    setSeconds,
+    playback,
+    getBoundSong,
+    state,
+    setState,
+    song,
+    refreshSession,
+    refreshConfirmedSession,
+    installSession,
+    binding,
+    connected,
+    health,
+    error,
+    setError,
+    editors,
+    songOptions,
+    setSongOptions,
+    setScoresDialog,
+    fingeringDialog,
+    setFingeringDialog,
+    fingeringWorkbenchOpen,
+    setFingeringWorkbenchOpen,
+    songOpeningActive,
+    onNote,
+    pointerNote,
+    clearLiveNotes,
+    sessionRecovery,
+    startupReady,
+    setBusy,
+    scoreToolRequest,
+    clearScoreToolRequest,
+    progressEngineId,
+    operationBusy,
+    busy,
+    commandsOpen,
+    setCommandsOpen,
+    aboutOpen,
+    setAboutOpen,
+    editDraftsOpen,
+    setEditDraftsOpen,
+    metadataDraftPath,
+    setMetadataDraftPath,
+    recentCommands,
+    setRecentCommands,
+    settingsTab,
+    setSettingsTab,
+    settingsDevice,
+    openSoundSettings,
+    settingsReturnToScores,
+    setSettingsReturnToScores,
+    settings,
+    setSettings,
+    editFingers,
+    setEditFingers,
+    selectedNote,
+    setSelectedNote,
+    exerciseDialog,
+    setExerciseDialog,
+    metadata,
+    setMetadata,
+    fingeringDraft,
+    setFingeringDraft,
+    passageDialog,
+    setPassageDialog,
+    progressOpen,
+    setProgressOpen,
+    recoveryOpen,
+    setRecoveryOpen,
+    paperRevision,
+    setPaperRevision,
+    mediaExport,
+    setMediaExport,
+    notice,
+    setNotice,
+    pianoViewport,
+    pianoRange,
+    changePianoViewport,
+    outsidePianoRange,
+    recital,
+    loopStart,
+    setLoopStart,
+    loopEnd,
+    setLoopEnd,
+    practiceRange,
+    requestBusy,
+    run,
+    action,
+    adjustRealtime,
+    changeWorkspace,
+    workspaceUnavailable,
+    resumeEditingSong,
+    songFilesOpen,
+    setSongFilesOpen,
+    recentFiles,
+    forgetRecent,
+    openPath,
+    chooseFile,
+    launchPracticeTool,
+    scorePairing,
+    keyboardContext,
+    exportMidi,
+    fullscreen,
+    openWork,
+    openRecovery,
+    recoverSession,
+    commandActions,
+    openingActive,
+    goHome,
+    openFreePlay,
+    resumePractice,
+  };
+}
+export type AppModel = ReturnType<typeof useAppModel>;
