@@ -101,8 +101,18 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 
 ### 3.5 前端与演奏舞台
 
-- **外壳**：`AppShell` + 屏幕状态机（Home / SongSelect / SongSetup / Tracks / HandSplit / Play / FreePlay / Settings）。删除 workspace 层。
-- **状态**：按领域划分的少量 store（song、playback、settings、library），组件直接订阅。
+- **两种界面形态**（用户 2026-11-21 决定）：
+  - **曲库工作台**：参照 Serpent（`D:\manage\_tools\Serpent`）的布局与交互，不沿用其美术。取代原 Synthesia 式的主页 / 选曲 / 歌曲设置三屏。
+  - **演奏舞台**：全屏，保留 Synthesia 式的演奏布局（顶部工具条、时间线、谱面、瀑布、琴键）。
+- **工作台布局**：
+  - 顶栏：后退 / 前进（所有标签页共享一条历史）、工作区标签页、全局搜索、左右栏开关。
+  - 左栏：入口（最近练习、全部曲目、导入收件箱）→ 曲库文件夹树（扫描根，带曲目计数，原地重命名，拖放）→ 标签树（层级，原地编辑，拖曲目到标签即打标）→ 自动任务（分组列表 + 开关，点击打开参数配置窗口；对应分析服务：和弦识别、伴奏对齐、生成谱面、手别分离、目录扫描）。
+  - 中栏：标题与计数、视图切换（列表：标题 / 艺人 / 时长 / BPM / 调 / 已有图层徽标；网格：卡片）、尺寸滑块、筛选条（标签、调、BPM 范围、时长、已有图层、来源）、排序、多选（Shift / Ctrl / 框选）、右键菜单。
+  - 右栏 Inspector：曲目信息（可编辑）、版本（原调 / 转调 / 量化，切换采用）、图层状态（谱面、和弦、歌词、伴奏、指法：已有 / 缺失 / 生成按钮）、音轨与手别摘要、练习入口（观看 / 左手 / 右手 / 双手 → 进入演奏舞台）、文件位置。多选时显示混合值并批量编辑。
+  - 搜索语法：`field:value`、`-` 排除、`|` 或、括号、引号；字段如 `key:D`、`bpm:>90`、`has:chords`、`tag:流行`。
+  - 栏宽拖拽、拖过最小宽度自动隐藏、双击复位；宽度持久化；窄窗口时两侧栏变浮层。
+- **从 Serpent 移植**（MIT，可并入 GPL，NOTICE 记录来源与提交）：栏宽拖拽与自动隐藏、工作区标签页与共享历史模型、虚拟化窗口与网格几何、尺寸档位、选择与框选、搜索表达式解析器、标签树模型、自动任务分组模型、键盘 roving 焦点、Popover。全部是纯 TS 模块，带单测，类型泛化为 `Item` / `Location` 后接入。Serpent 的 App.tsx 单体组装方式、全局 CSS 与 props 传递不移植。
+- **状态**：zustand 领域 store（library、selection、workspace、playback、settings）；工作区标签页快照（位置、筛选、搜索、选择、滚动）由 workspace store 管理；选择驱动 Inspector。组件直接订阅，不逐层传 props。
 - **传输**：`api.ts` 只有 `send(command)` 一个出口，启动时选定 Tauri 或 HTTP（浏览器调试与 Playwright 用）。
 - **设计系统**：`tokens.css` 单一来源；基础组件 Button、IconButton、Toggle、Slider、Select、Popover、Menu、Dialog、List、Card；组件样式与组件同目录，只用 token。
 - **目录**：`src/app`、`src/ui`、`src/screens/<屏幕>`、`src/stage`、`src/notation`、`src/engine`。`src/` 根目录不放业务组件。
@@ -137,7 +147,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | --- | --- | --- | --- |
 | R0 基线清理 | 删除死 crate、旧原生应用、前端不可达代码、重复文档；重写计划；磁盘清理 | 构建通过；文档只有一套计划 | 已完成 |
 | R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；合并存储事务；拆分 `lib.rs`；删除一次性迁移代码；DuET 独立 venv 与可配置路径 | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 下一步 |
-| R2 前端骨架与设计系统 | tokens、基础组件、AppShell、屏幕状态机、领域 store、单一 `send()`、状态推送；四个主屏重写 | `App.tsx` < 300 行；CSS 全部基于 token；主流程四屏按参照图重做并通过视觉验收 | 待开始 |
+| R2 曲库工作台与设计系统 | tokens、基础组件、zustand store、单一 `send()`、状态推送；移植 Serpent 工作台模块；三栏外壳、文件夹 / 标签树、列表 / 网格、筛选与搜索、Inspector、工作区标签页；工作台 → 演奏舞台的进入与返回 | `App.tsx` < 300 行；CSS 全部基于 token；旧主页 / 选曲 / 歌曲设置三屏删除；180 首以上曲库流畅浏览；视觉验收 | 待开始 |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 待开始 |
 | R4 分层歌曲模型与统一导入 | `panthesia-notation`；Song 图层与来源信息；ABC 导入；MIDI meta（歌词、标记、调号）读入；歌曲包识别；元数据收敛；语料回归 | 第 3.6 节样本全部可导入；同一首歌从 MIDI / MusicXML / ABC 进入后都能播放、显示谱面、转调、量化 | 待开始（可与 R2 并行） |
 | R5 谱面显示 | 谱面窗口化、跟随、只读阅读器；从 Score IR 生成 | 长谱流畅翻页与跟随；转调后谱面与演奏一致 | 待开始 |
@@ -147,13 +157,27 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R9 自由演奏与录音 | UI08：录音、量化保存、重开 | 录音保存为歌曲后可正常练习 | 待开始 |
 | R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 待开始 |
 
-顺序：R1 → R2 → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3。
+顺序：R1 → R2 → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3。单会话连续执行时按 R1 → R2 → R4 → R3 → R5 → R6 → R7 → R8 → R9 → R10 推进。
+
+### R1 任务分解
+
+按顺序做，每项完成即提交：
+
+1. **评分时代命令**：`panthesia-engine/src/practice_policy.rs` 拒绝的命令（Save、Feedback、SongExpressionGoal、Ladder、Routine、ComposePassages、AcceptWeakPractice、HistoryProblemPlan、MultiProblemPlan、SongLearning）从 `protocol.rs` 删除，连同实现模块：`routine_*`（commands 1715、edit 687、loading 684、reader 231、protocol 171 行）、`ladder_commands`、`weak_practice`、`expression_goal`、`expression_review`、`song_learning`、`song_learning_evidence`、`history_problem_plan`、`history_problem_cuts`、`history_multi_plan`、`round_analysis`；core 的 `speed_ladder`。`Mode`/`Adaptive`/`LoopRestartErrors` 的归一化改为协议层只接受 wait/listen。最后删除 `practice_policy.rs`。
+2. **历史回放与表现记录**：engine 的 `history_*`（loading 1028、commands 539、reader 448、replay_loading 611 等）、`performance_archive*`、`replay_*`；core 的 `practice_history`（2220 行）中仅供回放的部分；前端 `features/review/`、`HistoryDialog` 相关、`Notation.tsx` 中的 ScoreHistoryReview 与 HistoryReplayTransport、对应 spec。录音（R9 需要）与普通播放捕获不删。
+3. **一次性迁移**：`legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration`、`library_repairs` 及 examples 中的迁移脚本。保留 `.neothesia.ron` 与 Synthesia 资料的**导入器**（它们是导入来源，不是迁移）。先确认真实资料在当前格式下读取不依赖这些模块。
+4. **`practice_backup*`**（约 4000 行）：判断是否只服务于评分历史；是则删除，否则收缩为"歌曲与资产备份"，与整歌归档（`song_archive`）合并为一条路径。
+5. **存储事务合并**：`asset_edit`、`round_storage`、`pending_save`、`operation_journal`、`storage_control`、`storage_recovery`、`storage_close`、`state_order`、`state_projection` 及桌面端 `desktop_close.rs`。目标：SQLite 事务 + 内容寻址文件 + 一个写入服务；关窗只等待这一个服务。
+6. **拆分 `lib.rs`**（4438 行）：`Player` 与命令分派分离，按领域分模块（library、playback、sound、notation、import、annotations）。
+7. **前端残留**：删除对已删命令的调用、`api.ts` 中对应函数、生成协议后不再存在的类型；`npm run protocol:generate` 重新生成。
+8. **后台工具**：DuET 使用独立 venv；`duet_runtime.rs` 中 Python 与模型路径改为设置项，删除 `D:\cs\...` 硬编码默认值。
+9. **收尾**：engine 目标 < 5 万行；清除全部 dead-code 警告；更新 `architecture-decisions.md` 中与已删模块相关的条目。
 
 ## 5. 固定约束（用户决定）
 
-- 前端布局、层级、导航参照 Synthesia 官方截图（`work/original-product-reset/references`，不随包分发）。Panthesia 品牌、简体中文。
+- 曲库与管理界面采用 Serpent 式三栏工作台的布局与交互（2026-11-21 起，取代 Synthesia 式主页 / 选曲 / 歌曲设置）；演奏舞台保留 Synthesia 式布局（参考图 `work/original-product-reset/references`，不随包分发）。只借布局与交互，美术自行设计。Panthesia 品牌、简体中文。
 - 速度单位为 BPM。
-- 删除"全部歌曲""入门练习"分类、八秒试听、常驻预览侧栏。
+- 删除"入门练习"分类与八秒试听。工作台的"全部曲目"入口与右侧 Inspector 属于新布局，取代原先对"全部歌曲"分类与常驻预览侧栏的删除决定；Inspector 显示详情与操作，不自动试听。
 - 文件操作放在右键菜单（资源管理器定位、查看版本）。
 - 主线只有连续播放与等待按键两种模式。评分、达标、日课、晋级、历史回放与表现记录只在 `feature/assessment-lab`。
 - 数据不要求完整：缺少的图层不阻塞练习，界面只显示存在的内容。

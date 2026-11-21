@@ -2,6 +2,16 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · 交接准备与界面方向调整
+
+- `bilibili_toolkit` 提交 9c6e7b6（分块 Range 下载 + 镜像切换，以及之前未提交的 ASR 工作）。
+- `cargo clean` 后用 `scripts/build-practice.ps1 -Target Desktop -Configuration Debug` 完整构建通过（约 2 分钟），构建缓存已预热。
+- 真实资料备份：`work/user-data-backup/com.ubik.neothesia-20261121.zip`（31 MB）。
+- `AGENTS.md` 增加"长期自主执行"协议；`current-plan.md` 增加 R1 任务分解。
+- 用户决定：曲库与管理界面改为 Serpent 式三栏工作台（只借布局与交互，不借美术），演奏舞台保留 Synthesia 式。调研见 research-2026-11.md 第 8 节，规格见 current-plan.md 第 3.5 节，R2 改为"曲库工作台与设计系统"。
+
+下一入口：R1 第 1 项（评分时代命令与模块删除）。
+
 ## 2026-11-21 · 技术调研与分层歌曲模型
 
 - 用户决定：虚拟双手自行实现；历史回放与表现记录移出主线；浏览器调试模式保留在单一 `send()` 后。

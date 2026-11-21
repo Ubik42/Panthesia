@@ -36,6 +36,21 @@ cd panthesia-web; npm run build          # 协议校验 + tsc + vite
 
 协议：`panthesia-engine/src/protocol.rs` 的 `Command` 枚举由 `panthesia-web/scripts/generate-protocol.mjs` 生成 `src/engine/commands.generated.ts`。改 Rust 协议后运行 `npm run protocol:generate`。
 
+## 长期自主执行
+
+用户要求连续开发时按此执行，不逐步请示。
+
+1. **开始**：读 `current-plan.md` 第 4 节与 `progress.md` 最新一条，看 `git status` 与当前分支。工作分支为 `refactor/cleanup-baseline`，不切回 `main`、不合并、不推送。
+2. **每批**：取当前阶段的下一组关联任务，完整做完（实现 → 接入 → 删除旧路径）。一批约 1–3 小时的实际改动量，不把拆一个文件当作一批。
+3. **检查**：`cargo check --workspace --all-targets` 与 `npm run build` 必须通过；改到的 crate 跑 `cargo test -p <crate>`；前端行为改动用浏览器调试模式（`Open-Web.cmd`）或桌面构建实际看一次。
+4. **提交**：每批一个或几个提交，信息写清做了什么、为什么。随后在 `progress.md` 追加记录（日期、提交、完成内容、未完成、下一入口）；阶段完成时更新 `current-plan.md` 第 4 节状态。
+5. **继续**：直接开始下一批。阶段完成后按第 4 节顺序进入下一阶段。
+6. **停下来问用户的情况只有**：要删除或改写用户数据而无法回退；要做计划外的产品范围变化；要推送、发布或调用付费服务；同一问题连续三次方案失败。其他技术决定自行判断，并在 `progress.md` 写明理由。
+
+用户数据：真实资料在 `%APPDATA%\com.ubik.neothesia`（旧 ID，由 `product::profile_root` 选中），备份在 `work/user-data-backup/com.ubik.neothesia-20261121.zip`。开发测试一律设置 `PANTHESIA_DATA_ROOT` 指向 `work/` 下的临时目录，不在真实资料上做实验。迁移代码必须先在其副本上跑通。
+
+测试语料：`D:\Music\MIDI`（见 `current-plan.md` 第 3.6 节），只读。
+
 ## 规则
 
 - 保护用户数据：MIDI、谱面、标注、设置、录音。改存储格式必须带迁移且可回退。
@@ -43,4 +58,4 @@ cd panthesia-web; npm run build          # 协议校验 + tsc + vite
 - 前端：样式只用 `tokens.css` 中的变量，不写硬编码颜色与 `!important`；业务组件放 `src/screens`、`src/stage` 等目录，不放 `src/` 根目录。
 - 评分、达标、日课类功能不进入主线（在 `feature/assessment-lab`）。
 - 不推送、不发布，除非用户明确要求。
-- 文档用简体中文，直接陈述事实，不写过程流水与自我证明。
+- 对用户的回复、文档和界面一律使用简体中文（代码标识符与提交信息可用英文），直接陈述事实，不写过程流水与自我证明。

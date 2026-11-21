@@ -96,3 +96,22 @@ Rust 生态没有可直接用的符号域和声分析库（`kord` 只解析和�
 | `Datasets` | POP909（和弦/调/拍标注）、Hooktheory（和声 JSON）、MAESTRO（`.midi`，踏板）、GiantMIDI、Mutopia、Open_Pop_Style、`catalog.csv` | 和弦识别验证；性能与解析回归 |
 
 没有 ABC 文件，没有歌词。代表性测试子集见 current-plan.md 第 3.6 节。
+
+## 8. Serpent 工作台布局（`D:\manage\_tools\Serpent`）
+
+技术栈：Electron + Node + React + TypeScript，MIT，约 32 万行（上游 dolag233/Serpent，本地为 Ubik42 个人版）。后端是 Node（better-sqlite3、sharp），不是 Rust，与 Panthesia 无法共用后端。
+
+布局：顶栏（后退 / 前进、库切换、工作区标签页、搜索、左右栏开关）+ 左栏（入口、文件夹树、标签树、自动任务）+ 中栏（等高行网格 / 瀑布流、尺寸滑块、筛选条、排序）+ 右栏 Inspector（预览、标签、评分、描述、属性）。没有列表视图，画布没有方向键导航。
+
+代码结构：
+
+- 好的部分是一批纯 TS 模块，带单测：栏宽拖拽与自动隐藏（`panel-drag-session`、`panel-auto-hide`、`shell-preferences`）、工作区标签页与共享历史（`workspace-tabs`、`workspace-nav-history`、`use-workspace-tabs`）、自研虚拟化（`virtual-browse-canvas`、`asset-grid-layout`、`card-size-stops`）、选择与框选（`useAssetSelection`、`marquee-*`）、搜索表达式解析器（`shared/search-expression.ts`，递归下降，带位置诊断）、标签树模型、自动任务分组模型。
+- 差的部分：`App.tsx` 17,673 行，233 个 useState，状态全部集中再经 props 下传；`styles.css` 20,113 行全局 CSS，结构与美术混写；Inspector、侧栏、筛选栏都是 60–150 个 props 的受控大组件。
+- 后端边界干净：渲染层只通过 `SerpentLibraryApi` 接口（zod 校验的 `type` 判别联合请求 + `Result` 返回）访问主进程，不直接依赖 Electron。
+
+能否做成共用框架：
+
+- 后端不能共用（Node 与 Rust）。可共用的是前端工作台层：外壳、面板、标签页、虚拟化、选择、搜索解析、树、Popover、设计 token 的结构约定，加上"一个 API 接口 + 判别联合请求 + Result"的传输模式。
+- 现在不在 Serpent 内部抽包：App.tsx 单体需要大面积重构，且 fork 的高频冲突文件（App.tsx、NavigationSidebar、styles.css）会让以后每次合并上游都冲突。
+- 做法：把上述纯模块复制进 Panthesia `src/workbench/`，类型泛化为 `Item` / `Location`，用 zustand store 承接状态，组件按 Panthesia 领域重写。NOTICE 记录来源提交。等 Panthesia 的 `src/workbench/` 稳定、有第三个应用要用时，再抽成独立包（`@ubik/workbench`），并让 Serpent 反向接入。
+- 估计工作量 3–4 周（纯模块移植 3–5 天；外壳与结构 CSS 1 周；侧栏、筛选、Inspector 按曲库领域重写 1–2 周）。
