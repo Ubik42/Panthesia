@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
-import { api, type EngineCommand, type LoadedSong, type Snapshot } from "../../api";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
+import {
+  api,
+  type EngineCommand,
+  type LoadedSong,
+  type Snapshot,
+} from "../../api";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
 import type { RecentFile } from "./HomeScreen";
 
@@ -24,13 +35,19 @@ export function useSongOpening(o: {
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [opening, setOpening] = useState(false);
   const refreshRecent = useCallback(() => {
-    void api.command<RecentFile[]>({ type: "recentFiles" }).then(setRecentFiles).catch(() => {});
+    void api
+      .command<RecentFile[]>({ type: "recentFiles" })
+      .then(setRecentFiles)
+      .catch(() => {});
   }, []);
   useEffect(() => {
     if (o.connected && o.startupReady) refreshRecent();
   }, [o.connected, o.startupReady, refreshRecent]);
 
-  const openPath = async (path: string, screen: "setup" | "performance" = "setup") => {
+  const openPath = async (
+    path: string,
+    screen: "setup" | "performance" = "setup",
+  ) => {
     if (o.requestBusy.current || o.songOpeningActive.current) return false;
     if (!o.connected || !o.startupReady) {
       o.setNotice("练习室连接完成后可打开曲目。");
@@ -54,18 +71,27 @@ export function useSongOpening(o: {
     o.showOpened(screen);
     // Report manifest problems once; details are in the song files dialog.
     const files = await api
-      .command<{ files?: { missing: boolean }[]; unmatched?: number }>({ type: "songFiles" })
+      .command<{ files?: { missing: boolean }[]; unmatched?: number }>({
+        type: "songFiles",
+      })
       .catch(() => null);
     const missing = files?.files?.filter((file) => file.missing).length ?? 0;
-    const problems = [missing ? `${missing} 个文件缺失` : "", files?.unmatched ? `${files.unmatched} 条标注无法对应到音符` : ""].filter(Boolean);
-    if (problems.length) o.setError(`歌曲清单中${problems.join("，")}；可在歌曲设置的“歌曲文件与版本”中查看。`);
+    const problems = [
+      missing ? `${missing} 个文件缺失` : "",
+      files?.unmatched ? `${files.unmatched} 条标注无法对应到音符` : "",
+    ].filter(Boolean);
+    if (problems.length)
+      o.setError(
+        `歌曲清单中${problems.join("，")}；可在歌曲设置的“歌曲文件与版本”中查看。`,
+      );
     return true;
   };
   const openPathRef = useRef(openPath);
   openPathRef.current = openPath;
 
   const chooseFile = async () => {
-    if (o.requestBusy.current || o.busy || !o.startupReady || o.recording) return false;
+    if (o.requestBusy.current || o.busy || !o.startupReady || o.recording)
+      return false;
     const path = api.desktop
       ? await api.pickSongFile("music", o.song?.sourcePath ?? undefined)
       : window.prompt("MIDI、MusicXML 或 .panthesia 文件的完整路径")?.trim();
@@ -92,10 +118,12 @@ export function useSongOpening(o: {
     let release: (() => void) | undefined,
       active = true;
     void import("@tauri-apps/api/event").then(({ listen }) =>
-      listen("panthesia://open-requested", () => void takeOpenRequests()).then((stop) => {
-        if (active) release = stop;
-        else stop();
-      }),
+      listen("panthesia://open-requested", () => void takeOpenRequests()).then(
+        (stop) => {
+          if (active) release = stop;
+          else stop();
+        },
+      ),
     );
     return () => {
       active = false;
@@ -104,7 +132,10 @@ export function useSongOpening(o: {
   }, [takeOpenRequests]);
 
   const forgetRecent = (path: string) =>
-    void api.command<RecentFile[]>({ type: "forgetRecentFile", path }).then(setRecentFiles).catch(() => {});
+    void api
+      .command<RecentFile[]>({ type: "forgetRecentFile", path })
+      .then(setRecentFiles)
+      .catch(() => {});
 
   return { recentFiles, forgetRecent, opening, openPath, chooseFile };
 }
