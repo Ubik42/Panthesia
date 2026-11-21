@@ -70,12 +70,15 @@ fn resolve(settings: &Settings) -> Effective {
     let (python, python_source) = choose(
         "PANTHESIA_DUET_PYTHON",
         &settings.python,
-        tools.join("_reference/Transkun/.venv/Scripts/python.exe"),
+        tools.join("_reference/DuET/.venv/Scripts/python.exe"),
     );
     let (model, model_source) = choose(
         "PANTHESIA_DUET_MODEL",
         &settings.model,
-        PathBuf::from(r"D:\cs\_tools\_reference\_models\music-transcription\DuET"),
+        // Shared models stay in one machine-wide library; the program only keeps a reference.
+        panthesia_core::product::env_os("PANTHESIA_MODELS_ROOT")
+            .map(|root| PathBuf::from(root).join("music-transcription").join("DuET"))
+            .unwrap_or_default(),
     );
     Effective {
         python,
@@ -90,10 +93,12 @@ fn issues(runtime: &Effective) -> Vec<String> {
     if !runtime.python.is_file() {
         issues.push("Python 程序未找到，请选择已安装 DuET 的 Python。".into());
     }
-    if !runtime.model.join("model.safetensors").is_file() {
+    if runtime.model.as_os_str().is_empty() {
+        issues.push("尚未设置 DuET 模型目录，请在设置中选择，或设置 PANTHESIA_MODELS_ROOT。".into());
+    } else if !runtime.model.join("model.safetensors").is_file() {
         issues.push("模型目录缺少 model.safetensors。".into());
     }
-    if !runtime.model.join("config.json").is_file() {
+    if !runtime.model.as_os_str().is_empty() && !runtime.model.join("config.json").is_file() {
         issues.push("模型目录缺少 config.json。".into());
     }
     if !["auto", "cuda", "cpu"].contains(&runtime.device.as_str()) {

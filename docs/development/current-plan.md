@@ -21,7 +21,7 @@ Panthesia 是开源的 Windows 钢琴练习软件。核心是好的练琴体验�
 | 引擎 `panthesia-engine` | 约 7.6 万行 | `lib.rs` 4438 行；评分时代代码约 1 万行仍编译、运行时由 `practice_policy.rs` 拒绝；五套"意图文件 + 恢复"存储机制；一次性迁移代码在主路径 |
 | 核心 `panthesia-core` | 约 2.6 万行 | 乐谱 IR、练习判定、历史、练习曲生成、曲库格式混在一个 crate；四套类型描述"作品 / 版本 / 谱面" |
 | 音乐模型 | — | 演奏模型与乐谱模型并行，由对齐表连接；MIDI 生成谱面时直接输出 MusicXML 文本；**ABC 导入不存在** |
-| 后台工具 | — | 转录链路在仓库外（`D:\Music\_tools\music-transcription`）；DuET 借用 Transkun 的 venv，模型路径硬编码 `D:\cs\...` |
+| 后台工具 | — | 转录链路在仓库外（`D:\Music\_tools\music-transcription`）；DuET 使用独立 venv（`_reference/DuET/.venv`），模型按设置项 → `PANTHESIA_MODELS_ROOT` 共享模型库查找（R1 完成） |
 | 测试 | 110 个 Playwright spec | 需要手动启动 Vite 与 HTTP 引擎；依赖中文文案与 CSS 类名；没有基于真实语料的回归 |
 
 保留价值高的部分：`panthesia-music`（tick 时间、稳定 NoteId）、PlaybackSession、MusicXML 解析与反复展开、Verovio 渲染链、MIDIVisualizer 光效着色器、Synthesia 参考截图与交互规范。

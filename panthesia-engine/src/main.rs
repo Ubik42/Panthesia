@@ -24,11 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .unwrap_or_else(|| PathBuf::from(r"D:\Music\MIDI\Datasets"));
     let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT")
         .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            let current=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/web-data");
-            let legacy=PathBuf::from(r"D:\Music\_tools\Neothesia\work\web-data");
-            if !current.exists() && legacy.is_dir() { legacy } else { current }
-        });
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/web-data"));
     let font = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2");
     if args.iter().any(|a| a == "--audio-probe") {
         panthesia_engine::probe_audio(&font)?;
