@@ -2,8 +2,9 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [current-plan.md](current-plan.md) | 长期目标、现状诊断、目标架构、阶段 R0–R8、用户决定的约束。唯一任务队列 |
+| [current-plan.md](current-plan.md) | 长期目标、现状诊断、目标架构、阶段 R0–R10、用户决定的约束。唯一任务队列 |
 | [progress.md](progress.md) | 每轮进度记录 |
+| [research-2026-11.md](research-2026-11.md) | 技术调研：和弦级数参考视频、和弦与段落识别、伴奏同步、MIDI 整理、Transkun、本地语料 |
 | [interaction-model.md](interaction-model.md) | Synthesia 参照页 UI00–UI09、主流程、用户授权的差异 |
 | [architecture-decisions.md](architecture-decisions.md) | 架构决策 A01–A21（R1/R2 后按新架构修订） |
 | [music-domain.md](music-domain.md) | tick 时间、稳定 NoteId、标注 v2、归档协议 |
