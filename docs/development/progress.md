@@ -2,6 +2,23 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 6 项：迁移真实资料，R2 完成（提交 8e0b047、224e00e、a756bca、c758201）
+
+- 迁移前完整备份：`work/user-data-backup/com.ubik.neothesia-20261121-before-migration.zip`（4221 个文件，与源目录一致）。
+- 有用户数据的歌曲 16 首：
+  - 5 首内置练习：标题、分手与配对谱面写入资料目录中歌曲旁的清单，谱面引用旁边已有的同内容 `.musicxml`。
+  - 10 首在 `D:\Music\MIDI` 下：分手图层写入歌曲旁的清单。同一内容有两份副本的歌曲（Libera me, Domine）两处都写了清单。
+  - 1 首（爱转角_清理后主旋律）原文件与曲库副本都已不存在，只剩偏好，无文件可迁，没有导出任何歌曲。
+- 练习设置仍按内容 id 存在 `web-preferences.json`，首次打开时由引擎写入已有清单。偏好中指向 `library/` 的 6 处路径改到新位置；`recent-files.json` 用迁移的歌曲初始化（原来的选曲列表随曲库删除）。
+- 过程：一次性工具 `migrate_library` 与 `verify_migration`。先在备份副本上运行，外部歌曲先复制到 `work/` 下的镜像目录，删除副本的 `library/` 后用引擎逐首打开核对；再对真实资料执行。核对内容为清单读回与写入一致、清单引用的文件存在、练习设置一致。两处差异属于正常规范化：`adaptive` 属于已删除的评分模式；`parts` 原来为空，由分手图层填入。两次核对 15 首全部通过。工具在之后的提交中删除，可在提交历史中找回。同时删除引擎中已无引用的 `rusqlite` 依赖。
+- 资料目录整理：删除旧 `library/`；旧曲库状态文件（`library-workspace.json`、`library-monitor-files.json`、`repertoire.json`、`synthesia-discovery.json`、`library-open-results/`）与历史回放数据 `performance-history/` 移到 `legacy/`，不解析。`web-practice-history.ron` 主线仍在读取，保留原位。
+- 代码中删除旧曲库布局：谱面查找不再回退到 `library/assets/notation`；标注文档只用于技术练习（`exercises/`）；文件位置记忆删除已删功能的类别（曲库、曲目包、重新定位、备份导入）。
+- 修正测试：MuseScore 转谱测试原来直接打开仓库里的 `five-finger.mid`，保存谱面版本时副本写进了仓库，现改为在临时目录中使用副本。
+- 阶段检查：`cargo test --workspace` 全部通过（core 271、desktop 18、engine 98 等）；桌面 Debug 构建以真实资料启动，从命令行打开迁移后的歌曲，最近打开记录更新，日志无错误，正常关闭。
+- 计划：R2 标为完成；RF 的"`App.tsx` < 300 行"改为职责描述（只组合各屏与全局状态），理由同上一条。
+
+下一入口：RF 前端基础，先列出并删除随曲库、选曲、导入、评分、历史一起失去用途的对话框与 CSS。
+
 ## 2026-11-21 · R2 第 5 项（三）：拆分 `lib.rs`，谱面副本跟随歌曲（提交 df49b02、f297b95、e7d6087）
 
 - `lib.rs` 3.2k → 246 行：`Player` 与播放状态移到 `player.rs`，命令分派移到 `player_commands.rs`，测试移到 `player_tests.rs`；`lib.rs` 只声明模块与 `Engine` 入口。
