@@ -62,15 +62,6 @@
 .practice-panel > .practice-setup-summary {
   display: none;
 }
-.practice-panel .song-toolbar {
-  min-height: 54px;
-  background: #282d34;
-  padding: 8px 14px;
-}
-.practice-panel .current-song h1 {
-  font-size: 16px;
-  margin: 0 0 3px;
-}
 .practice-panel .practice-view-toolbar {
   min-height: 37px;
   height: auto;
@@ -135,96 +126,6 @@
   padding: 10px 14px;
   gap: 10px;
 }
-.transport-mode-switch {
-  display: flex;
-  align-items: stretch;
-  border: 1px solid #5a6673;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.transport-mode-switch button {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #bcc6d0;
-  padding: 8px 10px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.transport-mode-switch button + button {
-  border-left: 1px solid #5a6673;
-}
-.transport-mode-switch button[aria-pressed="true"] {
-  background: #c6d8cd;
-  color: #172c25;
-  font-weight: 650;
-}
-.scan-folders {
-  flex: none;
-  padding: 8px 6px;
-  border-bottom: 1px solid #3b434d;
-  background: #20252c;
-  font-size: 12px;
-  max-height: 220px;
-  overflow: auto;
-}
-.scan-folders-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 7px 4px;
-  color: #aeb8c3;
-  font-size: 11px;
-}
-.scan-folders > button {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 8px;
-  min-height: 31px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  color: #c6cdd6;
-  text-align: left;
-}
-.scan-folders > button:hover {
-  background: #303943;
-}
-.scan-folders > button.active {
-  background: #3d4a53;
-  color: #f3f6f8;
-}
-.scan-folders > button > span {
-  flex: 1;
-  min-width: 0;
-}
-.scan-folders > button > svg {
-  flex: none;
-  color: #a8bcaa;
-}
-.scan-folders > button > small {
-  font-size: 11px;
-  color: #a2adb8;
-}
-.scan-folders b {
-  font-weight: 500;
-}
-.scan-folder-path {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  color: #8998a6;
-  margin-top: 3px;
-}
-.scan-folders > .scan-folders-manage {
-  font-size: 11px;
-  color: #a5b9c8;
-  padding-left: 30px;
-}
 .practice-welcome-art,
 .practice-welcome-eyebrow {
   display: none;
@@ -262,9 +163,6 @@
   .practice-transport-main {
     flex-wrap: wrap;
   }
-  .transport-mode-switch button {
-    padding: 7px;
-  }
 }
 @media (max-width: 800px) {
   .workspace-topbar .app-name {
@@ -278,12 +176,6 @@
   }
   .practice-transport-main {
     gap: 6px;
-  }
-  .transport-mode-switch {
-    order: 3;
-  }
-  .scan-folders {
-    max-height: 175px;
   }
 }
 

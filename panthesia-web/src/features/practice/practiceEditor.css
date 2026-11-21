@@ -25,30 +25,23 @@
 .practice-editor-dialog .dialog-heading p {
   overflow-wrap: anywhere;
 }
-.practice-editor-dialog .passage-layout,
-.practice-editor-dialog .ladder-layout {
+.practice-editor-dialog .passage-layout {
   grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1.2fr);
   align-items: start;
   overflow: visible;
 }
-.practice-editor-dialog .passage-list,
-.practice-editor-dialog .ladder-library {
+.practice-editor-dialog .passage-list {
   max-height: 63vh;
   overflow: auto;
   min-width: 0;
   scrollbar-width: thin;
   padding-right: 10px;
 }
-.practice-editor-dialog .passage-form,
-.practice-editor-dialog .ladder-editor {
+.practice-editor-dialog .passage-form {
   min-width: 0;
 }
-.practice-editor-dialog .passage-select strong,
-.practice-editor-dialog .ladder-preset strong {
+.practice-editor-dialog .passage-select strong {
   overflow-wrap: anywhere;
-}
-.practice-editor-dialog .ladder-preset .passage-stale {
-  color: #f3c981;
 }
 .practice-draft-strip-heading {
   display: flex;
@@ -237,11 +230,6 @@
   margin-bottom: 0.6rem;
   color: #c3e4d4;
 }
-.ladder-library > .passage-search {
-  display: grid;
-  gap: 0.4rem;
-  padding: 0.6rem 0;
-}
 .practice-settings-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -273,13 +261,11 @@
   .practice-editor-dialog .dialog-heading {
     top: 0;
   }
-  .practice-editor-dialog .passage-layout,
-  .practice-editor-dialog .ladder-layout {
+  .practice-editor-dialog .passage-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
   }
-  .practice-editor-dialog .passage-list,
-  .practice-editor-dialog .ladder-library {
+  .practice-editor-dialog .passage-list {
     max-height: 38vh;
     padding-right: 0;
     border-right: 0;

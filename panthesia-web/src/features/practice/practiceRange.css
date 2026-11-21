@@ -76,18 +76,11 @@
   align-items: center;
   gap: 10px;
 }
-.time-ruler .practice-range-toolbar .time-ruler-practice {
-  margin-right: auto;
-  font-size: 10px;
-}
 .time-ruler .practice-range-toolbar:has(.practice-range-hint) {
   justify-content: flex-start;
 }
 @media (max-width: 720px) {
   .time-ruler .practice-range-toolbar {
     flex-wrap: wrap;
-  }
-  .time-ruler .practice-range-toolbar .time-ruler-practice {
-    display: none;
   }
 }

@@ -1,16 +1,6 @@
 /* Synthesia official UI00/UI03/UI04 structure; Panthesia artwork and Chinese controls. */
-.synthesia-layout [hidden],
-.synthesia-layout .product-browser-host[hidden] {
+.synthesia-layout [hidden] {
   display: none !important;
-}
-.product-browser-host {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-.product-browser-host > .song-browser {
-  width: 100%;
 }
 .product-page {
   display: flex;
@@ -402,28 +392,6 @@
   padding: 10px;
   font-size: 21px;
 }
-.product-song-options {
-  position: absolute;
-  right: 15px;
-  top: 59px;
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  background: #b5cfdb;
-  border: 1px solid #688995;
-  box-shadow: 0 5px 12px #0004;
-  min-width: 260px;
-}
-.synthesia-layout .product-song-options button {
-  font-size: 19px;
-  text-align: left;
-  background: #eee;
-  border: 1px solid #aaa;
-  border-radius: 0;
-  color: #333;
-  padding: 13px 18px;
-}
 .product-freeplay-stage {
   display: flex;
   position: relative;
@@ -713,8 +681,7 @@
   color: #334c58;
   border-color: #9aafb9;
 }
-.product-song-options-dialog .practice-variant,
-.product-song-options-dialog .song-edition-bar {
+.product-song-options-dialog .practice-variant {
   position: relative;
   inset: auto;
   margin: 18px;
@@ -792,47 +759,6 @@
   display: flex;
   flex: 1;
   min-height: 0;
-}
-.product-folder-list {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 25px max(4%, 20px);
-}
-.product-folder-list > article {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 23px 20px;
-  border-bottom: 1px solid #aab0b4;
-  background: #f5f5f5;
-  color: #374e5b;
-}
-.product-folder-list > article > div {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  min-width: 0;
-  flex: 1;
-}
-.product-folder-list strong {
-  font-size: 24px;
-  font-weight: 400;
-}
-.product-folder-list span {
-  font-size: 17px;
-  overflow-wrap: anywhere;
-  color: #617681;
-}
-.product-folder-list small {
-  font-size: 17px;
-}
-.synthesia-layout .product-folder-list button {
-  color: #344c58;
-  background: #e6ecef;
-  border: 1px solid #a9b7be;
-  padding: 8px 20px;
-  font-size: 17px;
 }
 
 .synthesia-library-header.back-on-right > .synthesia-back {
@@ -1092,10 +1018,6 @@
 .product-settings-leaf .computer-key-settings,
 .product-settings-leaf .shortcut-settings {
   color: #2d4350;
-}
-.product-settings-leaf .device-settings-status {
-  padding: 0 32px;
-  flex-shrink: 0;
 }
 @media (max-width: 760px) {
   .product-settings-leaf .browse-detail-workspace {

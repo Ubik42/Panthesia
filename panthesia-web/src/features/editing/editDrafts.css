@@ -236,37 +236,6 @@
   font-size: 12px;
   line-height: 1.6;
 }
-.learning-edit-recovery,
-.learning-edit-conflict {
-  padding: 10px 12px;
-  margin: 10px 0;
-  border: 1px solid #577061;
-  border-radius: 7px;
-  background: #293a31;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.learning-edit-recovery {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.learning-edit-recovery p {
-  flex-basis: 100%;
-  margin: 0;
-}
-.learning-edit-conflict {
-  border-color: #8e724c;
-  background: #3c3326;
-}
-.learning-edit-conflict p {
-  margin: 0 0 8px;
-  overflow-wrap: anywhere;
-}
-.learning-edit-conflict button {
-  margin-right: 8px;
-}
 @media (max-width: 700px) {
   .edit-draft-list li {
     align-items: stretch;

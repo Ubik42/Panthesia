@@ -16,7 +16,6 @@
   margin: 7px 0 12px;
   line-height: 1.65;
 }
-.display-settings-dialog .browse-detail-section > .layout-settings,
 .display-settings-dialog .browse-detail-section > .shortcut-settings,
 .display-settings-dialog .browse-detail-section > .interface-backup-settings {
   margin-top: 0;
@@ -87,22 +86,6 @@
 }
 .display-settings-dialog .computer-key-grid > button {
   min-height: 72px;
-}
-.display-settings-dialog .layout-builtins > button {
-  min-height: 38px;
-}
-.display-settings-dialog .layout-dimensions {
-  gap: 16px;
-  padding: 12px 0;
-}
-.display-settings-dialog .layout-dimensions label {
-  width: calc(50% - 8px);
-}
-.display-settings-dialog .layout-saved {
-  padding: 14px;
-  border: 1px solid #46545f;
-  border-radius: 9px;
-  background: #27313c;
 }
 .display-settings-dialog .interface-backup-preview {
   border-radius: 9px;
@@ -253,18 +236,7 @@
   border-color: #b5e28b;
   box-shadow: 0 0 0 2px #a9df7433;
 }
-.display-settings-dialog .layout-builtins > button[aria-pressed="true"] {
-  color: #dbefc7;
-  background: #3a4a30;
-  border-color: #748f58;
-}
 @media (max-width: 580px) {
-  .display-settings-dialog .layout-dimensions label {
-    width: 100%;
-  }
-  .display-settings-dialog .layout-saved label {
-    min-width: 100%;
-  }
   .display-settings-dialog .interface-layout-row {
     align-items: stretch;
     flex-direction: column;

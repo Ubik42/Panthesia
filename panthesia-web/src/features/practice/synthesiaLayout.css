@@ -52,192 +52,6 @@
 .synthesia-layout .synthesia-library-header button:hover {
   background: #238bb7;
 }
-.synthesia-selected-song {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-  font-size: 18px;
-}
-.synthesia-layout .synthesia-menu-button {
-  font-size: 15px;
-}
-.synthesia-layout .song-browser {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 58px minmax(0, 1fr);
-  background: #efefef;
-}
-.synthesia-layout .browser-content {
-  padding: 0;
-  background: #eee;
-}
-.synthesia-library-navigation {
-  flex: none;
-  display: flex;
-  gap: 10px;
-  padding: 10px 12px;
-  background: #b5cfdb;
-  min-height: 64px;
-  border-bottom: 1px solid #90a4ad;
-}
-.synthesia-breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: 1;
-  min-width: 0;
-  overflow: auto;
-  background: #f0f0f0;
-  border: 1px solid #a7a9aa;
-  border-radius: 9px;
-  padding: 4px 8px;
-}
-.synthesia-breadcrumbs button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex: none;
-  background: transparent;
-  color: #37474f;
-  border: 0;
-  font-size: 18px;
-  padding: 6px 8px;
-}
-.synthesia-layout .browser-search {
-  flex: 0 0 28%;
-  min-width: 180px;
-  padding: 0 12px;
-  margin: 0;
-  background: #f0f0f0;
-  border: 1px solid #a7a9aa;
-  border-radius: 9px;
-  box-shadow: none;
-}
-.synthesia-layout .browser-search input {
-  color: #40484d;
-  font-size: 19px;
-}
-.synthesia-layout .browser-song-list {
-  padding: 0;
-  margin: 0;
-  gap: 0;
-  background: #eee;
-  overflow: auto;
-}
-.synthesia-layout .browser-song,
-.synthesia-layout .browser-directory {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  flex: none;
-  min-height: 62px;
-  padding: 8px 22px;
-  margin: 0;
-  color: #303a40;
-  border: 0;
-  border-bottom: 1px solid #aeb2b5;
-  border-radius: 0;
-  background: #eee;
-  box-shadow: none;
-  text-align: left;
-}
-.synthesia-layout .browser-song:hover,
-.synthesia-layout .browser-directory:hover {
-  background: #dde9ef;
-}
-.synthesia-layout .browser-song.selected {
-  background: #94d2eb;
-  box-shadow: none;
-}
-.synthesia-layout .browser-song-icon {
-  width: 28px;
-  background: none;
-  color: #68767e;
-}
-.synthesia-layout .browser-song-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-}
-.synthesia-layout .browser-song-title strong,
-.synthesia-layout .browser-directory strong {
-  color: inherit;
-  font-size: 20px;
-  font-weight: 400;
-}
-.synthesia-layout .browser-song-title small,
-.synthesia-layout .browser-directory > span {
-  color: #81888c;
-  font-size: 15px;
-}
-.synthesia-layout .browser-directory {
-  color: #2b93bb;
-}
-.synthesia-layout .browser-directory strong {
-  flex: 1;
-}
-.synthesia-layout .browser-current {
-  color: #24708c;
-  background: transparent;
-}
-.synthesia-layout .browser-song-study {
-  font-size: 12px;
-}
-.synthesia-layout .browser-pagination {
-  flex: none;
-  min-height: 58px;
-  padding: 8px 12px;
-  background: #b5cfdb;
-  border: 0;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 15px;
-  align-items: center;
-}
-.synthesia-layout .browser-pagination > button {
-  justify-self: start;
-  background: #147eae;
-  color: white;
-  border: 1px solid #16779c;
-  min-height: 36px;
-  padding: 5px 12px;
-}
-.synthesia-sort {
-  display: flex;
-  gap: 0 !important;
-  border: 1px solid #9aa8af;
-  border-radius: 9px;
-  overflow: hidden;
-}
-.synthesia-layout .synthesia-sort button {
-  border: 0;
-  border-right: 1px solid #aab0b2;
-  border-radius: 0;
-  background: linear-gradient(#eee, #c2c5c6);
-  color: #41484b;
-  min-height: 38px;
-  padding: 6px 18px;
-}
-.synthesia-layout .synthesia-sort button:last-child {
-  border-right: 0;
-}
-.synthesia-layout .synthesia-sort button[aria-pressed="true"] {
-  background: linear-gradient(#acb1b3, #d6d9da);
-  color: #24343c;
-}
-.synthesia-song-count {
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #677c87;
-  font-size: 18px;
-}
 /* One control bar, then the timeline, then score / falling notes / keyboard. */
 .synthesia-layout > .workspace {
   flex: 1;
@@ -614,25 +428,6 @@
 .synthesia-hand-card.left svg {
   transform: scaleX(-1);
 }
-.synthesia-setup-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 15px;
-  padding: 18px;
-  background: #b5cfdb;
-  border-top: 1px solid #9aafb9;
-}
-.synthesia-layout .synthesia-setup-footer button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 17px;
-  font-size: 15px;
-  color: #3a5360;
-  background: #e8eef1;
-  border: 1px solid #9eafb7;
-}
 .synthesia-setup-error {
   padding: 10px;
   text-align: center;
@@ -671,30 +466,8 @@
   .synthesia-layout .synthesia-transport .toolbar-more > summary {
     width: 32px;
   }
-  .synthesia-play-tools > .synthesia-loop,
   .synthesia-play-tools > .synthesia-metronome {
     display: none;
-  }
-  .synthesia-library-navigation {
-    gap: 6px;
-    padding: 8px;
-  }
-  .synthesia-layout .browser-search {
-    flex-basis: 34%;
-    min-width: 130px;
-  }
-  .synthesia-layout .browser-song-title strong,
-  .synthesia-layout .browser-directory strong {
-    font-size: 17px;
-  }
-  .synthesia-layout .browser-pagination {
-    gap: 5px;
-  }
-  .synthesia-layout .synthesia-sort button {
-    padding: 5px 8px;
-  }
-  .synthesia-song-count {
-    font-size: 13px;
   }
   .synthesia-setup-body {
     gap: 25px;
@@ -710,21 +483,6 @@
   .synthesia-wait-options > p {
     font-size: 14px;
   }
-}
-.synthesia-layout .song-browser .browser-song,
-.synthesia-layout .song-browser .browser-directory {
-  border-bottom: 1px solid #b6b6b6;
-}
-.synthesia-layout .song-browser .browser-song.selected {
-  background: #96d4ec;
-  box-shadow: none;
-}
-.synthesia-layout .song-browser .browser-song-icon {
-  background: transparent;
-}
-.synthesia-layout .browser-pagination > button,
-.synthesia-layout .synthesia-sort button {
-  font-size: 14px;
 }
 .synthesia-layout .practice-stage .practice-stage-readouts {
   display: none;

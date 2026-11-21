@@ -3,29 +3,6 @@
   --muted: #a0abc4;
   font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
 }
-.song-browser .browser-list-toolbar button[role="tab"] {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  color: #6d7892;
-  box-shadow: none;
-  font-size: 12px;
-  min-height: 34px;
-}
-.song-browser .browser-list-toolbar button[role="tab"][aria-selected="true"] {
-  background: transparent;
-  box-shadow: inset 0 -2px #6875dc;
-  color: #5364b9;
-}
-.song-browser .browser-song-title strong {
-  font-size: 14px;
-}
-.song-browser .browser-song-title small {
-  font-size: 11px;
-}
-.song-browser .browser-tree-row > button {
-  font-size: 12px;
-}
 .daily-workbench .practice-speed .bpm-number {
   width: 58px !important;
   flex: none;
@@ -44,9 +21,6 @@
   border-color: #6b7bd4;
   color: #fff;
   min-width: 85px;
-}
-.song-browser .browser-song.selected .browser-song-title strong {
-  color: #34446b;
 }
 .device-dialog .device-scan {
   background: #f5f7fc;
@@ -203,41 +177,6 @@ summary:focus-visible {
 .daily-workbench .practice-panel {
   background: #172034;
 }
-.daily-workbench .practice-panel .song-toolbar {
-  min-height: 66px;
-  padding: 12px 22px;
-  gap: 16px;
-  background: #f8f9fc;
-  border-bottom: 1px solid #e3e7f0;
-  color: #566480;
-}
-.daily-workbench .practice-panel .song-toolbar button {
-  background: transparent;
-  border-color: #dce2ed;
-  color: #7b88a2;
-  font-size: 11px;
-}
-.daily-workbench .practice-panel .song-toolbar button:hover {
-  background: #edf0fa;
-  color: #5264bd;
-}
-.daily-workbench .practice-panel .song-toolbar .back-to-library {
-  border: 0;
-  color: #6170a0;
-  padding-left: 0;
-  font-size: 12px;
-  margin-right: 5px;
-}
-.daily-workbench .current-song h1 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #293650;
-  margin: 0 0 6px;
-}
-.daily-workbench .current-song > span {
-  color: #7b879e;
-  font-size: 10px;
-}
 .daily-workbench .practice-panel .practice-view-toolbar {
   padding: 0 22px;
   background: #fff;
@@ -321,10 +260,6 @@ summary:focus-visible {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.time-ruler-practice {
-  font-size: 10px;
-  color: #99a4b9;
-}
 .time-ruler-track {
   position: relative;
   display: flex;
@@ -369,69 +304,6 @@ summary:focus-visible {
   color: #7c89a4;
   font-variant-numeric: tabular-nums;
 }
-.instrument-controls {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  background: #fff;
-  padding: 8px 24px;
-  border-top: 1px solid #e1e6ef;
-  color: #8a97b1;
-  flex: none;
-}
-.instrument-hands {
-  display: flex;
-  gap: 0;
-  border: 1px solid #dce2ed;
-  border-radius: 5px;
-  overflow: hidden;
-}
-.instrument-hands button {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #75819b;
-  padding: 5px 13px;
-  font-size: 11px;
-  min-height: 28px;
-}
-.instrument-hands button[aria-pressed="true"] {
-  background: #ecf0fc;
-  color: #6575c8;
-}
-.instrument-sound {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: transparent;
-  border: 0;
-  color: #7283a2;
-  font-size: 10px;
-  text-align: left;
-  padding: 0;
-  max-width: 35%;
-  min-width: 0;
-}
-.instrument-sound > span:last-child {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.instrument-sound small {
-  display: block;
-  color: #7b8ba8;
-  font-size: 9px;
-  margin-top: 3px;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.instrument-controls button:hover:not(:disabled) {
-  background: #f0f3fc;
-  color: #5969c0;
-}
 .daily-workbench .practice-transport {
   background: #fff;
   border-top: 1px solid #e9edf4;
@@ -467,27 +339,6 @@ summary:focus-visible {
   border-color: #ffffff25;
   color: #cbd2fa;
   font-size: 9px;
-}
-.daily-workbench .transport-mode-switch {
-  border-color: #dce2ef;
-  border-radius: 5px;
-}
-.daily-workbench .transport-mode-switch button {
-  font-size: 11px;
-  color: #70809f;
-  padding: 8px 11px;
-}
-.daily-workbench .transport-mode-switch button + button {
-  border-color: #dce2ef;
-}
-.daily-workbench .transport-mode-switch button[aria-pressed="true"] {
-  background: #eaf0fb;
-  color: #6074ba;
-  font-weight: 500;
-}
-.daily-workbench .transport-mode-switch button:hover {
-  background: #f1f4fc;
-  color: #6074ba;
 }
 .daily-workbench .practice-speed {
   gap: 9px;
@@ -612,56 +463,13 @@ summary:focus-visible {
 }
 .device-dialog .device-help,
 .device-dialog .device-section p,
-.device-dialog .device-operation,
-.device-dialog .device-footer small {
+.device-dialog .device-operation {
   color: #74829d;
   font-size: 11px;
   line-height: 1.7;
 }
-.device-dialog .device-footer {
-  background: #f8fafe;
-  border-color: #e1e7f1;
-}
 .device-dialog .device-section select {
   width: 100%;
-}
-.sound-signal-path {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 17px 18px;
-  background: #f0f3fc;
-  border: 1px solid #e1e7f6;
-  border-radius: 6px;
-  margin-bottom: 15px;
-  color: #b2beda;
-}
-.sound-signal-path > span:not([aria-hidden]) {
-  min-width: 0;
-  flex: 1;
-}
-.sound-signal-path small {
-  display: block;
-  font-size: 10px;
-  color: #7b8dab;
-  margin-bottom: 7px;
-}
-.sound-signal-path strong {
-  display: block;
-  font-size: 12px;
-  color: #5a6d94;
-  font-weight: 550;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sound-signal-path em {
-  display: block;
-  font-size: 9px;
-  color: #7689a9;
-  font-style: normal;
-  margin-top: 7px;
-  line-height: 1.6;
 }
 .device-audio-endpoint {
   border-bottom: 1px solid #e7ebf4;
@@ -752,12 +560,6 @@ summary:focus-visible {
   .daily-workbench .practice-speed input[type="range"] {
     width: 76px;
   }
-  .instrument-controls {
-    padding: 7px 18px;
-  }
-  .daily-workbench .practice-panel .song-toolbar {
-    padding: 10px 18px;
-  }
   .daily-workbench .practice-transport-main {
     gap: 7px;
   }
@@ -776,27 +578,8 @@ summary:focus-visible {
     padding: 6px;
     font-size: 11px;
   }
-  .daily-workbench .practice-panel .song-toolbar {
-    gap: 8px;
-    padding: 10px 13px;
-  }
-  .daily-workbench
-    .song-toolbar
-    > button:not(.back-to-library):not(.icon-button) {
-    display: none;
-  }
   .daily-workbench .practice-panel .practice-view-toolbar {
     padding: 0 12px;
-  }
-  .instrument-controls {
-    gap: 7px;
-    padding: 7px 13px;
-  }
-  .instrument-hands button {
-    padding: 5px 8px;
-  }
-  .instrument-sound {
-    max-width: 40%;
   }
   .daily-workbench .practice-transport {
     padding: 9px 13px;
@@ -804,13 +587,6 @@ summary:focus-visible {
   }
   .daily-workbench .practice-volume {
     margin-left: auto;
-  }
-  .sound-signal-path {
-    gap: 5px;
-    padding: 12px;
-  }
-  .sound-signal-path strong {
-    font-size: 10px;
   }
   .device-dialog .device-settings-body {
     padding: 15px 20px;
@@ -827,4 +603,4 @@ summary:focus-visible {
     transition: none;
   }
 }
-@media(max-height:760px){.daily-workbench .piano-stage{min-height:80px}.daily-workbench .practice-panel .song-toolbar{min-height:52px;padding-top:7px;padding-bottom:7px}.daily-workbench .practice-transport{min-height:55px;padding-top:8px;padding-bottom:8px}.daily-workbench .practice-view-toolbar{min-height:37px}.time-ruler.practice-timeline{padding-top:6px;padding-bottom:5px}.instrument-controls{padding-top:5px;padding-bottom:5px}.daily-workbench .practice-passage-details>summary{padding-top:4px;padding-bottom:4px}}
+@media(max-height:760px){.daily-workbench .piano-stage{min-height:80px}.daily-workbench .practice-transport{min-height:55px;padding-top:8px;padding-bottom:8px}.daily-workbench .practice-view-toolbar{min-height:37px}.time-ruler.practice-timeline{padding-top:6px;padding-bottom:5px}.daily-workbench .practice-passage-details>summary{padding-top:4px;padding-bottom:4px}}

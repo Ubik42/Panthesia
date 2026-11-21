@@ -94,13 +94,6 @@
   padding: 4px 0 10px;
   border-bottom: 1px solid #46505c;
 }
-.practice-view-toolbar.view-toolbar {
-  height: auto;
-  min-height: 44px;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 12px;
-}
 .practice-view-tabs {
   display: flex;
   gap: 2px;
@@ -145,13 +138,6 @@
 .practice-panel > .piano-stage:has(> .paper-score) {
   overflow: auto;
 }
-.workbench > .menubar.practice-toolbar {
-  height: auto;
-  min-height: 44px;
-  gap: 7px;
-  padding: 6px 12px;
-  flex-wrap: wrap;
-}
 .practice-toolbar > button {
   min-height: 34px;
   padding: 6px 9px;
@@ -160,14 +146,4 @@
 }
 .practice-toolbar > button svg {
   width: 15px;
-}
-@media (max-width: 760px) {
-  .workbench > .menubar.practice-toolbar {
-    padding: 6px 9px;
-    gap: 6px;
-  }
-  .menubar.practice-toolbar > button {
-    font-size: 12px;
-    padding: 6px 8px;
-  }
 }

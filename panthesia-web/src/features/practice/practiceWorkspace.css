@@ -15,12 +15,6 @@
     animation: none;
   }
 }
-.practice-panel .current-song > span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .practice-panel > .practice-setup-summary {
   flex: none;
@@ -388,11 +382,6 @@
 .practice-loop-section .practice-field-error {
   color: #edbb9a;
 }
-.practice-loop-section .apply-loop {
-  margin: 11px 0;
-  min-height: 33px;
-  font-size: 12px;
-}
 .practice-loop-rounds {
   display: flex;
   align-items: center;
@@ -403,9 +392,6 @@
 }
 .practice-loop-section .practice-loop-passages {
   width: 100%;
-  font-size: 12px;
-}
-.practice-loop-section .loop-progress {
   font-size: 12px;
 }
 
@@ -437,22 +423,6 @@
 .practice-result-error {
   color: #edbd9b;
 }
-.practice-panel > .bar-navigator {
-  padding: 7px 12px;
-  background: #1d252f;
-  border-top-color: #394654;
-}
-.practice-panel .bar-tools {
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 28px;
-}
-.practice-panel .bar-tools button {
-  min-height: 27px;
-}
-.practice-panel .bar-tools > span {
-  font-size: 11px;
-}
 .practice-navigation-pages {
   display: inline-flex;
   flex-wrap: wrap;
@@ -467,31 +437,6 @@
   color: #d4e3f1;
   background: #2b3743;
   border-color: #4d6175;
-}
-.practice-panel .bar-strip {
-  margin: 7px 0;
-}
-.practice-panel .bar-cell {
-  min-height: 43px;
-  padding: 5px 4px;
-}
-.practice-panel .bar-cell > span {
-  color: #becde0;
-  font-size: 11px;
-}
-.practice-panel .bar-cell.current > span {
-  color: #cfeca8;
-}
-.practice-panel .beat-tools {
-  gap: 7px;
-  flex-wrap: wrap;
-}
-.practice-panel .beat-tools button {
-  min-height: 26px;
-}
-.practice-panel .beat-tools > span {
-  font-size: 11px;
-  color: #acbbcd;
 }
 .practice-jump-details {
   color: #b8c9dc;
@@ -624,13 +569,8 @@
   .practice-result-strip .practice-result-strip-copy {
     flex-basis: 100%;
   }
-  .practice-panel .bar-tools .bar-selection {
-    display: none;
-  }
 }
 
 /* Practice options are temporary drawers; the instrument keeps its full width. */
-.practice-panel > .song-toolbar { min-height:52px; }
-.practice-panel .current-song h1 { font-size:17px; }
 .practice-panel > .practice-view-toolbar { min-height:40px; }
 .practice-view-toolbar > .practice-focus-toggle { margin-left:auto; }

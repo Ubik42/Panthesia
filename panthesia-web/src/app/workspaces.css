@@ -1,14 +1,3 @@
-.library-current-practice {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 2px 7px;
-  border: 1px solid #7d9c5f66;
-  border-radius: 5px;
-  background: #536d372e;
-  color: #c3dfa9;
-  font-size: 10px;
-  line-height: 1.5;
-}
 .workspace-topbar {
   flex-shrink: 0;
   min-height: 54px;
@@ -35,59 +24,6 @@
 .workbench > footer[hidden] {
   display: none !important;
 }
-.workspace-page {
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  padding: 20px;
-  overflow: hidden;
-  background: #191d23;
-}
-.workspace-page > .settings-dialog {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-}
-.workspace-page .dialog-heading {
-  flex-shrink: 0;
-}
-.workspace-page .dialog-heading h2 {
-  font-size: 22px;
-  letter-spacing: 0;
-}
-.workspace-page .library-manager-toolbar {
-  padding-top: 4px;
-}
-.workspace-page .library-manager-body {
-  min-height: 0;
-}
-.workspace-page .library-manager-table td {
-  font-size: 13px;
-}
-.workspace-page .history-record {
-  font-size: 13px;
-}
-.workspace-page .history-workspace { gap: 8px; }
-@media (max-width: 1100px) {
-  .workspace-page {
-    padding: 14px;
-  }
-  .workspace-page .library-manager-body {
-    grid-template-columns: 155px minmax(0, 1fr);
-  }
-  .workspace-page .library-file-details {
-    grid-column: 1 / -1;
-    max-height: 28vh;
-  }
-}
 @media (max-width: 760px) {
   .workspace-topbar {
     gap: 8px;
@@ -97,61 +33,8 @@
   .workspace-topbar .engine-indicator {
     font-size: 10px;
   }
-  .workspace-page {
-    padding: 12px;
-  }
 }
-
-.workbench > .menubar {
-  margin: 0;
-  border: 0;
-  border-bottom: 1px solid #101217;
-  min-width: 0;
-}
-.workbench > .menubar[hidden] { display: none !important; }
-.workspace-tools summary:focus-visible { outline: 2px solid #a9df74; outline-offset: 3px; }
-.workspace-tools { position: relative; flex-shrink: 0; }
-.workspace-tools > summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 35px;
-  height: 35px;
-  list-style: none;
-  cursor: pointer;
-  border: 1px solid #3a4653;
-  border-radius: 7px;
-  color: #c8d4e3;
-  background: #252c35;
-}
-.workspace-tools > summary::-webkit-details-marker { display: none; }
-.workspace-tools > summary[aria-disabled="true"] { opacity: .45; cursor: default; }
-.workspace-tools[open] > summary { border-color: #78975c; color: #d8efbf; }
-.workspace-tools-menu {
-  position: absolute;
-  top: calc(100% + 9px);
-  right: 0;
-  z-index: 50;
-  display: grid;
-  gap: 4px;
-  width: 210px;
-  padding: 7px;
-  border: 1px solid #465363;
-  border-radius: 10px;
-  background: #242b34;
-  box-shadow: 0 14px 38px #0008;
-}
-.workspace-tools-menu button {
-  justify-content: flex-start;
-  gap: 10px;
-  min-height: 39px;
-  border-color: transparent;
-  background: transparent;
-  color: #d5dfeb;
-}
-.workspace-tools-menu button:hover { background: #354334; color: #d8efbf; }
-.workspace-read-error,
-.workspace-selection-note {
+.workspace-read-error {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -166,13 +49,9 @@
   overflow-wrap: anywhere;
 }
 .workspace-read-error > span,
-.workspace-read-error > div,
-.workspace-selection-note > span { flex: 1; min-width: 180px; }
+.workspace-read-error > div { flex: 1; min-width: 180px; }
 .workspace-read-error p { margin: 4px 0; }
-.workspace-read-error button,
-.workspace-selection-note button { flex-shrink: 0; }
-.workspace-selection-note { border-color: #43576a; background: #242f3b; color: #c1d2e3; }
-.workspace-loading { margin: 10px 0; color: #afc2d8; line-height: 1.6; }
+.workspace-read-error button { flex-shrink: 0; }
 .song-metadata-dialog {
   width: min(740px, calc(100vw - 32px));
   max-height: min(88vh, 920px);
@@ -182,15 +61,13 @@
 .song-metadata-dialog .file-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .song-metadata-dialog .file-path { overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  .workspace-read-error, .workspace-selection-note { align-items: flex-start; }
-  .workspace-read-error > span, .workspace-selection-note > span { min-width: 100%; }
-  .workspace-tools-menu { width: 196px; }
+  .workspace-read-error { align-items: flex-start; }
+  .workspace-read-error > span { min-width: 100%; }
 }
 
 .workspace {
   position: relative;
 }
-.workbench > .workspace[data-practice-compact] > .library-panel,
 .workbench > .workspace[data-practice-compact] > .practice-inspector {
   position: absolute;
   top: 0;
@@ -199,82 +76,6 @@
   width: min(330px, 85%);
   box-shadow: 0 8px 32px #0008;
 }
-.workbench > .workspace[data-practice-compact] > .library-panel {
-  left: 0;
-}
 .workbench > .workspace[data-practice-compact] > .practice-inspector {
   right: 0;
 }
-.workspace[data-practice-compact] > .library-panel .panel-resize-handle,
-.workspace[data-practice-compact] > .practice-inspector .panel-resize-handle {
-  display: none;
-}
-
-.history-clip-draft-recovery {
-  padding: 0.8rem 1rem;
-  border: 1px solid rgba(234, 179, 8, 0.45);
-  border-radius: 0.6rem;
-  background: rgba(234, 179, 8, 0.06);
-}
-.history-clip-draft-recovery p { margin: 0.35rem 0 0.65rem; }
-
-.history-annotation-conflict {
-  margin: 0.75rem 0;
-  padding: 0.75rem;
-  border-left: 3px solid #d6a846;
-  background: rgba(214, 168, 70, 0.07);
-}
-.history-annotation-conflict label span {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.history-annotation-drafts { margin: 0.5rem 0; }
-.history-annotation-drafts summary { color: #ddc58d; cursor: pointer; }
-.history-annotation-drafts ul { list-style: none; margin: 0.5rem 0; padding: 0; }
-.history-annotation-drafts li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid #353b45; }
-.history-annotation-drafts li div { display: grid; gap: 0.25rem; }
-.history-annotation-drafts li span { color: var(--muted); font-size: 12px; }
-
-.history-annotation-drafts li .history-annotation-draft-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-
-.workspace-page-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
-
-.library-extra-filters, .history-comparison-help { flex: none; margin: 4px 0; font-size: 12px; color: var(--muted); }
-.library-extra-filters > summary, .history-comparison-help > summary { cursor: pointer; padding: 5px 0; }
-.library-extra-filters[open] { padding-bottom: 4px; }
-.history-comparison-help .history-filter-help { padding: 5px 0 8px; }
-
-.library-search-handoff { flex: none; display: flex; align-items: center; gap: 14px; padding: 10px 13px; margin: 3px 0 12px; border: 1px solid #536448; border-radius: 7px; background: #293426; color: #cddbc3; font-size: 12px; line-height: 1.6; }
-.library-search-handoff > span { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.library-search-handoff strong { color: #e4f1da; }
-.song-workspace-context {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 4px 0 12px;
-  padding: 12px 15px;
-  border: 1px solid #566c81;
-  border-left: 3px solid #94bad5;
-  border-radius: 7px;
-  background: #293642;
-  color: #c9d8e6;
-  line-height: 1.6;
-}
-.song-workspace-context > div:first-child { display: grid; min-width: 0; gap: 3px; }
-.song-workspace-context strong { color: #ecf4fa; font-size: 15px; overflow-wrap: anywhere; }
-.song-workspace-context span { font-size: 12px; }
-.song-workspace-context .song-workspace-eyebrow { color: #a5c7df; font-weight: 600; }
-.song-workspace-actions { display: flex; flex-wrap: wrap; gap: 7px; flex-shrink: 0; }
-.song-workspace-actions button { font-size: 12px; }
-.history-list-keyboard-help { flex: none; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.history-list-keyboard-help summary { cursor: pointer; padding: 3px 0; }
-.history-list-keyboard-help p { margin: 5px 0; }
-@media (max-width: 760px) {
-  .song-workspace-context { flex-direction: column; align-items: stretch; gap: 9px; }
-  .song-workspace-actions { justify-content: flex-start; }
-}
-.library-search-handoff button { flex-shrink: 0; font-size: 12px; }
-@media (max-width: 600px) { .library-search-handoff { flex-wrap: wrap; gap: 8px; } }

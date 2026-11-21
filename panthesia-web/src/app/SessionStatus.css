@@ -95,37 +95,3 @@
     min-width: calc(100% - 35px);
   }
 }
-
-.startup-result-notice {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-  border-width: 0 0 1px;
-  border-radius: 0;
-  background: #253027;
-  color: #d4e4cc;
-}
-.startup-result-notice > div {
-  flex: 1 1 260px;
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-.startup-result-notice strong {
-  font-size: 13px;
-}
-.startup-result-notice > svg {
-  flex: none;
-}
-.startup-result-notice > div > span {
-  white-space: pre-wrap;
-  color: var(--muted);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.startup-result-notice button {
-  padding: 6px 9px;
-  font-size: 12px;
-}

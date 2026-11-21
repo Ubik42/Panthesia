@@ -78,14 +78,6 @@
   }
 }
 
-.bar-cell .bar-written-number {
-  display: inline-block;
-  margin-left: 5px;
-  font-size: 10px;
-  font-weight: 400;
-  opacity: 0.8;
-}
-
 .meter-map-dialog section[aria-label="小节网格预览"] .meter-table-wrap {
   max-height: 32dvh;
 }

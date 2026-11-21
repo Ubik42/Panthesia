@@ -5,28 +5,19 @@
   --muted: #9dafbf;
 }
 .workbench { background: #0b131e; color: #dce6ee; }
-.workbench .menubar {
-  background: linear-gradient(100deg, #101c2a, #182832 70%, #152735);
-  border-bottom: 1px solid #314450;
-  min-height: 48px;
-  box-shadow: 0 3px 20px #0003;
-}
 .workbench .app-name { color: #eff9f6; letter-spacing: .2px; }
 .workbench button, .workbench summary {
   border-radius: 7px;
   transition: background-color .16s, border-color .16s, box-shadow .16s;
 }
 .workbench button:hover:not(:disabled) { border-color: #618477; }
-.workbench button[aria-pressed="true"], .workbench button[aria-selected="true"], .workbench .view-toolbar button.active {
+.workbench button[aria-pressed="true"], .workbench button[aria-selected="true"] {
   background: #244942; border-color: #508b79; color: #d4fff0;
 }
 .workbench button.primary { background: #93e5c4; border-color: #b0f3d8; color: #163e32; }
 .workbench button:focus-visible, .workbench input:focus-visible, .workbench select:focus-visible, .workbench summary:focus-visible {
   outline-color: #84f1d8;
 }
-.workbench .song-toolbar { background: #18232f; border-bottom-color: #30434d; }
-.workbench .song-toolbar h2 { color: #ecf5f6; font-weight: 600; }
-.workbench .view-toolbar { background: #111e2a; border-color: #2c424d; }
 .workbench .practice-panel > .practice-setup-summary {
   background: linear-gradient(100deg, #16342f, #152633);
   border-color: #2a4b47; color: #bddecf;
@@ -41,7 +32,7 @@
 }
 .workbench .practice-transport-main > .play-button:hover:not(:disabled) { background: #b7ffe1; box-shadow: 0 4px 24px #57d7ae40; }
 .workbench .practice-sidebar, .workbench .practice-inspector { background: #141e2a; }
-.workbench .practice-stage-readouts > *, .workbench .transport-status {
+.workbench .practice-stage-readouts > * {
   border-color: #405e64; background-color: #10222dd9; color: #d5e6e5;
 }
 .workbench .piano-stage { background: #0a111e; box-shadow: inset 0 0 45px #0003; }
@@ -73,14 +64,6 @@
   .compact .effects-presets > button { padding: 4px 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .workbench button, .workbench summary { transition: none; } }
-.repertoire-form { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.repertoire-panel label, .repertoire-notation { display: grid; gap: 6px; margin: 8px 0; }
-.repertoire-panel input, .repertoire-panel select { width: 100%; min-width: 0; box-sizing: border-box; }
-.repertoire-panel small { display: block; color: #a8bbc9; }
-.repertoire-notation { padding: 12px; border: 1px solid #3c5863; border-radius: 8px; }
-.notation-capabilities dl > div { display: block; padding: 8px 0; }
-.notation-capabilities dt { font-weight: 600; margin-bottom: 4px; }
-.notation-capabilities dd { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
 
 .piano-surface { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; flex: 1; isolation: isolate; }
 .piano-surface > canvas { display: block; width: 100%; height: 100%; }

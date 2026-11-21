@@ -96,24 +96,7 @@
   background: var(--accent, #7079d9);
   color: #fff;
 }
-.device-settings-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 8px 24px;
-  border-bottom: 1px solid var(--instrument-line, #d8dce4);
-}
-.device-settings-tabs button {
-  border: 0;
-  background: transparent;
-  color: var(--instrument-muted, #68758a);
-  padding: 7px 14px;
-  border-radius: 5px;
-}
-.device-settings-tabs button[aria-selected="true"] {
-  color: var(--accent, #7079d9);
-  background: var(--instrument-surface, #f5f6f9);
-}
 .device-settings-body[hidden] {
   display: none;
 }
-.duet-runtime-device>span{flex:none;white-space:nowrap}.duet-runtime-device>select{flex:1;min-width:0}.daily-workbench .duet-runtime-actions .duet-runtime-save{background:var(--instrument-text,#273147);color:var(--instrument-panel,#fff);border-color:var(--instrument-text,#273147)}.instrument-sound[data-state=error] small{color:#b15a42}.instrument-sound:is([data-state=error],[data-state=changing]) .signal-dot{background:#bf9157}
+.duet-runtime-device>span{flex:none;white-space:nowrap}.duet-runtime-device>select{flex:1;min-width:0}.daily-workbench .duet-runtime-actions .duet-runtime-save{background:var(--instrument-text,#273147);color:var(--instrument-panel,#fff);border-color:var(--instrument-text,#273147)}
