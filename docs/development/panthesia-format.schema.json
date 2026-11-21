@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://panthesia.local/schema/panthesia-song-1.json",
+  "title": "Panthesia song manifest, version 1",
+  "type": "object",
+  "required": ["format", "version", "files", "performances", "default"],
+  "properties": {
+    "format": { "const": "panthesia-song" },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "maxLength": 1024 },
+    "artist": { "type": "string", "maxLength": 1024 },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "subtitle": { "type": "string" },
+        "composer": { "type": "string" },
+        "arranger": { "type": "string" },
+        "collection": { "type": "string" },
+        "copyright": { "type": "string" },
+        "license": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+    "performances": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "file"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "file": { "$ref": "#/$defs/id" },
+          "label": { "type": "string" },
+          "noteIdentity": { "type": "string" }
+        }
+      }
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "file"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "file": { "$ref": "#/$defs/id" },
+          "performance": { "$ref": "#/$defs/id" },
+          "label": { "type": "string" }
+        }
+      }
+    },
+    "default": {
+      "type": "object",
+      "required": ["performance"],
+      "properties": {
+        "performance": { "$ref": "#/$defs/id" },
+        "score": { "$ref": "#/$defs/id" },
+        "variant": { "$ref": "#/$defs/id" }
+      }
+    },
+    "layers": { "type": "object", "additionalProperties": { "$ref": "#/$defs/layer" } },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "label": { "type": "string" },
+          "performance": { "$ref": "#/$defs/id" },
+          "transpose": { "type": "integer", "minimum": -24, "maximum": 24 },
+          "tempoScale": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "settings": { "type": "object" },
+    "alignments": { "type": "array" },
+    "extensions": { "type": "object" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+    "file": {
+      "type": "object",
+      "required": ["id", "role", "path"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "role": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\).+$" },
+        "blake3": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "stem": { "type": "string" },
+        "range": { "type": "array", "items": { "type": "number", "minimum": 0 }, "minItems": 2, "maxItems": 2 },
+        "label": { "type": "string" }
+      },
+      "if": { "properties": { "role": { "const": "stem" } } },
+      "then": { "required": ["stem"] }
+    },
+    "note": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0, "maximum": 127 }
+      ],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["origin"],
+      "properties": {
+        "origin": { "enum": ["human", "imported", "generated"] },
+        "tool": { "type": "string" },
+        "toolVersion": { "type": "string" },
+        "paramsHash": { "type": "string" },
+        "createdAt": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "properties": {
+        "performance": { "$ref": "#/$defs/id" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "status": { "enum": ["draft", "accepted"] },
+        "dependsOn": { "type": "array", "items": { "type": "string" } },
+        "unmatched": { "type": "array" },
+        "tracks": { "type": "object" },
+        "notes": {
+          "type": "array",
+          "items": { "type": "object", "required": ["note"], "properties": { "note": { "$ref": "#/$defs/note" } } }
+        },
+        "items": { "type": "array" }
+      }
+    }
+  }
+}

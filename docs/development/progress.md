@@ -2,6 +2,16 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 1 项：`.panthesia` 格式
+
+- 格式说明 `docs/development/panthesia-format.md` 与 `panthesia-format.schema.json`：顶层字段、文件角色、演奏 / 谱面、图层（hands、fingering、playback、meter、keys、chords、sections、beats、lyrics、tempo、passages、bookmarks）、派生版本、设置。音符引用写作 `[track, onset, pitch]`，音高用于在演奏文件变化后核对。
+- `panthesia-core::manifest`：类型（各层对象均保留未知字段）、解析（接受 BOM，更新版本只读）、校验（编号唯一、引用存在、相对路径只用 `/`、stem 必填、confidence / status 取值、音符引用格式）、序列化、`reconcile_notes`（不存在或音高不符的音符引用移入图层 `unmatched`，不删除）。
+- `panthesia-engine::manifest_store`：查找顺序（同名清单 → 同级及向上两级中引用该文件的 `song.panthesia`；清单损坏时报错而非替换）、原子写入、BLAKE3 校验、在清单目录树内按大小与哈希找回移动的文件（忽略 `._*`，最多检查 5 万个文件）、相对路径计算（大小写不敏感，去除 `\?\` 前缀）。
+- 测试：core 5 个、engine 4 个单元测试；`corpus_manifests`（`--ignored`）在 `work/` 下复制 `D:\Music\MIDI` 各区样本，按 3.7 表生成 B 站、Look at the Sky、七里香、KAIRCI、POP909、SNH48 六种清单，验证写入、查找、校验与移动后找回；语料目录未写入任何文件。
+- 决定：图层载荷在 Rust 中保持 JSON，只对共用字段与 `notes` 做类型校验；具体图层在接入功能时再加类型化读取，避免为尚未使用的图层先写结构。
+
+下一入口：R2 第 2 项（打开：命令行参数、文件关联、单实例转交、拖入；打开时接入 `check` 与 `reconcile_notes`）。
+
 ## 2026-11-21 · R1 完成（提交 30cca4b、2374c75 及本条）
 
 - 第 3 项：删除 `legacy_exercise_history`、`legacy_exercise_tracks`、`library_migration` 与 examples 中两个迁移程序、对应协议命令和核对对话框，以及随之失效的 `practice_conditions` 条件比较、`hands::Selection`。`library_repairs` 是集中曲库工作区文件的一部分，移到 R2 与集中曲库一起删除。

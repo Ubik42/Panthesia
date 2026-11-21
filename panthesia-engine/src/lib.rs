@@ -64,6 +64,7 @@ mod source_notation;
 mod history_reader;
 mod json_stream;
 mod replay_index;
+pub mod manifest_store;
 #[cfg(test)]
 mod test_fixtures;
 mod song_switch;
