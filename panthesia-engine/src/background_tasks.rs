@@ -28,7 +28,33 @@ pub struct Status {
     pub fingerprint: Option<String>,
     pub error: Option<String>,
 }
+/// A revision that grows with every task change; subscribers wait for the next one.
+pub(crate) struct TaskChanges {
+    revision: Mutex<u64>,
+    changed: std::sync::Condvar,
+}
+impl Default for TaskChanges {
+    /// Starts at 1, so a subscriber asking for anything after 0 gets the current list at once.
+    fn default() -> Self {
+        Self { revision: Mutex::new(1), changed: std::sync::Condvar::new() }
+    }
+}
+impl TaskChanges {
+    fn bump(&self) {
+        if let Ok(mut revision) = self.revision.lock() {
+            *revision += 1;
+        }
+        self.changed.notify_all();
+    }
+    /// The revision after `after`, or `None` when `timeout` passes first.
+    pub(crate) fn wait(&self, after: u64, timeout: std::time::Duration) -> Option<u64> {
+        let revision = self.revision.lock().ok()?;
+        let (revision, _) = self.changed.wait_timeout_while(revision, timeout, |r| *r <= after).ok()?;
+        (*revision > after).then_some(*revision)
+    }
+}
 struct Record {
+    changes: Arc<TaskChanges>,
     scope: Option<(String, u64)>,
     status: Status,
     reply: Option<mpsc::SyncSender<Reply>>,
@@ -57,6 +83,7 @@ impl TaskToken {
             return Err("后台任务已取消".into());
         }
         record.status.stage = stage;
+        record.changes.bump();
         Ok(())
     }
     pub fn source(&self, content_id: String, fingerprint: String) -> Result<(), String> {
@@ -64,6 +91,7 @@ impl TaskToken {
         let mut record = self.0.lock().map_err(|_| "后台任务状态不可用")?;
         record.status.content_id = Some(content_id);
         record.status.fingerprint = Some(fingerprint);
+        record.changes.bump();
         Ok(())
     }
     // This transition and cancellation use the same lock. Once a write begins,
@@ -75,6 +103,7 @@ impl TaskToken {
         }
         record.status.state = "committing";
         record.status.stage = "committing";
+        record.changes.bump();
         Ok(())
     }
     fn finish(&self, result: Reply) {
@@ -90,6 +119,7 @@ impl TaskToken {
             "failed"
         };
         record.status.error = result.as_ref().err().cloned();
+        record.changes.bump();
         if let Some(reply) = record.reply.take() {
             let _ = reply.send(result);
         }
@@ -109,6 +139,7 @@ pub(crate) struct TaskPool {
     records: Arc<Mutex<VecDeque<TaskToken>>>,
     serial: Arc<AtomicU64>,
     cancelled_scopes: Arc<Mutex<VecDeque<(String, u64)>>>,
+    changes: Arc<TaskChanges>,
 }
 impl TaskPool {
     pub fn new(workers: usize, capacity: usize) -> Result<Self, String> {
@@ -119,6 +150,7 @@ impl TaskPool {
             Arc::new(Mutex::new(VecDeque::new())),
             Arc::new(AtomicU64::new(0)),
             Arc::new(Mutex::new(VecDeque::new())),
+            Arc::new(TaskChanges::default()),
         )
     }
     pub fn storage_lane(&self, capacity: usize) -> Result<Self, String> {
@@ -133,6 +165,7 @@ impl TaskPool {
             self.records.clone(),
             self.serial.clone(),
             self.cancelled_scopes.clone(),
+            self.changes.clone(),
         )
     }
     fn with_records(
@@ -142,6 +175,7 @@ impl TaskPool {
         records: Arc<Mutex<VecDeque<TaskToken>>>,
         serial: Arc<AtomicU64>,
         cancelled_scopes: Arc<Mutex<VecDeque<(String, u64)>>>,
+        changes: Arc<TaskChanges>,
     ) -> Result<Self, String> {
         let (sender, receiver) = mpsc::sync_channel::<Job>(capacity);
         let receiver = Arc::new(Mutex::new(receiver));
@@ -166,6 +200,7 @@ impl TaskPool {
                             if record.status.state != "committing" {
                                 record.status.state = "running";
                                 record.status.stage = "preparing";
+                                record.changes.bump();
                             }
                             work
                         };
@@ -185,6 +220,7 @@ impl TaskPool {
             records,
             serial,
             cancelled_scopes,
+            changes,
         })
     }
     fn submit(
@@ -212,6 +248,7 @@ impl TaskPool {
         let (reply, receiver) = mpsc::sync_channel(1);
         let work = Arc::new(Mutex::new(Some(work)));
         let token = TaskToken(Arc::new(Mutex::new(Record {
+            changes: self.changes.clone(),
             scope: scope.clone(),
             status: Status {
                 id: id.clone(),
@@ -283,6 +320,7 @@ impl TaskPool {
             }
             records.push_back(token.clone());
         }
+        self.changes.bump();
         // Dropping abandoned closures may release runtime guards; keep it outside registry locks.
         for (reply, abandoned) in superseded {
             drop(abandoned);
@@ -371,6 +409,9 @@ impl TaskPool {
         self.submit_policy(label, None, Box::new(work), false, None)
             .map(|_| ())
     }
+    pub(crate) fn changes(&self) -> &TaskChanges {
+        &self.changes
+    }
     pub fn list(&self) -> Result<Vec<Status>, String> {
         self.records
             .lock()
@@ -422,6 +463,7 @@ impl TaskPool {
             cancelled.push((reply, abandoned));
         }
         drop(records);
+        self.changes.bump();
         for (reply, abandoned) in cancelled {
             drop(abandoned);
             if let Some(reply) = reply {
@@ -450,6 +492,7 @@ impl TaskPool {
             .and_then(|work| work.lock().ok()?.take());
         drop(record);
         drop(records);
+        self.changes.bump();
         // Release queued input buffers and exclusive-operation guards immediately.
         // A worker already owns a running closure, which stops at its next cancellation check.
         drop(abandoned);

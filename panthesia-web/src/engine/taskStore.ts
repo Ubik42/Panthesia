@@ -78,12 +78,11 @@ export interface TaskFrame {
   error: string;
   observed: boolean;
 }
+/** The engine's background tasks: pushed while anyone listens; `refresh` reads them once. */
 function createTaskMonitor(engineId?: string) {
   let snapshot: TaskFrame = { tasks: [], error: "", observed: false };
   let serialized = JSON.stringify(snapshot);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let inFlight: number | undefined;
-  let generation = 0;
+  let release: (() => void) | undefined;
   const listeners = new Set<() => void>();
   const publish = (next: TaskFrame) => {
     const signature = JSON.stringify(next);
@@ -92,53 +91,32 @@ function createTaskMonitor(engineId?: string) {
     serialized = signature;
     for (const notify of [...listeners]) notify();
   };
-  const poll = async () => {
-    const ticket = generation;
-    if (inFlight === ticket || !listeners.size) return;
-    inFlight = ticket;
-    clearTimeout(timer);
+  const accept = (value: unknown) => {
     try {
-      const tasks = readTasks(
-        await api.commandForEngine<unknown>(engineId, { type: "tasks" }),
-      );
-      if (ticket === generation && listeners.size)
-        publish({ tasks, error: "", observed: true });
+      publish({ tasks: readTasks(value), error: "", observed: true });
     } catch (error) {
-      if (ticket === generation && listeners.size)
-        publish({
-          ...snapshot,
-          error: error instanceof Error ? error.message : String(error),
-        });
-    } finally {
-      if (ticket === generation) {
-        inFlight = undefined;
-        if (listeners.size) {
-          const active = snapshot.tasks.some((task) =>
-            ["queued", "running", "committing"].includes(task.state),
-          );
-          timer = setTimeout(
-            () => void poll(),
-            snapshot.error ? 1500 : active ? 250 : 1000,
-          );
-        }
-      }
+      fail(error);
     }
   };
+  const fail = (error: unknown) =>
+    publish({ ...snapshot, error: error instanceof Error ? error.message : String(error) });
   return {
     getSnapshot: () => snapshot,
-    refresh: poll,
+    refresh: async () => {
+      try {
+        accept(await api.commandForEngine<unknown>(engineId, { type: "tasks" }));
+      } catch (error) {
+        fail(error);
+      }
+    },
     subscribe(notify: () => void) {
       listeners.add(notify);
-      if (listeners.size === 1) {
-        generation++;
-        void poll();
-      }
+      if (listeners.size === 1) release = api.subscribeTasks(accept, fail);
       return () => {
         listeners.delete(notify);
         if (!listeners.size) {
-          generation++;
-          clearTimeout(timer);
-          inFlight = undefined;
+          release?.();
+          release = undefined;
           snapshot = { tasks: [], error: "", observed: false };
           serialized = JSON.stringify(snapshot);
         }

@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let control = service_lane::Lane::new("neothesia-http-control", 2, 32, Arc::new(AtomicUsize::new(0)),
         move |request| handler(request))?;
     for request in server.incoming_requests() {
-        if request.method() == &Method::Get && request.url().starts_with("/api/state/next?") {
+        if request.method() == &Method::Get && (request.url().starts_with("/api/state/next?") || request.url().starts_with("/api/tasks/next?")) {
             feed.dispatch(request);
         } else if request.method() == &Method::Options || ["/api/state", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
             control.dispatch(request);
@@ -182,6 +182,14 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine, data: &PathB
                 }
                 // Long poll for the browser client: the first state after `after`, or the
                 // current one again after 20 s (the desktop window receives pushed events).
+                (&Method::Get, path) if path.starts_with("/api/tasks/next?after=") => {
+                    let after = path["/api/tasks/next?after=".len()..].parse::<u64>().map_err(|_| "after 参数无效".to_string())?;
+                    let (revision, tasks) = engine
+                        .next_tasks(after, std::time::Duration::from_secs(20))
+                        .or_else(|| engine.next_tasks(0, std::time::Duration::ZERO))
+                        .ok_or("后台任务列表不可读")?;
+                    Ok(serde_json::json!({"revision": revision, "tasks": tasks}))
+                }
                 (&Method::Get, path) if path.starts_with("/api/state/next?after=") => {
                     let after = path["/api/state/next?after=".len()..].parse::<u64>().map_err(|_| "after 参数无效".to_string())?;
                     let (revision, state) = engine

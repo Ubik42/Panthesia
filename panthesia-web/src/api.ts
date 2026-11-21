@@ -54,6 +54,38 @@ async function practiceRequest<T>(mode: "edit" | "read" | "demo", song: Practice
   return call<T>(mode === "edit" ? "edit_practice" : mode === "demo" ? "start_practice_demo" : "read_practice", `/api/practice-${mode}`, body);
 }
 
+/** Desktop: listen to a pushed event and read the current value once (the first push may
+ * precede the listener). Browser: long-poll `<path>?after=N` for `{revision, <field>}`. */
+function subscribe<T>(event: string, current: () => Promise<T>, path: string, field: string,
+  onValue: (value: T) => void, onError: (failure: unknown) => void): () => void {
+  let stopped = false;
+  if (isTauri()) {
+    let release: (() => void) | undefined;
+    listen<T>(event, (message) => { if (!stopped) onValue(message.payload); })
+      .then((unlisten) => { if (stopped) unlisten(); else release = unlisten; })
+      .catch(onError);
+    current().then((value) => { if (!stopped) onValue(value); }, onError);
+    return () => { stopped = true; release?.(); };
+  }
+  void (async () => {
+    let revision = 0, failures = 0;
+    while (!stopped) {
+      try {
+        const next = await local<Record<string, unknown> & { revision: number }>(`${path}?after=${revision}`, undefined, 30000);
+        failures = 0;
+        revision = next.revision;
+        if (!stopped) onValue(next[field] as T);
+      } catch (failure) {
+        if (stopped) return;
+        onError(failure);
+        revision = 0;
+        await new Promise((resolve) => setTimeout(resolve, Math.min(5000, 250 * 2 ** failures++)));
+      }
+    }
+  })();
+  return () => { stopped = true; };
+}
+
 export type PaperSaveOptions = {
   signal?: AbortSignal;
   progress?: (phase: "choosing" | "writing" | "committing", percent: number) => void;
@@ -169,37 +201,13 @@ export const api = {
     }
     return call("play_live_notes", "/api/live-notes", { epoch, engineId, createdAtMs, events }, 3500);
   },
+  /** The background task list whenever it changes; same transport as `subscribeState`. */
+  subscribeTasks: (onTasks: (tasks: unknown) => void, onError: (failure: unknown) => void): (() => void) =>
+    subscribe<unknown>("engine-tasks", () => engineCommand<unknown>({ type: "tasks" }), "/api/tasks/next", "tasks", onTasks, onError),
   /** Every state the engine publishes, in order: pushed events on the desktop, a long poll
    * in the browser. Returns the unsubscribe function. */
-  subscribeState: (onState: (state: Snapshot) => void, onError: (failure: unknown) => void): (() => void) => {
-    let stopped = false;
-    if (isTauri()) {
-      let release: (() => void) | undefined;
-      listen<Snapshot>("engine-state", (event) => { if (!stopped) onState(event.payload); })
-        .then((unlisten) => { if (stopped) unlisten(); else release = unlisten; })
-        .catch(onError);
-      // The first push may precede the listener; read the current state once.
-      invoke<Snapshot>("engine_state").then((state) => { if (!stopped) onState(state); }, onError);
-      return () => { stopped = true; release?.(); };
-    }
-    void (async () => {
-      let revision = 0, failures = 0;
-      while (!stopped) {
-        try {
-          const next = await local<{ revision: number; state: Snapshot }>(`/api/state/next?after=${revision}`, undefined, 30000);
-          failures = 0;
-          revision = next.revision;
-          if (!stopped) onState(next.state);
-        } catch (failure) {
-          if (stopped) return;
-          onError(failure);
-          revision = 0;
-          await new Promise((resolve) => setTimeout(resolve, Math.min(5000, 250 * 2 ** failures++)));
-        }
-      }
-    })();
-    return () => { stopped = true; };
-  },
+  subscribeState: (onState: (state: Snapshot) => void, onError: (failure: unknown) => void): (() => void) =>
+    subscribe<Snapshot>("engine-state", () => invoke<Snapshot>("engine_state"), "/api/state/next", "state", onState, onError),
 
   song: () =>
     isTauri()

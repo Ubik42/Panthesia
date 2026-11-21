@@ -59,4 +59,9 @@ impl Engine {
     pub fn next_state(&self, after: u64, timeout: Duration) -> Option<(u64, Snapshot)> {
         self.state.next(after, timeout)
     }
+    /// Wait for the task list to change after revision `after` (0 returns the current list).
+    pub fn next_tasks(&self, after: u64, timeout: Duration) -> Option<(u64, serde_json::Value)> {
+        let revision = self.tasks.changes().wait(after, timeout)?;
+        Some((revision, serde_json::to_value(self.tasks.list().ok()?).ok()?))
+    }
 }
