@@ -31,12 +31,13 @@ impl MidiPacket {
 
 #[derive(Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Performance {
+pub struct AudioPerformance {
     pub callbacks: u64,
     pub max_render_us: u64,
     pub over_budget_callbacks: u64,
     pub max_frames: u64,
 }
+pub type Performance = AudioPerformance;
 #[derive(Default)]
 struct Counters {
     callbacks: AtomicU64,

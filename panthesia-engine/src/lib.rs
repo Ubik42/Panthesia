@@ -23,7 +23,6 @@ mod finger_pair_interactions;
 mod storage_status;
 mod storage_control;
 pub use storage_status::{StorageOperation, StorageStatus};
-pub use storage_status::StorageRecovery;
 mod storage_close;
 pub use storage_close::CloseInput;
 mod startup;

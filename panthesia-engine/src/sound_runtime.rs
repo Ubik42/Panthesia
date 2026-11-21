@@ -13,7 +13,7 @@ use std::{
 
 #[derive(Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Status {
+pub struct SoundStatus {
     pub ready: bool,
     pub changing: bool,
     pub error: Option<String>,
@@ -24,6 +24,7 @@ pub struct Status {
     pub plugin_state_restored: bool,
     pub plugin_state_warning: Option<String>,
 }
+pub type Status = SoundStatus;
 struct Shared {
     level:AtomicU32,
     observable:AtomicBool,

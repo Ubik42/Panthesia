@@ -98,7 +98,7 @@ export function projectRecovery(
     const source = row.startupWarning
       ? [row.startupWarning]
       : row.id === "storage"
-        ? [state.storage?.version]
+        ? [state.storage?.operation, state.storage?.error]
         : row.id === "recording" || row.id === "recording-saved"
           ? [state.recording, state.recordingUnsaved, state.recordingPath]
           : row.id === "sound"

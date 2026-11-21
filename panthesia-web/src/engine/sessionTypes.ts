@@ -1,5 +1,5 @@
 // Shared engine data contracts. This module has no UI or transport dependency.
-import type { EngineCommand, StorageStatus as EngineStorageStatus } from "./commands.generated";
+import type { EngineCommand } from "./commands.generated";
 
 export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "finger" | "editFingersFor" | "undoFingers" | "undoFingersFor" | "applyFingers"
@@ -138,60 +138,23 @@ export interface LoadedSong {
 export interface LiveNoteEvent { pitch: number; velocity: number; active: boolean }
 export interface LiveNoteReceipt {
   engineId?: string | null; epoch?: number; accepted: number; expired: number }
-// Existing saved UI sessions can omit newly added storage observations.
-export type StorageStatus = Pick<EngineStorageStatus, "pending" | "error" | "canRetry"> &
-  Partial<Pick<EngineStorageStatus, "version" | "operation" | "writing" | "unsavedChanges" | "recovery" | "recoveryError">>;
-export interface Snapshot {
-  stateOrder?: import("./commands.generated").StateOrder;
-  noteEpoch?: number;
-  scoreRevision?: number;
-  annotationRevision?: number;
-  startup?: Omit<import("./commands.generated").StartupStatus, "warnings"> & { warnings?: import("./commands.generated").StartupWarning[] };
-  recordingUnsaved?: boolean;
-  recordingPath?: string | null;
-  soundfontWarning?: string | null;
-  storage?: StorageStatus;
-  contentId: string | null;
-  status: string;
-  position: number;
-  duration: number;
-  practiceMs: number;
-  speed: number;
-  wait: boolean;
-  hands: string;
-  required: number[];
-  pressed: number[];
-  pressedKeys?: Record<number,{velocity:number;serial:number}>;
-  input: string | null;
-  output: string;
-  outputId?: string | null;
-  sound?: {ready:boolean;changing:boolean;error:string|null;lateNotes?:number;device?:string;deviceId?:string|null;pluginStatePath?:string|null;pluginStateRestored?:boolean;pluginStateWarning?:string|null};
-  audioLevel?:number|null;
-  audioPerformance?:{callbacks:number;maxRenderUs:number;overBudgetCallbacks:number;maxFrames:number}|null;
-  playbackPerformance?:{maxGapMs:number;lateTicks:number;maxTickMs:number;maxPublishMs:number};
-  soundfont?: string;
-  error: string | null;
-  passage: { start: number; end: number } | null;
-  repetitions: number;
-  volume: number;
-  rounds: number;
-  inputConnected: boolean;
-  midiEvents: number;
-  pedal: number;
-  recording: boolean;
-  recordDuration: number;
-  mode: string;
-  measure: number;
-  beat: number;
-  tick: number;
-  bpm: number;
-  countIn: number;
-  countRemaining: number;
-  metronome: boolean;
-  latency: number;
-}
+export type { Snapshot, StorageStatus } from "./commands.generated";
+import type { Snapshot } from "./commands.generated";
 export const emptyState: Snapshot = {
-  startup: {stage:"connecting",active:true,ready:false,canSkip:false,error:null},
+  playbackPerformance: { maxGapMs: 0, lateTicks: 0, maxTickMs: 0, maxPublishMs: 0 },
+  startup: { stage: "connecting", active: true, ready: false, canSkip: false, error: null, warnings: [] },
+  recordingUnsaved: false,
+  recordingPath: null,
+  storage: { operation: null, pending: false, error: null },
+  pressedKeys: {},
+  outputId: null,
+  soundfont: "",
+  soundfontStatus: "",
+  sound: { ready: false, changing: false, error: null, lateNotes: 0, device: "", deviceId: null, pluginStatePath: null, pluginStateRestored: false, pluginStateWarning: null },
+  audioLevel: null,
+  audioPerformance: null,
+  soundfontWarning: null,
+  noteEpoch: 0,
   contentId: null,
   scoreRevision: 0,
   annotationRevision: 0,

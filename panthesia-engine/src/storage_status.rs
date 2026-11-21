@@ -2,49 +2,25 @@
 //! changes them, so the interface only sees the operation in progress and the last error.
 use serde::Serialize;
 
-/// Kept in the wire format for the interface; there is no recovery journal any more.
-#[derive(Clone, Copy, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct StorageRecovery {
-    pub checked: bool,
-    pub backup_import: bool,
-    pub round: bool,
-    pub settings: bool,
-    pub assets: bool,
-    pub read_error: bool,
-}
-impl Default for StorageRecovery {
-    fn default() -> Self {
-        Self { checked: true, backup_import: false, round: false, settings: false, assets: false, read_error: false }
-    }
-}
-
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageStatus {
-    pub version: String,
     pub operation: Option<StorageOperation>,
+    /// An exclusive operation or closing is in progress; edits wait for it.
     pub pending: bool,
-    pub writing: bool,
-    pub unsaved_changes: bool,
     pub error: Option<String>,
-    pub can_retry: bool,
-    pub recovery: StorageRecovery,
-    pub recovery_error: Option<String>,
 }
 pub type Status = StorageStatus;
 
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum StorageOperation {
-    Round,
-    Import,
     Recording,
     Asset,
-    Library,
     Song,
     Practice,
     Closing,
+    Other,
 }
 impl StorageOperation {
     pub(super) fn current(id: Option<&str>, closing: bool) -> Option<Self> {
@@ -61,7 +37,7 @@ impl StorageOperation {
             } else if id.starts_with("song-switch-") {
                 Self::Song
             } else {
-                Self::Import
+                Self::Other
             }
         })
     }

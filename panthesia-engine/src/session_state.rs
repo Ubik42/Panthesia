@@ -5,7 +5,7 @@ use crate::{
     sound_runtime, startup, state_order,
 };
 use serde::Serialize;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,10 +57,10 @@ pub struct Snapshot {
     pub playback_performance: PlaybackPerformance,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_order: Option<state_order::StateOrder>,
-    pub startup: startup::Status,
+    pub startup: startup::StartupStatus,
     pub recording_unsaved: bool,
     pub recording_path: Option<PathBuf>,
-    pub storage: crate::storage_status::Status,
+    pub storage: crate::storage_status::StorageStatus,
     pub content_id: Option<String>,
     pub score_revision: u64,
     pub annotation_revision: u64,
@@ -73,15 +73,15 @@ pub struct Snapshot {
     pub hands: String,
     pub required: Vec<u8>,
     pub pressed: Vec<u8>,
-    pub pressed_keys: std::collections::BTreeMap<u8,LiveKey>,
+    pub pressed_keys: BTreeMap<u8, LiveKey>,
     pub input: Option<String>,
     pub output: String,
     pub output_id: Option<String>,
     pub soundfont: PathBuf,
     pub soundfont_status: String,
-    pub sound: sound_runtime::Status,
+    pub sound: sound_runtime::SoundStatus,
     pub audio_level: Option<f32>,
-    pub audio_performance: Option<audio::Performance>,
+    pub audio_performance: Option<audio::AudioPerformance>,
     pub soundfont_warning: Option<String>,
     pub error: Option<String>,
     pub passage: Option<Passage>,

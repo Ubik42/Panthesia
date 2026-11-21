@@ -133,28 +133,13 @@ export type SongSource =
   | { "kind": "file"; "path": string; "title": string; "contentId": string | null; }
   | { "kind": "recent"; "contentId": string; };
 
-export interface StorageRecovery {
-  "checked": boolean;
-  "backupImport": boolean;
-  "round": boolean;
-  "settings": boolean;
-  "assets": boolean;
-  "readError": boolean;
-}
-
-export const StorageOperationValues = ["round", "import", "recording", "asset", "library", "song", "practice", "closing"] as const;
+export const StorageOperationValues = ["recording", "asset", "song", "practice", "closing", "other"] as const;
 export type StorageOperation = typeof StorageOperationValues[number];
 
 export interface StorageStatus {
-  "version": string;
   "operation": StorageOperation | null;
   "pending": boolean;
-  "writing": boolean;
-  "unsavedChanges": boolean;
   "error": string | null;
-  "canRetry": boolean;
-  "recovery": StorageRecovery;
-  "recoveryError": string | null;
 }
 
 export interface LocatedPaperSaved {
@@ -1267,6 +1252,93 @@ export interface ExercisePreset {
   "id": string;
   "name": string;
   "spec": ExerciseSpec;
+}
+
+export interface Passage {
+  "start": number;
+  "end": number;
+}
+
+export interface SoundStatus {
+  "ready": boolean;
+  "changing": boolean;
+  "error": string | null;
+  "lateNotes": number;
+  "device": string;
+  "deviceId": string | null;
+  "pluginStatePath": string | null;
+  "pluginStateRestored": boolean;
+  "pluginStateWarning": string | null;
+}
+
+export interface AudioPerformance {
+  "callbacks": number;
+  "maxRenderUs": number;
+  "overBudgetCallbacks": number;
+  "maxFrames": number;
+}
+
+export interface PlaybackPerformance {
+  "maxGapMs": number;
+  "lateTicks": number;
+  "maxTickMs": number;
+  "maxPublishMs": number;
+}
+
+export interface LiveKey {
+  "velocity": number;
+  "serial": number;
+}
+
+export interface Snapshot {
+  "playbackPerformance": PlaybackPerformance;
+  "stateOrder"?: StateOrder;
+  "startup": StartupStatus;
+  "recordingUnsaved": boolean;
+  "recordingPath": string | null;
+  "storage": StorageStatus;
+  "contentId": string | null;
+  "scoreRevision": number;
+  "annotationRevision": number;
+  "status": string;
+  "position": number;
+  "duration": number;
+  "practiceMs": number;
+  "speed": number;
+  "wait": boolean;
+  "hands": string;
+  "required": Array<number>;
+  "pressed": Array<number>;
+  "pressedKeys": Record<number, LiveKey>;
+  "input": string | null;
+  "output": string;
+  "outputId": string | null;
+  "soundfont": string;
+  "soundfontStatus": string;
+  "sound": SoundStatus;
+  "audioLevel": number | null;
+  "audioPerformance": AudioPerformance | null;
+  "soundfontWarning": string | null;
+  "error": string | null;
+  "passage": Passage | null;
+  "repetitions": number;
+  "volume": number;
+  "mode": string;
+  "measure": number;
+  "beat": number;
+  "tick": number;
+  "bpm": number;
+  "countIn": number;
+  "countRemaining": number;
+  "metronome": boolean;
+  "latency": number;
+  "recording": boolean;
+  "recordDuration": number;
+  "inputConnected": boolean;
+  "midiEvents": number;
+  "noteEpoch": number;
+  "pedal": number;
+  "rounds": number;
 }
 
 export interface PassageCatalog {
