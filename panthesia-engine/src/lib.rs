@@ -69,7 +69,6 @@ mod song_document;
 mod state_projection;
 pub mod live_notes;
 mod playback_memory;
-pub use state_projection::{StateCursor, StateFrame};
 mod practice_conditions;
 mod practice_variant;
 mod passage_practice;
@@ -105,7 +104,6 @@ mod preferences;
 pub mod data_root_lock;
 use panthesia_core::{
     exercise::{ExercisePlan, ExerciseSpec},
-    practice::{AdaptiveTempoCoach, AttemptSummary},
     song_config::{PlayerConfig, SongConfig},
 };
 use preferences::{Passage, Preferences};

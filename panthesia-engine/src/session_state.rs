@@ -1,10 +1,9 @@
 //! Read-only public projections. No runtime ownership or command execution lives here.
 use crate::preferences::Passage;
 use crate::{
-    audio, document, preferences,
+    audio, document,
     sound_runtime, startup, state_order,
 };
-use panthesia_core::practice::{AttemptSummary, PracticeSnapshot};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -58,9 +57,6 @@ pub struct Snapshot {
     pub playback_performance: PlaybackPerformance,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_order: Option<state_order::StateOrder>,
-    pub music_import_version: u8,
-    pub exercise_generation_version: u8,
-    pub package_import_version: u8,
     pub startup: startup::Status,
     pub recording_unsaved: bool,
     pub recording_path: Option<PathBuf>,
@@ -78,7 +74,6 @@ pub struct Snapshot {
     pub required: Vec<u8>,
     pub pressed: Vec<u8>,
     pub pressed_keys: std::collections::BTreeMap<u8,LiveKey>,
-    pub score: PracticeSnapshot,
     pub input: Option<String>,
     pub output: String,
     pub output_id: Option<String>,
@@ -89,8 +84,6 @@ pub struct Snapshot {
     pub audio_performance: Option<audio::Performance>,
     pub soundfont_warning: Option<String>,
     pub error: Option<String>,
-    pub saved: bool,
-    pub current_history_id: Option<String>,
     pub passage: Option<Passage>,
     pub repetitions: usize,
     pub volume: f64,
@@ -103,8 +96,6 @@ pub struct Snapshot {
     pub count_remaining: f64,
     pub metronome: bool,
     pub latency: i32,
-    pub summary: Option<preferences::Shared<AttemptSummary>>,
-    pub summary_version: String,
     pub recording: bool,
     pub record_duration: f64,
     pub input_connected: bool,
@@ -117,9 +108,6 @@ impl Default for Snapshot {
     fn default() -> Self {
         Self {
             state_order: None,
-            music_import_version: 4,
-            exercise_generation_version: 1,
-            package_import_version: 1,
             startup: startup::Status::default(),
             recording_unsaved: false,
             recording_path: None,
@@ -137,7 +125,6 @@ impl Default for Snapshot {
             required: vec![],
             pressed: vec![],
             pressed_keys: Default::default(),
-            score: PracticeSnapshot::default(),
             input: None,
             output: "内置钢琴".into(),
             output_id: None,
@@ -149,8 +136,6 @@ impl Default for Snapshot {
             playback_performance: PlaybackPerformance::default(),
             soundfont_warning: None,
             error: None,
-            saved: false,
-            current_history_id: None,
             passage: None,
             repetitions: 0,
             volume: 0.8,
@@ -163,8 +148,6 @@ impl Default for Snapshot {
             count_remaining: 0.,
             metronome: false,
             latency: 0,
-            summary: None,
-            summary_version: String::new(),
             recording: false,
             record_duration: 0.,
             input_connected: false,

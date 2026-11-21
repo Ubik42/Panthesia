@@ -8,7 +8,6 @@ import type { PlaybackStore } from "./playbackStore";
 import {
   activeMeasures,
   handLabel,
-  noteResult,
   practiceMode,
   practiceStatus,
   seekableMeasures,
@@ -94,15 +93,6 @@ export function PracticeStageReadout({
   );
 }
 
-const resultFields = [
-  "score",
-  "saved",
-  "summary",
-  "status",
-  "storage",
-  "recording",
-  "mode",
-] as const;
 const contextFields = [
   "mode",
   "hands",

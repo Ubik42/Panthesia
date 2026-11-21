@@ -393,9 +393,7 @@ impl Player {
         if scope != "custom" && self.set_hand_scope(&scope).is_err() {
             self.set_hand_scope("both")?;
         }
-        self.previous_summary = None;
         self.previous_mode = None;
-        self.coach = AdaptiveTempoCoach::default();
         self.state.status = "paused".into();
         self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
         Ok(())

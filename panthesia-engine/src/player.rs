@@ -80,9 +80,7 @@ pub(crate) struct Player {
     pub(crate) config: SongConfig,
     pub(crate) fingers: FingerAssignments,
     pub(crate) exercise: Option<ExerciseSpec>,
-    pub(crate) previous_summary: Option<preferences::Shared<AttemptSummary>>,
     pub(crate) reclaimer: Option<playback_memory::Reclaimer>,
-    pub(crate) coach: AdaptiveTempoCoach,
     pub(crate) finger_demo: Option<finger_demo::Demo>,
     pub(crate) song_audition: Option<song_audition::Playback>,
     pub(crate) song_audition_pending: Option<String>,
@@ -185,9 +183,7 @@ impl Player {
             config: SongConfig::default(),
             fingers: FingerAssignments::default(),
             exercise: None,
-            previous_summary: None,
             reclaimer: None,
-            coach: AdaptiveTempoCoach::default(),
             finger_demo: None,
             song_audition: None,
             song_audition_pending: None,
@@ -356,7 +352,6 @@ impl Player {
         }
         self.state.passage = None;
         self.state.repetitions = 0;
-        self.previous_summary = None;
         self.previous_mode = None;
         if let Some(l) = self
             .history
@@ -717,9 +712,7 @@ impl Player {
         if self.state.mode == "listen" { self.state.mode = "flow".into(); self.state.wait = false; }
         self.state.passage = Some(Passage { start, end });
         self.state.repetitions = 0;
-        self.previous_summary = None;
         self.previous_mode = None;
-        self.coach = AdaptiveTempoCoach::default();
         self.reset(start);
         Ok(())
     }
@@ -792,10 +785,6 @@ impl Player {
             audio.send(bytes);
         }
     }
-    pub(crate) fn save(&mut self) -> Result<(), String> {
-        self.state.saved = true;
-        self.persist()
-    }
     pub(crate) fn reset(&mut self,position:f64) {self.reset_with_sound(position,None);}
     pub(crate) fn reset_with_sound(&mut self,position:f64,prepared:Option<track_sound::Prepared>) {
         self.playback.guidance.clear();
@@ -806,8 +795,6 @@ impl Player {
         self.playback.clock = Duration::ZERO;
         self.pending_time.clear();self.pending_untracked=0;self.time_fraction=Duration::ZERO;self.time_connected=false;self.time_last_end=None;
         self.state.position = position;
-        self.state.saved = true;
-        self.state.current_history_id = None;
         self.playback.seek(position, &self.notes, &self.events,
             |n| n.start.as_secs_f64(), |e| e.timestamp.as_secs_f64());
         if let Some(prepared)=prepared {self.restore_prepared_track_sound(prepared);} else {self.restore_track_sound();}
@@ -1021,9 +1008,6 @@ impl Player {
         state.input_connected = self.input_connected();
         state.note_epoch = self.audio_stop_epoch;
         state.required = self.playback.guidance.pitches();
-        state.score = Default::default();
-        state.summary = None;
-        state.summary_version.clear();
         state.recording = self.recorder.is_recording();
         state.record_duration = self.recorder.duration().as_secs_f64();
         if let Some(f) = &self.file {

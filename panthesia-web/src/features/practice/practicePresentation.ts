@@ -102,14 +102,6 @@ function measureRange(
     : null;
 }
 
-export function noteResult(score: Snapshot["score"]) {
-  const judged = score.matched_notes + score.wrong_notes + score.missed_notes;
-  return {
-    judged,
-    accuracy: judged ? Math.round((score.matched_notes / judged) * 100) : null,
-  };
-}
-
 export function nextAvailableQueueSong(
   queue: readonly CollectionSong[],
   contentId: string | null | undefined,

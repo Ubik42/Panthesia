@@ -346,10 +346,6 @@ fn engine_state(state: tauri::State<'_, State>) -> panthesia_engine::Snapshot {
     state.engine.snapshot()
 }
 #[tauri::command]
-fn engine_state_frame(state: tauri::State<'_, State>, request: panthesia_engine::StateCursor) -> panthesia_engine::StateFrame {
-    state.engine.state_frame(request)
-}
-#[tauri::command]
 async fn play_live_notes(state: tauri::State<'_, State>, request: panthesia_engine::live_notes::Input) -> Result<panthesia_engine::live_notes::Acknowledgement,String> {
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || engine.live_notes(request)).await.map_err(|error| error.to_string())?
@@ -728,7 +724,6 @@ fn main() {
             audiveris_paper::save_recognized_score_for_edit,
             save_generated_score_for_edit,
             engine_state,
-            engine_state_frame,
             play_live_notes,
             engine_song,
             midi_devices,

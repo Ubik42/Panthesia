@@ -156,7 +156,6 @@ impl Input {
 pub(crate) struct Playback {
     keep_undo: bool,
     keep_score_mapping: bool,
-    coach: AdaptiveTempoCoach,
     sound: track_sound::Prepared,
     sound_timeline: Arc<track_sound::Timeline>,
     state: Snapshot,
@@ -182,7 +181,6 @@ impl Playback {
         Ok(Self {
             keep_undo: false,
             keep_score_mapping: false,
-            coach: std::mem::take(&mut reader.coach),
             sound,
             sound_timeline: reader.sound_timeline.clone(),
             state: reader.state.clone(),
@@ -255,9 +253,6 @@ impl Playback {
             let old = (std::mem::take(&mut player.finger_undo), std::mem::take(&mut player.hand_undo));
             player.retire(old);
         }
-        player.coach = self.coach;
-        let old = player.previous_summary.take();
-        player.retire(old);
         player.previous_mode = None;
         // Preserve the live connection, recording and startup fields, which can change while preparing.
         player.state.duration = self.state.duration;
@@ -373,7 +368,6 @@ impl Player {
         id: String,
         origin: &Origin,
     ) -> Result<asset_edit::Context, String> {
-        self.check_unsaved_switch()?;
         self.check_switch_origin(origin, "切换")?;
         if matches!(self.state.status.as_str(), "playing" | "countIn")
             || !self.state.pressed.is_empty()
@@ -390,19 +384,8 @@ pub(crate) struct Origin {
     pub revision: u64,
 }
 impl Player {
-    pub(super) fn check_unsaved_switch(&self) -> Result<(), String> {
-        let score = self.matcher.snapshot();
-        if self.has_save_error()
-            && !self.state.saved
-            && score.matched_notes + score.wrong_notes + score.missed_notes > 0
-        {
-            return Err("本轮保存失败，演奏结果仍保留在当前曲目中。请先重试保存本轮结果，再切换曲目或练习条件".into());
-        }
-        Ok(())
-    }
     /// Pause and record the current song before a switch is prepared elsewhere.
     pub(crate) fn begin_import(&mut self) -> Result<Origin, String> {
-        self.check_unsaved_switch()?;
         if self.recorder.is_recording() {
             return Err("请先停止录音，再切换曲目或练习设置".into());
         }

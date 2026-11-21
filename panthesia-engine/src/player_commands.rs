@@ -159,7 +159,6 @@ impl Player {
                 self.panic();
                 self.state.status = "paused".into();
                 self.state.passage = None;
-                self.previous_summary = None;
                 self.previous_mode = None;
                 let file = self.file.as_mut().unwrap();
                 file.measures = grid.bar_times(&file.tempo_track).into();
@@ -172,7 +171,6 @@ impl Player {
                     self.notation = Some(Arc::new(notation::ScoreAsset::new(asset.bytes, asset.name, file)?));
                 }
                 self.score_revision = self.score_revision.wrapping_add(1);
-                self.coach = AdaptiveTempoCoach::default();
                 self.reset(0.);
             }
             command @ (Command::SuggestHands { .. } | Command::ResetPartSettings { .. } | Command::SetPartHands { .. } | Command::ApplyHands { .. }
@@ -758,9 +756,7 @@ impl Player {
                 annotations.track_parts.insert(id,part);
                 panthesia_core::library::save_song_sidecar(&path,&file.content_id,annotations).map_err(|e|e.to_string())?;
                 self.state.hands = "custom".into();
-                self.previous_summary = None;
                 self.previous_mode = None;
-                self.coach = AdaptiveTempoCoach::default();
                 self.reset(self.state.position);
             }
             Command::MeasureLoop {
@@ -893,10 +889,7 @@ impl Player {
                         serde_json::json!({"message":"请先在连续模式下按节拍器演奏至少 24 个音符","suggested":null}),
                     );
                 }
-                let timing = self
-                    .previous_summary
-                    .as_ref()
-                    .map_or_else(|| self.matcher.summary().timing, |s| s.timing);
+                let timing = self.matcher.summary().timing;
                 let (message, suggested) =
                     match timing_calibration_status(timing, self.state.latency) {
                         C::Suggested(s) => (

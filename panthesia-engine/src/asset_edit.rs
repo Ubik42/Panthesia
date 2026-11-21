@@ -752,7 +752,6 @@ impl Player {
             return Err("请先停止并保存录音，再修改练习资料".into());
         }
         if apply {
-            self.check_unsaved_switch()?;
         }
         if apply && matches!(self.state.status.as_str(), "playing" | "countIn") {
             return Err("请先停止演奏，再应用原谱更新".into());

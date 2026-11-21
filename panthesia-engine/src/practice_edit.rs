@@ -470,7 +470,6 @@ impl Player {
             return Err("请先暂停演奏、结束活动计划并松开琴键，再保存这项指法编辑".into());
         }
         if kind.resets() {
-            self.check_unsaved_switch()?;
         }
         let mut context = self.begin_asset_edit(id, false, true, true)?;
         context.set_undo(Undo::capture(self));

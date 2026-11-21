@@ -460,7 +460,6 @@ impl Player {
         self.sound_timeline = timeline.sound;
         self.file = Some(file.into());
         self.score_revision = self.score_revision.wrapping_add(1);
-        self.previous_summary = None;
         self.previous_mode = None;
         self.state.passage = None;
         self.preferences

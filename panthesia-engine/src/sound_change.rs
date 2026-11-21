@@ -38,7 +38,6 @@ impl Engine {
     pub(super) fn begin_sound_change(
         &self,
         font: bool,
-        target: Option<String>,
     ) -> Result<(String, u64, Guard), String> {
         static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let id = format!("sound-{}", SERIAL.fetch_add(1, Ordering::Relaxed));
@@ -47,7 +46,6 @@ impl Engine {
             .send(runtime_request::Request::SoundChangeBegin {
                 id: id.clone(),
                 font,
-                target,
                 reply,
             })
             .map_err(|_| "音乐引擎已关闭")?;
@@ -66,7 +64,7 @@ impl Engine {
             let snapshot=engine.snapshot();
             let output=snapshot.output_id.clone();
             let font=audio::Audio::prepare_font(&snapshot.soundfont)?;
-            let(id,revision,guard)=engine.begin_sound_change(false,output.clone())?;
+            let(id,revision,guard)=engine.begin_sound_change(false)?;
             let prepared=engine.sound.prepare_device(name,output,font,token.clone())?;
             token.check()?;
             let(reply,receiver)=mpsc::sync_channel(1);
@@ -81,7 +79,7 @@ impl Engine {
             let _pending = engine.pending_operation()?;
             token.check()?;
             token.stage("connectingSound")?;
-            let (id, revision, guard) = engine.begin_sound_change(false, name.clone())?;
+            let (id, revision, guard) = engine.begin_sound_change(false)?;
             let prepared = engine.sound.prepare_output(name, token.clone())?;
             token.check()?;
             let (reply, receiver) = mpsc::sync_channel(1);
@@ -108,21 +106,12 @@ impl Player {
         &mut self,
         id: String,
         font: bool,
-        target: Option<String>,
     ) -> Result<u64, String> {
         if self.sound_change.is_some() {
             return Err("音源正在切换，请等待当前任务完成".into());
         }
         if font {
             self.check_soundfont_conditions()?;
-        } else if target.as_deref() != self.output_identity()
-            && !self.recorder.is_recording()
-            && !self.state.saved
-        {
-            let score = self.matcher.snapshot();
-            if score.matched_notes + score.missed_notes + score.wrong_notes > 0 {
-                self.save()?;
-            }
         }
         self.panic();
         if matches!(self.state.status.as_str(), "playing" | "countIn") {

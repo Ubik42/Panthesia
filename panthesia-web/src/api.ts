@@ -13,7 +13,7 @@ import type { EngineCommand } from "./engine/commands.generated";
 export type { EngineCommand } from "./engine/commands.generated";
 
 export * from "./engine/sessionTypes";
-import type { PracticeEditCommand, HistoryReadScope, HistoryReadCommand, PracticeDemoCommand, PracticeReadCommand, PracticeEditScope, SongRow, LibraryMonitorStatus, Note, CollectionSong, TrackSound, SoundFontStatus, AudiverisProgramStatus, MeterMapSegment, MeterMap, MeterMapPreview, LoadedSong, LiveNoteEvent, LiveNoteReceipt, StorageStatus, Snapshot, EngineSession, Feedback } from "./engine/sessionTypes";
+import type { PracticeEditCommand, HistoryReadScope, HistoryReadCommand, PracticeDemoCommand, PracticeReadCommand, PracticeEditScope, SongRow, LibraryMonitorStatus, Note, CollectionSong, TrackSound, SoundFontStatus, AudiverisProgramStatus, MeterMapSegment, MeterMap, MeterMapPreview, LoadedSong, LiveNoteEvent, LiveNoteReceipt, StorageStatus, Snapshot, EngineSession } from "./engine/sessionTypes";
 import { emptyState } from "./engine/sessionTypes";
 
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -201,18 +201,9 @@ export const api = {
     }
     return postLocal("play_live_notes", "/api/live-notes", { epoch, engineId, createdAtMs, events }, 3500);
   },
-  pollState: async (previous: Snapshot): Promise<Snapshot> => {
-    // Older engines and saved UI fixtures use the existing full-state interface.
-    if (!previous.summaryVersion)
-      return isTauri() ? invoke<Snapshot>("engine_state") : http<Snapshot>("/api/state");
-    const frame = await postLocal<{ state: Snapshot; summaryUnchanged: boolean }>(
-      "engine_state_frame", "/api/state-frame", { summaryVersion: previous.summaryVersion }, 3000,
-    );
-    if (!frame.summaryUnchanged) return frame.state;
-    if (!previous.summaryVersion || frame.state.summaryVersion !== previous.summaryVersion)
-      throw new Error("演奏结果版本已改变，请重新读取当前练习");
-    return { ...frame.state, summary: previous.summary };
-  },
+  pollState: (): Promise<Snapshot> =>
+    isTauri() ? invoke<Snapshot>("engine_state") : http<Snapshot>("/api/state"),
+
   song: () =>
     isTauri()
       ? invoke<LoadedSong | null>("engine_song")

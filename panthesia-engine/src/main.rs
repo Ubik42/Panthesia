@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let control = service_lane::Lane::new("neothesia-http-control", 2, 32, Arc::new(AtomicUsize::new(0)),
         move |request| handler(request))?;
     for request in server.incoming_requests() {
-        if request.method() == &Method::Options || ["/api/state", "/api/state-frame", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
+        if request.method() == &Method::Options || ["/api/state", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
             control.dispatch(request);
         } else if (request.method() == &Method::Get && ["/api/song", "/api/session"].contains(&request.url()))
             || (request.method() == &Method::Post && ["/api/midi/export", "/api/package/export"].contains(&request.url())) {
@@ -170,10 +170,6 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine, data: &PathB
                 (&Method::Post, "/api/live-notes") => {
                     let input = client_json(&mut request, 12_000, "键盘输入")?;
                     engine.live_notes(input).and_then(|value| serde_json::to_value(value).map_err(|error| error.to_string()))
-                }
-                (&Method::Post, "/api/state-frame") => {
-                    let cursor = client_json(&mut request, 256, "播放状态")?;
-                    serde_json::to_value(engine.state_frame(cursor)).map_err(|e| e.to_string())
                 }
                 (&Method::Get, "/api/state") => {
                     Ok(serde_json::to_value(engine.snapshot()).unwrap())

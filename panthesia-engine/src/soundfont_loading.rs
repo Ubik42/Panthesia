@@ -36,7 +36,7 @@ impl Engine {
         self.tasks.run("准备钢琴音源",None,move|token|{
             let _pending=engine.pending_operation()?;
             token.check()?;
-            let (id,revision,guard)=engine.begin_sound_change(true,None)?;
+            let (id,revision,guard)=engine.begin_sound_change(true)?;
             token.stage("readingSound")?;
             let prepared=Prepared::read(path)?;
             token.check()?;

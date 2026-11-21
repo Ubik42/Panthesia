@@ -7,9 +7,9 @@ pub(crate) enum Request {
     PaperNavigationInstall { prepared: crate::paper_navigation::Prepared, sequence: u64, latest: Arc<std::sync::atomic::AtomicU64>, received: std::time::Instant, token: TaskToken, reply: Reply },
     PlaybackAdjustment(crate::state_order::PlaybackAdjustment, std::time::Instant, Reply),
     LiveNotes(crate::live_notes::Input,std::time::Instant,mpsc::SyncSender<Result<crate::live_notes::Acknowledgement,String>>),
-    InputContext{name:Option<String>,reply:mpsc::SyncSender<Result<u64,String>>},
+    InputContext{reply:mpsc::SyncSender<Result<u64,String>>},
     InputCommit{revision:u64,prepared:crate::input_runtime::Prepared,token:TaskToken,reply:Reply},
-    SoundChangeBegin{id:String,font:bool,target:Option<String>,reply:mpsc::SyncSender<Result<u64,String>>},
+    SoundChangeBegin{id:String,font:bool,reply:mpsc::SyncSender<Result<u64,String>>},
     SoundChangeAbort(String),
     SoundOutputCommit{id:String,revision:u64,prepared:crate::sound_runtime::Prepared,token:TaskToken,reply:Reply},
     SoundFontLiveCommit{id:String,revision:u64,prepared:crate::soundfont_loading::LivePrepared,token:TaskToken,reply:Reply},
@@ -130,9 +130,9 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::state_projection::publish(&player, &shared);
             respond(reply, result);
         }
-        Request::InputContext{name,reply}=>{respond(reply,player.input_context(name.as_deref()));}
+        Request::InputContext{reply}=>{respond(reply,player.input_context());}
         Request::InputCommit{revision,prepared,token,reply}=>{let result=player.install_input(revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}
-        Request::SoundChangeBegin{id,font,target,reply}=>{respond(reply,player.begin_sound_change(id,font,target));}
+        Request::SoundChangeBegin{id,font,reply}=>{respond(reply,player.begin_sound_change(id,font));}
         Request::SoundChangeAbort(id)=>{player.abort_sound_change(&id);}
         Request::SoundOutputCommit{id,revision,prepared,token,reply}=>{let result=player.install_output(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}
         Request::SoundFontLiveCommit{id,revision,prepared,token,reply}=>{let result=player.install_live_soundfont(&id,revision,prepared,&token);crate::state_projection::publish(&player, &shared);respond(reply,result);}

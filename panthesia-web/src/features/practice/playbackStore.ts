@@ -11,7 +11,6 @@ const liveFields = [
   "required",
   "pressed",
   "pressedKeys",
-  "score",
   "midiEvents",
   "audioLevel",
   "audioPerformance",

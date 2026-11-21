@@ -177,14 +177,12 @@ impl Player {
         self.panic();
         self.state.status = "paused".into();
         self.state.passage = None;
-        self.previous_summary = None;
         self.previous_mode = None;
         self.file = Some(updated);
         self.meter_correction = None;
         self.meter_map = value;
         self.notation = notation.map(Arc::new);
         self.score_revision = self.score_revision.wrapping_add(1);
-        self.coach = AdaptiveTempoCoach::default();
         self.reset(0.);
         self.command(Command::CurrentSong)
     }

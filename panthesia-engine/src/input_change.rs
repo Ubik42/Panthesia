@@ -10,10 +10,7 @@ impl Engine {
             let (reply, receiver) = mpsc::sync_channel(1);
             engine
                 .tx
-                .send(runtime_request::Request::InputContext {
-                    name: name.clone(),
-                    reply,
-                })
+                .send(runtime_request::Request::InputContext { reply })
                 .map_err(|_| "音乐引擎已关闭")?;
             let revision = receiver.recv().map_err(|_| "键盘连接条件通道已关闭")??;
             let prepared = engine.input.prepare(name, token.clone())?;
@@ -33,14 +30,7 @@ impl Engine {
     }
 }
 impl Player {
-    pub(super) fn input_context(&self, name: Option<&str>) -> Result<u64, String> {
-        if name != self.state.input.as_deref() && !self.recorder.is_recording() && !self.state.saved
-        {
-            let score = self.matcher.snapshot();
-            if score.matched_notes + score.missed_notes + score.wrong_notes > 0 {
-                return Err("本轮结果尚未保存，请先保存本轮结果，再更换 MIDI 输入".into());
-            }
-        }
+    pub(super) fn input_context(&self) -> Result<u64, String> {
         Ok(self.input_revision)
     }
     pub(super) fn install_input(
@@ -57,7 +47,7 @@ impl Player {
                 Err(_) => break,
             }
         }
-        self.input_context(prepared.name.as_deref())?;
+        self.input_context()?;
         if self.input_revision != revision {
             return Err("键盘选择已改变，请重新选择".into());
         }

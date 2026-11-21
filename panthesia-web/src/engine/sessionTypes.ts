@@ -218,11 +218,7 @@ export type StorageStatus = Pick<EngineStorageStatus, "pending" | "error" | "can
   Partial<Pick<EngineStorageStatus, "version" | "operation" | "writing" | "unsavedChanges" | "recovery" | "recoveryError">>;
 export interface Snapshot {
   stateOrder?: import("./commands.generated").StateOrder;
-  musicImportVersion?: number;
-  exerciseGenerationVersion?: number;
-  packageImportVersion?: number;
   noteEpoch?: number;
-  summaryVersion?: string;
   scoreRevision?: number;
   annotationRevision?: number;
   startup?: Omit<import("./commands.generated").StartupStatus, "warnings"> & { warnings?: import("./commands.generated").StartupWarning[] };
@@ -241,13 +237,6 @@ export interface Snapshot {
   required: number[];
   pressed: number[];
   pressedKeys?: Record<number,{velocity:number;serial:number}>;
-  score: {
-    matched_notes: number;
-    wrong_notes: number;
-    missed_notes: number;
-    on_time_notes: number;
-    required_notes: number;
-  };
   input: string | null;
   output: string;
   outputId?: string | null;
@@ -257,8 +246,6 @@ export interface Snapshot {
   playbackPerformance?:{maxGapMs:number;lateTicks:number;maxTickMs:number;maxPublishMs:number};
   soundfont?: string;
   error: string | null;
-  saved: boolean;
-  currentHistoryId: string | null;
   passage: { start: number; end: number } | null;
   repetitions: number;
   volume: number;
@@ -277,7 +264,6 @@ export interface Snapshot {
   countRemaining: number;
   metronome: boolean;
   latency: number;
-  summary: Feedback | null;
 }
 export const emptyState: Snapshot = {
   startup: {stage:"connecting",active:true,ready:false,canSkip:false,error:null},
@@ -293,18 +279,9 @@ export const emptyState: Snapshot = {
   hands: "both",
   required: [],
   pressed: [],
-  score: {
-    matched_notes: 0,
-    wrong_notes: 0,
-    missed_notes: 0,
-    on_time_notes: 0,
-    required_notes: 0,
-  },
   input: null,
   output: "内置钢琴",
   error: null,
-  saved: false,
-  currentHistoryId: null,
   passage: null,
   repetitions: 0,
   volume: 0.8,
@@ -323,96 +300,9 @@ export const emptyState: Snapshot = {
   countRemaining: 0,
   metronome: false,
   latency: 0,
-  summary: null,
 };
 export interface EngineSession {
   readSequence?: number;
   song: LoadedSong | null;
   state: Snapshot;
-}
-export interface Feedback {
-  source?: {
-    contentId: string | null;
-    historyId: string | null;
-    summaryVersion: string;
-    scoreRevision: number;
-    annotationRevision: number;
-  };
-  mode?: string;
-  trend?: {
-    attempts: number;
-    accuracyDelta: number | null;
-    speedDelta: number | null;
-    tempoDelta: number | null;
-  };
-  overall: Snapshot["score"];
-  measures: {
-    measure: number;
-    breakdown: {
-      matched_notes: number;
-      wrong_notes: number;
-      missed_notes: number;
-      early_notes?: number;
-      late_notes?: number;
-    };
-    timing: {
-      median_offset_ms: number | null;
-      median_deviation_ms: number | null;
-    };
-  }[];
-  measure_parts?: {
-    measure: number;
-    part: "LeftHand" | "RightHand" | "Other";
-    track_id: number;
-    breakdown: {
-      target_notes: number;
-      matched_notes: number;
-      on_time_notes: number;
-      early_notes: number;
-      late_notes: number;
-      wrong_notes: number;
-      missed_notes: number;
-    };
-    timing: {
-      matched_samples: number;
-      median_offset_ms: number | null;
-      median_deviation_ms: number | null;
-    };
-  }[];
-  parts: {
-    part: string;
-    breakdown: {
-      matched_notes: number;
-      wrong_notes: number;
-      missed_notes: number;
-    };
-  }[];
-  timing: {
-    median_offset_ms: number | null;
-    median_deviation_ms: number | null;
-  };
-  chords: {
-    eligible_chords: number;
-    complete_chords: number;
-    incomplete_chords: number;
-    median_attack_span_ms: number | null;
-  };
-  expression: {
-    velocity: {
-      matched_samples: number;
-      mean_abs_difference: number | null;
-      contour_steps: number;
-      contour_aligned: number;
-    };
-    pedal: {
-      user_used: boolean;
-      target_present: boolean;
-      timing_samples: number;
-      median_offset_ms: number | null;
-    };
-    articulation: {
-      matched_samples: number;
-      median_duration_ratio_percent: number | null;
-    };
-  };
 }

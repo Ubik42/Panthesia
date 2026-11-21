@@ -493,7 +493,7 @@ export function usePracticeSession() {
       transportWorking = true;
       const epoch = snapshotEpoch.current;
       try {
-        const next = await api.pollState(playback.getSnapshot());
+        const next = await api.pollState();
         if (!stopped && epoch === snapshotEpoch.current) {
           failures = 0;
           setConnected(true);

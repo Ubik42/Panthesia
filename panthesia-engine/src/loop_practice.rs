@@ -5,8 +5,6 @@ impl Player {
         self.state.status = "finished".into();
         self.panic();
         self.playback.guidance.clear();
-        self.state.saved = true;
-        self.state.current_history_id = None;
         self.continue_finished_round();
     }
 }
