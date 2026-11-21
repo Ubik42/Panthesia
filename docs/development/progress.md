@@ -2,6 +2,17 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · RF 第一批：状态推送与删除失去用途的前端（提交 462f8df、c0bb794、本批前端删除、5540b62）
+
+- 引擎快照删除评分时代字段：计数、尝试总结、总结版本、历史 id、本轮已保存标记、导入格式版本；依赖它们的"本轮结果未保存"守卫永远不会触发，一并删除；删除未使用的自适应速度教练。`state-frame` 接口随总结一起删除。
+- 状态推送：引擎通过 `StateFeed`（修订号 + 条件变量）发布，提供 `next_state(after, timeout)`；桌面端一个线程只在快照内容变化时发出 `engine-state` 事件；调试服务提供 `/api/state/next?after=N` 长轮询（独立通道）。前端 `api.subscribeState` 统一两种方式，`usePracticeSession` 不再每 80 ms 轮询（638 → 378 行）。
+- 前端删除（盘点由只读子代理完成，三组互不重叠的文件由子代理并行修改，共享文件由我修改）：曲库与收藏读取、歌曲列表、队列辅助、曲库元数据模式与右键菜单、浏览状态存储、纸谱上的历史定位、导入 / 曲目包 / 日课类工作目标、恢复日志条目、曲库布局设置；导航只剩主页与练习两个工作区（原来的锁从未被设置）。`LibraryMetadataEditor` 改为 `features/library/SongMetadataEditor.tsx`。
+- CSS：新增 `scripts/prune-css.mjs`（postcss 解析，删除源码中不可能出现的类名对应的选择器），删除 1221 个选择器；CSS 总计约 1.08 万行，`style.css` 2763 → 1157 行。
+- 用户问是否换成 TypeScript + Electron：结论是不换。前端已是 TypeScript，核心能力（低延迟音频、MIDI、VST3、乐谱处理）在 Rust；效率问题来自代码复杂度，按 RF 计划简化（推送、单一 `send()`、类型生成）。
+- 检查：`cargo check --workspace --all-targets`、`npm run build` 通过。
+
+下一入口：RF 第二批——`tokens.css` 与硬编码颜色替换；随后单一 `send()` 与从 Rust 生成 `Snapshot` 等类型。
+
 ## 2026-11-21 · R2 第 6 项：迁移真实资料，R2 完成（提交 8e0b047、224e00e、a756bca、c758201）
 
 - 迁移前完整备份：`work/user-data-backup/com.ubik.neothesia-20261121-before-migration.zip`（4221 个文件，与源目录一致）。
