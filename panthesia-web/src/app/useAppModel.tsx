@@ -4,7 +4,6 @@ import { openWorkEntry } from "../features/activity/workNavigation";
 import { useScorePairing } from "../features/scores/useScorePairing";
 import { usePracticeToolNavigation } from "../features/screens/usePracticeToolNavigation";
 import { usePlaybackActions } from "../features/practice/usePlaybackActions";
-import type { DeviceObject } from "../features/screens/MusicDeviceList";
 import { useProductNavigation } from "../features/screens/useProductNavigation";
 import { applicationCommands,type ApplicationCommandId } from "./applicationCommands";
 import { installDiagnostics } from "./diagnostics";
@@ -16,10 +15,8 @@ import type { SongWorkspaceTarget } from "./songWorkspaceVisit";
 import { useDialogFocus } from "./useDialogFocus";
 import { useWorkspaceSessions } from "./useWorkspaceSessions";
 import type { DisplayPreferences } from "../features/settings/displayPreferences";
-import type { MediaExportKind } from "../engine/commands.generated";
 import { pathKey } from "../engine/pathIdentity";
 import type { WorkEntry } from "../features/activity/workProgressStore";
-import { resolveKeyboardViewport,viewportRange,type KeyboardViewport } from "../features/practice/keyboardViewport";
 import { type BookmarkNavigation } from "../features/practice/SongBookmarks";
 import { useLiveNotes } from "../features/practice/useLiveNotes";
 import { usePerformanceSize } from "../features/practice/usePerformanceSize";
@@ -30,7 +27,7 @@ import { useProductScreens } from "../features/screens/useProductScreens";
 import { getInterfaceSettings } from "../features/settings/interfaceSettingsStore";
 import { getInterfaceWorkbench } from "../features/settings/interfaceWorkbenchStore";
 
-import { useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore } from "react";
+import { useCallback,useEffect,useRef,useState,useSyncExternalStore } from "react";
 import {
 api,type LoadedSong
 } from "../api";
@@ -39,35 +36,25 @@ useWorkspaceNavigation,
 type Workspace,
 } from "./useWorkspaceNavigation";
 import { matchesSong } from "../engine/stateOrder";
-import type { MediaExportSource } from "../features/exports/mediaExportStore";
 import { usePracticeRange } from "../features/practice/usePracticeRange";
 const normalize = pathKey;
 
 
 /** Session, navigation and actions of the application window; the view reads them through AppContext. */
+import { useAppDialogs } from "./useAppDialogs";
+import { useKeyboardViewport } from "../features/practice/useKeyboardViewport";
+
 export function useAppModel() {
   useEffect(installDiagnostics, []);
-  const [appMenuOpen,setAppMenuOpen]=useState(false);
-
-  useEffect(() => {
-    if (!appMenuOpen) return;
-    const pointer = (event: MouseEvent) => {
-      const target = event.target as Element;
-      const toggle = target.closest('button[aria-label="应用菜单"]');
-      const menu = target.closest(".workspace-topbar");
-      if (!toggle && (!menu || target.closest("button"))) setAppMenuOpen(false);
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAppMenuOpen(false);
-    };
-    window.addEventListener("click", pointer);
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("click", pointer);
-      window.removeEventListener("keydown", key);
-    };
-  }, [appMenuOpen]);
-
+  const dialogs = useAppDialogs();
+  const {
+    appMenuOpen, setAppMenuOpen, displayDialog, setDisplayDialog, displaySection, setDisplaySection,
+    commandsOpen, setCommandsOpen, aboutOpen, setAboutOpen, editDraftsOpen, setEditDraftsOpen,
+    metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
+    settings, setSettings, settingsTab, setSettingsTab, settingsDevice, setSettingsReturnToScores, settingsReturnToScores,
+    openSoundSettings, exerciseDialog, setExerciseDialog, passageDialog, setPassageDialog,
+    progressOpen, setProgressOpen, recoveryOpen, setRecoveryOpen, songFilesOpen, setSongFilesOpen, mediaExport, setMediaExport,
+  } = dialogs;
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
   const workspaceSessions = useWorkspaceSessions();
@@ -83,8 +70,6 @@ export function useAppModel() {
     interfaceSettings.getPreferences,
   );
   const setDisplay = interfaceSettings.setPreferences;
-  const [displayDialog, setDisplayDialog] = useState(false);
-  const [displaySection,setDisplaySection]=useState<"display"|"appearance"|"keyboard"|"shortcuts"|"backup"|undefined>(undefined);
   useEffect(() => {
     document.documentElement.style.zoom = String(display.uiScale / 100);
     document.documentElement.style.setProperty(
@@ -143,28 +128,13 @@ export function useAppModel() {
   useEffect(() => {
     sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, closing: !!workspaceSessions.desktopClose.status, title: song?.title, path: song?.sourcePath, state });
   }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, !!workspaceSessions.desktopClose.status, song?.title, song?.sourcePath, state]);
-  const [commandsOpen, setCommandsOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [editDraftsOpen, setEditDraftsOpen] = useState(false);
-  const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
   const [recentCommands, setRecentCommands] = useState<ApplicationCommandId[]>([]);
-  const [settingsTab,setSettingsTab]=useState<"sound"|"duet">("sound");
-  const [settingsDevice,setSettingsDevice]=useState<DeviceObject|undefined>();
-  function openSoundSettings(device?:DeviceObject){setSettingsDevice(device);setSettingsTab("sound");setSettingsReturnToScores(false);setSettings(true);}
-  const [settingsReturnToScores,setSettingsReturnToScores]=useState(false);
-  const [settings, setSettings] = useState(false),
-    [editFingers, setEditFingers] = useState(false),
+  const [editFingers, setEditFingers] = useState(false),
     [selectedNote, setSelectedNote] = useState<
       LoadedSong["notes"][number] | null
     >(null),
-    [exerciseDialog, setExerciseDialog] = useState(false),
-    [metadata, setMetadata] = useState(false),
     [fingeringDraft, setFingeringDraft] = useState<import("../features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
-    [passageDialog, setPassageDialog] = useState(false),
-    [progressOpen, setProgressOpen] = useState(false),
-    [recoveryOpen, setRecoveryOpen] = useState(false),
     [paperRevision, setPaperRevision] = useState(0),
-    [mediaExport, setMediaExport] = useState<(MediaExportSource & { kind?: MediaExportKind }) | null>(null),
     [notice, setNotice] = useState("");
   useEffect(() => {
     if (!scoreToolRequest) return;
@@ -186,20 +156,7 @@ export function useAppModel() {
     });
   }, [song?.contentId, song?.scoreRevision, song?.annotationRevision, song?.notes]);
   useEffect(() => { if (!fingeringDialog) setFingeringDraft(null); }, [fingeringDialog]);
-  const pianoViewport = useMemo(() => resolveKeyboardViewport(display, song?.notes ?? [], state.input),
-    [display.range, display.keyboardViewport, display.keyboardLow, display.keyboardHigh, display.keyboardDeviceRanges, song?.notes, state.input]);
-  const pianoRange = useMemo(()=>viewportRange(pianoViewport),[pianoViewport]);
-  const changePianoViewport = (viewport:KeyboardViewport) => {
-    const range=viewportRange(viewport);
-    setDisplay(previous=>({...previous,range:"custom",keyboardViewport:viewport,keyboardLow:range.low,keyboardHigh:range.high}));
-  };
-  const pianoPitchCounts = useMemo(()=>{
-    const counts=Array<number>(129).fill(0);
-    for(const note of song?.notes??[])counts[note.pitch+1]++;
-    for(let pitch=1;pitch<counts.length;pitch++)counts[pitch]+=counts[pitch-1];
-    return counts;
-  },[song?.notes]);
-  const outsidePianoRange = pianoPitchCounts[pianoRange.low]+pianoPitchCounts[128]-pianoPitchCounts[pianoRange.high+1];
+  const { pianoViewport, pianoRange, changePianoViewport, outsidePianoRange } = useKeyboardViewport(display, setDisplay, song?.notes, state.input);
   const recital = ["recital", "memory"].includes(state.mode);
   const attemptLocked = recital && ["playing", "paused", "countIn"].includes(state.status);
   useEffect(() => {
@@ -287,7 +244,6 @@ export function useAppModel() {
   const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, !!mediaExport]);
-  const [songFilesOpen, setSongFilesOpen] = useState(false);
   const { recentFiles, forgetRecent, opening, openPath, chooseFile } = useSongOpening({
     connected, startupReady, busy, recording: state.recording, song, playback, requestBusy, songOpeningActive,
     changeWorkspace, clearLiveNotes, run, setNotice, setError,

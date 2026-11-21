@@ -234,3 +234,4 @@ export function previewTickSpan(
     span + fraction * (bar ? bar.endTick - bar.startTick : fallback),
   );
 }
+
