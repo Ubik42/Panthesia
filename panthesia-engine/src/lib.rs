@@ -68,6 +68,7 @@ pub use panthesia_core::manifest_store;
 mod file_open;
 mod manifest_settings;
 mod song_files;
+pub mod probe;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;

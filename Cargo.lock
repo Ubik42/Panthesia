@@ -2929,6 +2929,7 @@ dependencies = [
  "panthesia-core",
  "panthesia-music",
  "panthesia-vst3",
+ "png 0.18.1",
  "quick-xml 0.41.0",
  "rtrb",
  "rusqlite",

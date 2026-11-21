@@ -161,6 +161,24 @@ struct GeneratedScorePreview {
 fn file_dialog(data:&std::path::Path,kind:&str)->rfd::AsyncFileDialog{let dialog=rfd::AsyncFileDialog::new();if let Some(path)=panthesia_engine::file_locations::initial(data,kind){dialog.set_directory(path)}else{dialog}}
 fn remember_location(data:&std::path::Path,kind:&str,path:&std::path::Path,folder:bool){if let Err(error)=panthesia_engine::file_locations::remember(data,kind,path,folder){eprintln!("{error}");}}
 
+/// The program uses the GUI subsystem; attach to the calling console so `probe` output is
+/// visible when run by hand. Redirected output (pipes, files) works without it.
+fn attach_parent_console() {
+    #[cfg(windows)]
+    unsafe {
+        unsafe extern "system" {
+            fn AttachConsole(process: u32) -> i32;
+            fn GetStdHandle(kind: u32) -> isize;
+        }
+        const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+        const STD_OUTPUT_HANDLE: u32 = -11i32 as u32;
+        // Keep inherited pipes and files; attach only when there is no output handle.
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if handle == 0 || handle == -1 {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
+}
 fn headless_check() -> bool {
     startup_checks::headless()
 }
@@ -955,6 +973,14 @@ fn startup_failure(error: impl std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 fn main() {
+    // `probe` answers file managers (Keel) without a window, a data root or a single instance.
+    let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    if args.get(1).is_some_and(|a| a == "probe") {
+        attach_parent_console();
+        let (code, output) = panthesia_engine::probe::run(&args[2..]);
+        println!("{output}");
+        std::process::exit(code);
+    }
     diagnostics::install();
     let context = match startup_checks::configure(tauri::generate_context!()) {
         Ok(context) => context,

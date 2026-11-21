@@ -20,6 +20,7 @@ zip.workspace = true
 quick-xml.workspace = true
 tiny_http = "0.12"
 chrono = "0.4"
+png = "0.18"
 
 [[bin]]
 name = "panthesia-service"

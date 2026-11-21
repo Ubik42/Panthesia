@@ -157,3 +157,24 @@
 ## 导出与分享
 
 `.neopiece` 只用于分享：把清单和它引用的文件打包，路径改写为包内路径。导入时解包到用户选择的文件夹并生成文件夹清单。
+
+## 命令行 `probe`（供 Keel 插件）
+
+```powershell
+Panthesia.exe probe <文件> [--json] [--thumbnail <png 路径>] [--size 480x160]
+```
+
+不打开窗口、不读写资料目录、不经过单实例转交。接受 MIDI、MusicXML、`.panthesia`（分析默认演奏）。标准输出为一行 UTF-8 JSON；失败时输出 `{"error": "…"}`，退出码 1。
+
+| 字段 | 说明 |
+| --- | --- |
+| `kind` | `midi` / `musicxml` / `manifest` |
+| `performancePath` | 实际分析的演奏文件 |
+| `title`、`artist` | 清单中的值；没有清单时标题取文件名 |
+| `durationSeconds` | 按文件中的拍速播放的时长 |
+| `bpm`、`bpmSource` | 主拍速（持续最久的拍速）；来源 `manifest`（`tempo` 图层）、`midi`、`filename`（文件没有拍速事件且文件名含 `BPM76` 之类） |
+| `tempoChanges`、`timeSignature` | 拍速变化次数、第一小节拍号 |
+| `key`、`keySource` | `G:maj` 形式；来源依次为 `manifest`（`keys` 图层）、`midi`（调号事件）、`filename`（如 `Gmajor`）、`estimated`（Krumhansl–Kessler 音级时值相关） |
+| `tracks`、`notes`、`pitchRange` | 有音符的轨道数、音符数、最低与最高音 |
+| `manifest` | 清单路径、标题、图层名、演奏列表、音轨类型、是否有谱面、缺失文件编号；没有清单时为 `null` |
+| `thumbnail` | 写出的钢琴卷帘 PNG（横轴时间、纵轴音高；清单分配了手别时右手绿、左手蓝） |
