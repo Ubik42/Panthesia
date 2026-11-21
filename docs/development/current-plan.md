@@ -85,8 +85,8 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | 调性 | Krumhansl-Schmuckler 窗口估计 + 转调惩罚平滑 | keys |
 | 和弦 | 拍段音级分布（低音加权）+ 模板匹配 + Viterbi 平滑 | chords |
 | 段落 | 小节自相似矩阵 + novelty 边界 + 聚类命名 | sections |
-| 手别分离 | 分组 + beam search 代价函数（跨度、音域、移动、指数） | hands |
-| 演奏清理 | 幽灵音、半音粘连、重叠裁切（以实际发声结束时间为判据） | 新 variant，不改原演奏 |
+| 手别分离与指法 | 演奏约束规划器：跨度（按演奏者手型）、按住的键、物理移动速度上限、双手交错、指数、音型（颤音、重复和弦）；与虚拟双手共用约束；学习方法（Nakamura HMM、GNN）作对照 | hands、fingering |
+| 演奏清理 | 针对转录模型的误检音、重叠裁切；修改是否可接受以实际发声结束时间（含踏板）为判据，用 A/B 试听验收 | 新 variant，不改原演奏 |
 | 伴奏对齐 | MIDI chroma ↔ 音频 chroma 的多分辨率 DTW | alignments |
 
 外部 Python 工具（Transkun 2.0.1、BS-RoFormer-SW、DuET）只通过后台适配器调用：每个工具独立 venv，路径在设置中配置，不硬编码，不静默下载模型。
