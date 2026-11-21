@@ -385,6 +385,7 @@ pub enum Command {
         path: PathBuf,
         title: String,
     },
+    OpenFile { path: PathBuf },
     LoadIndexed {
         path: PathBuf,
         title: String,

@@ -2,6 +2,17 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · R2 第 2 项：打开文件
+
+- 引擎新增 `OpenFile { path }`（`file_open.rs`）：接受 MIDI / MusicXML / `.panthesia`；按 3.7 查找清单，校验引用并在目录树内找回（有改动且非只读时写回）；打开清单中列出的那个演奏，否则打开默认演奏；演奏文件内容变化时用 `reconcile_notes` 核对音符引用、更新记录的哈希并写回；结果附 `opened`（清单路径、演奏列表、变化 / 缺失 / 找回 / 未匹配数量）。没有清单时直接演奏，打开不创建清单。MusicXML 暂走 `ImportScoreOriginal`。
+- 桌面端（`open_requests.rs`）：命令行参数、第二次启动（`tauri-plugin-single-instance`，转交文件并把原窗口提到前台）、原生拖放都进入同一队列，发出 `panthesia://open-requested`；前端启动就绪后与收到事件时取出最后一个文件，切到练习并 `openFile`。安装包登记 mid / midi / kar、musicxml / mxl、panthesia 文件关联。启动检查模式不启用单实例，以免与正常窗口互相转交。
+- 原生拖放启用后，桌面版窗口内不再收到 HTML5 拖放，拖入导入对话框改为用文件选择（导入流程在第 7 项删除）；浏览器调试模式不变。
+- 实测（debug 桌面构建，临时资料目录）：带《七里香》参数启动即打开该曲；再次启动带 POP909 001 → 第二个进程立即退出，原窗口打开 001，系统中只有一个进程；歌曲文件旁未生成清单。拖放未做自动化验证（与转交走同一队列）。
+- 测试：`file_open` 1 个（无清单直接打开、过期引用找回并写回、演奏变化后音符移入 unmatched）、`open_requests` 1 个。发现：引擎测试需等待启动恢复结束（`startup.ready` 且无 pending）才能发命令；R1 基线中 engine 的许多失败可能只是没有等待，第 5 项处理忙碌状态时一并核对。
+- 未完成：加载仍经集中曲库解析并复制到 `library/assets`（第 5 项删除）；"第一次修改时在文件旁创建同名清单"随第 3 项的保存路径实现；打开结果中的清单问题尚未在界面提示（第 3 项歌曲设置中显示）。
+
+下一入口：R2 第 3 项（歌曲设置接入清单）。
+
 ## 2026-11-21 · R2 第 1 项：`.panthesia` 格式
 
 - 格式说明 `docs/development/panthesia-format.md` 与 `panthesia-format.schema.json`：顶层字段、文件角色、演奏 / 谱面、图层（hands、fingering、playback、meter、keys、chords、sections、beats、lyrics、tempo、passages、bookmarks）、派生版本、设置。音符引用写作 `[track, onset, pitch]`，音高用于在演奏文件变化后核对。

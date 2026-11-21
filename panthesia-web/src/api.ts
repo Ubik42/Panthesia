@@ -138,6 +138,8 @@ async function savePaperFile(format: "png" | "pdf", name: string, bytes: Uint8Ar
 }
 
 export const api = {
+  /** Files handed over by the command line, a second launch or a native drop. Empty outside the desktop. */
+  takeOpenRequests: async (): Promise<string[]> => isTauri() ? invoke<string[]>("take_open_requests") : [],
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,
   prepareMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, input: import("./engine/commands.generated").MediaExportInput): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("prepare_media_export", {request, input}),
   listMediaExports: (engineId: string): Promise<import("./engine/commands.generated").MediaExportListing> => invoke("list_media_exports", {engineId}),

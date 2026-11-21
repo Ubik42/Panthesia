@@ -417,6 +417,33 @@ export default function App() {
   const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, importDialog, packageDialog, !!mediaExport]);
+  // Files opened from Explorer, Ouro, the command line or a drop open directly from their own location.
+  const openRequestsBusy = useRef(false);
+  const takeOpenRequests = useCallback(async () => {
+    if (openRequestsBusy.current || !connected || !startupReady) return;
+    openRequestsBusy.current = true;
+    try {
+      const paths = await api.takeOpenRequests();
+      const path = paths.at(-1);
+      if (!path) return;
+      if (!(await changeWorkspace("practice"))) return;
+      if (await run({ type: "openFile", path }, true)) productScreens.show("performance");
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      openRequestsBusy.current = false;
+    }
+  }, [connected, startupReady, changeWorkspace, run, productScreens, setError]);
+  useEffect(() => {
+    if (!api.desktop) return;
+    void takeOpenRequests();
+    let release: (() => void) | undefined, active = true;
+    void import("@tauri-apps/api/event").then(({ listen }) =>
+      listen("panthesia://open-requested", () => void takeOpenRequests()).then((stop) => {
+        if (active) release = stop; else stop();
+      }));
+    return () => { active = false; release?.(); };
+  }, [takeOpenRequests]);
   const {openPracticeTool,launchPracticeTool}=usePracticeToolNavigation({toolContext,changeWorkspace,playback,run,setError});
   useEffect(() => {
     if (api.desktop || !state.storage?.pending) return;

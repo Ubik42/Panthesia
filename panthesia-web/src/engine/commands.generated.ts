@@ -1957,6 +1957,7 @@ export type EngineCommand =
   | { type: "editMetadata"; "value": SongMetadata; "expected": SongMetadata }
   | { type: "setMetadata"; "value": SongMetadata }
   | { type: "load"; "path": string; "title": string }
+  | { type: "openFile"; "path": string }
   | { type: "loadIndexed"; "path": string; "title": string; "content_id": string }
   | { type: "importScore"; "bytes": Array<number>; "name": string; "default_bpm": number }
   | { type: "importMidi"; "bytes": Array<number>; "name": string }

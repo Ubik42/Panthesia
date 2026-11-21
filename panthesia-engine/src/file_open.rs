@@ -1,0 +1,183 @@
+//! Open a music file or a `.panthesia` manifest from its own location (current-plan 3.7):
+//! find the manifest, verify and recover its references, load the chosen performance and
+//! check note references when the performance file changed. Without a manifest the file is
+//! played directly; nothing is created on open.
+use crate::manifest_store::{self, Located};
+use crate::{Command, Engine, load_pipeline};
+use panthesia_core::manifest::Manifest;
+use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
+
+const MIDI: &[&str] = &["mid", "midi", "kar"];
+const SCORE: &[&str] = &["musicxml", "mxl", "xml"];
+
+fn extension(path: &Path) -> String {
+    path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_ascii_lowercase()
+}
+pub fn supported(path: &Path) -> bool {
+    let ext = extension(path);
+    MIDI.contains(&ext.as_str()) || SCORE.contains(&ext.as_str()) || ext == panthesia_core::manifest::EXTENSION
+}
+
+/// The performance to open: the file itself when the manifest lists it as a performance,
+/// otherwise the manifest's default performance.
+fn choose(located: &Located, opened: &Path) -> Result<(String, PathBuf), String> {
+    let dir = located.path.parent().ok_or("清单所在目录无法读取")?;
+    let manifest = &located.manifest;
+    let relative = manifest_store::relative_path(dir, opened);
+    let listed = relative.as_deref().and_then(|rel| {
+        manifest.performances.iter().find(|p| manifest.file(&p.file).is_some_and(|f| f.path == rel))
+    });
+    let performance = match listed {
+        Some(p) => p,
+        None => manifest.performance(&manifest.default.performance).ok_or("清单缺少默认演奏")?,
+    };
+    let file = manifest.file(&performance.file).ok_or("清单中的演奏文件引用缺失")?;
+    Ok((performance.id.clone(), manifest_store::resolve(dir, &file.path)))
+}
+
+fn title(manifest: Option<&Manifest>, path: &Path) -> String {
+    manifest
+        .and_then(|m| m.title.clone())
+        .filter(|t| !t.trim().is_empty())
+        .unwrap_or_else(|| path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "曲目".into()))
+}
+
+impl Engine {
+    pub fn open_file(&self, path: PathBuf) -> Result<Value, String> {
+        let path = std::path::absolute(&path).map_err(|e| format!("文件位置无法解析：{e}"))?;
+        if !path.is_file() {
+            return Err(format!("找不到文件：{}", path.display()));
+        }
+        if !supported(&path) {
+            return Err("只能打开 MIDI、MusicXML 或 .panthesia 文件".into());
+        }
+        let mut located = manifest_store::locate(&path)?;
+        let mut report = manifest_store::Check::default();
+        if let Some(found) = located.as_mut() {
+            let dir = found.path.parent().ok_or("清单所在目录无法读取")?.to_path_buf();
+            report = manifest_store::check(&dir, &mut found.manifest);
+            if report.modified() && !found.read_only {
+                manifest_store::write(found)?;
+            }
+        }
+        let (performance, target) = match &located {
+            Some(found) => choose(found, &path)?,
+            None => (String::new(), path.clone()),
+        };
+        if !target.is_file() {
+            return Err(format!("清单引用的演奏文件缺失：{}", target.display()));
+        }
+        let name = title(located.as_ref().map(|l| &l.manifest), &target);
+        let mut result = if SCORE.contains(&extension(&target).as_str()) {
+            self.command(Command::ImportScoreOriginal { path: target.clone(), default_bpm: 120 })?
+        } else {
+            self.load_task(load_pipeline::Input::File { path: target.clone(), title: name, expected: None })?
+        };
+        let mut unmatched = 0;
+        if let Some(found) = located.as_mut() {
+            let changed = found
+                .manifest
+                .performance(&performance)
+                .is_some_and(|p| report.changed.contains(&p.file));
+            if changed && MIDI.contains(&extension(&target).as_str()) {
+                let bytes = std::fs::read(&target).map_err(|e| format!("演奏文件读取失败：{e}"))?;
+                let file = panthesia_music::MidiFile::from_bytes_checked(target.to_string_lossy(), &bytes, &|| Ok(()))?;
+                unmatched = found.manifest.reconcile_notes(&performance, &file.source);
+                // Record the current file so the same change is not reported again.
+                let (hash, size) = manifest_store::hash_file(&target)?;
+                let file_id = found.manifest.performance(&performance).map(|p| p.file.clone());
+                if let Some(entry) = file_id.and_then(|id| found.manifest.files.iter_mut().find(|f| f.id == id)) {
+                    entry.blake3 = Some(hash);
+                    entry.bytes = Some(size);
+                }
+                if !found.read_only {
+                    manifest_store::write(found)?;
+                }
+            }
+        }
+        result["opened"] = json!({
+            "path": path,
+            "performancePath": target,
+            "manifest": located.as_ref().map(|found| json!({
+                "path": found.path,
+                "readOnly": found.read_only,
+                "title": found.manifest.title,
+                "performance": performance,
+                "performances": found.manifest.performances.iter()
+                    .map(|p| json!({"id": p.id, "label": p.label})).collect::<Vec<_>>(),
+                "changed": report.changed,
+                "missing": report.missing,
+                "relinked": report.relinked.iter().map(|(id, path)| json!({"id": id, "path": path})).collect::<Vec<_>>(),
+                "unmatchedNotes": unmatched,
+            })),
+        });
+        Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data_root_lock::DataRootLock;
+    use panthesia_core::manifest::{Layer, Manifest};
+
+    fn temp() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/file-open-unit").join(format!(
+            "{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn opens_without_manifest_and_through_a_moved_manifest_reference() {
+        let root = temp();
+        let data = root.join("data");
+        let songs = root.join("songs");
+        std::fs::create_dir_all(songs.join("sub")).unwrap();
+        let midi = songs.join("sub").join("five.mid");
+        std::fs::write(&midi, include_bytes!("../assets/five-finger.mid")).unwrap();
+        let lock = DataRootLock::acquire(&data).unwrap();
+        let engine = Engine::start(data.clone(), lock, PathBuf::new(), true).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while !(engine.snapshot().startup.ready && !engine.snapshot().storage.pending) {
+            assert!(std::time::Instant::now() < deadline, "engine startup did not finish");
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
+        let plain = engine.open_file(midi.clone()).unwrap();
+        assert!(plain["opened"]["manifest"].is_null());
+        assert!(!songs.join("sub").join("five.panthesia").exists(), "opening never creates a manifest");
+
+        // Folder manifest whose reference is stale: the file is found by hash and the path updated.
+        let (hash, bytes) = manifest_store::hash_file(&midi).unwrap();
+        let mut manifest = Manifest::for_performance("old/five.mid", &hash, bytes, Some("五指".into()));
+        manifest.layers.insert("hands".into(), Layer {
+            body: serde_json::from_value(json!({"notes": [{"note": [99, 0, 60], "part": "left"}]})).unwrap(),
+            ..Default::default()
+        });
+        let path = songs.join(panthesia_core::manifest::FOLDER_NAME);
+        manifest_store::write(&Located { path: path.clone(), manifest, read_only: false }).unwrap();
+        let opened = engine.open_file(path.clone()).unwrap();
+        let info = &opened["opened"]["manifest"];
+        assert_eq!(info["relinked"][0]["path"], "sub/five.mid");
+        assert_eq!(manifest_store::read(&path).unwrap().manifest.files[0].path, "sub/five.mid");
+
+        // The performance changed on disk: note references are checked and kept as unmatched.
+        let original = std::fs::read(&midi).unwrap();
+        let other = include_bytes!("../assets/parallel-five-finger.mid");
+        std::fs::write(&midi, other).unwrap();
+        let opened = engine.open_file(midi.clone()).unwrap();
+        assert_eq!(opened["opened"]["manifest"]["changed"][0], "perf");
+        assert_eq!(opened["opened"]["manifest"]["unmatchedNotes"], 1);
+        let saved = manifest_store::read(&path).unwrap().manifest;
+        assert_eq!(saved.layers["hands"].unmatched.len(), 1);
+        assert_ne!(saved.files[0].blake3.as_deref(), Some(blake3::hash(&original).to_hex().as_str()));
+        assert!(engine.open_file(root.join("missing.mid")).is_err());
+        drop(engine);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}

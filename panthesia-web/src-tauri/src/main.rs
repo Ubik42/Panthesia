@@ -20,6 +20,7 @@ mod build_info;
 mod musescore_program;
 mod conversion_files;
 mod located_paper_bridge;
+mod open_requests;
 use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock, library};
 use std::path::PathBuf;
 use tauri::{Manager,Emitter};
@@ -945,7 +946,16 @@ fn main() {
         Ok(context) => context,
         Err(error) => startup_failure(error),
     };
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    // Isolated checks may run beside a normal window; only real launches hand over to one instance.
+    if !startup_checks::enabled() {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            open_requests::push(app, open_requests::from_args(&args, std::path::Path::new(&cwd)));
+            open_requests::focus(app);
+        }));
+    }
+    builder
+        .manage(open_requests::Queue::default())
         .setup(|app| {
             let result: Result<(), Box<dyn std::error::Error>> = (|| {
             let root = panthesia_core::product::env_os("PANTHESIA_LIBRARY_ROOT")
@@ -972,13 +982,16 @@ fn main() {
                     startup_stage("window_shown");
                 }
             }
+            let args: Vec<String> = std::env::args().collect();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            open_requests::push(app.handle(), open_requests::from_args(&args, &cwd));
             Ok(())
             })();
             match result { Ok(()) => Ok(()), Err(error) => startup_failure(error) }
         })
         .invoke_handler(tauri::generate_handler![
             score_batch_export::begin_score_batch_export,score_batch_export::begin_workspace_export,score_batch_export::begin_paper_pdf_export,score_batch_export::begin_paper_png_export,score_batch_export::write_score_batch_export,score_batch_export::finish_score_batch_export,score_batch_export::cancel_score_batch_export,
-            diagnostics::record_diagnostic,diagnostics::open_log_folder,
+            diagnostics::record_diagnostic,diagnostics::open_log_folder,open_requests::take_open_requests,
             reveal_library_file,open_practice_data_folder,
             get_soundfont_status,
             select_soundfont,
@@ -1085,6 +1098,10 @@ fn main() {
             }
         })
         .on_window_event(|window, event| {
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                open_requests::push(window.app_handle(), paths.clone());
+                return;
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if let Some(state) = window.try_state::<State>() {
                     use std::sync::atomic::Ordering;

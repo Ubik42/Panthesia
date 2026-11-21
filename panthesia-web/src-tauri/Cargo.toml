@@ -16,6 +16,7 @@ serde_json.workspace = true
 serde.workspace = true
 blake3.workspace = true
 rfd = { workspace = true, features = ["common-controls-v6"] }
+tauri-plugin-single-instance = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

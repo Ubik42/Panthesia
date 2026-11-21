@@ -65,6 +65,8 @@ mod history_reader;
 mod json_stream;
 mod replay_index;
 pub mod manifest_store;
+mod file_open;
+pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;
 mod song_switch;
@@ -2087,6 +2089,7 @@ impl Player {
                 let key = self.calibration_key();
                 self.preferences.calibrations.insert(key, milliseconds);
             }
+            Command::OpenFile { .. } => return Err("打开文件应由引擎调用线程处理".into()),
             Command::Load { path, title } => {
                 let file = library::read_midi(&path)?;
                 self.install(file, title, None)?;

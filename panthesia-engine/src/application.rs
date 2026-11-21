@@ -242,6 +242,7 @@ impl Engine {
                 kind,
                 id,
             } => return self.open_library_score_task(path, content_id, kind, id),
+            Command::OpenFile { path } => return self.open_file(path),
             Command::Load { path, title } => {
                 return self.load_task(load_pipeline::Input::File {
                     path,

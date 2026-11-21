@@ -19,7 +19,7 @@
         "minWidth": 760,
         "minHeight": 620,
         "visible": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": true
       }
     ],
     "security": {
@@ -34,6 +34,35 @@
     "icon": [
       "icons/icon.ico",
       "icons/icon.png"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "mid",
+          "midi",
+          "kar"
+        ],
+        "name": "MIDI",
+        "description": "MIDI 演奏文件",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "musicxml",
+          "mxl"
+        ],
+        "name": "MusicXML",
+        "description": "MusicXML 乐谱",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
+          "panthesia"
+        ],
+        "name": "Panthesia",
+        "description": "Panthesia 歌曲清单",
+        "role": "Editor"
+      }
     ],
     "resources": {
       "../../default.sf2": "default.sf2"
