@@ -85,9 +85,9 @@ export class HandDrawing {
         c.fill();
         c.stroke();
         // Fill one silhouette after its outline, so adjoining parts have no seams.
-        const silhouette = new Path2D(palm);
+        const parts = [palm];
         for (let i = h.thumbUnder ? 1 : 0; i < 5; i++)
-            silhouette.addPath(fingers[i]);
+            parts.push(fingers[i]);
         if (!h.thumbUnder) {
             const t = chains[0], ix = chains[1][0], web = new Path2D();
             web.moveTo(t[0].x, t[0].y + u * .3);
@@ -95,31 +95,30 @@ export class HandDrawing {
             web.quadraticCurveTo((t[1].x + ix.x) / 2, (t[1].y + ix.y) / 2 + u * .6, ix.x, ix.y + u * .12);
             web.lineTo(wrist.x, wrist.y);
             web.closePath();
-            silhouette.addPath(web);
+            parts.push(web);
         }
         else
             paint(fingers[0], fill, true);
         c.strokeStyle = "#a56d51";
         c.lineJoin = "round";
         c.lineWidth = Math.max(1.2, u * .045);
-        c.stroke(silhouette);
-        paint(silhouette, fill);
+        for (const part of parts) c.stroke(part);
+        for (const part of parts) paint(part, fill);
         for (let i = 0; i < 5; i++) {
             if (i === 0 && h.thumbUnder)
                 continue;
             const pts = chains[i], tip = pts[3], near = pts[2], angle = Math.atan2(tip.y - near.y, tip.x - near.x) + Math.PI / 2;
             const r = u * [.29, .255, .27, .255, .215][i];
             c.save();
-            c.translate(tip.x - Math.cos(angle - Math.PI / 2) * r * .9, tip.y - Math.sin(angle - Math.PI / 2) * r * .9);
+            c.clip(fingers[i]);
+            c.translate(near.x*.3+tip.x*.7,near.y*.3+tip.y*.7);
             c.rotate(angle);
             c.fillStyle = "#fbe0ca";
             c.strokeStyle = "#c98f72";
             c.lineWidth = Math.max(.7, u * .018);
             c.beginPath();
-            c.roundRect(-r * .66, -r * .4, r * 1.32, r * 1.35, [r * .6, r * .6, r * .22, r * .22]);
-            c.fill();
-            c.stroke();
-            c.restore();
+            c.roundRect(-r*.66,-r*.3,r*1.32,r*1.15,[r*.5,r*.5,r*.2,r*.2]);
+            c.fill();c.stroke();c.restore();
             c.strokeStyle = "rgba(154,91,60,.3)";
             c.lineWidth = Math.max(.6, u * .018);
             for (const j of [1, 2]) {
