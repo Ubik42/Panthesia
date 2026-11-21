@@ -1,9 +1,9 @@
 use super::*;
-use midi_file::midly::{Format, Header, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
+use panthesia_music::midly::{Format, Header, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 
 fn midi() -> Vec<u8> {
     let event = |delta, message| TrackEvent {
-        delta: midi_file::midly::num::u28::new(delta),
+        delta: panthesia_music::midly::num::u28::new(delta),
         kind: TrackEventKind::Midi {
             channel: 0.into(),
             message,
@@ -58,7 +58,7 @@ fn original_note_on_order_survives_reverse_note_offs_and_substitution_chains() {
     assert_eq!(song.metadata().unwrap().title.as_deref(), Some("A & B"));
     assert_eq!(song.attributes["Future"], "原值");
     assert_eq!(parsed.groups[1].path, ["课程", "第一册"]);
-    let file = midi_file::MidiFile::from_path_bytes("study.mid", &bytes).unwrap();
+    let file = panthesia_music::MidiFile::from_path_bytes("study.mid", &bytes).unwrap();
     assert_eq!(file.tracks[0].notes[0].note, 64);
     let values = annotations(song, &bytes, &file).unwrap();
     let first = values
@@ -108,7 +108,7 @@ fn xml_and_instruction_failures_are_reported_before_storage() {
     assert!(parse(b"<SynthesiaMetadata Version='1'><Songs><Song UniqueId='bad'/></Songs></SynthesiaMetadata>").is_err());
     let bytes = midi();
     let id = music_identity(&bytes);
-    let file = midi_file::MidiFile::from_path_bytes("study.mid", &bytes).unwrap();
+    let file = panthesia_music::MidiFile::from_path_bytes("study.mid", &bytes).unwrap();
     for instruction in [
         "t99:LA",
         "L999999999999999999999999999999",

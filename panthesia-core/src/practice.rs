@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use piano_layout::KeyboardRange;
+use panthesia_keyboard::KeyboardRange;
 use serde::{Deserialize, Serialize};
 
 pub type NoteId = u8;

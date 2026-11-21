@@ -16,7 +16,7 @@ import {
 import { requireValue } from "./engine/requireValue";
 import { TaskActivity } from "./engine/TaskActivity";
 import { copyLibraryPaths } from "./LibraryContextMenu";
-import type { Metadata } from "./libraryQuery";
+import type { Metadata } from "./features/library/libraryQueryModel";
 import type {
   MetadataDraft,
   MetadataService,

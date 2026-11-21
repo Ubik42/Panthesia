@@ -231,7 +231,7 @@ impl LibraryIndex {
         let mut metadata_files_seen = 0;
         let mut invalid_metadata_files = 0;
         for path in &paths {
-            match midi_file::MidiFile::new(path) {
+            match panthesia_music::MidiFile::new(path) {
                 Ok(file) => {
                     let sidecar_path = metadata_sidecar_path(path);
                     let sidecar_exists = sidecar_path.is_file();
@@ -927,7 +927,7 @@ fn is_midi_path(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
         num::{u4, u7, u15, u28},
     };
@@ -1088,7 +1088,7 @@ mod tests {
             ),
         )
         .unwrap();
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
         save_song_metadata(
             &midi_path,
             &content_id,
@@ -1137,7 +1137,7 @@ mod tests {
         let root = temp_directory("metadata");
         let midi_path = root.join("Unhelpful Filename.mid");
         write_midi(&midi_path, 60);
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
         let metadata = SongMetadata {
             title: Some(" Clair de Lune ".into()),
             subtitle: Some(" Third movement ".into()),
@@ -1211,7 +1211,7 @@ mod tests {
         let second = root.join("B.mid");
         write_midi(&first, 67);
         fs::copy(&first, &second).unwrap();
-        let content_id = midi_file::MidiFile::new(&first).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&first).unwrap().content_id;
         save_song_metadata(
             &first,
             &content_id,
@@ -1252,7 +1252,7 @@ mod tests {
         let root = temp_directory("metadata-replace");
         let midi_path = root.join("Song.mid");
         write_midi(&midi_path, 69);
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
         save_song_metadata(
             &midi_path,
             &content_id,
@@ -1294,7 +1294,7 @@ mod tests {
         let root = temp_directory("fingering-preserve");
         let midi_path = root.join("Song.mid");
         write_midi(&midi_path, 71);
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
         let hints = vec![
             FingerHint {
                 track_id: 1,
@@ -1347,7 +1347,7 @@ mod tests {
         let root = temp_directory("fingering-invalid");
         let midi_path = root.join("Song.mid");
         write_midi(&midi_path, 72);
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
         let valid = FingerHint {
             track_id: 0,
             note_index: 0,
@@ -1388,7 +1388,7 @@ mod tests {
 </score-partwise>"#,
         )
         .unwrap();
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
 
         save_score_association(&midi_path, &content_id, &score_path).unwrap();
         let sidecar = load_song_sidecar(&midi_path, &content_id).unwrap();
@@ -1449,7 +1449,7 @@ mod tests {
         let score_path = root.join("Broken.musicxml");
         write_midi(&midi_path, 60);
         fs::write(&score_path, b"not XML").unwrap();
-        let content_id = midi_file::MidiFile::new(&midi_path).unwrap().content_id;
+        let content_id = panthesia_music::MidiFile::new(&midi_path).unwrap().content_id;
 
         assert!(matches!(
             save_score_association(&midi_path, &content_id, &score_path),

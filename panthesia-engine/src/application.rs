@@ -116,7 +116,7 @@ impl Engine {
             if std::fs::metadata(&path).map_err(|e| e.to_string())?.len() > 32_000_000 {
                 return Err("MIDI 超过预览大小限制".into());
             }
-            let file = midi_file::MidiFile::new(&path)?;
+            let file = panthesia_music::MidiFile::new(&path)?;
             let mut notes: Vec<_> = file.tracks.iter().flat_map(|t| t.notes.iter()).collect();
             notes.sort_by_key(|n| n.start);
             let preview:Vec<_>=notes.iter().take(192).map(|n|serde_json::json!({"pitch":n.note,"start":n.start.as_secs_f64(),"duration":n.duration.as_secs_f64()})).collect();

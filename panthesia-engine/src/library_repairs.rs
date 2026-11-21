@@ -211,7 +211,7 @@ fn seed_history_entry(w: &mut Workspace, id: &str, path: &Path, title: &str) -> 
     true
 }
 
-fn repair_midi(path: &Path) -> Result<midi_file::MidiFile, String> {
+fn repair_midi(path: &Path) -> Result<panthesia_music::MidiFile, String> {
     library::read_midi_limited(path, 32_000_000)
 }
 fn replacement_candidates(
@@ -360,7 +360,7 @@ fn replacement_state(
     path: &Path,
     old_id: &str,
     new_id: &str,
-) -> Result<(Entry, midi_file::MidiFile), String> {
+) -> Result<(Entry, panthesia_music::MidiFile), String> {
     let old = w
         .retired_entries
         .get(&record_key(old_id, path))
@@ -401,7 +401,7 @@ fn replacement_token(
 }
 
 fn notes(
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<BTreeMap<(usize, u8, u8, u8, u64, u64), usize>, String> {
     let mut notes = BTreeMap::new();

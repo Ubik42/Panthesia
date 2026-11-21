@@ -90,7 +90,7 @@ import {
 useWorkspaceNavigation,
 type Workspace,
 } from "./app/useWorkspaceNavigation";
-import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
+import { DisplaySettingsDialog } from "./features/settings/DisplaySettingsDialog";
 import { matchesSong } from "./engine/stateOrder";
 import { DeviceSettingsDialog } from "./features/devices/DeviceSettingsDialog";
 import { MediaExportButton } from "./features/exports/MediaExportButton";

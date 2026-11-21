@@ -120,7 +120,7 @@ fn background_and_discard_import_as_independent_playback_rules() {
     let path = data.join("song.mid");
     let midi = include_bytes!("../assets/five-finger.mid");
     std::fs::write(&path, midi).unwrap();
-    let file = midi_file::MidiFile::new(&path).unwrap();
+    let file = panthesia_music::MidiFile::new(&path).unwrap();
     let id = format::music_identity(midi);
     let xml = format!(r#"<SynthesiaMetadata Version="1"><Songs><Song UniqueId="{id}" Parts="RBX"/></Songs></SynthesiaMetadata>"#).into_bytes();
     let options = ImportOptions { overwrite: false, fingers: false, hands: true, groups: false };

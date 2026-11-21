@@ -1,4 +1,4 @@
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     musicxml::{Score, import_musicxml_document},
     score_alignment::{ScoreMidiAlignment, summarize_alignment},
@@ -307,7 +307,7 @@ impl ScoreAsset {
             let following=self.alignment.navigation_complete&&!mapping.is_empty()&&ambiguities==0;
             return Ok(MappingResult{mapping,ambiguities,unmapped:self.source_render_ids.len().saturating_sub(seen.len()),following,mapping_token:None});
         }
-        let smf = midi_file::midly::Smf::parse(midi).map_err(|e| e.to_string())?;
+        let smf = panthesia_music::midly::Smf::parse(midi).map_err(|e| e.to_string())?;
         check()?;
         let renderer = MidiFile::from_smf("renderer", &smf)?;
         check()?;

@@ -1,9 +1,9 @@
-use piano_layout::KeyboardRange;
+use panthesia_keyboard::KeyboardRange;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::practice::PracticePart;
-use midi_file::{
+use panthesia_music::{
     MidiFile,
     midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,

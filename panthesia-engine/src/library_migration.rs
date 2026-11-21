@@ -317,7 +317,7 @@ fn plan(data: &Path) -> Result<Vec<Item>, String> {
             }
             if let Ok(bytes) = atomic_file::read_limited(&path, 32_000_000) {
                 if digest(&bytes) == id
-                    && midi_file::MidiFile::from_path_bytes(&path, &bytes).is_ok()
+                    && panthesia_music::MidiFile::from_path_bytes(&path, &bytes).is_ok()
                 {
                     source = Some(path);
                     break;

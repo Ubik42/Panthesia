@@ -139,7 +139,7 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage as M, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind as K,
     };
     #[test]

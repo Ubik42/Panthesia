@@ -1,7 +1,7 @@
 //! User-reviewed, read-only equivalence for the historical left-only track 1.
 //! Saved attempts remain byte-for-byte untouched; approvals live separately.
 use crate::{Player, PracticeNote, practice_conditions};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     exercise::ExerciseHands,
     library::{self, SongSidecar},

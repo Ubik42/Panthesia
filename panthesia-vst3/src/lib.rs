@@ -10,7 +10,7 @@ use std::{
 };
 
 use cpal::traits::{DeviceTrait, HostTrait};
-use midi_file::midly::{self, num::u4};
+use panthesia_music::midly::{self, num::u4};
 use vst3_host::{
     AudioHandle, Vst3Host,
     audio::AudioConfig,
@@ -573,7 +573,7 @@ fn unix_time_ms() -> u128 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::num::u7;
+    use panthesia_music::midly::num::u7;
 
     #[test]
     fn note_on_with_zero_velocity_becomes_note_off() {

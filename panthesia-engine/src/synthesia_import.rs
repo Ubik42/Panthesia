@@ -98,7 +98,7 @@ fn prepare(
         if total_bytes > 128_000_000 {
             return Err("本批 MIDI 总大小超过 128 MB，请分批导入".into());
         }
-        let file = midi_file::MidiFile::from_path_bytes(path, &midi_bytes)?;
+        let file = panthesia_music::MidiFile::from_path_bytes(path, &midi_bytes)?;
         let cid = file.content_id.clone();
         let anchor=crate::owned_annotations::existing(data,path,&cid);
         let sidecar_path = library::metadata_sidecar_path(&anchor);

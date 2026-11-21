@@ -32,7 +32,7 @@ pub(super) struct MusicalPosition {
     pub beat_rate: f64,
 }
 pub(super) fn musical_position(
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
     position: f64,
     duration: f64,
     speed: f64,
@@ -121,7 +121,7 @@ impl Player {
             {
                 continue;
             }
-            use midi_file::midly::MidiMessage as M;
+            use panthesia_music::midly::MidiMessage as M;
             let (bytes, len) = match event.message {
                 M::NoteOn { key, vel } => {
                     if event

@@ -7,7 +7,7 @@ import {
   expressionGoalText,
   noteVelocityEvidenceText,
   notePedalEvidenceText,
-} from "../../ExpressionGoalControl";
+} from "../practice/ExpressionGoalControl";
 import {
   accuracy,
   percent,

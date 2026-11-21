@@ -249,7 +249,7 @@ impl Cursor {
         command: u8,
         number: usize,
         maps: &[TrackMap],
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
     ) -> Result<(), String> {
         if command == b't' {
             if number >= maps.len() {
@@ -288,7 +288,7 @@ fn jump(
     at: &mut usize,
     cursor: &mut Cursor,
     maps: &[TrackMap],
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
 ) -> Result<bool, String> {
     if !matches!(bytes.get(*at), Some(b't' | b'm')) {
         return Ok(false);
@@ -306,14 +306,14 @@ fn jump(
 pub fn annotations(
     song: &Song,
     bytes: &[u8],
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
 ) -> Result<Annotations, String> {
     if song.unique_id != music_identity(bytes)
         || file.content_id != blake3::hash(bytes).to_hex().as_str()
     {
         return Err("元数据、原始 MIDI 和解析结果的内容身份不一致".into());
     }
-    let smf = midi_file::midly::Smf::parse(bytes).map_err(|_| "MIDI 文件无法解析")?;
+    let smf = panthesia_music::midly::Smf::parse(bytes).map_err(|_| "MIDI 文件无法解析")?;
     let mut maps = vec![];
     for (id, track) in smf.tracks.iter().enumerate() {
         let mut tick = 0u64;
@@ -322,7 +322,7 @@ pub fn annotations(
             tick = tick
                 .checked_add(u64::from(event.delta.as_int()))
                 .ok_or("MIDI 时序溢出")?;
-            if matches!(event.kind,midi_file::midly::TrackEventKind::Midi {message:midi_file::midly::MidiMessage::NoteOn {vel,..},..} if vel.as_int()>0)
+            if matches!(event.kind,panthesia_music::midly::TrackEventKind::Midi {message:panthesia_music::midly::MidiMessage::NoteOn {vel,..},..} if vel.as_int()>0)
             {
                 ticks.push(tick);
             }

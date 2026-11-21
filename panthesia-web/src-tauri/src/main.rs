@@ -931,7 +931,7 @@ async fn relocate_midi(
     let path = file.path().to_path_buf();remember_location(&state.data,"repair",file.path(),false);
     let engine = state.engine.clone();
     tauri::async_runtime::spawn_blocking(move || {let _close_worker=_close_worker;
-        let parsed = midi_file::MidiFile::new(&path)?;
+        let parsed = panthesia_music::MidiFile::new(&path)?;
         if parsed.content_id != content_id {
             return Err("所选文件的内容与原曲目不同，请通过打开 MIDI 导入为新曲目".into());
         }

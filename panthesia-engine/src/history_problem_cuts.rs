@@ -1,7 +1,7 @@
 use super::*;
 use crate::history_problem_plan::{Built, ProblemPlanEdit};
 use crate::tick_ranges::{BeatPoint, TickRange};
-use midi_file::{musical_time::Measure, tempo_track::TempoTrack};
+use panthesia_music::{musical_time::Measure, tempo_track::TempoTrack};
 use serde_json::{Value, json};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

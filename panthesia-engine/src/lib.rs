@@ -170,9 +170,9 @@ pub mod library_repairs;
 pub mod score_attachments;
 pub mod practice_backup;
 
-use midi_file::{MidiFile, MidiNote};
+use panthesia_music::{MidiFile, MidiNote};
 use panthesia_core::{
-    piano_layout::KeyboardRange,
+    panthesia_keyboard::KeyboardRange,
     practice::{PracticeMatcher, PracticePart},
     practice_history::{
         PracticeHistoryStore, PracticeSession, PracticeSessionKind, SongPracticeSetup,
@@ -198,13 +198,13 @@ pub use session_state::{Note, LoadedSong, PlaybackPerformance, Snapshot};
 type PracticeNotes = preferences::Shared<Vec<PracticeNote>>;
 type PracticeTimeSlices = preferences::Shared<Vec<panthesia_core::practice_history::PracticeTimeSlice>>;
 type SoundPresets = preferences::Shared<Vec<track_sound::Preset>>;
-type PlaybackEvents = preferences::Shared<Vec<midi_file::MidiEvent>>;
-type EventNotes = preferences::Shared<HashMap<midi_file::NoteId, usize>>;
+type PlaybackEvents = preferences::Shared<Vec<panthesia_music::MidiEvent>>;
+type EventNotes = preferences::Shared<HashMap<panthesia_music::NoteId, usize>>;
 type SongFile = preferences::Shared<MidiFile>;
 type FingerAssignments = preferences::Shared<HashMap<(usize, Duration, u8), u8>>;
 type HandAssignments = preferences::Shared<HashMap<(usize, usize), PracticePart>>;
 type ActivePlan = preferences::Shared<routine_commands::ActiveRoutine>;
-type OriginalGrid = preferences::Shared<midi_file::musical_time::MusicalTime>;
+type OriginalGrid = preferences::Shared<panthesia_music::musical_time::MusicalTime>;
 
 mod protocol;
 pub use protocol::Command;
@@ -956,7 +956,7 @@ impl Player {
     fn corrected_grid(
         file: &MidiFile,
         meter: panthesia_core::library::MeterCorrection,
-    ) -> Result<midi_file::musical_time::MusicalTime, String> {
+    ) -> Result<panthesia_music::musical_time::MusicalTime, String> {
         let end = file
             .tracks
             .iter()
@@ -968,7 +968,7 @@ impl Player {
             })
             .max()
             .unwrap_or(1);
-        midi_file::musical_time::MusicalTime::corrected(
+        panthesia_music::musical_time::MusicalTime::corrected(
             file.musical_time.ppq,
             end,
             meter.numerator,
@@ -1109,8 +1109,8 @@ impl Player {
         if self.sound_change.is_some(){return;}
         if let Some(host)=&self.sound_host {host.send(bytes);return;}
         if let Some(vst) = &self.vst {
-            if let Ok(midi_file::midly::live::LiveEvent::Midi { channel, message }) =
-                midi_file::midly::live::LiveEvent::parse(bytes)
+            if let Ok(panthesia_music::midly::live::LiveEvent::Midi { channel, message }) =
+                panthesia_music::midly::live::LiveEvent::parse(bytes)
             {
                 vst.midi_event(channel, message);
             }
@@ -2732,8 +2732,8 @@ impl Player {
             return;
         }
         let kind = bytes[0] & 240;
-        if let Ok(midi_file::midly::live::LiveEvent::Midi { channel, message }) =
-            midi_file::midly::live::LiveEvent::parse(bytes)
+        if let Ok(panthesia_music::midly::live::LiveEvent::Midi { channel, message }) =
+            panthesia_music::midly::live::LiveEvent::parse(bytes)
         {
             self.recorder.push_event(channel.as_int(), message);
         }
@@ -3314,7 +3314,7 @@ mod tests {
         );
         let exported = restored.command(Command::ExportMidi).unwrap();
         let bytes: Vec<u8> = serde_json::from_value(exported["bytes"].clone()).unwrap();
-        assert!(midi_file::midly::Smf::parse(&bytes).is_ok());
+        assert!(panthesia_music::midly::Smf::parse(&bytes).is_ok());
     }
     #[test]
     fn hand_assignment_uses_track_even_when_pitch_crosses_middle_c() {
@@ -4067,7 +4067,7 @@ mod tests {
         assert_eq!(p.file.as_ref().unwrap().content_id,content_id);
     }
 
-    #[test]fn generated_annotations_keep_task_identity_and_restore_changed_cache(){let mut p=player();let spec=ExerciseSpec{tempo_bpm:75,hands:panthesia_core::exercise::ExerciseHands::Right,..Default::default()};p.command(Command::Generate{spec}).unwrap();let cid=p.file.as_ref().unwrap().content_id.clone();let path=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(midi_file::MidiFile::new(&path).unwrap().content_id,cid);let mut metadata=panthesia_core::library::SongMetadata::default();metadata.notes=Some("保留技术练习备注".into());panthesia_core::library::save_song_metadata(&path,&cid,metadata.clone()).unwrap();let sidecar=panthesia_core::library::metadata_sidecar_path(&path);let bytes=std::fs::read(&sidecar).unwrap();p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:160,repetitions:3,hands:panthesia_core::exercise::ExerciseHands::Left,..spec}}).unwrap();assert_eq!(p.file.as_ref().unwrap().content_id,cid);assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),path);assert_eq!(panthesia_core::library::load_song_metadata(&path,&cid).unwrap(),metadata);let foreign=include_bytes!("../assets/basic-chords.mid");std::fs::write(&path,foreign).unwrap();p.command(Command::Generate{spec}).unwrap();let recovered=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(recovered,path);assert_eq!(std::fs::read(&path).unwrap(),foreign);assert_eq!(std::fs::read(&sidecar).unwrap(),bytes);assert_eq!(panthesia_core::library::load_song_metadata(&recovered,&cid).unwrap(),metadata);p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:90,..spec}}).unwrap();assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),recovered);}
+    #[test]fn generated_annotations_keep_task_identity_and_restore_changed_cache(){let mut p=player();let spec=ExerciseSpec{tempo_bpm:75,hands:panthesia_core::exercise::ExerciseHands::Right,..Default::default()};p.command(Command::Generate{spec}).unwrap();let cid=p.file.as_ref().unwrap().content_id.clone();let path=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(panthesia_music::MidiFile::new(&path).unwrap().content_id,cid);let mut metadata=panthesia_core::library::SongMetadata::default();metadata.notes=Some("保留技术练习备注".into());panthesia_core::library::save_song_metadata(&path,&cid,metadata.clone()).unwrap();let sidecar=panthesia_core::library::metadata_sidecar_path(&path);let bytes=std::fs::read(&sidecar).unwrap();p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:160,repetitions:3,hands:panthesia_core::exercise::ExerciseHands::Left,..spec}}).unwrap();assert_eq!(p.file.as_ref().unwrap().content_id,cid);assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),path);assert_eq!(panthesia_core::library::load_song_metadata(&path,&cid).unwrap(),metadata);let foreign=include_bytes!("../assets/basic-chords.mid");std::fs::write(&path,foreign).unwrap();p.command(Command::Generate{spec}).unwrap();let recovered=p.annotation_path(p.file.as_ref().unwrap()).unwrap();assert_ne!(recovered,path);assert_eq!(std::fs::read(&path).unwrap(),foreign);assert_eq!(std::fs::read(&sidecar).unwrap(),bytes);assert_eq!(panthesia_core::library::load_song_metadata(&recovered,&cid).unwrap(),metadata);p.command(Command::Generate{spec:ExerciseSpec{tempo_bpm:90,..spec}}).unwrap();assert_eq!(p.annotation_path(p.file.as_ref().unwrap()).unwrap(),recovered);}
 
     #[test]
     fn history_restores_original_generated_variant_and_partial_is_not_mastery() {

@@ -1,6 +1,6 @@
 use crate::fingerings::Position;
 use serde::Serialize;
-pub fn collect(file:&midi_file::MidiFile,config:&panthesia_core::song_config::SongConfig,assigned:&std::collections::HashMap<(usize,usize),panthesia_core::practice::PracticePart>,request:&crate::fingerings::PlanRequest,start:f64,end:f64)->Result<Vec<Position>,String>{
+pub fn collect(file:&panthesia_music::MidiFile,config:&panthesia_core::song_config::SongConfig,assigned:&std::collections::HashMap<(usize,usize),panthesia_core::practice::PracticePart>,request:&crate::fingerings::PlanRequest,start:f64,end:f64)->Result<Vec<Position>,String>{
     let targets=crate::fingerings::target_tracks(request);
     let mut positions=Vec::new();
     for track in file.tracks.iter() {for (index,note) in track.notes.iter().enumerate(){

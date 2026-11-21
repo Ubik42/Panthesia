@@ -7,7 +7,7 @@ import {
   getPerformanceArchive,
   type PerformanceArchive as Archive,
 } from "./features/review/performanceArchiveStore";
-import { HistoryReplayClips } from "./HistoryReplayClips";
+import { HistoryReplayClips } from "./features/review/HistoryReplayClips";
 import { BrowsePagination } from "./app/BrowsePagination";
 import { getReplayEditor } from "./features/review/replayEditorStore";
 import {

@@ -32,7 +32,7 @@ impl TickRange {
         Ok(())
     }
 }
-fn beat_length(file: &MidiFile, m: &midi_file::musical_time::Measure) -> f64 {
+fn beat_length(file: &MidiFile, m: &panthesia_music::musical_time::Measure) -> f64 {
     let group = if m.denominator == 8 && m.numerator >= 6 && m.numerator % 3 == 0 {
         3.
     } else {

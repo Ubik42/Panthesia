@@ -1,7 +1,7 @@
 //! Content-addressed annotation documents. MIDI bytes and source paths stay separate.
 use crate::library::{MetadataError, SongSidecar, normalize_song_sidecar};
 use crate::utils::atomic_file;
-use midi_file::{NoteId, Performance};
+use panthesia_music::{NoteId, Performance};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -241,9 +241,9 @@ fn has_notes(s: &SongSidecar) -> bool {
         || !s.hands.is_empty()
         || !s.note_playback.is_empty()
 }
-fn source(midi: &Path) -> Result<midi_file::MidiFile, MetadataError> {
+fn source(midi: &Path) -> Result<panthesia_music::MidiFile, MetadataError> {
     let bytes = atomic_file::read_dependency(midi, LIMIT).map_err(MetadataError::Read)?;
-    let file = midi_file::MidiFile::from_path_bytes(midi, &bytes)
+    let file = panthesia_music::MidiFile::from_path_bytes(midi, &bytes)
         .map_err(MetadataError::InvalidNoteIdentity)?;
     if midi
         .parent()
@@ -405,7 +405,7 @@ pub fn bind_legacy_bytes(
     if decode(&path, content_id)?.0.version == VERSION {
         return Ok(());
     }
-    let file = midi_file::MidiFile::from_path_bytes_checked(midi, bytes, check)
+    let file = panthesia_music::MidiFile::from_path_bytes_checked(midi, bytes, check)
         .map_err(MetadataError::InvalidNoteIdentity)?;
     bind(midi, content_id, &file.source)
 }

@@ -45,7 +45,7 @@ import { historyFilters, type HistoryBrowse } from "./features/review/historyBro
 import {
   HistoryAnnotationEditor,
   type Annotation,
-} from "./HistoryAnnotationEditor";
+} from "./features/review/HistoryAnnotationEditor";
 import { api, type Snapshot } from "./api";
 import type { HistoryEntry as Entry, HistoryDetail as Detail } from "./features/review/historyTypes";
 import { TaskActivity } from "./engine/TaskActivity";

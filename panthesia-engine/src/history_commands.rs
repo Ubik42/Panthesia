@@ -3,7 +3,7 @@ use panthesia_core::practice_history::{PracticePassageBounds, PracticeSessionCon
 use serde_json::{Value, json};
 
 fn session_id(session: &PracticeSession) -> String {session.stable_id()}
-fn passage_beat_label(file: &midi_file::MidiFile, tick: u64) -> Option<String> {
+fn passage_beat_label(file: &panthesia_music::MidiFile, tick: u64) -> Option<String> {
     let measures = &file.musical_time.measures;
     let index = measures.partition_point(|m| m.start_tick <= tick).checked_sub(1)?;
     let measure = measures.get(index)?;
@@ -24,7 +24,7 @@ fn passage_beat_label(file: &midi_file::MidiFile, tick: u64) -> Option<String> {
     while b != 0 { (a, b) = (b, a % b); }
     Some(format!("第 {} 小节第 {} 拍后 {}/{} 拍", index + 1, beat, remainder / a, denominator / a))
 }
-pub(super) fn passage_location(file: &midi_file::MidiFile, bounds: PracticePassageBounds) -> Option<String> {
+pub(super) fn passage_location(file: &panthesia_music::MidiFile, bounds: PracticePassageBounds) -> Option<String> {
     if bounds.start_tick >= bounds.end_tick { return None; }
     Some(format!("{} → {}",
         passage_beat_label(file, bounds.start_tick)?,

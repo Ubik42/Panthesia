@@ -1,5 +1,5 @@
 //! Disposable practice notation from the effective performance, never a replacement source score.
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use std::{collections::HashMap, fmt::Write};
 
 const DIVISIONS: u64 = 32;
@@ -36,13 +36,13 @@ pub fn engrave_range(
 }
 pub fn engrave_range_with_keys(
     file:&MidiFile,title:&str,fifths:i8,minor:bool,simplified:bool,range:MeasureRange,
-    staff:&impl Fn(usize,usize,u8)->u8,keys:&[midi_file::key_signature::KeySignatureEvent],check:&impl Fn()->Result<(),String>,
+    staff:&impl Fn(usize,usize,u8)->u8,keys:&[panthesia_music::key_signature::KeySignatureEvent],check:&impl Fn()->Result<(),String>,
 )->Result<Engraving,String>{
     range.end(file.musical_time.measures.len())?;
     engrave_selected(file,title,fifths,minor,simplified,Some(range),staff,keys,check)
 }
-fn projected_keys(file:&MidiFile,fifths:i8,minor:bool)->Vec<midi_file::key_signature::KeySignatureEvent>{
-    use midi_file::key_signature::{tonic,project,KeySignatureEvent};
+fn projected_keys(file:&MidiFile,fifths:i8,minor:bool)->Vec<panthesia_music::key_signature::KeySignatureEvent>{
+    use panthesia_music::key_signature::{tonic,project,KeySignatureEvent};
     let Some(first)=file.key_signatures.first() else{return vec![];};
     let shift=i16::from(tonic(fifths,minor))-i16::from(tonic(first.fifths,first.minor));
     file.key_signatures.iter().map(|key|{let (_,fifths,minor)=project(key.fifths,key.minor,shift,(first.minor!=minor).then_some(minor));KeySignatureEvent{tick:key.tick,fifths,minor}}).collect()
@@ -237,7 +237,7 @@ fn engrave_selected(
     simplified: bool,
     range: Option<MeasureRange>,
     staff_for: &impl Fn(usize, usize, u8) -> u8,
-    keys:&[midi_file::key_signature::KeySignatureEvent],
+    keys:&[panthesia_music::key_signature::KeySignatureEvent],
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Engraving, String> {
     check()?;
@@ -576,7 +576,7 @@ fn engrave_selected(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind as K,
     };
     #[test]
@@ -787,7 +787,7 @@ mod accidental_tests {
 #[cfg(test)]
 mod range_tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind as K,
     };
     fn midi(mut events: Vec<(u32, K<'static>)>) -> MidiFile {

@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { api, type CollectionSong } from "../../api";
-import type { Entry } from "../../libraryQuery";
+import type { Entry } from "./libraryQueryModel";
 import type { SongLearning } from "../../songLearning";
 import { ReadCache, type ReadValue } from "../../engine/readCache";
 import {

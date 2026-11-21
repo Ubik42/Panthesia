@@ -15,7 +15,7 @@ import type {
   PassagePreset,
   LadderPreset,
 } from "../../engine/commands.generated";
-import { expressionGoalText } from "../../ExpressionGoalControl";
+import { expressionGoalText } from "./ExpressionGoalControl";
 import type { ReactNode } from "react";
 import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
 import {

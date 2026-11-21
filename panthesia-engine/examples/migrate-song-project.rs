@@ -91,7 +91,7 @@ fn run() -> Result<(), String> {
             return Err("演奏文件超出歌曲工程目录".into());
         }
         let bytes = atomic_file::read_limited(&path, 32_000_000).map_err(|e| e.to_string())?;
-        let file = midi_file::MidiFile::from_path_bytes(&path, &bytes)?;
+        let file = panthesia_music::MidiFile::from_path_bytes(&path, &bytes)?;
         plan.push(json!({"source":path,"contentId":file.content_id,"bytes":bytes.len(),"title":path.file_stem().unwrap_or_default().to_string_lossy()}));
     }
     let unique = plan

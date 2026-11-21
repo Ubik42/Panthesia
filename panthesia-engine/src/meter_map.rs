@@ -1,5 +1,5 @@
 use super::*;
-use midi_file::musical_time::MusicalTime;
+use panthesia_music::musical_time::MusicalTime;
 use panthesia_core::library::{MeterMap, MeterSegment, SongSidecar};
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]

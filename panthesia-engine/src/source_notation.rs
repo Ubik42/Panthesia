@@ -49,7 +49,7 @@ fn pitch(p: &panthesia_core::musicxml::Pitch) -> Option<u8> {
         + i16::from(p.alter);
     u8::try_from(value).ok().filter(|p| *p <= 127)
 }
-fn seconds(file: &midi_file::MidiFile, time: ScoreTime) -> f64 {
+fn seconds(file: &panthesia_music::MidiFile, time: ScoreTime) -> f64 {
     let tick = (time.numerator.max(0) as u128 * u128::from(file.musical_time.ppq)
         / u128::from(time.denominator))
     .min(u128::from(u64::MAX)) as u64;
@@ -177,15 +177,15 @@ impl SourceView {
     }
     pub(crate) fn key_signatures(
         &self,
-        file: &midi_file::MidiFile,
-    ) -> Vec<midi_file::key_signature::KeySignatureEvent> {
+        file: &panthesia_music::MidiFile,
+    ) -> Vec<panthesia_music::key_signature::KeySignatureEvent> {
         if !self.keys_trusted {
             return vec![];
         }
         self.key_changes
             .iter()
             .map(
-                |(at, fifths, minor)| midi_file::key_signature::KeySignatureEvent {
+                |(at, fifths, minor)| panthesia_music::key_signature::KeySignatureEvent {
                     tick: (at.numerator.max(0) as u128 * u128::from(file.musical_time.ppq)
                         / u128::from(at.denominator)) as u64,
                     fifths: *fifths,
@@ -209,7 +209,7 @@ impl SourceView {
     }
     fn range(
         &self,
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
         first: Option<usize>,
         position: Option<f64>,
     ) -> Result<MeasureRange, String> {
@@ -231,7 +231,7 @@ impl SourceView {
     pub(crate) fn payload(
         &self,
         asset: &ScoreAsset,
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
         revision: u64,
         transpose: i8,
         first: Option<usize>,
@@ -266,7 +266,7 @@ impl SourceView {
     }
     pub(crate) fn map(
         &self,
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
         window: &Window,
         notes: Vec<RenderNote>,
         page_count: usize,
@@ -359,7 +359,7 @@ mod tests {
             xml.push_str("</part></score-partwise>");
             let score = panthesia_core::musicxml::import_musicxml_document(xml.as_bytes()).unwrap();
             let generated = panthesia_core::score_performance::generate(&score, 120).unwrap();
-            let file = midi_file::MidiFile::from_smf("owned-route", &generated.smf).unwrap();
+            let file = panthesia_music::MidiFile::from_smf("owned-route", &generated.smf).unwrap();
             let asset = ScoreAsset::new(xml.into_bytes(), "Owned route".into(), &file).unwrap();
             let view = &asset.source_view;
             let back = view.payload(&asset, &file, 1, 0, None, Some(130.)).unwrap();

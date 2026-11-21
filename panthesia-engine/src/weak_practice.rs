@@ -205,7 +205,7 @@ impl Player {
         let mut rows = Vec::new();
         let mut due_total = 0;
         let mut missing_total = 0;
-        let mut verified_content = std::collections::HashMap::<String, Option<midi_file::MidiFile>>::new();
+        let mut verified_content = std::collections::HashMap::<String, Option<panthesia_music::MidiFile>>::new();
         for (cid, history) in self.history.iter_songs() {
             check()?;
             let mut offered_for_song = 0;

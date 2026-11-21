@@ -1,12 +1,8 @@
 #![allow(clippy::collapsible_match, clippy::single_match)]
 
 pub use dpi;
-pub use piano_layout;
-#[cfg(feature = "native-render")]
-pub use wgpu_jumpstart::{Color, Gpu, TransformUniform, Uniform};
+pub use panthesia_keyboard;
 
-#[cfg(feature = "native-render")]
-pub mod config;
 pub mod product;
 pub mod practice_transform;
 pub mod practice_score;
@@ -17,8 +13,6 @@ pub mod song_project;
 pub mod song_catalog;
 pub mod exercise;
 pub mod fingering;
-#[cfg(feature = "native-render")]
-pub mod font_system;
 pub mod library;
 pub mod song_annotations;
 pub mod metadata_layers;
@@ -27,8 +21,6 @@ pub mod musicxml;
 pub mod practice;
 pub mod practice_history;
 pub mod speed_ladder;
-#[cfg(feature = "native-render")]
-pub mod render;
 pub mod repertoire;
 pub mod score_document;
 pub mod score_alignment;

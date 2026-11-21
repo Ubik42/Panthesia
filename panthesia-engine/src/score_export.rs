@@ -1,6 +1,6 @@
 //! Export saved personal note annotations into a copy of the original score.
 use crate::notation::ScoreAsset;
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     musicxml::{ScoreEventId, ScoreEventKind, partwise_musicxml_source},
     practice::PracticePart,

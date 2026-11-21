@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 panthesia-core.workspace = true
-midi-file.workspace = true
+panthesia-music.workspace = true
 cpal.workspace = true
 vst3-host.workspace = true
 log.workspace = true

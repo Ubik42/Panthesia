@@ -1,4 +1,4 @@
-import type { View } from "../../libraryQuery";
+import type { View } from "./libraryQueryModel";
 import type { SongWorkspaceTarget } from "../../app/songWorkspaceVisit";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
 

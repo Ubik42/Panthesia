@@ -1,6 +1,6 @@
 //! Parse imports without touching the player's state or user files.
 use crate::{Command, Player, import_storage, library_workspace, notation};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::library::{FingerHint, SongMetadata, SongSidecar};
 use std::{
     collections::{BTreeMap, HashMap},

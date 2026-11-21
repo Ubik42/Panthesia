@@ -21,7 +21,7 @@ function Get-PracticeSource {
         if (Test-Path -LiteralPath (Join-Path $repository $relative) -PathType Leaf) { [void]$files.Add($relative) }
     }
     # Web protocol generation also reads the Rust declarations.
-    foreach ($crate in @('wgpu-jumpstart', 'panthesia-image', 'piano-layout', 'midi-file', 'midi-io', 'panthesia-core', 'panthesia-engine', 'panthesia-vst3')) {
+    foreach ($crate in @('panthesia-keyboard', 'panthesia-music', 'panthesia-core', 'panthesia-engine', 'panthesia-vst3')) {
         $required += "$crate/Cargo.toml"
         foreach ($entry in @('src', 'assets', 'resources')) { $directories += "$crate/$entry" }
         $candidate = Join-Path $repository "$crate/build.rs"

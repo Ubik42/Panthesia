@@ -45,7 +45,7 @@ impl Prepared {
         if std::fs::metadata(path).map_err(|e| e.to_string())?.len() > 32_000_000 {
             return Err("MIDI 超过试听大小限制".into());
         }
-        let file = midi_file::MidiFile::new(path)?;
+        let file = panthesia_music::MidiFile::new(path)?;
         token.check()?;
         let first = file
             .tracks
@@ -85,7 +85,7 @@ impl Prepared {
             if i % 256 == 0 {
                 token.check()?;
             }
-            use midi_file::midly::MidiMessage as M;
+            use panthesia_music::midly::MidiMessage as M;
             let ch = event.channel;
             let (bytes, len) = match event.message {
                 M::NoteOn { key, vel } => ([144 | ch, key.as_int(), vel.as_int()], 3),
@@ -359,7 +359,7 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
     };
     fn fixture(player: &Player) -> PathBuf {

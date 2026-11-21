@@ -205,8 +205,8 @@ impl Route {
             }
             Self::Midi {connection,expression} => expression.send(bytes,|bytes|connection.send(bytes).map_err(|error|format!("MIDI 输出失败：{error}"))),
             Self::Vst(vst) => {
-                if let Ok(midi_file::midly::live::LiveEvent::Midi { channel, message }) =
-                    midi_file::midly::live::LiveEvent::parse(bytes)
+                if let Ok(panthesia_music::midly::live::LiveEvent::Midi { channel, message }) =
+                    panthesia_music::midly::live::LiveEvent::parse(bytes)
                 {
                     vst.midi_event(channel, message);
                 }

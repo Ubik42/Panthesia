@@ -1,14 +1,14 @@
 //! One immutable source performance, with disposable practice transformations.
 use crate::*;
-use midi_file::midly::{MidiMessage as M, num::u7};
-use midi_file::{MidiEvent, MidiFile};
+use panthesia_music::midly::{MidiMessage as M, num::u7};
+use panthesia_music::{MidiEvent, MidiFile};
 
 pub use panthesia_core::practice_transform::Variant;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use midi_file::midly::{
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, Smf, Timing, TrackEvent, TrackEventKind as K,
         num::{u4, u15},
     };
@@ -304,7 +304,7 @@ pub(super) fn key_estimate(file: &MidiFile) -> (u8, bool) {
 }
 impl Player {
     pub(super) fn export_practice_variant(&self) -> Result<serde_json::Value, String> {
-        use midi_file::midly::{
+        use panthesia_music::midly::{
             Format, Header, MetaMessage, Smf, Timing, TrackEvent, TrackEventKind,
             num::{u4, u15, u24, u28},
         };

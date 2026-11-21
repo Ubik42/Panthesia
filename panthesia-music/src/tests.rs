@@ -234,31 +234,6 @@ fn programs_and_channel_modes_follow_global_event_time() {
     assert_eq!(note.sounding_end_tick, 20);
 }
 #[test]
-fn bundled_performances_keep_every_legacy_annotation_target() {
-    for bytes in [
-        include_bytes!("../../panthesia-engine/assets/five-finger.mid").as_slice(),
-        include_bytes!("../../panthesia-engine/assets/parallel-five-finger.mid").as_slice(),
-        include_bytes!("../../panthesia-engine/assets/c-major-scale.mid").as_slice(),
-    ] {
-        let old = midi_legacy::MidiFile::from_path_bytes("owned.mid", bytes).unwrap();
-        let new = MidiFile::from_path_bytes("owned.mid", bytes).unwrap();
-        assert_eq!(old.content_id, new.content_id);
-        assert_eq!(old.tracks.len(), new.tracks.len());
-        for (old, new_track) in old.tracks.iter().zip(new.tracks.iter()) {
-            assert_eq!(old.notes.len(), new_track.notes.len());
-            for (index, (a, b)) in old.notes.iter().zip(new_track.notes.iter()).enumerate() {
-                assert_eq!(
-                    (a.track_id, a.source_index, a.note, a.channel, a.velocity),
-                    (b.track_id, b.source_index, b.note, b.channel, b.velocity)
-                );
-                assert_eq!(new.source.legacy_note_id(a.track_id, index), Some(b.id()));
-                let drift = a.start.as_nanos().abs_diff(b.start.as_nanos());
-                assert!(drift <= (new.tempo_track.events().len() as u128) * 1000);
-            }
-        }
-    }
-}
-#[test]
 fn unsupported_timebases_and_cancellation_return_explicit_errors() {
     let data = bytes(480, vec![vec![(0, on(0, 60, 80)), (100, off(0, 60))]]);
     let calls = std::cell::Cell::new(0);

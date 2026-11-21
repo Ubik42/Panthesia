@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use midi_file::{MidiFile, tempo_track::TempoTrack};
+use panthesia_music::{MidiFile, tempo_track::TempoTrack};
 use serde::{Deserialize, Serialize};
 
 use crate::musicxml::{Pitch, Score, ScoreEvent, ScoreEventId, ScoreTime, Step};
@@ -1036,7 +1036,7 @@ fn percent(numerator: usize, denominator: usize) -> u8 {
 fn project_time(
     tempo: &TempoTrack,
     time: ScoreTime,
-) -> Option<midi_file::tempo_track::TempoProjection> {
+) -> Option<panthesia_music::tempo_track::TempoProjection> {
     tempo.project_quarter_fraction(time.numerator, time.denominator)
 }
 

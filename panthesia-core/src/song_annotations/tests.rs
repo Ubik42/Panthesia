@@ -1,7 +1,7 @@
 use super::*;
 use crate::library::FingerHint;
-fn fixture() -> (PathBuf, midi_file::MidiFile) {
-    use midi_file::midly::{
+fn fixture() -> (PathBuf, panthesia_music::MidiFile) {
+    use panthesia_music::midly::{
         Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
     };
     let events = [
@@ -52,7 +52,7 @@ fn fixture() -> (PathBuf, midi_file::MidiFile) {
     let path = root.join("library/assets/midi").join(format!("{cid}.mid"));
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, &bytes).unwrap();
-    let file = midi_file::MidiFile::from_path_bytes(&path, &bytes).unwrap();
+    let file = panthesia_music::MidiFile::from_path_bytes(&path, &bytes).unwrap();
     (path, file)
 }
 #[test]

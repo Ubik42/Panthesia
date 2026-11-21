@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { HistoryReplayRange, type ReplayReference } from "./HistoryReplayRange";
+import { HistoryReplayRange, type ReplayReference } from "./features/review/HistoryReplayRange";
 import type { HistoryMeasureSpan } from "./historyScoreFocus";
 import type { HistoryReplay } from "./useHistoryReplay";
 export function HistoryReplayTransport({

@@ -4,7 +4,7 @@ import { FeedbackPager, feedbackPageSize } from "./features/practice/FeedbackPag
 import { X } from "lucide-react";
 import { TaskActivity } from "./engine/TaskActivity";
 import { api, type Feedback, type Snapshot } from "./api";
-import { noteVelocityEvidenceText, notePedalEvidenceText } from "./ExpressionGoalControl";
+import { noteVelocityEvidenceText, notePedalEvidenceText } from "./features/practice/ExpressionGoalControl";
 const percentage = (b: {
   matched_notes: number;
   wrong_notes: number;

@@ -2,7 +2,7 @@ import type { Feedback } from "../../api";
 import type {
   NoteVelocityEvidence,
   NotePedalEvidence,
-} from "../../ExpressionGoalControl";
+} from "../practice/ExpressionGoalControl";
 
 export type Annotation =
   import("../../engine/commands.generated").PracticeAnnotation;

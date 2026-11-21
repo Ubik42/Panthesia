@@ -5,7 +5,7 @@ import type {
 } from "../../engine/commands.generated";
 import { useHistoryRead } from "../../engine/useHistoryRead";
 import { TaskActivity } from "../../engine/TaskActivity";
-import { expressionGoalText } from "../../ExpressionGoalControl";
+import { expressionGoalText } from "../practice/ExpressionGoalControl";
 import { sameExpressionGoal } from "../practice/expressionDraft";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import { EditDraftStatus } from "./EditDraftStatus";

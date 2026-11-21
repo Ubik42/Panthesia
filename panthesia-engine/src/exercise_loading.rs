@@ -1,9 +1,9 @@
 //! Owned exercise preparation shared by generated and historical practice.
 use crate::{Player, legacy_exercise_tracks, load_pipeline};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     exercise::{ExercisePattern, ExercisePlan, ExerciseSpec, ExerciseTonality},
-    piano_layout::KeyboardRange,
+    panthesia_keyboard::KeyboardRange,
 };
 
 pub(crate) struct Prepared {

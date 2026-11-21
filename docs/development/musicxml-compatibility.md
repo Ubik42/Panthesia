@@ -1,6 +1,6 @@
 # MusicXML compatibility matrix
 
-2026-11-18 新增固定语料位于 `panthesia-engine/assets/notation-corpus`：五份 MIT MusicXML Test Suite 特征样例、实际 MuseScore Studio 4.7.7 导出及 Audiveris 5.11.0 MXL 识别。连同五首原创配对谱，共 12 份进行一处指法修改、导出与重开。逐文件来源、工具版本和 SHA-256 已固定。运行 `scripts/inspect-notation-corpus.ps1` 可核对摘要并查看各谱显示/分析/播放/编辑/导出能力和诊断。详见 [R2 清单](r2-delivery.md)。下面 8 份 OSMD 语料保留其原有解析范围。
+2026-11-18 新增固定语料位于 `panthesia-engine/assets/notation-corpus`：五份 MIT MusicXML Test Suite 特征样例、实际 MuseScore Studio 4.7.7 导出及 Audiveris 5.11.0 MXL 识别。连同五首原创配对谱，共 12 份进行一处指法修改、导出与重开。逐文件来源、工具版本和 SHA-256 已固定。运行 `scripts/inspect-notation-corpus.ps1` 可核对摘要并查看各谱显示/分析/播放/编辑/导出能力和诊断。下面 8 份 OSMD 语料保留其原有解析范围。
 
 2026-11-16：下表为已有固定解析语料，范围是 8 个样例，主要来自较早的 MuseScore 导出。样例数量及既有结果继续作为历史证据；本轮未重跑。显示、分析、播放、编辑、导出五种能力和往返保留仍需分别补证。当前新增样例与身份规则任务见 [T04–T06](current-plan.md)，模型边界见 [架构决策](architecture-decisions.md)。
 

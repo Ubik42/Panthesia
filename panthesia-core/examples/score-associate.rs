@@ -12,7 +12,7 @@ fn main() {
         usage();
     }
 
-    let midi = midi_file::MidiFile::new(&midi_path).unwrap_or_else(|error| {
+    let midi = panthesia_music::MidiFile::new(&midi_path).unwrap_or_else(|error| {
         eprintln!("could not read MIDI: {error}");
         std::process::exit(1);
     });

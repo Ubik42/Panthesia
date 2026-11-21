@@ -571,7 +571,7 @@ pub fn list(data: &Path, cid: &str) -> Result<Value, String> {
 /// The caller holds the workspace lock through playback installation.
 /// Resolve only the requested book and page, without describing every attachment.
 pub(crate) fn navigation_position(
-    data: &Path, cid: &str, command: &crate::Command, file: &midi_file::MidiFile,
+    data: &Path, cid: &str, command: &crate::Command, file: &panthesia_music::MidiFile,
     notes: &[crate::PracticeNote], check: &impl Fn() -> Result<(), String>,
 ) -> Result<f64, String> {
     check()?;

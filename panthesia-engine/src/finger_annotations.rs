@@ -3,12 +3,12 @@ use crate::{Command, Player};
 use panthesia_core::{
     exercise::ExercisePlan,
     library::{self, FingerAction, FingerHint},
-    piano_layout::KeyboardRange,
+    panthesia_keyboard::KeyboardRange,
 };
 use std::collections::{BTreeSet, HashMap};
 
 pub(crate) fn project(
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
     exercise: Option<panthesia_core::exercise::ExerciseSpec>,
     hints: &[FingerHint],
 ) -> Result<HashMap<(usize, std::time::Duration, u8), u8>, String> {

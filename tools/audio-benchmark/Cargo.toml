@@ -1,9 +1,0 @@
-[package]
-name = "neothesia-synth-comparison"
-version = "0.1.0"
-edition = "2024"
-[workspace]
-[dependencies]
-oxisynth = "0.1.0"
-rustysynth = "1"
-rtrb = "0.3.4"

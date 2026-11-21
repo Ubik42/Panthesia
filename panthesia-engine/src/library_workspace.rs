@@ -1,4 +1,4 @@
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::library::{SongMetadata, load_song_sidecar, save_song_metadata};
 use serde::{Deserialize, Serialize};
 use std::{

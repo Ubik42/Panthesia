@@ -40,7 +40,7 @@ struct PaperSnapshot {
 
 fn current_source(engine: &Engine, content_id: &str) -> Result<PathBuf, String> {
     let source = engine.current_source_path(content_id)?;
-    if midi_file::MidiFile::new(&source)
+    if panthesia_music::MidiFile::new(&source)
         .map_err(|e| format!("当前 MIDI 文件无法核对：{e}"))?
         .content_id
         != content_id
@@ -876,7 +876,7 @@ mod tests {
         .unwrap();
         let script = temp.dir.join("Audiveris.bat");
         fs::write(&script, b"@echo off\r\necho %1 %2 %3 %5>\"%~4\\arguments.txt\"\r\necho invalid>\"%~4\\result.mxl\"\r\n").unwrap();
-        let result = convert(&script, &temp, b"%PDF-test", "pdf");
+        let result = convert_controlled(&script, &temp, b"%PDF-test", "pdf", Duration::from_secs(60), None);
         assert!(
             result
                 .as_ref()
@@ -903,7 +903,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            convert(&script, &temp, b"%PDF-test", "pdf").unwrap(),
+            convert_controlled(&script, &temp, b"%PDF-test", "pdf", Duration::from_secs(60), None).unwrap(),
             fixture
         );
     }

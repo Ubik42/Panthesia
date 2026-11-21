@@ -1,6 +1,6 @@
 //! Effective labels, engraving and export share one projection of immutable source keys.
 use crate::practice_variant::Variant;
-use midi_file::{
+use panthesia_music::{
     MidiFile,
     key_signature::{self, KeySignatureEvent},
 };
@@ -110,7 +110,7 @@ mod tests {
         assert!(text.contains("<fifths>-2</fifths>")&&text.contains("<mode>minor</mode>"));
         assert_eq!(rendered.notes.values().map(|n|n.index).collect::<std::collections::BTreeSet<_>>(),[1,2].into_iter().collect());
         // Retain absolute event times when removing old omitted key metadata.
-        for track in &mut performance.smf.tracks {let mut carry=0u32;track.retain_mut(|e|{let delta=e.delta.as_int()+carry;if matches!(e.kind,midi_file::midly::TrackEventKind::Meta(midi_file::midly::MetaMessage::KeySignature(..))){carry=delta;false}else{e.delta=delta.into();carry=0;true}});}
+        for track in &mut performance.smf.tracks {let mut carry=0u32;track.retain_mut(|e|{let delta=e.delta.as_int()+carry;if matches!(e.kind,panthesia_music::midly::TrackEventKind::Meta(panthesia_music::midly::MetaMessage::KeySignature(..))){carry=delta;false}else{e.delta=delta.into();carry=0;true}});}
         let legacy=MidiFile::from_smf("legacy",&performance.smf).unwrap();
         assert!(legacy.key_signatures.is_empty());
         let original=legacy.source.original_bytes.clone();

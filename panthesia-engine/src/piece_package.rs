@@ -1,5 +1,5 @@
 use crate::preferences::{PassagePreset, SessionSettings};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     library::{FingerHint, MeterCorrection, NoteHandHint, SongMetadata},
     practice::PracticePart,

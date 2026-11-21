@@ -878,7 +878,7 @@ mod tests {
             "external/sample.mid",
             include_bytes!("../assets/five-finger.mid"),
         );
-        let file = midi_file::MidiFile::new(&source).unwrap();
+        let file = panthesia_music::MidiFile::new(&source).unwrap();
         let track = file
             .tracks
             .iter()

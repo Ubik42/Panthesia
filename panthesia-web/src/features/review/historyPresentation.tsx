@@ -2,7 +2,7 @@ import type {
   HistoryEntry as Entry,
   HistoryDetail as Detail,
 } from "./historyTypes";
-import { expressionGoalText } from "../../ExpressionGoalControl";
+import { expressionGoalText } from "../practice/ExpressionGoalControl";
 export const modeName = (m: string | null) =>
   ({
     wait: "等音",

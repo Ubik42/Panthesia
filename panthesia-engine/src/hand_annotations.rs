@@ -407,7 +407,7 @@ mod product_hand_tests {
     use super::*;
     #[test]
     fn whole_track_split_and_reset_preserve_fingers_and_reject_stale_edits(){
-        use midi_file::midly::{Smf,Header,Format,Timing,TrackEvent,TrackEventKind,MidiMessage,MetaMessage};
+        use panthesia_music::midly::{Smf,Header,Format,Timing,TrackEvent,TrackEventKind,MidiMessage,MetaMessage};
         let data=std::env::temp_dir().join(format!("panthesia-product-hands-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         std::fs::create_dir_all(&data).unwrap();let path=data.join("owned-input.mid");let mut events=vec![];
         for i in 0..5000 {let key=if i%2==0{48}else{72};events.push(TrackEvent{delta:0.into(),kind:TrackEventKind::Midi{channel:0.into(),message:MidiMessage::NoteOn{key:key.into(),vel:80.into()}}});events.push(TrackEvent{delta:1.into(),kind:TrackEventKind::Midi{channel:0.into(),message:MidiMessage::NoteOff{key:key.into(),vel:0.into()}}});}

@@ -1,5 +1,5 @@
 //! Verified generator provenance takes priority over temporal similarity.
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     musicxml::{Score, ScoreEvent},
     score_alignment::{self, AlignedNote, MidiNoteId, ScoreMidiAlignment},
@@ -204,7 +204,7 @@ pub(crate) fn align(
 mod tests {
     #[test]
     fn source_identity_selects_the_repeated_note_instead_of_the_nearest_time() {
-        let mut file = midi_file::MidiFile::from_path_bytes(
+        let mut file = panthesia_music::MidiFile::from_path_bytes(
             std::path::Path::new("source.mid"),
             include_bytes!("../assets/five-finger.mid"),
         )

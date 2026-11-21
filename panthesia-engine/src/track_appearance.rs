@@ -167,7 +167,7 @@ mod tests {
     }
     #[test]
     fn source_names_appearance_persistence_and_no_transport_reset() {
-        use midi_file::midly::{
+        use panthesia_music::midly::{
             Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
         };
         let smf = Smf {
@@ -206,7 +206,7 @@ mod tests {
                 },
             ]],
         };
-        let file = midi_file::MidiFile::from_smf("test", &smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("test", &smf).unwrap();
         assert_eq!(file.tracks[0].name.as_deref(), Some("钢琴右手"));
         let data = std::env::temp_dir().join(format!(
             "neothesia-appearance-{}",

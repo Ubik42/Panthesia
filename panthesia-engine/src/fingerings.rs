@@ -1,6 +1,6 @@
 use crate::fingering_protocol::{MarkedNeighbor, CoverageNote, AcceptanceConflict, AcceptanceMotionReview, ExpressionReview, TrackAcceptance, AcceptanceReview};
 use crate::fingering_protocol::{CrossHandPlanReview, MotionReview, FingeringPlan as WirePlan, PlanResult, ScoreArticulations, HeldSubstitution, HeldPlan, HeldPlanResult};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     fingering::{
         FingeringExpression, FingeringHand, FingeringNote, FingeringReason, HandSpanProfile,
@@ -344,7 +344,7 @@ pub fn prepare(
         }
     }
     domain.sort_by_key(|(track,i,n)|(n.start,n.note,*track,*i));
-    let target=|(track,_,n):&(usize,usize,&midi_file::MidiNote)| {
+    let target=|(track,_,n):&(usize,usize,&panthesia_music::MidiNote)| {
         target_tracks.contains(track) && if let Some((start,end))=window {n.start>=start && n.start<end} else {n.start==selected.start}
     };
     let targets:Vec<_>=domain.iter().enumerate().filter_map(|(i,n)|target(n).then_some(i)).collect();

@@ -114,7 +114,7 @@ fn migrate(
     }
     if let (Some(path), Some(content)) = (path, content) {
         check()?;
-        let file = midi_file::MidiFile::new(path)?;
+        let file = panthesia_music::MidiFile::new(path)?;
         if file.content_id != content {
             return Err("文件内容已变化，请重新检查后管理作品".into());
         }
@@ -223,7 +223,7 @@ impl Engine {
                     version_id,
                 } = command
                 {
-                    let file = midi_file::MidiFile::new(&path)?;
+                    let file = panthesia_music::MidiFile::new(&path)?;
                     if file.content_id != content_id {
                         return Err("演奏文件已变化，请刷新后检查乐谱".into());
                     }

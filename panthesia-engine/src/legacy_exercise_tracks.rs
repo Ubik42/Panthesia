@@ -42,7 +42,7 @@ fn capture_path(data: &Path, cid: &str) -> PathBuf {
 }
 pub(super) fn capture_before_install(
     p: &Player,
-    file: &midi_file::MidiFile,
+    file: &panthesia_music::MidiFile,
     spec: panthesia_core::exercise::ExerciseSpec,
 ) -> Result<(), String> {
     if spec.hands != ExerciseHands::Left {
@@ -127,7 +127,7 @@ fn review(p: &Player, content_id: &str) -> Result<Review, String> {
         return Err("没有找到保留的旧版单左手 MIDI 原件，无法证明旧音轨身份".into());
     }
     let old =
-        midi_file::MidiFile::new(&original).map_err(|e| format!("旧版 MIDI 无法读取：{e}"))?;
+        panthesia_music::MidiFile::new(&original).map_err(|e| format!("旧版 MIDI 无法读取：{e}"))?;
     library::load_song_sidecar(&original, content_id)
         .map_err(|e| format!("旧版 MIDI 的个人资料身份无法核对：{e}"))?;
     let old_nonempty: Vec<_> = old.tracks.iter().filter(|t| !t.notes.is_empty()).collect();

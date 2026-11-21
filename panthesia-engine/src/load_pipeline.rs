@@ -1,6 +1,6 @@
 //! File-backed song preparation. The runtime installs owned results, without reparsing scores.
 use crate::{Player, notation, preferences::ScoreVersion};
-use midi_file::{MidiFile, musical_time::MusicalTime};
+use panthesia_music::{MidiFile, musical_time::MusicalTime};
 use panthesia_core::library::{self, SongSidecar};
 use std::{
     path::{Path, PathBuf},

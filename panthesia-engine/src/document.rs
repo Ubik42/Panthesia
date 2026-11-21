@@ -1,5 +1,5 @@
 use crate::{LoadedSong, Note};
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::song_config::{PlayerConfig, SongConfig};
 use serde::Serialize;
 use std::{collections::HashMap, time::Duration};
@@ -136,7 +136,7 @@ pub fn build(
                     name:t.name.clone().unwrap_or_else(||format!("音轨 {}",c.track_id+1)),
                     source_name:t.name.clone().unwrap_or_else(||format!("音轨 {}",c.track_id+1)),
                     source_program:t.notes.first().and_then(|n| file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0),
-                    source_instrument: if t.has_drums && !t.has_other_than_drums { "打击乐".into() } else { midi_file::INSTRUMENT_NAMES[usize::from(t.notes.first().and_then(|n| file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0))].into() },
+                    source_instrument: if t.has_drums && !t.has_other_than_drums { "打击乐".into() } else { panthesia_music::INSTRUMENT_NAMES[usize::from(t.notes.first().and_then(|n| file.program_track.program_for_timestamp(&n.start).get(&n.channel).copied()).unwrap_or(0))].into() },
                     notes: t.notes.len(),
                     mode: match c.player {
                         PlayerConfig::Human => "human",

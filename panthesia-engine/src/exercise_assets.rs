@@ -7,7 +7,7 @@ use crate::{
 use panthesia_core::{
     exercise::{ExerciseHands, ExerciseMinorForm, ExercisePlan, ExerciseSpec, ExerciseTonality},
     library,
-    piano_layout::KeyboardRange,
+    panthesia_keyboard::KeyboardRange,
 };
 use std::path::{Path, PathBuf};
 pub(crate) fn canonical_bytes(spec: ExerciseSpec) -> Result<Vec<u8>, String> {
@@ -48,7 +48,7 @@ impl Prepared {
     }
     pub fn read(
         data: &Path,
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
         spec: ExerciseSpec,
         versions: &[ScoreVersion],
     ) -> Result<Self, String> {
@@ -56,7 +56,7 @@ impl Prepared {
     }
     pub(crate) fn read_checked(
         data: &Path,
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
         spec: ExerciseSpec,
         versions: &[ScoreVersion],
         check: &impl Fn() -> Result<(), String>,

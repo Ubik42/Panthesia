@@ -94,7 +94,7 @@ pub(crate) fn builtin_rows(data:&Path)->Result<Vec<SongRow>,String>{
             Ok(bytes)=>{
                 // A modified old cache is user content; leave it at its original location.
                 let old_id=blake3::hash(&bytes).to_hex().to_string();
-                if midi_file::MidiFile::from_path_bytes(&legacy,&bytes).is_ok(){
+                if panthesia_music::MidiFile::from_path_bytes(&legacy,&bytes).is_ok(){
                     if let Err(error)=repository.retain_with_parts(&legacy,&old_id,"旧版内置练习","",preferences.songs.get(&old_id).map(|s|&s.parts),&||Ok(())){eprintln!("旧版练习资料保留在原位置：{error}");}
                 }
                 crate::import_storage::store(&data.join("library/assets/midi"),&cid,&cid,midi)?.path
@@ -107,7 +107,7 @@ pub(crate) fn builtin_rows(data:&Path)->Result<Vec<SongRow>,String>{
         if annotations.score.is_none(){let score=crate::notation_assets::retain(data,score)?;annotations.score=Some(metadata::ScoreAssociation{content_id:blake3::hash(&std::fs::read(&score).map_err(|e|e.to_string())?).to_hex().to_string(),path:score});}
         if annotations.metadata.title.is_none(){annotations.metadata.title=Some(title.into());}
         if annotations.metadata.composer.is_none(){annotations.metadata.composer=Some("Panthesia 原创练习".into());}
-        if annotations.track_parts.is_empty(){for track in midi_file::MidiFile::new(&path)?.tracks.iter().filter(|t|!t.notes.is_empty()){let part=if name=="bass-five-finger" || name=="parallel-five-finger"&&track.notes[0].channel==1{PracticePart::LeftHand}else{PracticePart::RightHand};annotations.track_parts.insert(track.track_id,part);}}
+        if annotations.track_parts.is_empty(){for track in panthesia_music::MidiFile::new(&path)?.tracks.iter().filter(|t|!t.notes.is_empty()){let part=if name=="bass-five-finger" || name=="parallel-five-finger"&&track.notes[0].channel==1{PracticePart::LeftHand}else{PracticePart::RightHand};annotations.track_parts.insert(track.track_id,part);}}
         if annotations!=before{metadata::save_song_sidecar(&path,&cid,annotations).map_err(|e|e.to_string())?;}
         let row=SongRow{arranger:None,id:format!("builtin/{name}"),title:title.into(),composer:"Panthesia 原创练习".into(),source:"内置练习".into(),category:category.into(),license:"随项目许可发布".into(),source_url:String::new(),path,content_id:Some(cid.clone()),tags:vec![],difficulty:None,rating:0};
         repository.register_row(&row,&cid)?;rows.push(row);
@@ -503,18 +503,18 @@ pub fn available_path(index:&crate::library_workspace::Workspace,content_id:&str
  if let Some(path)=preferred {if path.is_file() && index.entries.get(&crate::library_workspace::key(path)).is_none_or(|e|e.content_id.as_deref()==Some(content_id)){return Some(path.to_owned());}}
  index.entries.values().filter(|e|e.content_id.as_deref()==Some(content_id)&&e.path.is_file()).find(|e|crate::library_repairs::link_target(index,content_id,&e.path).is_none()).or_else(||index.entries.values().find(|e|e.content_id.as_deref()==Some(content_id)&&e.path.is_file())).map(|e|e.path.clone())
 }
-pub(crate) fn read_midi(path:&Path)->Result<midi_file::MidiFile,String> {
+pub(crate) fn read_midi(path:&Path)->Result<panthesia_music::MidiFile,String> {
     read_midi_limited(path, 512_000_000)
 }
-pub(crate) fn read_midi_checked(path:&Path,check:&impl Fn()->Result<(),String>)->Result<midi_file::MidiFile,String>{
-    check()?;let path=std::path::absolute(path).map_err(|e|e.to_string())?;let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,32_000_000).map_err(|e|e.to_string())?;midi_file::MidiFile::from_path_bytes_checked(path,&bytes,check)
+pub(crate) fn read_midi_checked(path:&Path,check:&impl Fn()->Result<(),String>)->Result<panthesia_music::MidiFile,String>{
+    check()?;let path=std::path::absolute(path).map_err(|e|e.to_string())?;let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,32_000_000).map_err(|e|e.to_string())?;panthesia_music::MidiFile::from_path_bytes_checked(path,&bytes,check)
 }
-pub(crate) fn read_midi_limited(path:&Path, limit:usize)->Result<midi_file::MidiFile,String> {
+pub(crate) fn read_midi_limited(path:&Path, limit:usize)->Result<panthesia_music::MidiFile,String> {
     let path=std::path::absolute(path).map_err(|e|format!("曲目位置无法解析：{e}"))?;
     let bytes=panthesia_core::utils::atomic_file::read_dependency(&path,limit).map_err(|e|e.to_string())?;
-    midi_file::MidiFile::from_path_bytes(&path,&bytes)
+    panthesia_music::MidiFile::from_path_bytes(&path,&bytes)
 }
-pub fn verified_file(data:&Path,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
+pub fn verified_file(data:&Path,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<panthesia_music::MidiFile,String>{
  let index=crate::library_workspace::Workspace::load_hint(data)?;
  let repository=crate::song_repository::SongRepository::open(data)?;
  // Prefer the repository-owned asset over stale workspace aliases for all callers.
@@ -523,7 +523,7 @@ pub fn verified_file(data:&Path,content_id:&str,preferred:impl IntoIterator<Item
  }
  verified_file_in_workspace(&index,content_id,preferred)
 }
-pub fn verified_file_in_workspace(index:&crate::library_workspace::Workspace,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<midi_file::MidiFile,String>{
+pub fn verified_file_in_workspace(index:&crate::library_workspace::Workspace,content_id:&str,preferred:impl IntoIterator<Item=PathBuf>)->Result<panthesia_music::MidiFile,String>{
  for path in candidate_paths(index,content_id,preferred) {if let Ok(file)=read_midi(&path){if file.content_id==content_id{return Ok(file);}}}
  Err("曲目文件缺失、内容改变或无法读取，请定位同一内容的文件后重试".into())
 }

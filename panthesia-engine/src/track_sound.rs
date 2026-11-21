@@ -22,13 +22,13 @@ pub struct Routing {
     pub lanes: BTreeMap<(usize, u8), u8>,
 }
 impl Routing {
-    pub fn build(events: &[midi_file::MidiEvent]) -> Result<Self, String> {
+    pub fn build(events: &[panthesia_music::MidiEvent]) -> Result<Self, String> {
         let mut keys = std::collections::BTreeSet::new();
         for e in events {
             if matches!(
                 e.message,
-                midi_file::midly::MidiMessage::NoteOn { .. }
-                    | midi_file::midly::MidiMessage::NoteOff { .. }
+                panthesia_music::midly::MidiMessage::NoteOn { .. }
+                    | panthesia_music::midly::MidiMessage::NoteOff { .. }
             ) {
                 keys.insert((e.track_id, e.channel));
             }
@@ -158,7 +158,7 @@ pub fn presets(path: &std::path::Path) -> Vec<Preset> {
 pub(crate) struct Timeline {
     routing: Result<std::sync::Arc<Routing>, String>,
     unmixed: std::sync::Arc<Routing>,
-    controls: BTreeMap<(usize, u8, u16), Vec<(usize, midi_file::MidiEvent)>>,
+    controls: BTreeMap<(usize, u8, u16), Vec<(usize, panthesia_music::MidiEvent)>>,
 }
 impl Default for Timeline {
     fn default() -> Self {
@@ -166,11 +166,11 @@ impl Default for Timeline {
     }
 }
 impl Timeline {
-    pub(crate) fn new(events: &[midi_file::MidiEvent]) -> Self {
+    pub(crate) fn new(events: &[panthesia_music::MidiEvent]) -> Self {
         Self::new_checked(events, &|| Ok(())).expect("uncancelled sound timeline")
     }
     pub(crate) fn new_checked(
-        events: &[midi_file::MidiEvent],
+        events: &[panthesia_music::MidiEvent],
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
         check()?;
@@ -179,7 +179,7 @@ impl Timeline {
             if index % 1024 == 0 {
                 check()?;
             }
-            use midi_file::midly::MidiMessage as M;
+            use panthesia_music::midly::MidiMessage as M;
             let key = match event.message {
                 M::Controller { controller, .. }
                     if !matches!(controller.as_int(), 64 | 120 | 123) =>
@@ -236,7 +236,7 @@ impl Timeline {
 /// A seek/switch sound state is computed without a device connection.
 pub(crate) struct Prepared {
     routing: std::sync::Arc<Routing>,
-    events: Vec<midi_file::MidiEvent>,
+    events: Vec<panthesia_music::MidiEvent>,
     error: Option<String>,
 }
 impl Player {
@@ -317,7 +317,7 @@ impl Player {
             if let Some(program) = sound.program { self.send(&[192 | *channel, program]); }
         }
         for e in prepared.events {
-            use midi_file::midly::MidiMessage as M;
+            use panthesia_music::midly::MidiMessage as M;
             let (message, len) = match e.message {
                 M::Controller { controller, value } if !matches!(controller.as_int(), 64 | 120 | 123) =>
                     ([176 | e.channel, controller.as_int(), value.as_int()], 3),
@@ -436,14 +436,14 @@ mod flow_tests {
     #[test]
     fn capacity_persistence_and_portable_settings() {
         let events: Vec<_> = (0..15)
-            .map(|t| midi_file::MidiEvent {
+            .map(|t| panthesia_music::MidiEvent {
                 source_note:None,
                 order:t,
                 track_id: t,
                 track_color_id: 0,
                 channel: 0,
                 timestamp: std::time::Duration::ZERO,
-                message: midi_file::midly::MidiMessage::NoteOn {
+                message: panthesia_music::midly::MidiMessage::NoteOn {
                     key: 60.into(),
                     vel: 80.into(),
                 },

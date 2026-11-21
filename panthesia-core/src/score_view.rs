@@ -24,7 +24,7 @@ use crate::{
 /// the paired MIDI tempo map. Unpitched notes remain intentionally absent.
 pub fn native_score_note_evidence(
     score: &Score,
-    tempo: &midi_file::tempo_track::TempoTrack,
+    tempo: &panthesia_music::tempo_track::TempoTrack,
 ) -> Vec<NativeScoreNoteEvidence> {
     let projected = project_score_timeline(score, tempo);
     let timings: HashMap<_, _> = projected
@@ -808,7 +808,7 @@ mod tests {
             </score-partwise>"#,
         )
         .unwrap();
-        let tempo = midi_file::tempo_track::TempoTrack::build(&[], 480);
+        let tempo = panthesia_music::tempo_track::TempoTrack::build(&[], 480);
         let evidence = native_score_note_evidence(&score, &tempo);
 
         assert_eq!(evidence.len(), 2);

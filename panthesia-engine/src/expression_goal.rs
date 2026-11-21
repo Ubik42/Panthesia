@@ -330,7 +330,7 @@ impl crate::Player {
         let mut transitions = 0;
         for e in &self.events {
             if e.timestamp >= start && e.timestamp < end && self.selected(e.track_id) {
-                if let midi_file::midly::MidiMessage::Controller { controller, value } = e.message {
+                if let panthesia_music::midly::MidiMessage::Controller { controller, value } = e.message {
                     if controller.as_int() == 64 {
                         let down = value.as_int() >= 64;
                         if last != Some(down) && (last.is_some() || down) {
@@ -347,7 +347,7 @@ impl crate::Player {
         if goal.note_pedal_mismatch_count.is_some(){
             if count<4{return Err("逐音踏板目标至少需要 4 个参考音".into())}
             let pedal_events=self.events.iter().filter(|event|self.selected(event.track_id))
-                .filter(|event|matches!(event.message,midi_file::midly::MidiMessage::Controller{controller,..} if controller.as_int()==64))
+                .filter(|event|matches!(event.message,panthesia_music::midly::MidiMessage::Controller{controller,..} if controller.as_int()==64))
                 .map(|event|event.timestamp).collect::<Vec<_>>();
             let unknown=self.notes.iter().filter(|n|n.start>=start&&n.start<end&&n.velocity>0
                 &&self.note_player(n.track_id,n.index)==panthesia_core::song_config::PlayerConfig::Human)
@@ -450,7 +450,7 @@ mod flow_tests {
     use std::{path::PathBuf, time::Duration};
     #[test]
     fn actual_pedal_input_rounds_fail_then_pass_and_keep_history_goal() {
-        use midi_file::midly::{
+        use panthesia_music::midly::{
             Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
         };
         let mut events = vec![];
@@ -664,7 +664,7 @@ mod source_tests {
     use crate::{Command, Player, routine_commands::RoutineGoal};
     #[test]
     fn note_pedal_source_requires_prior_reference_cc64_for_every_target(){
-        use midi_file::midly::{Format,Header,MidiMessage,Smf,Timing,TrackEvent,TrackEventKind,MetaMessage};
+        use panthesia_music::midly::{Format,Header,MidiMessage,Smf,Timing,TrackEvent,TrackEventKind,MetaMessage};
         let data=std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work")
             .join(format!("note-pedal-source-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         let mut p=Player::new(data,std::path::PathBuf::new(),true);

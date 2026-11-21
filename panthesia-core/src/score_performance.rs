@@ -5,7 +5,7 @@ use crate::{
     score_ornament::{TrillStrike, expand_mordent, expand_trill, expand_turn},
     score_playback::{PlaybackLimits, build_playback_plan, grace_note_timing},
 };
-use midi_file::midly::{
+use panthesia_music::midly::{
     Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
     num::{u4, u7, u15, u24, u28},
 };
@@ -1110,7 +1110,7 @@ mod tests {
         let score =
             import_musicxml_document(include_bytes!("score_performance_test.musicxml")).unwrap();
         let p = generate(&score, 100).unwrap();
-        let file = midi_file::MidiFile::from_smf("test", &p.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("test", &p.smf).unwrap();
         assert_eq!(p.tracks.len(), 2);
         assert_eq!(p.tracks[0].part, PracticePart::RightHand);
         assert_eq!(p.tracks[1].part, PracticePart::LeftHand);
@@ -1158,7 +1158,7 @@ mod tests {
             [0, 960, 1920, 2880, 3840]
         );
         assert_eq!(notes.last().unwrap().end, 4800);
-        let file = midi_file::MidiFile::from_smf("printed-fine", &performance.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("printed-fine", &performance.smf).unwrap();
         assert_eq!(
             file.tracks
                 .iter()
@@ -1190,7 +1190,7 @@ mod tests {
             [0, 960, 1920, 2880, 3840, 4800]
         );
         assert_eq!(notes.last().unwrap().end, 5760);
-        let file = midi_file::MidiFile::from_smf("printed-ds-fine", &performance.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("printed-ds-fine", &performance.smf).unwrap();
         assert_eq!(
             file.tracks
                 .iter()
@@ -1217,7 +1217,7 @@ mod tests {
             .collect();
         assert_eq!(pitches, [60, 62, 64, 65, 62, 64, 65]);
         assert_eq!(performance.tracks[0].notes.last().unwrap().end, 6720);
-        let file = midi_file::MidiFile::from_smf("printed-ds", &performance.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("printed-ds", &performance.smf).unwrap();
         assert_eq!(
             file.tracks
                 .iter()
@@ -1259,7 +1259,7 @@ mod tests {
         assert_eq!(d_occurrences.len(), 2);
         assert_eq!(d_occurrences[0].id.source_id, d_occurrences[1].id.source_id);
         assert_ne!(d_occurrences[0].id, d_occurrences[1].id);
-        let file = midi_file::MidiFile::from_smf("printed-ds-coda", &performance.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("printed-ds-coda", &performance.smf).unwrap();
         assert_eq!(
             file.tracks
                 .iter()
@@ -1289,7 +1289,7 @@ mod tests {
             [0, 240, 480, 720, 960, 1200, 1440, 1680]
         );
         assert_eq!(notes.last().unwrap().end, 1920);
-        let midi = midi_file::MidiFile::from_smf("trill-repeat", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("trill-repeat", &performance.smf).unwrap();
         assert_eq!(
             midi.tracks
                 .iter()
@@ -1317,7 +1317,7 @@ mod tests {
             let notes = &performance.tracks[0].notes;
             assert_eq!(notes.iter().map(|n| n.pitch).collect::<Vec<_>>(), expected);
             assert_eq!(notes.iter().map(|n| n.start).collect::<Vec<_>>(), [0, 576, 1152, 4800, 5376, 5952]);
-            let midi = midi_file::MidiFile::from_smf("mordent-repeat", &performance.smf).unwrap();
+            let midi = panthesia_music::MidiFile::from_smf("mordent-repeat", &performance.smf).unwrap();
             assert_eq!(midi.tracks.iter().flat_map(|t| t.notes.iter()).count(), 6);
         }
     }
@@ -1341,7 +1341,7 @@ mod tests {
         let notes = &performance.tracks[0].notes;
         assert_eq!(notes.iter().map(|note| note.pitch).collect::<Vec<_>>(), [62, 60, 58, 60, 62, 60, 58, 60]);
         assert_eq!(notes.iter().map(|note| note.start).collect::<Vec<_>>(), [0, 984, 2400, 3816, 4800, 5784, 7200, 8616]);
-        let midi = midi_file::MidiFile::from_smf("turn-repeat", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("turn-repeat", &performance.smf).unwrap();
         assert_eq!(midi.tracks.iter().flat_map(|track| track.notes.iter()).count(), 8);
     }
 
@@ -1352,7 +1352,7 @@ mod tests {
         let performance = generate(&source, 120).unwrap();
         assert_eq!(performance.tracks[0].notes.iter().map(|note| note.start).collect::<Vec<_>>(), [0, 193, 480, 767]);
         assert!(performance.warnings.iter().any(|warning| warning.contains("最近的 MIDI 脉冲")));
-        let midi = midi_file::MidiFile::from_smf("precise-turn", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("precise-turn", &performance.smf).unwrap();
         let score = normalized(&source).unwrap();
         let alignment = crate::score_alignment::align_score_to_midi(&score, &midi);
         assert_eq!(alignment.matches.len(), 4);
@@ -1413,7 +1413,7 @@ mod tests {
             );
             assert_eq!(grace[0].id.source_id, grace[1].id.source_id);
             assert_ne!(grace[0].id, grace[1].id);
-            let file = midi_file::MidiFile::from_smf("grace", &performance.smf).unwrap();
+            let file = panthesia_music::MidiFile::from_smf("grace", &performance.smf).unwrap();
             assert_eq!(
                 file.tracks
                     .iter()
@@ -1457,7 +1457,7 @@ mod tests {
         assert_eq!(grace[0].duration, Some(ScoreTime::new(1, 4)));
         assert_eq!(grace[0].id.source_id, grace[1].id.source_id);
         assert_ne!(grace[0].id, grace[1].id);
-        let midi = midi_file::MidiFile::from_smf("previous-grace", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("previous-grace", &performance.smf).unwrap();
         assert!((midi.duration.as_secs_f64() - 2.0).abs() < 0.00001);
     }
 
@@ -1500,7 +1500,7 @@ mod tests {
         let grace = events.iter().find(|e| e.id.source_id.ordinal == 1).unwrap();
         assert_eq!(grace.onset, ScoreTime::new(1, 1));
         assert_eq!(grace.duration, Some(ScoreTime::new(1, 2)));
-        let midi = midi_file::MidiFile::from_smf("gap-grace", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("gap-grace", &performance.smf).unwrap();
         assert!((midi.duration.as_secs_f64() - 1.0).abs() < 0.00001);
     }
 
@@ -1562,7 +1562,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             [(62, 0, 1584), (64, 1584, 4800)]
         );
-        let midi = midi_file::MidiFile::from_smf("appoggiatura", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("appoggiatura", &performance.smf).unwrap();
         assert!(
             (midi.duration.as_secs_f64() - 0.5).abs() < 0.00001,
             "duration={:?}",
@@ -1583,7 +1583,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             [(60, 0, 192), (62, 192, 480), (64, 480, 960)]
         );
-        let midi = midi_file::MidiFile::from_smf("grace-group", &performance.smf).unwrap();
+        let midi = panthesia_music::MidiFile::from_smf("grace-group", &performance.smf).unwrap();
         assert!((midi.duration.as_secs_f64() - 0.5).abs() < 0.00001);
     }
     #[test]
@@ -1617,7 +1617,7 @@ mod tests {
                     TrackEventKind::Meta(MetaMessage::EndOfTrack)
                 ));
             }
-            let file = midi_file::MidiFile::from_smf("numeric-fine", &performance.smf).unwrap();
+            let file = panthesia_music::MidiFile::from_smf("numeric-fine", &performance.smf).unwrap();
             assert!((file.duration.as_secs_f64() - final_end as f64 / 1920.0).abs() < 0.00001);
         }
     }
@@ -1701,7 +1701,7 @@ mod tests {
             120,
         )
         .unwrap();
-        let shifted_file = midi_file::MidiFile::from_smf("shifted", &shifted.smf).unwrap();
+        let shifted_file = panthesia_music::MidiFile::from_smf("shifted", &shifted.smf).unwrap();
         assert_eq!(
             shifted_file
                 .tempo_track
@@ -1750,7 +1750,7 @@ mod tests {
             assert_eq!(track.notes.len(), 3);
             assert_eq!((track.notes[2].start, track.notes[2].end), (3840, 4800));
         }
-        let file = midi_file::MidiFile::from_smf("partial", &performance.smf).unwrap();
+        let file = panthesia_music::MidiFile::from_smf("partial", &performance.smf).unwrap();
         let alignment = crate::score_alignment::align_score_to_midi(&score, &file);
         assert!(
             alignment.navigation_complete,

@@ -8,7 +8,7 @@ import type {
   HistoryBarReview,
   HistorySelection,
 } from "../features/review/historyBrowse";
-import { fields, key as libraryPathKey, type View } from "../libraryQuery";
+import { fields, key as libraryPathKey, type View } from "../features/library/libraryQueryModel";
 import {
   practiceLibraryDefaults,
   type PracticeLibraryBrowse,

@@ -1,6 +1,6 @@
 use crate::practice::{PracticeHands, PracticePart};
 use crate::practice_history::{PracticeTrackMode, PracticeTrackSetup, SongPracticeSetup};
-use midi_file::MidiTrack;
+use panthesia_music::MidiTrack;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -104,7 +104,7 @@ impl SongConfig {
     pub fn set_note_playback_rules(
         &mut self,
         rules: &[NotePlaybackRule],
-        file: &midi_file::MidiFile,
+        file: &panthesia_music::MidiFile,
     ) -> Result<(), String> {
         let mut players = BTreeMap::new();
         for rule in rules {

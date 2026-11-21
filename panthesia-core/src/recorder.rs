@@ -1,4 +1,4 @@
-use midi_file::midly::{
+use panthesia_music::midly::{
     Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind,
 };
 use std::{

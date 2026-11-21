@@ -1,4 +1,4 @@
-use midi_file::MidiFile;
+use panthesia_music::MidiFile;
 use panthesia_core::{
     fingering::HandSpanProfile, library::NoteHandHint, practice::PracticePart,
     song_config::SongConfig,
