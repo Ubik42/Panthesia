@@ -1,4 +1,4 @@
-import type { CollectionSong, LoadedSong, Snapshot } from "../../api";
+import type { LoadedSong, Snapshot } from "../../api";
 
 export const practiceModes = [
   { value: "wait", label: "弹对后继续", detail: "按自己的速度逐步弹奏，所需琴键按下后继续。" },
@@ -102,21 +102,6 @@ function measureRange(
     : null;
 }
 
-export function nextAvailableQueueSong(
-  queue: readonly CollectionSong[],
-  contentId: string | null | undefined,
-) {
-  let skipped = 0;
-  for (
-    let index = queue.findIndex((row) => row.contentId === contentId) + 1;
-    index < queue.length;
-    index++
-  ) {
-    if (queue[index].available) return { song: queue[index], skipped };
-    skipped++;
-  }
-  return { song: undefined, skipped };
-}
 
 export function measureBeatLength(
   song: LoadedSong,

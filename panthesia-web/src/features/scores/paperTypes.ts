@@ -32,16 +32,3 @@ export interface Papers {
 }
 export type PaperNoteAnchor =
   import("../../engine/commands.generated").NoteAnchor;
-export type HistoryPaperFocus = {
-  contentId: string;
-  measure: number;
-  historyId: string;
-  reference: number;
-  pitch: number;
-  track: number;
-  songTime: number;
-  index?: number | null;
-  startMeasure: number;
-  endMeasure: number;
-  request: string;
-};

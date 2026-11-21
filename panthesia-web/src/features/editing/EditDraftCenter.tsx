@@ -6,11 +6,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import { FilePenLine, X } from "lucide-react";
-import { readLibraryMetadata } from "../library/metadataClient";
-import { LibraryMetadataEditor } from "../../LibraryMetadataEditor";
 import { SavedMetadataReceipt } from "./SavedMetadataReceipt";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
-import type { Metadata } from "../library/metadataTypes";
 import {
   editDraftValue,
   type EditDraftStore,
@@ -91,17 +88,10 @@ export function EditDraftCenter({
     [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [reading, setReading] = useState(false);
   const [recoveries, setRecoveries] = useState<ReturnType<
     EditDraftStore["recoveries"]
   > | null>(null);
   const [recoveryPage, setRecoveryPage] = useState(0);
-  const [metadata, setMetadata] = useState<{
-    key: string;
-    contentId: string;
-    path: string;
-    value: Metadata;
-  } | null>(null);
   const [metadataReceipt, setMetadataReceipt] = useState<string | null>(null);
   const generation = useRef(0),
     mounted = useRef(true),
@@ -109,23 +99,13 @@ export function EditDraftCenter({
   const root = useRef<HTMLElement>(null);
   const lastOpened = useRef<string | null>(null);
   useEffect(() => {
-    if (metadata || metadataReceipt) {
+    if (metadataReceipt)
       root.current
-        ?.querySelector<HTMLElement>(
-          ".edit-draft-receipt .primary-button, .edit-draft-editor input:not(:disabled), .edit-draft-editor textarea:not(:disabled)",
-        )
+        ?.querySelector<HTMLElement>(".edit-draft-receipt .primary-button")
         ?.focus({ preventScroll: true });
-      return;
-    }
-  }, [metadata?.key, metadataReceipt]);
+  }, [metadataReceipt]);
   useEffect(() => {
-    if (
-      metadata ||
-      metadataReceipt ||
-      busy ||
-      !lastOpened.current
-    )
-      return;
+    if (metadataReceipt || busy || !lastOpened.current) return;
     const button = [
       ...(root.current?.querySelectorAll<HTMLButtonElement>(
         "button[data-edit-draft-key]",
@@ -138,12 +118,7 @@ export function EditDraftCenter({
       button.focus({ preventScroll: true });
       lastOpened.current = null;
     }
-  }, [
-    state.revision,
-    metadata?.key,
-    metadataReceipt,
-    busy,
-  ]);
+  }, [state.revision, metadataReceipt, busy]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -226,28 +201,9 @@ export function EditDraftCenter({
         setMetadataReceipt(row.key);
         return;
       }
-      if (row.value.source === "practice") {
-        if (!(await resumePractice(row.contentId, row.path)))
-          throw new Error("暂时无法打开原曲目，草稿继续保留，可先复制输入。");
-        close();
-        return;
-      }
-      setReading(true);
-      const result = await readLibraryMetadata(row.path, row.contentId);
-      if (!mounted.current || token !== generation.current) return;
-      if (
-        result.contentId !== row.contentId ||
-        !result.value ||
-        !Array.isArray(result.value.tags)
-      )
-        throw new Error("曲目资料与原草稿来源不一致，请从曲库核对原文件。");
-      if (mounted.current && token === generation.current)
-        setMetadata({
-          key: row.key,
-          contentId: row.contentId,
-          path: row.path,
-          value: result.value,
-        });
+      if (!(await resumePractice(row.contentId, row.path)))
+        throw new Error("暂时无法打开原曲目，草稿继续保留，可先复制输入。");
+      close();
     } catch (failure) {
       if (mounted.current && token === generation.current)
         setError(failure instanceof Error ? failure.message : String(failure));
@@ -255,7 +211,6 @@ export function EditDraftCenter({
       if (mounted.current && token === generation.current) {
         working.current = false;
         setBusy(false);
-        setReading(false);
       }
     }
   };
@@ -403,26 +358,11 @@ export function EditDraftCenter({
             {error}
           </p>
         )}
-        {busy &&
-          !metadata &&
-          !metadataReceipt && (
-            <div className="edit-draft-loading" role="status">
-              <span>正在准备原编辑位置…</span>
-              {reading && (
-                <button
-                  onClick={() => {
-                    generation.current++;
-                    working.current = false;
-                    setReading(false);
-                    setBusy(false);
-                    setError("已停止等待读取，原输入继续保留。");
-                  }}
-                >
-                  停止等待读取
-                </button>
-              )}
-            </div>
-          )}
+        {busy && !metadataReceipt && (
+          <div className="edit-draft-loading" role="status">
+            <span>正在准备原编辑位置…</span>
+          </div>
+        )}
         {metadataReceipt ? (
           <div className="edit-draft-editor">
             <SavedMetadataReceipt
@@ -432,24 +372,6 @@ export function EditDraftCenter({
               changed={changed}
               close={() => setMetadataReceipt(null)}
               onBusy={setBusy}
-            />
-          </div>
-        ) : metadata ? (
-          <div className="edit-draft-editor">
-            <button
-              disabled={busy}
-              data-dialog-escape
-              onClick={() => setMetadata(null)}
-            >
-              返回草稿清单
-            </button>
-            <LibraryMetadataEditor
-              key={metadata.key}
-              edit={metadata}
-              draftMemory={store.metadata}
-              onBusy={setBusy}
-              saved={changed}
-              cancel={() => setMetadata(null)}
             />
           </div>
         ) : (

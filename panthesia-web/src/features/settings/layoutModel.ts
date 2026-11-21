@@ -5,9 +5,7 @@ import {
 export const layoutKeys = [
   "uiScale",
   "practiceFocus", "practiceView", "practiceSplitAxis", "practiceSplitRatio",
-  "libraryOpen",
   "inspector",
-  "libraryWidth",
   "inspectorWidth",
   "keyboardHeight",
   "paperPreviewHeight",

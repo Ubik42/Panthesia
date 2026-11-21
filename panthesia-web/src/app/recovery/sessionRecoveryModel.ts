@@ -5,8 +5,6 @@ import type { SessionHealth } from "../../features/practice/sessionHealthStore";
 
 export type RecoveryAction =
   | "readSession"
-  | "readLibrary"
-  | "readCollection"
   | "retryStartup"
   | "skipStartup"
   | "saveRecording"
@@ -64,8 +62,6 @@ export interface RecoveryContext {
 export const recoveryActionLabels: Record<RecoveryAction, string> = {
   openWork: "返回对应工作台",
   readSession: "重新读取练习室",
-  readLibrary: "重新读取曲库",
-  readCollection: "重新读取收藏与队列",
   retryStartup: "重新恢复资料",
   skipStartup: "跳过上次曲目",
   saveRecording: "保存这份录音",
@@ -77,15 +73,12 @@ export const recoveryActionLabels: Record<RecoveryAction, string> = {
   dismissStartup: "已了解，收起提示",
   reopenStartupSong: "重新打开上次曲目",
   locateStartupSong: "重新定位原文件",
-  library: "从曲库选择",
+  library: "回到主页",
 };
 export const savingLabels: Record<string, string> = {
   asset: "正在保存谱面与原谱资料",
-  library: "正在保存曲库与学习资料",
   song: "正在准备并切换曲目",
   practice: "正在保存练习标注",
-  round: "正在保存本轮演奏",
-  import: "正在导入练习资料",
   recording: "正在保存录音并准备回放",
   closing: "正在保存并关闭练习室",
 };
@@ -105,11 +98,7 @@ export function projectRecovery(
     const source = row.startupWarning
       ? [row.startupWarning]
       : row.id === "storage"
-        ? [
-            state.storage?.version,
-            state.storage?.canRetry,
-            state.storage?.recovery,
-          ]
+        ? [state.storage?.version]
         : row.id === "recording" || row.id === "recording-saved"
           ? [state.recording, state.recordingUnsaved, state.recordingPath]
           : row.id === "sound"
@@ -194,7 +183,7 @@ export function projectRecovery(
             ? `${state.input}：${detail}`
             : detail,
         guidance: song
-          ? "原曲目位置与已保存的记录保留。重新打开会先处理当前成绩，也可从曲库选择其他曲目。"
+          ? "原曲目位置与已保存的记录保留。可重新打开，也可回到主页选择其他曲目。"
           : devices
             ? "设备设置保留，可连接原设备或重新选择。"
             : "原资料保留，可核对具体原因后继续处理。",
@@ -228,7 +217,7 @@ export function projectRecovery(
       severity: "attention",
       title: "启动恢复提示",
       detail: state.startup.error,
-      guidance: "启动时的读取说明保留在此。可查看当前设备和曲库状态。",
+      guidance: "启动时的读取说明保留在此。可查看当前设备，或回到主页选择曲目。",
       actions: ["devices", "library", "dataFolder"],
     });
   }
@@ -239,7 +228,7 @@ export function projectRecovery(
       title: startupFailureTitles[state.startup.stage] || "练习室准备未完成",
       detail: state.startup.error || "上次练习资料暂时无法读取。",
       guidance: state.startup.canSkip
-        ? "可跳过本次曲目读取，稍后从曲库继续。"
+        ? "可跳过本次曲目读取，稍后从主页继续。"
         : "重新读取会继续处理原资料；已保存的文件与设置保留。",
       actions: [
         "retryStartup",
@@ -286,48 +275,17 @@ export function projectRecovery(
       guidance: "再次读取会核对当前来源；较旧的返回不会覆盖新的曲目。",
       actions: ["readSession"],
     });
-  const recovery = state.storage?.recovery;
-  const recoverySubjects = recovery?.checked
-    ? [
-        ...(recovery.backupImport ? ["练习资料导入"] : []),
-        ...(recovery.round ? ["本轮成绩"] : []),
-        ...(recovery.assets ? ["曲目与谱面"] : []),
-        ...(recovery.settings ? ["练习设置"] : []),
-      ]
-    : [];
-  const storageDetail = state.storage?.error
-    ? state.error?.includes(state.storage.error)
-      ? state.error
-      : state.storage.error
-    : "";
-  const recoveryDetail = recovery?.readError
-    ? state.storage?.recoveryError
-    : null;
   if (state.storage?.error)
     add({
       id: "storage",
       severity: "blocking",
-      title: recovery?.readError
-        ? "资料恢复状态暂时无法确认"
-        : recoverySubjects.length
-          ? `${recoverySubjects.join("、")}等待恢复`
-          : "练习资料尚未保存完成",
-      detail:
-        recoveryDetail && !storageDetail.includes(recoveryDetail)
-          ? `${storageDetail}\n${recoveryDetail}`
-          : storageDetail,
-      guidance: state.storage.canRetry
-        ? "原保存内容继续保留。重试会处理原保存，不会重复生成曲目或重新导入备份。"
-        : recovery?.readError
-          ? "请检查资料文件夹是否可访问，再重新核对保存状态。现有资料不会被重置。"
-          : recoverySubjects.length
-            ? "请保留现有文件和恢复资料。关闭并重新启动练习室后，由启动流程接续恢复；单独刷新界面会继续显示当前恢复状态。"
-            : "请保留当前窗口，并查看资料文件夹或复制问题说明。完成资料处理后可重新读取练习室。",
-      actions: [
-        "dataFolder",
-        "workProgress",
-        "readSession",
-      ],
+      title: "练习资料尚未保存完成",
+      detail: state.error?.includes(state.storage.error)
+        ? state.error
+        : state.storage.error,
+      guidance:
+        "请保留当前窗口，并查看资料文件夹或复制问题说明。完成资料处理后可重新读取练习室。",
+      actions: ["dataFolder", "workProgress", "readSession"],
     });
   else if (state.storage?.pending && state.startup?.ready !== false)
     add({
@@ -335,13 +293,8 @@ export function projectRecovery(
       severity: "info",
       title:
         savingLabels[state.storage.operation ?? ""] ??
-        (recovery && !recovery.checked
-          ? "正在确认资料恢复状态"
-          : "正在保存设置与练习资料"),
-      detail:
-        recovery && !recovery.checked
-          ? "后台正在读取恢复记录，确认后更新可用状态。"
-          : "保存正在处理，完成结果会自动更新。",
+        "正在保存设置与练习资料",
+      detail: "保存正在处理，完成结果会自动更新。",
       guidance: "可在工作进度中查看相关任务。",
       actions: ["workProgress"],
     });
@@ -427,18 +380,8 @@ export function projectRecovery(
     });
   }
   for (const row of health.issues) {
-    const title = {
-      action: "上次操作需要处理",
-      session: "练习室资料读取未完成",
-      library: "曲目列表读取未完成",
-      collection: "收藏与队列读取未完成",
-    }[row.kind];
-    const action = {
-      action: "readSession",
-      session: "readSession",
-      library: "readLibrary",
-      collection: "readCollection",
-    }[row.kind] as RecoveryAction;
+    const title =
+      row.kind === "action" ? "上次操作需要处理" : "练习室资料读取未完成";
     if (rows.some((issue) => issue.detail === row.detail)) continue;
     add({
       id: `read:${row.kind}`,
@@ -450,7 +393,7 @@ export function projectRecovery(
           ? "请查看原操作说明。重新读取只更新界面；需要继续的提交可从工作进度返回原入口。"
           : "重新读取对应资料会保留当前输入和已保存结果。",
       actions: [
-        action,
+        "readSession",
         "workProgress",
         ...(row.kind === "action" ? ["dismissAction" as const] : []),
       ],
@@ -497,8 +440,6 @@ export function recoveryActionDisabled(
     return null;
   if (action === "readSession")
     return context.reading ? "正在读取原请求，请等待本次读取结束。" : null;
-  if (action === "readLibrary" || action === "readCollection")
-    return context.connected ? null : "连接恢复后可重新读取这项资料。";
   if (!context.connected) return "请先重新连接练习室。";
   if (action === "dismissStartup")
     return context.commandPending

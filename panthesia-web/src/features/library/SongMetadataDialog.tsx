@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { api, type LoadedSong } from "../../api";
-import { LibraryMetadataEditor } from "../../LibraryMetadataEditor";
+import { SongMetadataEditor } from "./SongMetadataEditor";
 import { TaskActivity } from "../../engine/TaskActivity";
 import type { Metadata, MetadataDraft, MetadataService } from "./metadataTypes";
 import { metadataDefaultsReply } from "./metadataClient";
@@ -151,7 +151,7 @@ export function MetadataDialog({
           </div>
         )}
         {value && (
-          <LibraryMetadataEditor
+          <SongMetadataEditor
             edit={{
               path: draftPath ?? (opened.current.sourcePath || "内置技术练习"),
               contentId: opened.current.contentId,

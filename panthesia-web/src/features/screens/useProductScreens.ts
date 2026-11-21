@@ -9,7 +9,7 @@ export function useProductScreens(workspace: Workspace) {
     "setup" | "parts" | "split" | "performance" | "freePlay"
   >("setup");
   const [splitTrack, setSplitTrack] = useState<number | null>(null);
-  const screen = front ?? (workspace === "practice" ? practice : "library");
+  const screen = front ?? (workspace === "practice" ? practice : "home");
   const show = useCallback((page: typeof practice) => {
     setFront(null);
     setPractice(page);

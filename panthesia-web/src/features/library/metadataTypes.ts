@@ -41,7 +41,6 @@ export interface MetadataDraft {
   draft: Metadata;
   tagsText?: string;
   refresh?: { warnings?: string[] };
-  source?: "practice" | "library";
   batchId?: string;
   submission?: "unconfirmed";
 }

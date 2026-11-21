@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useExternalProgram } from "./features/scores/useExternalProgram";
 import { ExternalProgramControls } from "./features/scores/ExternalProgramControls";
 import {
@@ -10,15 +10,10 @@ import { api, type LoadedSong } from "./api";
 import { PaperSources } from "./PaperSources";
 import { PaperTransferReview } from "./PaperTransferReview";
 import { PaperReader } from "./features/scores/PaperReader";
-import {
-  paperNoteAnchor,
-  historyMappingIssue,
-} from "./features/scores/paperHistoryLocation";
 import type {
   PaperAttachment,
   PracticeContext,
   Papers,
-  HistoryPaperFocus,
 } from "./features/scores/paperTypes";
 export type {
   PaperAttachment,
@@ -38,7 +33,6 @@ export function PaperScore({
   onViewSaved,
   playback,
   contextKey,
-  historyFocus,
   engineId,
 }: {
   contentId: string;
@@ -55,7 +49,6 @@ export function PaperScore({
   ) => Promise<void>;
   playback?: { measure: number };
   contextKey?: string;
-  historyFocus?: HistoryPaperFocus | null;
 }) {
   const [sourceBusy, setSourceBusy] = useState(false);
   const [transferBusy, setTransferBusy] = useState(false);
@@ -67,7 +60,6 @@ export function PaperScore({
   const [practiceLoaded, setPracticeLoaded] = useState(false);
   const [practiceError, setPracticeError] = useState("");
   const practiceGeneration = useRef(0);
-  const [focusBook, setFocusBook] = useState<string | null>(null);
   const [data, setData] = useState<Papers | null>(null),
     [operationOwner, setOperationOwner] = useState<string | null>(null),
     [refreshPending, setRefreshPending] = useState(false),
@@ -97,33 +89,9 @@ export function PaperScore({
     onBusy?.(busy || sourceBusy || transferBusy);
     return () => onBusy?.(false);
   }, [busy, sourceBusy, transferBusy, onBusy]);
-  const focus = historyFocus?.contentId === contentId ? historyFocus : null;
-  const eligible = useMemo(
-    () =>
-      focus && practice
-        ? (data?.attachments.filter(
-            (item) => !historyMappingIssue(item, practice, focus),
-          ) ?? [])
-        : [],
-    [focus, practice, data?.attachments],
-  );
-  const preferred =
-    focus && eligible.length
-      ? (eligible.find((item) => item.id === focusBook) ??
-        eligible.find(
-          (item) => practice && paperNoteAnchor(item, practice, focus),
-        ) ??
-        eligible.find((item) => item.id === data?.active) ??
-        (eligible.length === 1 ? eligible[0] : null))
-      : null;
-  const current = focus
-    ? (preferred ??
-      data?.attachments.find((item) => item.id === data.active) ??
-      data?.attachments[0])
-    : (data?.attachments.find((item) => item.id === data.active) ??
-      data?.attachments[0]);
-  const locating = !!focus && !!current && preferred?.id === current.id;
-  useEffect(() => setFocusBook(null), [focus?.request]);
+  const current =
+    data?.attachments.find((item) => item.id === data.active) ??
+    data?.attachments[0];
   const command = <T = { ok: boolean },>(
     request: Parameters<typeof api.command>[0],
   ) => api.commandForEngine<T>(engineId, request);
@@ -384,10 +352,7 @@ export function PaperScore({
               !data?.attachments.length
             }
             value={current?.id ?? ""}
-            onChange={(e) => {
-              if (focus) setFocusBook(e.target.value);
-              else void work(() => update(e.target.value, "select"));
-            }}
+            onChange={(e) => void work(() => update(e.target.value, "select"))}
           >
             <option value="" disabled>
               选择谱面
@@ -434,55 +399,6 @@ export function PaperScore({
             重新读取练习范围
           </button>
         </p>
-      )}
-      {focus && (
-        <div className="paper-history-location" role="status">
-          {!data
-            ? "正在读取这首曲目的纸谱…"
-            : !data.attachments.length
-              ? "练习段已准备好。这首曲目还没有纸谱，请先在谱面管理中添加 PDF 或图片。"
-              : !practiceLoaded
-                ? "正在核对练习小节与纸谱位置…"
-                : !practice || practice.contentId !== contentId
-                  ? "练习段已准备好，但当前曲目小节资料无法读取，纸谱没有自动定位。"
-                  : !Number.isSafeInteger(focus.measure) ||
-                      focus.measure < 1 ||
-                      focus.measure > practice.measures
-                    ? "练习段已准备好，但目标小节超出当前曲目范围，纸谱没有自动定位。"
-                    : eligible.length > 1 && !preferred
-                      ? "多份纸谱都能定位这一小节，请选择要使用的纸谱。"
-                      : preferred
-                        ? `目标音在第 ${focus.measure} 小节；本次重练第 ${focus.startMeasure}–${focus.endMeasure} 小节。${preferred.name} 将定位到目标小节对应的谱页。`
-                        : "练习段已准备好，但还没有可定位这一小节的纸谱。请在谱面管理中核对对应点。"}
-          {practice && !preferred && !!data?.attachments.length && (
-            <ul>
-              {data.attachments.map((item) => (
-                <li key={item.id}>
-                  {item.name}：
-                  {historyMappingIssue(item, practice, focus) ??
-                    "可定位，请选择"}
-                </li>
-              ))}
-            </ul>
-          )}
-          {practice && eligible.length > 1 && (
-            <label>
-              选择纸谱{" "}
-              <select
-                aria-label="选择重练纸谱"
-                value={preferred?.id ?? ""}
-                onChange={(event) => setFocusBook(event.target.value)}
-              >
-                <option value="">选择一份纸谱</option>
-                {eligible.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
       )}
       {error && (
         <p role="alert" className="dialog-error">
@@ -624,7 +540,6 @@ export function PaperScore({
           practice={practice}
           song={song}
           playback={playback}
-          historyFocus={locating ? focus : null}
           saveMapping={(mapping) =>
             work(async () => {
               await command({

@@ -40,7 +40,6 @@ import { api, pitchName, type LoadedSong, type Note } from "../../api";
 import { usePaperExport } from "./usePaperExport";
 import { PaperExportFeedback } from "./PaperExportFeedback";
 import { PaperPracticeBuilder } from "../../PaperPracticeBuilder";
-import { paperNoteAnchor, historyMappingIssue } from "./paperHistoryLocation";
 import type {
   PaperView,
   PaperAttachment,
@@ -48,7 +47,6 @@ import type {
   PaperNoteAnchor,
   PracticeContext,
   PageAnchor,
-  HistoryPaperFocus,
 } from "./paperTypes";
 import type {
   PDFDocumentProxy,
@@ -64,7 +62,7 @@ import {
   type PaperAnnotationDraft,
 } from "../../PaperAnnotations";
 import "../../paper-navigation.css";
-import "../../history-paper.css";
+import "../../paper-note-regions.css";
 import "./scoreConversion.css";
 import "./paperReaderWorkspace.css";
 const noReadingSubscription = () => () => {};
@@ -80,7 +78,6 @@ export function PaperReader({
   practice,
   song,
   playback,
-  historyFocus,
   saveMapping,
   saveNoteAnchor,
   saveAnnotation,
@@ -106,7 +103,6 @@ export function PaperReader({
   practice: PracticeContext | null;
   song?: LoadedSong | null;
   playback?: { measure: number };
-  historyFocus?: HistoryPaperFocus | null;
   saveMapping: (mapping: PaperMapping | null) => Promise<void | boolean>;
   saveNoteAnchor?: (
     track: number,
@@ -175,7 +171,7 @@ export function PaperReader({
     [sheetSize, setSheetSize] = useState({ width: 1, height: 1 });
   const [locationNotice, setLocationNotice] = useState("");
   const [renderedPage, setRenderedPage] = useState(0);
-  const [suspended, setSuspended] = useState(!!historyFocus),
+  const [suspended, setSuspended] = useState(false),
     [followPending, setFollowPending] = useState<boolean | null>(null);
   const anchorMeasure = anchorText.trim() ? Number(anchorText) : NaN;
   const setAnchorMeasure = (measure: number) => {
@@ -217,21 +213,6 @@ export function PaperReader({
   const pendingAnnotation = useRef<{
     page: number;
     region: PaperRegion;
-  } | null>(null);
-  const handledHistoryFocus = useRef("");
-  const [historyNotice, setHistoryNotice] = useState("");
-  const [historyTarget, setHistoryTarget] = useState<{
-    request: string;
-    measure: number;
-    page: number;
-    region: PaperRegion;
-    note?: {
-      track: number;
-      index: number;
-      pitch: number;
-      assetId: string;
-      grid: string;
-    };
   } | null>(null);
   const scrollRegion = (region: PaperRegion) => {
     const viewport = frame.current,
@@ -921,186 +902,6 @@ export function PaperReader({
   }, [loading, renderedPage, view.page, view.rotation, sheetSize]);
   const invalidPages =
     count > 0 && !!mapping?.anchors.some((a) => a.page > count);
-  const highlightedHistory =
-    historyFocus &&
-    historyTarget?.request === historyFocus.request &&
-    practice?.contentId === contentId &&
-    view.page === historyTarget.page &&
-    (historyTarget.note
-      ? attachment.noteAnchors?.some(
-          (anchor) =>
-            anchor.track === historyTarget.note!.track &&
-            anchor.index === historyTarget.note!.index &&
-            anchor.pitch === historyTarget.note!.pitch &&
-            anchor.assetId === historyTarget.note!.assetId &&
-            anchor.grid === historyTarget.note!.grid &&
-            anchor.page === historyTarget.page &&
-            JSON.stringify(anchor.region) ===
-              JSON.stringify(historyTarget.region),
-        )
-      : !stale &&
-        mapping?.anchors.some(
-          (anchor) =>
-            anchor.measure === historyTarget.measure &&
-            anchor.page === historyTarget.page &&
-            anchor.region &&
-            JSON.stringify(anchor.region) ===
-              JSON.stringify(historyTarget.region),
-        ))
-      ? historyTarget
-      : null;
-  useEffect(() => {
-    pendingAnnotation.current = null;
-    setHistoryTarget(null);
-    setHistoryNotice("");
-  }, [historyFocus?.request]);
-  useEffect(() => {
-    if (
-      !historyTarget ||
-      !historyFocus ||
-      historyTarget.request !== historyFocus.request
-    )
-      return;
-    const stillMapped =
-      practice?.contentId === contentId &&
-      (historyTarget.note
-        ? attachment.noteAnchors?.some(
-            (anchor) =>
-              anchor.track === historyTarget.note!.track &&
-              anchor.index === historyTarget.note!.index &&
-              anchor.assetId === historyTarget.note!.assetId &&
-              anchor.grid === historyTarget.note!.grid &&
-              anchor.page === historyTarget.page &&
-              JSON.stringify(anchor.region) ===
-                JSON.stringify(historyTarget.region),
-          )
-        : !stale &&
-          mapping?.anchors.some(
-            (anchor) =>
-              anchor.measure === historyTarget.measure &&
-              anchor.page === historyTarget.page &&
-              JSON.stringify(anchor.region) ===
-                JSON.stringify(historyTarget.region),
-          ));
-    if (!stillMapped) {
-      pendingAnnotation.current = null;
-      setHistoryTarget(null);
-      setHistoryNotice(
-        "纸谱小节区域已经改变，历史高亮已清除。请重新从历史成绩定位。",
-      );
-    }
-  }, [
-    historyTarget,
-    historyFocus?.request,
-    stale,
-    practice?.contentId,
-    contentId,
-    mapping,
-    attachment.noteAnchors,
-  ]);
-  useEffect(() => {
-    if (
-      !historyFocus ||
-      handledHistoryFocus.current === historyFocus.request ||
-      !practice
-    )
-      return;
-    const fail = (message: string) => {
-      handledHistoryFocus.current = historyFocus.request;
-      pendingAnnotation.current = null;
-      setHistoryTarget(null);
-      setHistoryNotice(message);
-    };
-    if (
-      historyFocus.contentId !== contentId ||
-      practice.contentId !== contentId
-    ) {
-      fail("当前曲目与历史记录不一致，纸谱没有自动定位。");
-      return;
-    }
-    if (
-      !Number.isSafeInteger(historyFocus.measure) ||
-      historyFocus.measure < 1 ||
-      historyFocus.measure > practice.measures
-    ) {
-      fail("目标小节超出当前曲目范围，纸谱没有自动定位。");
-      return;
-    }
-    const issue = historyMappingIssue(attachment, practice, historyFocus);
-    if (issue) {
-      fail(`${attachment.name}：${issue}，纸谱没有自动定位。`);
-      return;
-    }
-    if (!count && loading) return;
-    const exactNote = paperNoteAnchor(attachment, practice, historyFocus);
-    const anchor =
-      exactNote ?? paperAnchorAt(mapping!.anchors, historyFocus.measure)!;
-    if (!count || anchor.page > count) {
-      fail(`第 ${anchor.page} 页不可用，纸谱没有自动定位。`);
-      return;
-    }
-    handledHistoryFocus.current = historyFocus.request;
-    setSuspended(true);
-    setView((previous) =>
-      previous.page === anchor.page
-        ? previous
-        : { ...previous, page: anchor.page },
-    );
-    frame.current?.scrollTo({ top: 0, left: 0 });
-    const exactRegion =
-      anchor.measure === historyFocus.measure ? anchor.region : undefined;
-    setHistoryTarget(
-      exactRegion
-        ? {
-            request: historyFocus.request,
-            measure: historyFocus.measure,
-            page: anchor.page,
-            region: exactRegion,
-            ...(exactNote
-              ? {
-                  note: {
-                    track: exactNote.track,
-                    index: exactNote.index,
-                    pitch: exactNote.pitch,
-                    assetId: exactNote.assetId,
-                    grid: exactNote.grid,
-                  },
-                }
-              : {}),
-          }
-        : null,
-    );
-    if (anchor.region) {
-      pendingAnnotation.current = { page: anchor.page, region: anchor.region };
-      if (
-        !loading &&
-        renderedPage === anchor.page &&
-        latest.current.page === anchor.page
-      ) {
-        scrollRegion(anchor.region);
-        pendingAnnotation.current = null;
-      }
-    }
-    const location = exactNote
-      ? "已标出目标音符位置"
-      : exactRegion
-        ? "已标出目标小节区域；这个区域不是单个音符的精确位置"
-        : anchor.region
-          ? `按第 ${anchor.measure} 小节的区域定位谱行；目标小节没有独立的页内区域`
-          : "只定位到谱页；目标小节没有独立的页内区域";
-    setHistoryNotice(
-      `已定位第 ${historyFocus.measure} 小节的参考音 ${pitchName(historyFocus.pitch)}：第 ${anchor.page} 页。${location}。自动翻页已暂停，练习段已准备好。`,
-    );
-  }, [
-    historyFocus?.request,
-    practice,
-    attachment,
-    mapping,
-    count,
-    loading,
-    renderedPage,
-    contentId,
-  ]);
   useEffect(() => {
     if (!annotationEditing) setAnnotationNotice("");
   }, [annotationEditing]);
@@ -1670,11 +1471,6 @@ export function PaperReader({
       </fieldset>
       {readingSession && readingState && (
         <PaperReadingFeedback session={readingSession} state={readingState} />
-      )}
-      {historyNotice && (
-        <p role="status" className="paper-history-result">
-          {historyNotice}
-        </p>
       )}
       <div className={`paper-reader-body${toolsOpen ? " tools-open" : ""}`}>
         <aside
@@ -2499,16 +2295,10 @@ export function PaperReader({
                 anchors={visibleMeasureRegions}
                 rotation={view.rotation}
                 activeMeasure={
-                  !stale && !historyFocus
+                  !stale
                     ? activeMeasureAnchor?.measure
                     : undefined
                 }
-                historyMeasure={
-                  highlightedHistory && !highlightedHistory.note
-                    ? highlightedHistory.measure
-                    : undefined
-                }
-                historyPitch={historyFocus?.pitch}
                 disabled={
                   disabled ||
                   noteSeekBusy ||
@@ -2528,8 +2318,6 @@ export function PaperReader({
               <PaperNoteRegions
                 anchors={visibleNoteRegions}
                 rotation={view.rotation}
-                historyTrack={highlightedHistory?.note?.track}
-                historyIndex={highlightedHistory?.note?.index}
                 disabled={
                   disabled ||
                   readOnly ||

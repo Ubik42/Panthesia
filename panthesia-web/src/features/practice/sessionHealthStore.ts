@@ -1,5 +1,5 @@
 import { reportDiagnostic } from "../../app/diagnostics";
-export type SessionIssueKind = "action" | "session" | "library" | "collection";
+export type SessionIssueKind = "action" | "session";
 export interface SessionIssue {
   kind: SessionIssueKind;
   version: number;
@@ -23,8 +23,6 @@ export interface SessionHealth {
 const kinds: SessionIssueKind[] = [
   "action",
   "session",
-  "library",
-  "collection",
 ];
 const text = (failure: unknown) =>
   failure instanceof Error ? failure.message : String(failure);
@@ -33,8 +31,6 @@ export function createSessionHealthStore() {
   let messages: SessionMessages = {
     action: "",
     session: "",
-    library: "",
-    collection: "",
   };
   let connection: SessionConnection = {
     connected: false,

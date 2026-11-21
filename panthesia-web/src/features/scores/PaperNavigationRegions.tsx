@@ -7,8 +7,6 @@ export const PaperMeasureRegions = memo(function PaperMeasureRegions({
   anchors,
   rotation,
   activeMeasure,
-  historyMeasure,
-  historyPitch,
   disabled,
   measures,
   locate,
@@ -16,36 +14,25 @@ export const PaperMeasureRegions = memo(function PaperMeasureRegions({
   anchors: PageAnchor[];
   rotation: number;
   activeMeasure?: number;
-  historyMeasure?: number;
-  historyPitch?: number;
   disabled: boolean;
   measures: number;
   locate: (anchor: PageAnchor) => void;
 }) {
   return anchors.map((anchor) => {
-    const region = paperAnnotationBox(anchor.region!, rotation),
-      historical = anchor.measure === historyMeasure;
+    const region = paperAnnotationBox(anchor.region!, rotation);
     return (
       <button
         key={`anchor-${anchor.measure}`}
         type="button"
-        className={`paper-measure-region ${historical ? "history-target" : ""} ${anchor.measure === activeMeasure ? "active" : ""}`}
+        className={`paper-measure-region ${anchor.measure === activeMeasure ? "active" : ""}`}
         style={{
           left: `${region.x * 100}%`,
           top: `${region.y * 100}%`,
           width: `${region.width * 100}%`,
           height: `${region.height * 100}%`,
         }}
-        aria-label={
-          historical
-            ? `历史参考音 ${pitchName(historyPitch!)} 所在第 ${anchor.measure} 小节区域`
-            : `谱页第 ${anchor.measure} 小节位置`
-        }
-        title={
-          historical
-            ? "历史问题音所在小节区域，不代表音符精确位置"
-            : `定位第 ${anchor.measure} 小节`
-        }
+        aria-label={`谱页第 ${anchor.measure} 小节位置`}
+        title={`定位第 ${anchor.measure} 小节`}
         disabled={disabled || anchor.measure > measures}
         onClick={(event) => {
           event.stopPropagation();
@@ -60,38 +47,28 @@ export const PaperMeasureRegions = memo(function PaperMeasureRegions({
 export const PaperNoteRegions = memo(function PaperNoteRegions({
   anchors,
   rotation,
-  historyTrack,
-  historyIndex,
   disabled,
   select,
 }: {
   anchors: NoteAnchor[];
   rotation: number;
-  historyTrack?: number;
-  historyIndex?: number;
   disabled: boolean;
   select: (anchor: NoteAnchor) => void;
 }) {
   return anchors.map((anchor) => {
-    const region = paperAnnotationBox(anchor.region, rotation),
-      historical =
-        historyTrack === anchor.track && historyIndex === anchor.index;
+    const region = paperAnnotationBox(anchor.region, rotation);
     return (
       <button
         key={`note-${anchor.track}-${anchor.index}`}
         type="button"
-        className={`paper-note-region ${historical ? "history-target" : ""}`}
+        className="paper-note-region"
         style={{
           left: `${region.x * 100}%`,
           top: `${region.y * 100}%`,
           width: `${region.width * 100}%`,
           height: `${region.height * 100}%`,
         }}
-        aria-label={
-          historical
-            ? `历史参考音 ${pitchName(anchor.pitch)} 的纸谱位置`
-            : `${pitchName(anchor.pitch)} 在第 ${anchor.measure} 小节的纸谱位置`
-        }
+        aria-label={`${pitchName(anchor.pitch)} 在第 ${anchor.measure} 小节的纸谱位置`}
         title={`${pitchName(anchor.pitch)} · 第 ${anchor.measure} 小节 · 音轨 ${anchor.track}`}
         disabled={disabled}
         onClick={(event) => {

@@ -120,8 +120,6 @@ export function createSessionRecoveryStore(
     ).find((row) => row.id === issue.id);
     const readOnly = [
       "readSession",
-      "readLibrary",
-      "readCollection",
       "devices",
       "dataFolder",
       "workProgress",

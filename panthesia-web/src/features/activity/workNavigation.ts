@@ -4,8 +4,7 @@ import type { createScoreWorkspaceStore } from "../scores/scoreWorkspaceStore";
 import type { ScoreToolRequest } from "../scores/scoreToolRequest";
 export type WorkOpenResult = { ok: boolean; error?: string };
 type SourceEditor = "passage" | "hands" | "meter";
-type SimpleTarget =
-  "imports" | "package" | "backup" | "devices" | "exercise" | "drafts";
+type SimpleTarget = "devices" | "exercise" | "drafts";
 export interface WorkNavigationHost {
   unavailable: (target: WorkTarget) => string | null;
   prepare: (source: WorkSource, signal: AbortSignal) => Promise<boolean>;
@@ -17,10 +16,6 @@ export interface WorkNavigationHost {
   openScore: (request: ScoreToolRequest | null) => void;
   openSimple: (target: SimpleTarget) => void;
   openInterface: () => void;
-  browsePending: (
-    id: string | undefined,
-    signal: AbortSignal,
-  ) => Promise<boolean>;
   openMedia: (entry: WorkEntry & { source: WorkSource }) => void;
   done: () => void;
 }
@@ -78,10 +73,7 @@ export async function openWorkEntry(
       );
     }
   } else if (entry.target === "interface-settings") host.openInterface();
-  else if (entry.target === "library-open") {
-    if (!(await host.browsePending(entry.libraryOpenId, signal)))
-      return { ok: false, error: "当前页面仍在处理，可稍后接续曲目打开进度。" };
-  } else if (entry.target === "media") {
+  else if (entry.target === "media") {
     if (!entry.source)
       return {
         ok: false,
@@ -90,8 +82,6 @@ export async function openWorkEntry(
     host.openMedia({ ...entry, source: entry.source });
   } else
     switch (entry.target) {
-      case "imports":
-      case "package":
       case "devices":
       case "exercise":
       case "drafts":

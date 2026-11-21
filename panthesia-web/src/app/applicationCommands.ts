@@ -25,7 +25,7 @@ import {
 import type { Shortcuts, ShortcutAction } from "../shortcuts";
 
 export type CommandRequirement =
-  "engine" | "idle" | "navigation" | "loaded" | "song" | "editable" | "score";
+  "engine" | "idle" | "loaded" | "song" | "editable" | "score";
 export type CommandGroup = "工作区" | "练习与编排" | "曲目与乐谱" | "应用设置";
 interface CommandDefinition {
   id: string;
@@ -56,7 +56,7 @@ const definitions = [
     group: "工作区",
     icon: Library,
     keywords: "主页 最近 home zhuye",
-    needs: ["engine", "idle", "navigation"],
+    needs: ["engine", "idle"],
     shortcut: "libraryManager",
     featured: true,
   },
@@ -67,7 +67,7 @@ const definitions = [
     group: "工作区",
     icon: Music2,
     keywords: "练琴 播放 piano practice lianxi",
-    needs: ["engine", "idle", "navigation"],
+    needs: ["engine", "idle"],
     featured: true,
   },
   {
@@ -77,7 +77,7 @@ const definitions = [
     group: "练习与编排",
     icon: Play,
     keywords: "开始 继续 停止 play pause",
-    needs: ["engine", "idle", "navigation", "song"],
+    needs: ["engine", "idle", "song"],
     shortcut: "playPause",
     featured: true,
   },
@@ -88,7 +88,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: FolderOpen,
     keywords: "打开文件 导入 import midi xml pdf 图片 扫描 识谱 daoru quzi",
-    needs: ["engine", "idle", "navigation"],
+    needs: ["engine", "idle"],
     featured: true,
   },
   {
@@ -98,7 +98,7 @@ const definitions = [
     group: "练习与编排",
     icon: Sparkles,
     keywords: "音阶 琶音 热身 基本功 generate",
-    needs: ["engine", "idle", "navigation"],
+    needs: ["engine", "idle"],
   },
   {
     id: "passages",
@@ -107,7 +107,7 @@ const definitions = [
     group: "练习与编排",
     icon: Target,
     keywords: "片段 分段 循环 passage loop",
-    needs: ["engine", "idle", "navigation", "song", "editable"],
+    needs: ["engine", "idle", "song", "editable"],
     shortcut: "passages",
   },
   {
@@ -117,7 +117,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: Hand,
     keywords: "手指 指法 建议 双手 fingering zhifa shouzhi",
-    needs: ["engine", "idle", "navigation", "song", "editable"],
+    needs: ["engine", "idle", "song", "editable"],
     featured: true,
   },
   {
@@ -127,7 +127,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: KeyboardMusic,
     keywords: "左手 右手 双手 分手 hands track",
-    needs: ["engine", "idle", "navigation", "song", "editable"],
+    needs: ["engine", "idle", "song", "editable"],
   },
   {
     id: "meter",
@@ -136,7 +136,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: SlidersHorizontal,
     keywords: "节拍 拍号 弱起 小节 节奏 meter",
-    needs: ["engine", "idle", "navigation", "song", "editable"],
+    needs: ["engine", "idle", "song", "editable"],
   },
   {
     id: "scores",
@@ -145,7 +145,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: FileMusic,
     keywords: "乐谱 五线谱 纸谱 musicxml mxl pdf score",
-    needs: ["engine", "idle", "navigation", "loaded"],
+    needs: ["engine", "idle", "loaded"],
   },
   {
     id: "metadata",
@@ -154,7 +154,7 @@ const definitions = [
     group: "曲目与乐谱",
     icon: BookOpen,
     keywords: "名称 作者 作曲家 标题 标签 metadata",
-    needs: ["engine", "idle", "navigation", "loaded"],
+    needs: ["engine", "idle", "loaded"],
   },
   {
     id: "keyboard",
@@ -163,7 +163,7 @@ const definitions = [
     group: "工作区",
     icon: KeyboardMusic,
     keywords: "钢琴 瀑布 piano keyboard",
-    needs: ["engine", "navigation"],
+    needs: ["engine"],
   },
   {
     id: "score",
@@ -172,7 +172,7 @@ const definitions = [
     group: "工作区",
     icon: FileMusic,
     keywords: "五线谱 谱面 跟谱 notation",
-    needs: ["engine", "navigation", "song", "score"],
+    needs: ["engine", "song", "score"],
   },
   {
     id: "libraryPanel",
@@ -181,7 +181,7 @@ const definitions = [
     group: "工作区",
     icon: PanelLeft,
     keywords: "选择 歌曲 曲库 文件夹",
-    needs: ["engine", "navigation"],
+    needs: ["engine"],
     shortcut: "library",
   },
   {
@@ -191,7 +191,7 @@ const definitions = [
     group: "工作区",
     icon: PanelRight,
     keywords: "歌曲 设置 参数 版本",
-    needs: ["engine", "navigation"],
+    needs: ["engine"],
     shortcut: "inspector",
   },
   {
@@ -202,7 +202,7 @@ const definitions = [
     icon: Settings2,
     keywords:
       "声音 没声音 设备 shebei shengyin midi 音源 音频 插件 vst3 pianoteq",
-    needs: ["engine", "idle", "navigation"],
+    needs: ["engine", "idle"],
   },
   {
     id: "display",
@@ -212,7 +212,7 @@ const definitions = [
     icon: SlidersHorizontal,
     keywords:
       "缩放 字体 太小 分辨率 快捷键 界面 display shortcuts xianshi kuaijiejian",
-    needs: ["navigation"],
+    needs: [],
   },
   {
     id: "silence",

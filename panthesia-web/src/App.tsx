@@ -68,12 +68,10 @@ import { useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore } fr
 import {
 api,
 pitchName,
-type CollectionSong,
 type EngineCommand,
 type LoadedSong,
 type PlaybackAdjustmentCommand,
-type Snapshot,
-type SongRow
+type Snapshot
 } from "./api";
 import {
 useWorkspaceNavigation,
@@ -126,10 +124,7 @@ export default function App() {
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
   const workspaceSessions = useWorkspaceSessions();
-  const navigation = useWorkspaceNavigation({
-    initialReturn: workspaceSessions.browse.initialReturn(),
-    rememberReturn: workspaceSessions.browse.rememberReturn,
-  });
+  const navigation = useWorkspaceNavigation();
   const { workspace } = navigation;
   const productScreens=useProductScreens(workspace);
   const songSetup=productScreens.screen==="setup";
@@ -168,29 +163,19 @@ export default function App() {
     getBoundSong,
     state,
     setState,
-    songs,
     song,
-    collection,
-    libraryReady,
-    libraryProblem,
     refreshSession,
     refreshConfirmedSession,
     refreshOpenedSession,
     installSession,
     binding,
     reading,
-    refreshWithCollection,
-    refreshEdits,
-    readCollection,
     connected,
     health,
     refreshProblem,
     error,
     setError,
-    refreshOrThrow,
     refresh,
-    updateCollection,
-    refreshLibrary,
   } = usePracticeSession();
   const editors=useSongEditors(song);
   const {songOptions,setSongOptions,scoresDialog,setScoresDialog,meterDialog,setMeterDialog,handsDialog,setHandsDialog,fingeringDialog,setFingeringDialog,fingeringWorkbenchOpen,setFingeringWorkbenchOpen}=editors;
@@ -206,7 +191,7 @@ export default function App() {
   useEffect(() => {
     workspaceSessions.workProgress.setContext({ engineId: progressEngineId, connected, closing: !!workspaceSessions.desktopClose.status });
   }, [workspaceSessions.workProgress, progressEngineId, connected, !!workspaceSessions.desktopClose.status]);
-  const operationBusy = !!workspaceSessions.desktopClose.status || requestPending || Boolean(state.storage?.operation) || Boolean(state.storage?.error && !state.storage.canRetry);
+  const operationBusy = !!workspaceSessions.desktopClose.status || requestPending || Boolean(state.storage?.operation) || Boolean(state.storage?.error);
   const busy = operationBusy || binding;
   useEffect(() => {
     sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, closing: !!workspaceSessions.desktopClose.status, title: song?.title, path: song?.sourcePath, state });
@@ -312,7 +297,7 @@ export default function App() {
     };
   }, [state.speed, song?.engineId, song?.contentId, !!song?.fingerActions?.length, installSession]);
   const {run,action,adjustRealtime,playbackAdjustments}=usePlaybackActions({
-    session:{playback,getBoundSong,setState,setError,refreshOpenedSession,updateCollection,refreshLibrary},
+    session:{playback,getBoundSong,setState,setError,refreshOpenedSession},
     song,binding,connected,startupReady,requestBusy,songOpeningActive,setBusy,setNotice,clearLiveNotes,
   });
   const changeWorkspace = useCallback(async (next: Workspace, signal?: AbortSignal) => {
@@ -338,11 +323,11 @@ export default function App() {
   const workspaceUnavailable = workspaceSessions.desktopClose.status ? "正在保存并关闭软件。"
     : binding ? "正在读取当前练习，完成后可切换工作区。"
     : state.storage?.operation ? "正在保存练习资料，完成后可切换工作区。"
-    : state.storage?.error && !state.storage.canRetry ? "练习资料保存需要处理，请查看恢复入口。"
+    : state.storage?.error ? "练习资料保存需要处理，请查看恢复入口。"
     : requestPending ? "正在处理当前操作，完成后可切换工作区。"
     : !startupReady ? "启动恢复完成后可切换工作区。"
     : state.recording ? "请先停止录音，再切换工作区。"
-    : navigation.locked ? "请先完成当前工作区中的操作。" : null;
+    : null;
   const currentPracticeUnavailable = workspaceUnavailable ?? (!connected ? "练习室重新连接后可打开或继续曲目。"
     : !currentPracticeTarget && song ? "正在读取当前练习，读齐后可继续。" : null);
   const resumeEditingSong = async (contentId: string, path?: string) => {
@@ -463,7 +448,7 @@ export default function App() {
   const openWork=(entry:WorkEntry,signal:AbortSignal)=>openWorkEntry(entry,signal,{
     unavailable:target=>{
       if(workspaceSessions.desktopClose.status)return "正在准备退出，请返回窗口后继续。";
-      if(navigation.locked&&!["drafts","devices","interface-settings"].includes(target))return "请先保存或取消当前编辑，再接续任务。";
+      
       if(["scores","score","passage","hands","meter"].includes(target)){
         if(!connected||binding||!startupReady)return "练习室正在恢复，完成后可返回来源曲目。";
         if(state.recording)return "请先停止并保存录音，再返回来源曲目。";
@@ -490,10 +475,6 @@ export default function App() {
       const draft=getInterfaceWorkbench(),input=draft.getSnapshot(),settings=interfaceSettings.getSnapshot();
       if(settings.protected||settings.error||input.storageError||input.preview||input.error||input.preparedExport&&!["saved","requested"].includes(input.preparedExport.phase))draft.update({section:"backup"});
       setDisplayDialog(true);
-    },
-    browsePending:async(id,signal)=>{
-      if(!(await productActions.current.browse(signal)))return false;
-      return true;
     },
     openMedia:entry=>setMediaExport({contentId:entry.source.contentId,title:entry.source.title||entry.subject,path:entry.source.path,engineId:playback.getEngineId(),kind:entry.mediaKind}),
     done:()=>setProgressOpen(false),
@@ -524,8 +505,6 @@ export default function App() {
       return opened;
     },
     practice: (signal) => {
-      if (navigation.locked)
-        throw new Error("请先保存或取消当前工作区中的编辑，再打开录音回放。");
       return changeWorkspace("practice", signal);
     },
     work: async (id, signal) => {
@@ -587,9 +566,8 @@ export default function App() {
   }, {
     engine: !connected ? "练习室连接中断，请等待重新连接。" : binding ? "正在读取当前练习，请稍后再试。" : !startupReady ? "练习室正在恢复，完成后可使用。" : operationBusy ? "正在处理练习资料，请等待当前操作完成。" : null,
     idle: state.recording ? "请先停止并保存当前录音。" : null,
-    navigation: navigation.locked ? "请先保存或取消当前工作区中的编辑。" : null,
     loaded: !song ? "请先打开一首曲目。" : null,
-    song: !song || !song.notes.length ? "请先从曲库选择一首可演奏的曲目。" : null,
+    song: !song || !song.notes.length ? "请先打开一首可演奏的曲目。" : null,
     editable: attemptLocked ? "请先结束当前计划、阶梯或完整演奏，再修改练习条件。" : null,
     score: !song?.hasScore ? "请先在乐谱管理中配对 MusicXML 或 MXL 乐谱。" : null,
   }, display.shortcuts);
@@ -625,7 +603,7 @@ export default function App() {
           <img src="/brand.svg" alt="" aria-hidden="true" width={27} height={27} />
           {product.name}
         </button>
-        <ApplicationMenu disabled={!startupReady || navigation.locked || !!state.storage?.operation || !!workspaceSessions.desktopClose.status} groups={[
+        <ApplicationMenu disabled={!startupReady || !!state.storage?.operation || !!workspaceSessions.desktopClose.status} groups={[
           {label:"文件",content:<>
             <button disabled={busy || state.recording} onClick={()=>void chooseFile()}>打开乐曲…</button>
             <button disabled={!song || song.generated || busy} onClick={()=>{setMetadataDraftPath(null);setMetadata(true);}}>当前曲目信息…</button>
@@ -714,7 +692,7 @@ export default function App() {
             store={playback}
             back={() => {void run({type:"pause"}).then(ok=>{if(ok){setSongSetup(true);}});}}
             tools={<PerformanceTools song={song} playback={playback} display={display} setDisplay={setDisplay}
-              status={{busy,openingActive,connected,locked:navigation.locked,startupReady,editable:!recital}}
+              status={{busy,openingActive,connected,startupReady,editable:!recital}}
               keyboard={{range:pianoRange,viewport:pianoViewport,outside:outsidePianoRange}} practiceRange={practiceRange} bookmarkNavigation={bookmarkNavigation}
               visible={productScreens.screen==="performance"} editFingers={editFingers} setEditFingers={setEditFingers} clearSelection={()=>setSelectedNote(null)}
               action={action} run={run} adjustRealtime={adjustRealtime} setView={setView}
@@ -867,7 +845,7 @@ export default function App() {
             )}
             {!song && <PracticeWelcome
               resumeTitle={recentFiles.find(file=>file.exists)?.title} resumeRecent={recentFiles.some(file=>file.exists)}
-              disabled={busy || openingActive || state.recording || !connected || navigation.locked}
+              disabled={busy || openingActive || state.recording || !connected}
               input={state.input} inputConnected={state.inputConnected}
               resume={() => { const target = recentFiles.find(file=>file.exists); if (target) void openPath(target.path); }}
               choose={() => void chooseFile()} importFile={() => void chooseFile()}
@@ -890,7 +868,7 @@ export default function App() {
           if(!(await changeWorkspace("practice")))throw new Error("谱面已采用，可稍后打开演奏。");
           setView("score");productScreens.show("performance");setScoresDialog(false);setPaperRevision(value=>value+1);
         }} paperChanged={()=>setPaperRevision(value=>value+1)}
-        changed={async kind=>{await refreshConfirmedSession();if(kind==="meter"){setLoopStart(1);setLoopEnd(1);}await updateCollection();}}
+        changed={async kind=>{await refreshConfirmedSession();if(kind==="meter"){setLoopStart(1);setLoopEnd(1);}}}
         loopStart={loopStart} loopEnd={loopEnd}
         applyVariant={async value=>{
           if(!song)return false;
@@ -909,7 +887,6 @@ export default function App() {
           changed={async () => {
             const session = await api.session();
             installSession(session);
-            await updateCollection();
           }}
         />
       )}
@@ -926,7 +903,6 @@ export default function App() {
           close={() => { setFingeringDialog(false); setFingeringDraft(null); }}
           changed={async () => {
             await refreshConfirmedSession();
-            void updateCollection().catch(() => {});
           }}
         />
       )}
@@ -937,7 +913,7 @@ export default function App() {
           song={song}
           drafts={workspaceSessions.metadata}
           saved={async () => {
-            await refreshEdits();
+            await refreshConfirmedSession();
             setMetadata(false);
           }}
         />
@@ -953,7 +929,7 @@ export default function App() {
             finally { requestBusy.current = false; setBusy(false); }
           }}
           refreshGenerated={async (source) => {
-            await refreshOrThrow();
+            await refreshConfirmedSession();
             const latest = await api.state();
             if (latest.contentId !== source.contentId || latest.stateOrder?.engineId !== source.engineId)
               throw new Error("练习或连接已再次切换，请重新打开已生成的练习。");
@@ -975,7 +951,7 @@ export default function App() {
       {commandsOpen && <ActionSearch
         actions={commandActions}
         recent={recentCommands}
-        context={`${workspace === "library" ? "曲库" : workspace === "review" ? "回顾" : "练习"} · ${song ? `当前练习：${song.title}` : "还未选择练习曲目"}`}
+        context={`${workspace === "home" ? "主页" : "练习"} · ${song ? `当前练习：${song.title}` : "还未选择练习曲目"}`}
         shortcut={display.shortcuts.commands}
         close={() => setCommandsOpen(false)}
         used={(id) => setRecentCommands((old) => [id, ...old.filter((value) => value !== id)].slice(0, 6))}
@@ -990,7 +966,7 @@ export default function App() {
         store={playback}
         state={state}
         engineId={progressEngineId}
-        unavailable={!connected ? "练习室连接中断，当前显示上次读取的设备设置。重新连接后可更改。" : !startupReady ? "启动恢复尚未完成，当前可以查看设备与原选择。返回恢复入口继续处理资料。" : binding ? "曲目与设备状态仍在交接，完成后可以更改设置。" : navigation.locked ? "当前工作区有尚未保存的编辑，可以查看设备；保存或取消编辑后可更改设置。" : operationBusy ? "当前操作尚未结束，可以查看设备与连接进度。完成后可更改设置。" : undefined}
+        unavailable={!connected ? "练习室连接中断，当前显示上次读取的设备设置。重新连接后可更改。" : !startupReady ? "启动恢复尚未完成，当前可以查看设备与原选择。返回恢复入口继续处理资料。" : binding ? "曲目与设备状态仍在交接，完成后可以更改设置。" : operationBusy ? "当前操作尚未结束，可以查看设备与连接进度。完成后可更改设置。" : undefined}
         busy={busy}
         error={health.getMessages().action}
         command={run}
@@ -998,7 +974,7 @@ export default function App() {
         reportError={setError}
         close={() => {setSettings(false);setSettingsTab("sound");if(settingsReturnToScores)setScoresDialog(true);setSettingsReturnToScores(false);}}
       />}
-      {editDraftsOpen && <EditDraftCenter store={workspaceSessions.edits} close={() => setEditDraftsOpen(false)} changed={refreshEdits}
+      {editDraftsOpen && <EditDraftCenter store={workspaceSessions.edits} close={() => setEditDraftsOpen(false)} changed={async () => { await refreshConfirmedSession(); }}
         resumePractice={async (contentId, path) => {
           if (!(await resumeEditingSong(contentId, path))) return false;
           setMetadataDraftPath(path); setMetadata(true); return true;

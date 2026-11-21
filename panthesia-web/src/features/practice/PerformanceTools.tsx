@@ -48,7 +48,6 @@ export function PerformanceTools({
     busy: boolean;
     openingActive: boolean;
     connected: boolean;
-    locked: boolean;
     startupReady: boolean;
     editable: boolean;
   };
@@ -81,7 +80,7 @@ export function PerformanceTools({
     fingering: () => void;
   };
 }) {
-  const { busy, openingActive, connected, locked, startupReady, editable } =
+  const { busy, openingActive, connected, startupReady, editable } =
     status;
   const {
     range: pianoRange,
@@ -101,7 +100,7 @@ export function PerformanceTools({
         icon={<ScoreIcon size={27} />}
         label="歌曲设置"
         scale={display.uiScale / 100}
-        disabled={!song || busy || locked || !startupReady}
+        disabled={!song || busy || !startupReady}
       >
         <button onClick={() => open.songOptions()}>练习与版本设置…</button>
         <button onClick={() => open.scores()}>谱面管理…</button>
@@ -148,7 +147,7 @@ export function PerformanceTools({
         icon={<DisplayGear size={27} />}
         label="显示设置"
         scale={display.uiScale / 100}
-        disabled={locked || !startupReady}
+        disabled={!startupReady}
       >
         <div className="practice-view-tabs" role="group" aria-label="练习视图">
           <button
@@ -232,7 +231,7 @@ export function PerformanceTools({
             viewport={pianoViewport}
             outside={outsidePianoRange}
             change={(patch) => {
-              if (!locked && startupReady)
+              if (startupReady)
                 setDisplay((previous) => ({ ...previous, ...patch }));
             }}
           />
@@ -283,8 +282,7 @@ export function PerformanceTools({
                 openingActive ||
                 !connected ||
                 state.recording ||
-                !editable ||
-                locked
+                !editable
               }
               seek={(position) => adjustRealtime({ type: "seek", position })}
               loop={(start, end, enabled) =>

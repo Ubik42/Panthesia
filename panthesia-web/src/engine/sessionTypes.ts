@@ -6,23 +6,16 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "acceptFingerPlan" | "acceptHeldFingerPlan" | "clearHeldFingerActions"
   | "clearNoteHeldFingerActions" | "saveHeldActionEdit"
   | "track" | "editNotePlayback" | "noteHand" | "applyHands" | "setPartHands" | "resetPartSettings" | "undoHands" | "undoHandsFor" | "meter" | "saveMeterMap"
-  | "setSongExpressionGoal" | "editSongExpressionGoal"
   | "handSpanFor" | "handSpanDefault"
-  | "openPassage" | "startLadder" | "applyTickRange" | "applyScoreRange"
-  | "loopRestartErrors"
+  | "openPassage" | "applyTickRange" | "applyScoreRange"
   | "saveBookmark" | "removeBookmark"
   | "savePassage" | "removePassage" | "updatePassageDetails" | "saveScorePassage" | "saveTickPassage"
-  | "saveLadder" | "updateLadderName" | "removeLadder" | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
+  | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
   | "resetMetadataDefaults" | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "trackAppearance" | "setMetadata" | "editMetadata"
 }> | (Extract<EngineCommand, { type: "fingerPair" }> & { proof: string });
-export interface HistoryReadScope { channel: string; sequence: number }
-export type HistoryReadCommand = Extract<EngineCommand, {type:
-  "weakPractice" | "dueReview" | "collection" | "history" | "historyQuery" | "readHistoryPage" | "historyDetail" | "practiceTime" | "practiceCalendar"
-  | "readHistoryDetail" | "readHistoryPerformance" | "historyProblemNotes" | "historyReplayClips" | "readHistoryReplayClips" | "historyPerformance" | "songLearningEvidence" | "readSongExpressionGoal" | "readHistoryAnnotation" | "libraryRepairs"
-}>;
 export type PracticeDemoCommand = Extract<EngineCommand, { type: "startFingerDemo" | "startHeldFingerDemo" | "startPairFingerDemo" }>;
 export type PracticeReadCommand = Extract<EngineCommand, { type:
-  | "bookmarks" | "passages" | "ladderPresets" | "exercisePresets" | "previewTickRange" | "previewScoreRange" | "previewScoreRangeTrim"
+  | "bookmarks" | "passages" | "exercisePresets" | "previewTickRange" | "previewScoreRange" | "previewScoreRangeTrim"
   | "readMetadataDefaults" | "metadata" | "suggestHands" | "previewMeterMap" | "fingerPlanContext" | "reviewFingerAcceptance"
   | "reviewHeldActionEdit" | "fingerProfiles" | "handUndoState"
   | "readHandAssignments" | "readNotePlayback"
@@ -32,38 +25,6 @@ export type PracticeReadCommand = Extract<EngineCommand, { type:
 export type PracticeEditScope = Pick<LoadedSong, "contentId" | "scoreRevision" | "annotationRevision" | "engineId">;
 
 
-export interface SongRow {
-  id: string;
-  title: string;
-  composer: string;
-  arranger?: string | null;
-  source: string;
-  category: string;
-  license: string;
-  sourceUrl: string;
-  path: string;
-  contentId?: string | null;
-  tags?: string[];
-  difficulty?: string | null;
-  rating?: number;
-}
-export interface LibraryMonitorStatus {
-  enabled: boolean;
-  phase: string;
-  revision: number;
-  lastScan: number;
-  pending: number;
-  files: number;
-  updated: number;
-  errors: string[];
-  current: string;
-  paperUpdates?: number;
-  paperUnavailable?: number;
-  scoreUpdates?: number;
-  scoreUnavailable?: number;
-  metadataFiles?: number;
-  metadataPending?: number;
-}
 export interface Note {
   index: number;
   pitch: number;
@@ -77,42 +38,6 @@ export interface Note {
   part: "left" | "right" | "other";
   manualHand: boolean;
   playbackMode?: import("./commands.generated").PlayerConfig;
-}
-export interface LibraryAttempt {
-  id: string;
-  recordedAt: number;
-  kind: "whole" | "passage" | "exercise";
-  range: [number, number] | null;
-  mode: string | null;
-  hands: string;
-  bpm: number | null;
-  accuracy: number | null;
-  judged: number | null;
-  target: number | null;
-  restorable: boolean;
-  errorRestart: boolean;
-}
-export interface LibraryPracticeProgress {
-  last: LibraryAttempt | null;
-  whole: LibraryAttempt | null;
-  wholeCount: number;
-  comparableWholeCount: number;
-}
-export interface CollectionSong {
-  contentId: string;
-  title: string;
-  path: string | null;
-  favorite: boolean;
-  queuePosition: number | null;
-  lastUsed: number;
-  lastPracticed?: number | null;
-  practice?: LibraryPracticeProgress;
-  sessions: number;
-  accuracy: number | null;
-  generated: boolean;
-  available: boolean;
-  recommended: [number, number] | null;
-  review: { due: boolean; dueAt?: number; sourceAt?: number; sourceIsWholeSong?: boolean; days: number; streak: number; intervalDays?: number; reason?: "NeedsEvidence" | "IncompleteConditions" | "NeedsReinforcement" | "FirstMastery" | "Consolidating" | "Stable" } | null;
 }
 export type TrackSound = Required<import("./commands.generated").TrackSound>;
 export interface SoundFontStatus {

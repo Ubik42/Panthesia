@@ -1,4 +1,3 @@
-import { createWorkspaceBrowseStore } from "./workspaceBrowseStore";
 import { getInterfaceSettings } from "../features/settings/interfaceSettingsStore";
 import { getInterfaceWorkbench, hasInterfaceInput } from "../features/settings/interfaceWorkbenchStore";
 import { createWorkProgressStore } from "../features/activity/workProgressStore";
@@ -22,26 +21,6 @@ import { useEffect, useState } from "react";
 /** Navigation owns durable cursors and session caches; drafts keep their own save rules. */
 export function useWorkspaceSessions() {
   const desktopClose = useDesktopClose();
-  const [browse] = useState(createWorkspaceBrowseStore);
-  useEffect(() => {
-    const unload = () => browse.flush();
-    const visibility = () => {
-      if (document.visibilityState === "hidden") browse.flush();
-    };
-    window.addEventListener("pagehide", unload);
-    window.addEventListener("beforeunload", unload);
-    document.addEventListener("visibilitychange", visibility);
-    const release = registerCloseParticipant("workspace-browsing", {
-      label: "浏览位置", prepare: browse.flush, pending: () => null,
-    });
-    return () => {
-      unload();
-      release();
-      window.removeEventListener("pagehide", unload);
-      window.removeEventListener("beforeunload", unload);
-      document.removeEventListener("visibilitychange", visibility);
-    };
-  }, [browse]);
   const [edits] = useState(createEditDraftStore);
   const [exercise] = useState(createExerciseSessionStore);
   const [fingeringWorkbench] = useState(createFingeringWorkbenchStore);
@@ -117,7 +96,6 @@ export function useWorkspaceSessions() {
   ]);
   return {
     desktopClose,
-    browse,
     workProgress,
     edits,
     exercise,

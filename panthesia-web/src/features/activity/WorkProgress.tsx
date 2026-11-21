@@ -242,24 +242,16 @@ export function WorkProgressDialog({
     entry.stale && entry.restoreScoreKey
       ? "取回初稿"
       : {
-          imports: "查看导入",
-          package: "查看曲目包",
-          backup: "查看备份",
           scores: "查看谱面",
           score: "返回原谱",
           media: "查看导出",
           exercise: "查看练习",
-          routine: "查看计划",
           drafts: "查看草稿",
           devices: "查看设备",
           passage: "继续编辑段落",
-          ladder: "继续编辑阶梯",
           hands: "继续逐音分手",
           meter: "继续小节网格",
           "interface-settings": "打开界面与按键",
-          replay: "继续回放片段",
-          "library-open": "接续曲目打开",
-          "history-action": "接续历史操作",
         }[entry.target];
   return (
     <div
@@ -397,11 +389,7 @@ export function WorkProgressDialog({
                   <div className="work-progress-phase">
                     <PhaseIcon phase={entry.phase} />
                     <span>
-                      {entry.stale
-                        ? entry.target === "imports"
-                          ? "含旧请求"
-                          : "上次连接"
-                        : phaseLabel[entry.phase]}
+                      {entry.stale ? "上次连接" : phaseLabel[entry.phase]}
                     </span>
                   </div>
                   <div className="work-progress-copy">

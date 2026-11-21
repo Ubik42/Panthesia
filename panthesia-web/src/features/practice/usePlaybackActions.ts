@@ -18,8 +18,6 @@ type Session = Pick<
   | "setState"
   | "setError"
   | "refreshOpenedSession"
-  | "updateCollection"
-  | "refreshLibrary"
 >;
 /** One owner for session commands, realtime coalescing and reserved stop commands. */
 export function usePlaybackActions({
@@ -51,15 +49,12 @@ export function usePlaybackActions({
     setState,
     setError,
     refreshOpenedSession,
-    updateCollection,
-    refreshLibrary,
   } = session;
   const run = useCallback(
     async (
       value: EngineCommand,
       changesSong = false,
       requestedAt?: number,
-      collectionRefresh: "wait" | "background" = "wait",
     ) => {
       if (requestBusy.current) return false;
       if (
@@ -98,7 +93,6 @@ export function usePlaybackActions({
       setBusy(true);
       let coreReady = false;
       let commandAccepted = false;
-      let readingSavedLists = false;
       try {
         if (
           (value.type === "track" ||
@@ -138,36 +132,11 @@ export function usePlaybackActions({
           await refreshOpenedSession();
         } else setState(await api.state());
         coreReady = true;
-        if (
-          [
-            "load",
-            "loadIndexed",
-            "openRecent",
-            "favorite",
-            "queue",
-            "moveQueue",
-            "save",
-            "generate",
-            "recording",
-          ].includes(value.type)
-        ) {
-          if (collectionRefresh === "background")
-            void updateCollection().catch(() => {});
-          else {
-            readingSavedLists = true;
-            await updateCollection();
-          }
-        }
-        if (value.type === "recording" && !value.active) {
-          readingSavedLists = true;
-          await refreshLibrary();
-        }
         setError("");
         return true;
       } catch (e) {
         const message = String(e instanceof Error ? e.message : e);
         if (commandAccepted && changesSong && !coreReady) setError("");
-        else if (coreReady && readingSavedLists) setError("");
         else
           setError(
             coreReady ? `操作已完成，界面读取尚未结束：${message}` : message,
@@ -179,8 +148,6 @@ export function usePlaybackActions({
       }
     },
     [
-      updateCollection,
-      refreshLibrary,
       refreshOpenedSession,
       getBoundSong,
       setState,

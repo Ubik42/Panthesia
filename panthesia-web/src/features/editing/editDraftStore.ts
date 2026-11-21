@@ -63,9 +63,7 @@ function valid(_kind: EditDraftKind, key: string, value: unknown) {
       (value.tagsText === undefined || text(value.tagsText)) &&
       (value.batchId === undefined || text(value.batchId, 128)) &&
       (value.submission === undefined || value.submission === "unconfirmed") &&
-      (value.source === undefined ||
-        value.source === "practice" ||
-        value.source === "library") &&
+      (value.source === undefined || value.source === "practice") &&
       (value.refresh === undefined ||
         (object(value.refresh) &&
           (value.refresh.warnings === undefined ||
@@ -262,11 +260,16 @@ export function createEditDraftStore() {
       if (!object(value) || (value.version !== 1 && value.version !== 2))
         throw new Error("原草稿版本无法读取");
       retained = Object.fromEntries(retainedKinds.filter((kind) => value[kind] !== undefined).map((kind) => [kind, value[kind]]));
+      const library = (row: unknown) =>
+        Array.isArray(row) && object(row[1]) && row[1].source === "library";
+      const loaded: Partial<Record<EditDraftKind, [string, never][]>> = {};
       // Validate the complete document before installing any of its records.
       for (const kind of kinds) {
-        const rows = value[kind];
-        if (!Array.isArray(rows) || rows.length > 2000)
+        const listed = value[kind];
+        if (!Array.isArray(listed) || listed.length > 2000)
           throw new Error("原草稿列表无效");
+        const rows = listed.filter((row) => !library(row));
+        loaded[kind] = rows as [string, never][];
         const seen = new Set<string>();
         for (const row of rows) {
           if (
@@ -281,7 +284,7 @@ export function createEditDraftStore() {
         }
       }
       for (const kind of kinds)
-        for (const [key, item] of value[kind] as [string, never][])
+        for (const [key, item] of loaded[kind] ?? [])
           maps[kind].seed(key, item);
     }
   } catch (error) {

@@ -33,7 +33,7 @@ export function useProductNavigation(options: {
       }),
     goHome: () =>
       navigate(async (o) => {
-        if (!(await o.changeWorkspace("library"))) return false;
+        if (!(await o.changeWorkspace("home"))) return false;
         o.clearLiveNotes();
         o.screens.home();
         o.closeMenu();

@@ -24,8 +24,6 @@ import {
 
 export type WorkPhase = "running" | "attention" | "waiting" | "completed";
 export type WorkTarget =
-  | "imports"
-  | "package"
   | "scores"
   | "score"
   | "media"
@@ -35,7 +33,6 @@ export type WorkTarget =
   | "hands"
   | "meter"
   | "interface-settings"
-  | "library-open"
   | "drafts";
 export interface WorkSource {
   contentId: string;
@@ -48,8 +45,6 @@ export interface WorkProblem {
   detail: string;
 }
 export interface WorkEntry {
-  libraryOpenId?: string;
-  libraryOpenWorkspace?: "library" | "practice" | "review";
   dismissible?: boolean;
   problem?: WorkProblem;
   id: string;
@@ -164,7 +159,7 @@ export function collectWork(
         exercise.error ||
         exercise.message ||
         (exercise.refreshPending
-          ? "练习已生成，曲库列表待更新。"
+          ? "练习已生成，练习室仍需更新。"
           : "参数和原提交记录保留，可继续制作或核对。"),
       version: JSON.stringify([
         exercise.receipt?.id,
@@ -641,7 +636,7 @@ export function createWorkProgressStore(sources: WorkSources) {
             detail:
               entry.target === "devices"
                 ? `这项设备工作来自上次连接，仅保留此前读取的结果。${entry.problem?.detail ?? ""}可打开设备设置核对当前选择。`
-                : `${entry.detail}\n${entry.target === "imports" ? "队列中有上次连接的请求。" : "这项工作来自上次连接。"}${entry.restoreScoreKey ? "可取回初稿并重新核对；" : ""}已保留文件可从来源曲目核对。`,
+                : `${entry.detail}\n这项工作来自上次连接。${entry.restoreScoreKey ? "可取回初稿并重新核对；" : ""}已保留文件可从来源曲目核对。`,
           };
         if (
           (entry.source || entry.requestEngineIds?.length) &&

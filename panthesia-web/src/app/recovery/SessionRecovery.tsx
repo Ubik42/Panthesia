@@ -221,7 +221,7 @@ export function SessionRecoveryDialog({
               data-dialog-initial-focus
               aria-label="查找恢复问题"
               disabled={opening}
-              placeholder="查找连接、保存、曲库或设备"
+              placeholder="查找连接、保存或设备"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />

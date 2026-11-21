@@ -47,12 +47,10 @@ export type DisplayPreferences = {
   keyboardDeviceRanges: Record<string, KeyboardRange>;
   previewBars: number;
   loopPreview:boolean;
-  libraryOpen: boolean;
   inspector: boolean;
   keyboardEnabled: boolean;
   keyboardOctave: number;
   keyCodes: string[];
-  libraryWidth: number;
   inspectorWidth: number;
   keyboardHeight: number;
   paperPreviewHeight: number;
@@ -102,7 +100,6 @@ export const displayDefaults: DisplayPreferences = {
   reduceMotion: false,
   shortcuts: { ...shortcutDefaults },
   uiScale: 100,
-  libraryWidth: 270,
   inspectorWidth: 218,
   keyboardHeight: 100,
   paperPreviewHeight: 150,
@@ -117,7 +114,6 @@ export const displayDefaults: DisplayPreferences = {
   keyboardViewport: null, keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
   loopPreview:true,
-  libraryOpen: false,
   inspector: false,
   keyboardEnabled: true,
   keyboardOctave: 4,
@@ -180,7 +176,6 @@ export function normalizeDisplayPreferences(
     keyCodes: keys,
     uiScale: size(raw.uiScale, 80, 150, 100),
     shortcuts: normalizeShortcuts(raw.shortcuts, keys),
-    libraryWidth: size(raw.libraryWidth, 180, 440, 270),
     inspectorWidth: size(raw.inspectorWidth, 180, 360, 218),
     keyboardHeight: size(raw.keyboardHeight, 60, 220, 100),
     paperPreviewHeight: size(raw.paperPreviewHeight, 100, 360, 150),
@@ -208,7 +203,6 @@ export function normalizeDisplayPreferences(
     keyboardHigh: Math.max(size(raw.keyboardLow, 0, 116, 36) + 11, size(raw.keyboardHigh, 11, 127, 84)),
     keyboardDeviceRanges: normalizeDeviceRanges(raw.keyboardDeviceRanges),
     previewBars: normalizePreviewBars(raw.previewBars ?? 4),
-    libraryOpen: raw.practiceLayoutVersion === 3 && typeof raw.libraryOpen === "boolean" ? raw.libraryOpen : false,
     practiceLayoutVersion: 3,
     inspector: raw.practiceLayoutVersion === 3 && typeof raw.inspector === "boolean" ? raw.inspector : false,
     keyboardEnabled:

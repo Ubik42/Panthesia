@@ -7,9 +7,7 @@ export interface RecoveryHost {
   snapshot: () => Snapshot;
   commandPending: () => boolean;
   command: (value: EngineCommand, changesSong?: boolean) => Promise<boolean>;
-  refresh: (
-    kind: "session" | "library" | "collection",
-  ) => Promise<"refreshed" | "superseded">;
+  refresh: () => Promise<"refreshed" | "superseded">;
   practice: (signal?: AbortSignal) => Promise<boolean>;
   work: (id: string, signal: AbortSignal) => Promise<WorkOpenResult | null>;
   devices: () => void;
@@ -54,9 +52,9 @@ export async function performRecoveryAction(
     }
     if (action === "library") {
       if (!(await host().library(signal)))
-        throw new Error("请先处理当前工作区中的编辑，再进入曲库。");
+        throw new Error("请先处理当前工作区中的编辑，再回到主页。");
       host().close();
-      return "曲库已打开，可选择其他曲目或重新定位原文件。";
+      return "已回到主页，可选择其他曲目或重新定位原文件。";
     }
     if (action === "devices") {
       host().devices();
@@ -74,18 +72,8 @@ export async function performRecoveryAction(
       await api.openDataFolder();
       return "资料文件夹已打开。完成文件处理后可重新读取对应资料。";
     }
-    if (
-      action === "readSession" ||
-      action === "readLibrary" ||
-      action === "readCollection"
-    ) {
-      const result = await host().refresh(
-        action === "readSession"
-          ? "session"
-          : action === "readLibrary"
-            ? "library"
-            : "collection",
-      );
+    if (action === "readSession") {
+      const result = await host().refresh();
       return result === "superseded"
         ? "原读取已由更新的请求接续，请查看最新显示。"
         : "原资料已重新读取。请查看当前状态；仍需处理的工作继续保留。";
@@ -136,7 +124,7 @@ export async function performRecoveryAction(
         return "这条启动提示已收起，原资料和设备设置继续保留。";
       }
       if (!latest.source)
-        throw new Error("原曲目来源尚未读到，请从曲库重新选择。");
+        throw new Error("原曲目来源尚未读到，请回到主页重新选择。");
       const opened =
         action === "locateStartupSong"
           ? await host().locateStartupSong(latest, signal)

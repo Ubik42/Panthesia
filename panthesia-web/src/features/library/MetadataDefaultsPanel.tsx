@@ -37,8 +37,8 @@ export function MetadataDefaultsPanel({ read, revision, base, disabled, reset }:
     <summary>资料来源与个人修改{layers ? <span>{layers.overridden.length} 项个人覆盖</span> : null}</summary>
     {loading ? <p role="status">正在读取资料来源…</p> : error ?
       <div role="alert"><p>{error}</p><button disabled={disabled} onClick={() => setRefresh(value => value + 1)}>重新读取来源</button></div> :
-      !layers ? <p>这首曲目尚未导入来源默认资料。当前填写的内容作为个人资料保存。</p> : <>
-        <p>来源：Synthesia 资料文件。个人修改会在下次导入时保留；恢复后，该字段随来源资料更新。</p>
+      !layers ? <p>这首曲目没有来源默认资料。当前填写的内容作为个人资料保存。</p> : <>
+        <p>来源：Synthesia 资料文件。个人修改在下次打开时保留；恢复后，该字段随来源资料更新。</p>
         {!matches && <p role="status">资料已变化，请先读取最新资料并审阅。</p>}
         <div className="metadata-defaults-scroll"><table>
           <thead><tr><th>恢复</th><th>字段</th><th>当前采用</th><th>来源默认值</th></tr></thead>

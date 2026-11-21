@@ -1,10 +1,5 @@
 import { metadataFieldNames } from "./metadataFields";
-import type {
-  Metadata,
-  MetadataDefaults,
-  MetadataField,
-  MetadataSaveReply,
-} from "./metadataTypes";
+import type { Metadata, MetadataDefaults, MetadataField } from "./metadataTypes";
 
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
@@ -33,23 +28,6 @@ function identity(
     (expected !== null && reply.contentId !== expected)
   )
     throw new Error("返回资料与所选曲目不一致，请重新读取原文件。");
-}
-
-/** Song information is edited for the open song only; it is stored in the song's manifest. */
-const notOpen = () => new Error("请先打开这首曲目，再查看或修改曲目信息。");
-
-export async function readLibraryMetadata(_path: string, _expected: string | null): Promise<MetadataDefaults> {
-  throw notOpen();
-}
-export async function saveLibraryMetadata(
-  _path: string, _contentId: string, _value: Metadata, _expected: Metadata,
-): Promise<MetadataSaveReply> {
-  throw notOpen();
-}
-export async function resetLibraryMetadataDefaults(
-  _path: string, _contentId: string, _fields: MetadataField[], _expected: Metadata, _proof: string,
-): Promise<MetadataSaveReply> {
-  throw notOpen();
 }
 
 export function metadataDefaultsReply(reply: unknown, contentId: string): MetadataDefaults {

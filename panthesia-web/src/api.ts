@@ -1,6 +1,5 @@
 import { reportDiagnostic } from "./app/diagnostics";
 
-export type { StorageRecovery, StorageOperation } from "./engine/commands.generated";
 import { readDesktopBuildReport, type DesktopBuildReport } from "./engine/buildIdentity";
 import { readDeviceSnapshot, type DeviceScanTarget } from "./engine/deviceCatalog";
 export type { DeviceSnapshot, DeviceScanTarget, DeviceScanStatus } from "./engine/deviceCatalog";
@@ -9,11 +8,12 @@ export type { PlaybackAdjustmentCommand, PlaybackAdjustmentSource } from "./feat
 import type { ScoreMappingRequest, ScoreMappingResult } from "./features/scores/mappingTypes";
 import type { ScoreSource, ScoreSourcePreview, SourceApplyMode, AppliedSource } from "./features/scores/sourceTypes";
 import { invoke as nativeInvoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { EngineCommand } from "./engine/commands.generated";
 export type { EngineCommand } from "./engine/commands.generated";
 
 export * from "./engine/sessionTypes";
-import type { PracticeEditCommand, HistoryReadScope, HistoryReadCommand, PracticeDemoCommand, PracticeReadCommand, PracticeEditScope, SongRow, LibraryMonitorStatus, Note, CollectionSong, TrackSound, SoundFontStatus, AudiverisProgramStatus, MeterMapSegment, MeterMap, MeterMapPreview, LoadedSong, LiveNoteEvent, LiveNoteReceipt, StorageStatus, Snapshot, EngineSession } from "./engine/sessionTypes";
+import type { PracticeEditCommand, PracticeDemoCommand, PracticeReadCommand, PracticeEditScope, Note, TrackSound, SoundFontStatus, AudiverisProgramStatus, MeterMapSegment, MeterMap, MeterMapPreview, LoadedSong, LiveNoteEvent, LiveNoteReceipt, StorageStatus, Snapshot, EngineSession } from "./engine/sessionTypes";
 import { emptyState } from "./engine/sessionTypes";
 
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -38,18 +38,7 @@ async function http<T>(path: string, command?: EngineCommand, post = false): Pro
     signal: AbortSignal.timeout(
       command && controlCommands.has(command.type) ? 3500 :
       command && backgroundCommands.has(command.type) ? 125000 :
-      command &&
-        [
-          "importScore",
-          "importMidi",
-          "importPackage",
-          "inspectPackage",
-          "exportPackage",
-          "libraryScores",
-          "manageLibraryScore",
-          "openLibraryScore",
-          "createLocatedScorePaper",
-        ].includes(command.type)
+      command?.type === "createLocatedScorePaper"
         ? 120000
         : command || path === "/api/song" || path === "/api/session" ? 125000 : 15000,
     ),
@@ -168,7 +157,6 @@ export const api = {
       throw failure;
     }
   },
-  readHistory: <T>(command: HistoryReadCommand, scope?: HistoryReadScope, engineId?: string): Promise<T> => scope ? postLocal("read_history", "/api/history-read", {command,scope,...(engineId ? {engineId} : {})}) : engineId ? api.commandForEngine<T>(engineId, command) : postLocal("read_history", "/api/history-read", command),
   readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>postLocal("read_notation","/api/notation-read",request,60000,request.type==="release"),
   notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
   mapScore: (request: ScoreMappingRequest): Promise<ScoreMappingResult> => postLocal("map_score", "/api/score-map", request),
@@ -183,10 +171,6 @@ export const api = {
   soundfontStatus: () => invoke<SoundFontStatus>("get_soundfont_status"),
   selectSoundfont: () => invoke<SoundFontStatus | null>("select_soundfont"),
   resetSoundfont: () => invoke<SoundFontStatus>("reset_soundfont"),
-  library: () =>
-    isTauri()
-      ? invoke<{ songs: SongRow[] }>("library_list")
-      : http<{ songs: SongRow[] }>("/api/library"),
   state: () =>
     isTauri() ? invoke<Snapshot>("engine_state") : http<Snapshot>("/api/state"),
   liveNotes: async (epoch: number | undefined, createdAtMs: number, events: LiveNoteEvent[], engineId?: string): Promise<LiveNoteReceipt> => {
@@ -201,8 +185,37 @@ export const api = {
     }
     return postLocal("play_live_notes", "/api/live-notes", { epoch, engineId, createdAtMs, events }, 3500);
   },
-  pollState: (): Promise<Snapshot> =>
-    isTauri() ? invoke<Snapshot>("engine_state") : http<Snapshot>("/api/state"),
+  /** Every state the engine publishes, in order: pushed events on the desktop, a long poll
+   * in the browser. Returns the unsubscribe function. */
+  subscribeState: (onState: (state: Snapshot) => void, onError: (failure: unknown) => void): (() => void) => {
+    let stopped = false;
+    if (isTauri()) {
+      let release: (() => void) | undefined;
+      listen<Snapshot>("engine-state", (event) => { if (!stopped) onState(event.payload); })
+        .then((unlisten) => { if (stopped) unlisten(); else release = unlisten; })
+        .catch(onError);
+      // The first push may precede the listener; read the current state once.
+      invoke<Snapshot>("engine_state").then((state) => { if (!stopped) onState(state); }, onError);
+      return () => { stopped = true; release?.(); };
+    }
+    void (async () => {
+      let revision = 0, failures = 0;
+      while (!stopped) {
+        try {
+          const next = await http<{ revision: number; state: Snapshot }>(`/api/state/next?after=${revision}`);
+          failures = 0;
+          revision = next.revision;
+          if (!stopped) onState(next.state);
+        } catch (failure) {
+          if (stopped) return;
+          onError(failure);
+          revision = 0;
+          await new Promise((resolve) => setTimeout(resolve, Math.min(5000, 250 * 2 ** failures++)));
+        }
+      }
+    })();
+    return () => { stopped = true; };
+  },
 
   song: () =>
     isTauri()
@@ -221,7 +234,7 @@ export const api = {
   commandForEngine: <T = { ok: boolean }>(engineId: string | undefined, command: EngineCommand): Promise<T> => engineId
     ? postLocal<T>("engine_scoped_command", controlCommands.has(command.type) ? "/api/control-scoped" : historyReadCommands.has(command.type) ? "/api/history-read-scoped" : "/api/command-scoped", { engineId, command }, controlCommands.has(command.type) ? 3500 : 125000)
     : engineCommand<T>(command),
-  adjustForSong: (song: PracticeEditScope, command: PlaybackAdjustmentCommand | Extract<EngineCommand, { type: "stopLadder" }>): Promise<{ok: boolean}> => song.engineId
+  adjustForSong: (song: PracticeEditScope, command: PlaybackAdjustmentCommand): Promise<{ok: boolean}> => song.engineId
     ? postLocal("adjust_playback", "/api/playback-adjustment", { engineId: song.engineId, contentId: song.contentId, scoreRevision: song.scoreRevision, createdAtMs: Date.now(), command })
     : engineCommand(command),
   editPractice: <T = { ok: boolean }>(song: PracticeEditScope, command: PracticeEditCommand, catalogRevision?: string, requestId?: string) =>
@@ -418,7 +431,5 @@ export const api = {
   exportPaperBook: (name: string, bytes: Uint8Array, options: PaperSaveOptions = {}) => savePaperFile("pdf", name, bytes, options),
   exportAnnotatedScore: (request: Extract<EngineCommand, { type: "exportAnnotatedScore" }>) =>
     invoke<string | null>("export_annotated_score", { request }),
-  exportPackage: () => invoke<string | null>("export_package"),
-  import: () => invoke<LoadedSong | null>("import_midi"),
 };
 export { pitchName, clock } from "./engine/musicFormatting";

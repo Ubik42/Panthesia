@@ -1,36 +1,55 @@
-import { metadataFields, completeMetadata } from "./features/library/metadataFields";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MetadataDefaultsPanel } from "./features/library/MetadataDefaultsPanel";
+import { metadataFields, completeMetadata } from "./metadataFields";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MetadataDefaultsPanel } from "./MetadataDefaultsPanel";
 import {
   openEditDraft,
   busyEditDraft,
   editDraftPersistence,
   editDraftValue,
-} from "./features/editing/editDraftStore";
-import { EditDraftStatus } from "./features/editing/EditDraftStatus";
-import {
-  readLibraryMetadata,
-  saveLibraryMetadata,
-  resetLibraryMetadataDefaults,
-} from "./features/library/metadataClient";
-import { requireValue } from "./engine/requireValue";
-import { TaskActivity } from "./engine/TaskActivity";
-import { copyLibraryPaths } from "./LibraryContextMenu";
-import type { Metadata } from "./features/library/libraryQueryModel";
+} from "../editing/editDraftStore";
+import { EditDraftStatus } from "../editing/EditDraftStatus";
+import { requireValue } from "../../engine/requireValue";
+import { topInputScope } from "../../app/inputOwnership";
 import type {
+  Metadata,
   MetadataDraft,
   MetadataService,
   MetadataDefaults,
   MetadataField,
-} from "./features/library/metadataTypes";
-export type MetadataEdit = { path: string; contentId: string; value: Metadata };
+} from "./metadataTypes";
+type MetadataEdit = { path: string; contentId: string; value: Metadata };
 const fields = metadataFields;
 type Field = (typeof fields)[number][0];
 const equal = (a: unknown, b: unknown) =>
   editDraftValue(a) === editDraftValue(b);
 const text = (value: unknown) =>
   Array.isArray(value) ? value.join("，") : String(value ?? "（空）");
-export function LibraryMetadataEditor({
+async function copyLines(lines: string[]) {
+  const value = lines.join("\r\n");
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {}
+  const previous = document.activeElement as HTMLElement | null,
+    field = document.createElement("textarea");
+  field.value = value;
+  field.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+  field.tabIndex = -1;
+  (topInputScope() ?? document.body).append(field);
+  let copied = false;
+  try {
+    field.focus();
+    field.select();
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  } finally {
+    field.remove();
+    if (previous?.isConnected && !previous.matches(":disabled")) previous.focus({ preventScroll: true });
+  }
+  if (!copied) throw new Error("无法复制信息草稿，请手动选择文字复制。");
+}
+export function SongMetadataEditor({
   edit,
   service,
   draftMemory,
@@ -40,15 +59,15 @@ export function LibraryMetadataEditor({
   cancel,
 }: {
   edit: MetadataEdit;
-  service?: MetadataService;
-  draftMemory?: Map<string, MetadataDraft>;
+  service: MetadataService;
+  draftMemory: Map<string, MetadataDraft>;
   showHeading?: boolean;
   onBusy: (busy: boolean) => void;
   saved: (warnings?: string[]) => Promise<void>;
   cancel: () => void;
 }) {
   const memoryKey = JSON.stringify([edit.contentId, edit.path]);
-  const cachedDraft = useRef(draftMemory?.get(memoryKey));
+  const cachedDraft = useRef(draftMemory.get(memoryKey));
   const [base, setBase] = useState(completeMetadata(cachedDraft.current?.base ?? edit.value)),
     [draft, setDraft] = useState(() =>
       structuredClone(completeMetadata(cachedDraft.current?.draft ?? edit.value)),
@@ -73,8 +92,6 @@ export function LibraryMetadataEditor({
       (cachedDraft.current?.draft ?? edit.value).tags.join("，"),
   );
   const [defaultsRevision, setDefaultsRevision] = useState(0);
-  const readDefaults = useCallback(() => service ? service.readDefaults() :
-    readLibraryMetadata(edit.path, edit.contentId), [service, edit.path, edit.contentId]);
   const dirty = !equal(base, draft) || tagsText !== base.tags.join("，");
   const tagsError =
     draft.tags.length > 100
@@ -110,7 +127,6 @@ export function LibraryMetadataEditor({
     [draftMemory, memoryKey],
   );
   useLayoutEffect(() => {
-    if (!draftMemory) return;
     if (!dirty && !refreshPending && !unconfirmed)
       draftMemory.delete(memoryKey);
     else
@@ -118,7 +134,6 @@ export function LibraryMetadataEditor({
         base,
         draft,
         tagsText,
-        source: service ? "practice" : "library",
         ...(unconfirmed ? { submission: "unconfirmed" as const } : {}),
         ...(refreshPending ? { refresh: { warnings: savedWarnings } } : {}),
       });
@@ -132,7 +147,6 @@ export function LibraryMetadataEditor({
     refreshPending,
     unconfirmed,
     savedWarnings,
-    service,
   ]);
   useEffect(() => {
     const cached = cachedDraft.current;
@@ -173,11 +187,10 @@ export function LibraryMetadataEditor({
     warnings: string[] | undefined,
     message: string,
   ) => {
-    draftMemory?.set(memoryKey, {
+    draftMemory.set(memoryKey, {
       base: stored,
       draft: stored,
       tagsText: stored.tags.join("，"),
-      source: service ? "practice" : "library",
       refresh: { warnings },
     });
     setBase(stored);
@@ -192,18 +205,17 @@ export function LibraryMetadataEditor({
   };
   const resetDefaults = (view: MetadataDefaults, selected: MetadataField[]) => job(async () => {
     setUnconfirmed(true);
-    const reply = service ? await service.resetDefaults(selected, base, view.proof) :
-      await resetLibraryMetadataDefaults(edit.path, edit.contentId, selected, base, view.proof);
+    const reply = await service.resetDefaults(selected, base, view.proof);
     setDefaultsRevision(value => value + 1);
     if (reply.status === "conflict") {
       present(requireValue(reply.current, "最新曲目信息"));
       setNotice("资料来源或个人修改已变化，请审阅最新资料后重新选择恢复字段。");
       return;
     }
-    rememberSaved(requireValue(reply.value, "已恢复的曲目信息"), reply.warnings, "已恢复所选来源默认值。后续导入会更新这些字段。");
+    rememberSaved(requireValue(reply.value, "已恢复的曲目信息"), reply.warnings, "已恢复所选来源默认值。下次打开时，这些字段随来源资料更新。");
     try {
       await saved(reply.warnings);
-      draftMemory?.delete(memoryKey);
+      draftMemory.delete(memoryKey);
       setRefreshPending(false);
     } catch (failure) {
       throw new Error(`资料已恢复，界面刷新失败：${failure instanceof Error ? failure.message : String(failure)}`);
@@ -212,16 +224,13 @@ export function LibraryMetadataEditor({
   const save = () =>
     void job(async () => {
       setUnconfirmed(true);
-      draftMemory?.set(memoryKey, {
+      draftMemory.set(memoryKey, {
         base,
         draft,
         tagsText,
-        source: service ? "practice" : "library",
         submission: "unconfirmed",
       });
-      const reply = service
-        ? await service.save(draft, base)
-        : await saveLibraryMetadata(edit.path, edit.contentId, draft, base);
+      const reply = await service.save(draft, base);
       if (reply.status === "conflict") {
         const current = requireValue(reply.current, "最新曲目信息");
         if (equal(current, draft))
@@ -243,11 +252,11 @@ export function LibraryMetadataEditor({
       );
       try {
         await saved(reply.warnings);
-        draftMemory?.delete(memoryKey);
+        draftMemory.delete(memoryKey);
         setRefreshPending(false);
       } catch (e) {
         throw new Error(
-          `资料已保存，曲库刷新失败：${e instanceof Error ? e.message : String(e)}`,
+          `资料已保存，界面刷新失败：${e instanceof Error ? e.message : String(e)}`,
         );
       }
     });
@@ -255,19 +264,17 @@ export function LibraryMetadataEditor({
     void job(async () => {
       try {
         await saved(savedWarnings);
-        draftMemory?.delete(memoryKey);
+        draftMemory.delete(memoryKey);
         setRefreshPending(false);
       } catch (e) {
         throw new Error(
-          `资料已保存，曲库刷新失败：${e instanceof Error ? e.message : String(e)}`,
+          `资料已保存，界面刷新失败：${e instanceof Error ? e.message : String(e)}`,
         );
       }
     });
   const review = () =>
     void job(async () => {
-      const value = service
-        ? await service.read()
-        : (await readLibraryMetadata(edit.path, edit.contentId)).value;
+      const value = await service.read();
       setDefaultsRevision(previous => previous + 1);
       if (
         dirty &&
@@ -297,13 +304,6 @@ export function LibraryMetadataEditor({
     >
       {showHeading && <h4>编辑曲目信息</h4>}
       <p className="file-path">{edit.path}</p>
-      {!service && (
-        <TaskActivity
-          contentId={edit.contentId}
-          label={["读取曲库信息", "保存曲库信息"]}
-          cancelLabel="取消准备或读取"
-        />
-      )}
       <EditDraftStatus
         drafts={draftMemory}
         visible={dirty || refreshPending || unconfirmed}
@@ -359,7 +359,7 @@ export function LibraryMetadataEditor({
         {tagsError ||
           "标签用中文或英文逗号分隔，最多 100 个，每个最多 128 字。"}
       </p>
-      <MetadataDefaultsPanel read={readDefaults} revision={defaultsRevision} base={base}
+      <MetadataDefaultsPanel read={service.readDefaults} revision={defaultsRevision} base={base}
         disabled={busy || dirty || !!conflict || refreshPending || unconfirmed}
         reset={resetDefaults} />
       {error && (
@@ -461,7 +461,7 @@ export function LibraryMetadataEditor({
             disabled={busy}
             onClick={retryRefresh}
           >
-            重试刷新已保存的曲库
+            重试刷新界面
           </button>
         ) : (
           <button
@@ -481,7 +481,7 @@ export function LibraryMetadataEditor({
           disabled={busy}
           onClick={() =>
             void job(async () => {
-              await copyLibraryPaths([
+              await copyLines([
                 edit.path,
                 ...fields.map(
                   ([key, label]) => `${label}：${text(draft[key])}`,
@@ -494,13 +494,9 @@ export function LibraryMetadataEditor({
           复制信息草稿
         </button>
         <button disabled={busy} onClick={cancel}>
-          {refreshPending
-            ? "关闭信息编辑"
-            : draftMemory
-              ? "关闭并保留输入"
-              : "取消信息编辑"}
+          {refreshPending ? "关闭信息编辑" : "关闭并保留输入"}
         </button>
-        {draftMemory && !refreshPending && !unconfirmed && dirty && (
+        {!refreshPending && !unconfirmed && dirty && (
           <button
             disabled={busy}
             onClick={() => {
@@ -514,10 +510,8 @@ export function LibraryMetadataEditor({
       </div>
       <p className="parameter-help">
         {refreshPending
-          ? "资料已经保存。重试只刷新曲库，不会再次写入。关闭后，曲库可能暂时显示旧资料。"
-          : draftMemory
-            ? `${editDraftPersistence(draftMemory) ? "" : "未保存输入保留到本次会话结束。"}保存仅修改曲目信息，指法、分手和谱面关联继续保留。`
-            : "保存或取消后再切换曲目或关闭曲库。保存只修改这些信息，指法、分手和谱面关联仍保留。"}
+          ? "资料已经保存。重试只刷新界面，不会再次写入。关闭后，界面可能暂时显示旧资料。"
+          : `${editDraftPersistence(draftMemory) ? "" : "未保存输入保留到本次会话结束。"}保存仅修改曲目信息，指法、分手和谱面关联继续保留。`}
       </p>
     </section>
   );

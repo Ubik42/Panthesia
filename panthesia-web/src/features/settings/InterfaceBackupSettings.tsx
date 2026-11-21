@@ -35,9 +35,7 @@ const labels: Record<string, string> = {
   keyboardViewport: "连续取景位置",
   keyboardLow: "自定义最低音", keyboardHigh: "自定义最高音", keyboardDeviceRanges: "MIDI 设备音域",
   previewBars: "预览小节",
-  libraryOpen: "显示曲库",
   inspector: "显示练习参数",
-  libraryWidth: "曲库宽度",
   inspectorWidth: "参数宽度",
   keyboardHeight: "琴键高度",
   paperPreviewHeight: "纸谱键盘区域",
@@ -85,7 +83,6 @@ const settingText = (key: string, v: unknown) =>
           Number(v)
         ]
       : [
-            "libraryWidth",
             "inspectorWidth",
             "keyboardHeight",
             "paperPreviewHeight",
@@ -352,8 +349,7 @@ export function InterfaceBackupSettings() {
                 <div>
                   <strong>{source.name}</strong>
                   <small>
-                    {existing ? "本机已有同名方案" : "新方案"} · 曲库{" "}
-                    {source.layout.libraryWidth} / 参数{" "}
+                    {existing ? "本机已有同名方案" : "新方案"} · 参数{" "}
                     {source.layout.inspectorWidth} / 琴键{" "}
                     {source.layout.keyboardHeight} 像素
                   </small>
