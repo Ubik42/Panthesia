@@ -418,10 +418,6 @@
   align-items: center;
   gap: 6px;
 }
-.practice-navigation-pages[hidden],
-.practice-measure-navigation[hidden] {
-  display: none !important;
-}
 .practice-panel .practice-navigation-toggle {
   color: var(--gray-92);
   background: var(--gray-33);

@@ -20,10 +20,6 @@
 .workspace-topbar > .engine-indicator {
   margin-left: auto;
 }
-.workspace[hidden],
-.workbench > footer[hidden] {
-  display: none !important;
-}
 @media (max-width: 760px) {
   .workspace-topbar {
     gap: 8px;

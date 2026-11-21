@@ -79,9 +79,6 @@
   min-width: 0;
   padding: 16px 0 4px;
 }
-.browse-detail-section[hidden] {
-  display: none !important;
-}
 .browse-detail-section:focus-visible {
   outline-offset: -2px;
 }

@@ -1,7 +1,4 @@
 /* Synthesia official UI00/UI03/UI04 structure; Panthesia artwork and Chinese controls. */
-.synthesia-layout [hidden] {
-  display: none !important;
-}
 .product-page {
   display: flex;
   flex: 1;

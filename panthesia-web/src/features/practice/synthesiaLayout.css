@@ -5,10 +5,6 @@
   --synth-blue-deep: var(--blue-50-c10);
   --synth-line: var(--blue-71);
 }
-.synthesia-layout .workspace-topbar[hidden],
-.synthesia-layout .workspace[hidden] {
-  display: none !important;
-}
 .synthesia-layout .workspace-topbar:not([hidden]) {
   position: fixed;
   z-index: 1900;

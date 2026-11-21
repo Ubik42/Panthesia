@@ -1,6 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
+import type { Plugin } from "postcss";
+
+/** Every stylesheet goes into one cascade layer, so a later layer (state) can override any
+ * component rule without !important. Order: tokens, components, state (src/layers.css). */
+const cascadeLayers: Plugin = {
+  postcssPlugin: "panthesia-cascade-layers",
+  Once(root, { AtRule }) {
+    const file = root.source?.input.file ?? "";
+    if (/node_modules|[\\/]layers\.css$/.test(file)) return;
+    const layer = new AtRule({ name: "layer", params: /[\\/]tokens\.css$/.test(file) ? "tokens" : "components" });
+    layer.append(root.nodes);
+    root.removeAll();
+    root.append(layer);
+  },
+};
 
 const version = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -42,6 +57,7 @@ export default defineConfig(({ command }) => {
     throw new Error("界面版本与构建记录不一致，请统一产品版本后再构建。");
   return {
     plugins: [react()],
+    css: { postcss: { plugins: [cascadeLayers] } },
     clearScreen: false,
     define: { __PANTHESIA_BUILD_INFO__: JSON.stringify(identity) },
   };
