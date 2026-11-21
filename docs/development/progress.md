@@ -2,6 +2,19 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · RF 第二批：颜色 token、类型生成、模块归位（提交 140b88b、4b08619、9866df5、53b0277、bfa7939、bf453f4、09e225e、342838e）
+
+- 状态推送修正：采集序号每次发布都增长，原来 16 ms 一次的发布让长轮询每秒返回 60 次；状态源改为对去掉序号的快照计算内容哈希，内容变化才前进。空闲时长轮询等满 20 秒。首次会话读取的可选调用短路了参数，导致界面停在"正在连接"，已修正（浏览器调试中实测：主页、歌曲设置、演奏舞台、播放进度均正常）。
+- 颜色：`src/tokens.css` 80 个 OKLCH token，按原界面 1630 处颜色拟合（OKLab 加权 k-means，权重取出现次数的平方根，防止大量灰色挤掉醒目的强调色；白、黑固定），按色相族与亮度命名。`scripts/tokenize-colors.py` 把所有字面颜色替换为最近的 token（平均 ΔE 1.5，p99 4.9），半透明色写成 `color-mix`。先试过系统化色阶（按色相族生成），饱和色损失明显（标题栏与绿色按钮发灰），因此改用拟合。CSS 中已无硬编码颜色；TS 中画布绘制颜色留到 R3 渲染器。
+- `!important`（约 40 处）未处理：它们来自多套主题文件互相覆盖，正确做法是 CSS 层叠层，但会改变全部样式表的优先级，在无法逐一截图核对对话框时风险高，放到 RF 重写各屏时一起做。
+- 类型生成：`Snapshot` 及嵌套类型改由 `generate-protocol.mjs` 从 Rust 生成，删除手写版本。考虑过换成 ts-rs / specta：现有生成器按方向处理 `serde(default)`（输入可选、输出必填），通用工具不区分，因此保留并扩展。`StorageStatus` 只留 `operation`、`pending`、`error`。
+- 删除：core 的 `song_catalog`、`repertoire`、`synthesia_metadata`，`song_project` 只留记谱生成与练习版本；`practice_history` 中无调用者的查询（2220 → 843 行，子代理完成；持久化格式的类型与字段不变，旧文件可原样读写）；已删功能的 20 个浏览器用例与 5 个脚本；`smoke-practice.mjs` 只按名称运行用例。
+- 传输：`api.ts` 的 `http` 与 `postLocal` 合并为 `local` / `call`；约 50 个"后台命令"名单只给出所有命令本来就有的超时，删除。
+- 模块归位：src 根目录 53 个业务模块按领域移入 `features/fingering`、`features/practice`、`features/scores`、`stage/`、`app/`、`features/settings`，导入路径按解析结果改写；根目录只留入口、`App`、`api`、生成文件、token 与基础样式。
+- 检查：`cargo check --workspace --all-targets`、`npm run build` 通过；core 测试 245 通过。
+
+下一入口：RF 第三批——任务列表改为推送（目前每秒轮询 `tasks`）；`App.tsx`（约 1000 行）拆分为组合层；CSS 层叠层与 `!important`；关键流程用例改用 `openFile`。
+
 ## 2026-11-21 · RF 第一批：状态推送与删除失去用途的前端（提交 462f8df、c0bb794、8b64bd7、5540b62）
 
 - 引擎快照删除评分时代字段：计数、尝试总结、总结版本、历史 id、本轮已保存标记、导入格式版本；依赖它们的"本轮结果未保存"守卫永远不会触发，一并删除；删除未使用的自适应速度教练。`state-frame` 接口随总结一起删除。
