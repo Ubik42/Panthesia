@@ -1,5 +1,5 @@
 use crate::{Command, Player, Snapshot, background_tasks::TaskToken, fingerings};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, mpsc};
 
 pub(crate) type Reply = mpsc::SyncSender<Result<serde_json::Value, String>>;
 pub(crate) enum Request {
@@ -52,7 +52,7 @@ pub(crate) enum Request {
     ),
 }
 
-pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
+pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<crate::state_projection::StateFeed>) {
     let barrier=match &request {
         Request::PlaybackAdjustment(..) => true,
         Request::Command(command,_)=>!matches!(command,Command::Panic|Command::Pause|Command::Note{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Session|Command::Tasks|Command::CancelTask{..}|Command::CancelHistoryRead{..}),
@@ -95,7 +95,7 @@ pub(crate) fn respond<T: 'static>(reply: mpsc::SyncSender<Result<T, String>>, re
         send();
     }
 }
-fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
+fn handle_inner(player: &mut Player, request: Request, shared: &Arc<crate::state_projection::StateFeed>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
         Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::StorageFence(_) => true,

@@ -51,10 +51,16 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let documents = service_lane::Lane::new("neothesia-http-document", 1, 4, activity.documents.clone(), {
         let handler = handler.clone(); move |request| handler(request)
     })?;
+    let feed = {
+        let handler = handler.clone();
+        service_lane::Lane::new("neothesia-http-state", 4, 8, Arc::new(AtomicUsize::new(0)), move |request| handler(request))?
+    };
     let control = service_lane::Lane::new("neothesia-http-control", 2, 32, Arc::new(AtomicUsize::new(0)),
         move |request| handler(request))?;
     for request in server.incoming_requests() {
-        if request.method() == &Method::Options || ["/api/state", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
+        if request.method() == &Method::Get && request.url().starts_with("/api/state/next?") {
+            feed.dispatch(request);
+        } else if request.method() == &Method::Options || ["/api/state", "/api/live-notes", "/api/control", "/api/control-scoped", "/api/music-import/read", "/api/music-import/cancel", "/api/service-status", "/api/devices", "/api/devices/refresh"].contains(&request.url()) {
             control.dispatch(request);
         } else if (request.method() == &Method::Get && ["/api/song", "/api/session"].contains(&request.url()))
             || (request.method() == &Method::Post && ["/api/midi/export", "/api/package/export"].contains(&request.url())) {
@@ -173,6 +179,16 @@ fn handle_request(mut request: tiny_http::Request, engine: &Engine, data: &PathB
                 }
                 (&Method::Get, "/api/state") => {
                     Ok(serde_json::to_value(engine.snapshot()).unwrap())
+                }
+                // Long poll for the browser client: the first state after `after`, or the
+                // current one again after 20 s (the desktop window receives pushed events).
+                (&Method::Get, path) if path.starts_with("/api/state/next?after=") => {
+                    let after = path["/api/state/next?after=".len()..].parse::<u64>().map_err(|_| "after 参数无效".to_string())?;
+                    let (revision, state) = engine
+                        .next_state(after, std::time::Duration::from_secs(20))
+                        .or_else(|| engine.next_state(0, std::time::Duration::ZERO))
+                        .ok_or("音乐引擎状态不可读")?;
+                    Ok(serde_json::json!({"revision": revision, "state": state}))
                 }
                 (&Method::Get, "/api/song") => engine.command(Command::CurrentSong),
                 (&Method::Get, "/api/session") => engine.command(Command::Session),

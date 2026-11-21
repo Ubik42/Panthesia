@@ -161,7 +161,7 @@ mod tests {
     };
     use panthesia_core::{exercise::ExerciseHands, library};
     use std::{
-        sync::{Arc, Mutex, mpsc},
+        sync::{Arc, mpsc},
         thread,
         time::{Duration, Instant},
     };
@@ -194,7 +194,7 @@ mod tests {
             pool.cancel(&pool.list().unwrap()[0].id).unwrap();
         }
         let (reply, response) = mpsc::sync_channel(1);
-        let shared = Arc::new(Mutex::new(player.snapshot()));
+        let shared = Arc::new(crate::state_projection::StateFeed::new(player.snapshot()));
         runtime_request::handle(
             player,
             Request::ExerciseCommit(origin, prepared, token, reply),

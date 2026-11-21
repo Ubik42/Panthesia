@@ -1,8 +1,8 @@
 //! Bounded playback scheduling. File parsing and persistence remain in workers.
-use crate::{Player, Snapshot, device_catalog, runtime_request, state_projection};
+use crate::{Player, device_catalog, runtime_request, state_projection};
 use std::{
     sync::{
-        Arc, Mutex,
+        Arc,
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
@@ -18,7 +18,7 @@ const PUBLISH_INTERVAL: Duration = Duration::from_millis(16);
 pub(super) struct Driver {
     pub(super) commands: mpsc::Receiver<runtime_request::Request>,
     pub(super) controls: mpsc::Receiver<runtime_request::Request>,
-    pub(super) state: Arc<Mutex<Snapshot>>,
+    pub(super) state: Arc<state_projection::StateFeed>,
     pub(super) devices: device_catalog::Catalog,
     pub(super) stop: Arc<AtomicBool>,
 }

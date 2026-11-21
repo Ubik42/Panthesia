@@ -1,4 +1,5 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+mod state_push;
 mod diagnostics;
 mod score_batch_export;
 mod score_jobs;
@@ -677,6 +678,7 @@ fn main() {
             let selected_font=saved.unwrap_or_else(||font.clone());
             let status=soundfont_status(&selected_font,&font,warning);
             let engine = Engine::start_with_soundfont_fallback(data.clone(), data_lock, selected_font.clone(), Some(font.clone()), false)?;
+            state_push::start(app.handle().clone(), engine.clone());
             app.manage(score_batch_export::Sessions::default());
             app.manage(score_export_bridge::Cache::default());
             app.manage(file_transfer::Sessions::default());

@@ -7,7 +7,7 @@ use crate::{
 };
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex, atomic::AtomicBool, mpsc},
+    sync::{Arc, atomic::AtomicBool, mpsc},
     thread,
 };
 
@@ -54,7 +54,7 @@ impl Engine {
         let engine_soundfont = soundfont.clone();
         let state_clock = state_order::Clock::new();
         let engine_id: Arc<str> = state_clock.engine_id().into();
-        let state = Arc::new(Mutex::new(Snapshot {
+        let state = Arc::new(crate::state_projection::StateFeed::new(Snapshot {
             state_order: Some(state_clock.next()),
             startup: startup.status(),
             ..Snapshot::default()

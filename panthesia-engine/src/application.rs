@@ -31,7 +31,7 @@ impl Engine {
     }
     pub fn command(&self, command: Command) -> Result<serde_json::Value, String> {
         let recording_note = matches!(command, Command::Note { .. })
-            && self.state.lock().is_ok_and(|state| state.recording);
+            && self.state.read(|state| state.recording).unwrap_or(false);
         if !recording_note {
             if self.closing.load(Ordering::Acquire) && !storage_control::allowed(&command) {
                 return Err("正在保存并关闭程序，请等待完成".into());
@@ -157,11 +157,7 @@ impl Engine {
                 return Ok(serde_json::json!({"ok":true}));
             }
             Command::RetryStartup => {
-                if self
-                    .state
-                    .lock()
-                    .is_ok_and(|state| state.recording || state.recording_unsaved)
-                {
+                if self.state.read(|state| state.recording || state.recording_unsaved).unwrap_or(false) {
                     return Err("请先停止并保存录音，再重新恢复练习室".into());
                 }
                 if self.imports_in_flight.load(Ordering::Acquire) > 0 {
@@ -430,6 +426,6 @@ impl Engine {
             .map_err(|_| "音乐引擎响应超时".to_string())?
     }
     pub fn snapshot(&self) -> Snapshot {
-        self.state.lock().map(|s| s.clone()).unwrap_or_default()
+        self.state.snapshot()
     }
 }

@@ -173,7 +173,7 @@ pub struct Engine {
     control_tx: mpsc::Sender<runtime_request::Request>,
     tasks: background_tasks::TaskPool,
     storage_tasks: background_tasks::TaskPool,
-    state: Arc<Mutex<Snapshot>>,
+    state: Arc<state_projection::StateFeed>,
     data: PathBuf,
     _data_lock: Arc<data_root_lock::DataRootLock>,
 }
