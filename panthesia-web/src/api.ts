@@ -20,54 +20,38 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
   try { return await nativeInvoke<T>(command, args); }
   catch(error) { reportDiagnostic(command,error); throw error; }
 }
-const historyReadCommands = new Set<EngineCommand["type"]>(["practiceTime",]);
+const historyReadCommands = new Set<EngineCommand["type"]>(["practiceTime"]);
+const controlCommands = new Set<EngineCommand["type"]>(["panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning"]);
 
 let sessionReadSequence = 0;
 const service = "http://127.0.0.1:32124";
-const controlCommands = new Set<EngineCommand["type"]>(["panic", "pause", "note", "startInstrumentPreview", "stopSongAudition", "songAuditionState", "stopFingerDemo", "fingerDemoState", "tasks", "cancelTask", "cancelHistoryRead", "skipStartupSong", "retryStartup", "dismissStartupWarning",]);
-const backgroundCommands = new Set<EngineCommand["type"]>(["scoreView", "sourceScore", "importScoreOriginal", "generate", "openPassage", "recording", "soundFont", "linkScoreSource", "applyScoreSource", "acknowledgeScoreSource", "unlinkScoreSource", "scoreSources", "previewScoreSource", "pairScore", "activateScore", "detachScore", "saveScoreVersion", "removeScoreVersion", "scoreVersions", "renameScoreVersion", "setPaperMapping", "savePaperPractice", "previewPaperPractice", "previewScoreVersionRoute", "previewCrossPaperTransfer", "paperTransferSources", "score", "exportAnnotatedScore", "addScoreAttachment", "updateScoreAttachment", "readPaperView", "savePaperView", "seekPaperMeasure", "seekPaperNote", "editPaperAnnotation", "editPaperInk", "editPaperNoteAnchor", "batchPaperNoteAnchors", "fileLocations", "fileLocationsFor", "updateFileLocation", "createLocatedScorePaper", "linkPaperSource", "applyPaperSource", "applyPaperTransfer", "applyCrossPaperTransfer", "suggestFingers", "suggestFingerPlans", "suggestHeldFingerPlans", "reviewFingerAcceptance",]);
-async function http<T>(path: string, command?: EngineCommand, post = false): Promise<T> {
-  if (path === "/api/command" && command && controlCommands.has(command.type)) path = "/api/control";
+/** The browser debug transport: the local engine service. Control requests use a reserved lane
+ * with a short timeout; everything else may run long (score work, file preparation). */
+async function local<T>(path: string, body?: unknown, timeout = 125000, keepalive = false): Promise<T> {
   const response = await fetch(service + path, {
-    cache: "no-store",
-    method: command || post ? "POST" : "GET",
-    headers: command || post
-      ? { "Content-Type": "application/json", "X-Panthesia-Client": "web" }
-      : {},
-    body: command ? JSON.stringify(command) : undefined,
-    signal: AbortSignal.timeout(
-      command && controlCommands.has(command.type) ? 3500 :
-      command && backgroundCommands.has(command.type) ? 125000 :
-      command?.type === "createLocatedScorePaper"
-        ? 120000
-        : command || path === "/api/song" || path === "/api/session" ? 125000 : 15000,
-    ),
+    cache: "no-store", keepalive,
+    method: body === undefined ? "GET" : "POST",
+    headers: body === undefined ? {} : { "Content-Type": "application/json", "X-Panthesia-Client": "web" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(timeout),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "本地音乐引擎请求失败");
-  return data;
+  return data as T;
 }
-function engineCommand<T={ok:boolean}>(command:EngineCommand):Promise<T> {
-  if (historyReadCommands.has(command.type)) return postLocal<T>("read_history", "/api/history-read", command);
-  return isTauri()?invoke<T>("engine_command",{command}):http<T>("/api/command",command);
+/** One request: a Tauri command on the desktop, the matching service path in the browser. */
+function call<T>(nativeCommand: string, path: string, body: unknown, timeout?: number, keepalive = false): Promise<T> {
+  return isTauri() ? invoke<T>(nativeCommand, { request: body }) : local<T>(path, body, timeout, keepalive);
+}
+function engineCommand<T = { ok: boolean }>(command: EngineCommand): Promise<T> {
+  if (historyReadCommands.has(command.type)) return call<T>("read_history", "/api/history-read", command);
+  if (isTauri()) return invoke<T>("engine_command", { command });
+  return controlCommands.has(command.type) ? local<T>("/api/control", command, 3500) : local<T>("/api/command", command);
 }
 async function practiceRequest<T>(mode: "edit" | "read" | "demo", song: PracticeEditScope,
   command: PracticeEditCommand | PracticeReadCommand | PracticeDemoCommand, requestId?: string, catalogRevision?: string): Promise<T> {
-  const request = { command, engineId: song.engineId ?? undefined, contentId: song.contentId, scoreRevision: song.scoreRevision, annotationRevision: song.annotationRevision ?? 0, requestId, catalogRevision };
-  return postLocal<T>(mode === "edit" ? "edit_practice" : mode === "demo" ? "start_practice_demo" : "read_practice", `/api/practice-${mode}`, request);
-}
-async function postLocal<T>(nativeCommand: string, path: string, request: unknown, timeout = 125000, keepalive=false): Promise<T> {
-  if (isTauri()) return invoke<T>(nativeCommand, { request });
-  const response = await fetch(service + path, {
-    cache: "no-store",keepalive,
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Panthesia-Client": "web" },
-    body: JSON.stringify(request),
-    signal: AbortSignal.timeout(timeout),
-  });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "本地音乐引擎请求失败");
-  return result as T;
+  const body = { command, engineId: song.engineId ?? undefined, contentId: song.contentId, scoreRevision: song.scoreRevision, annotationRevision: song.annotationRevision ?? 0, requestId, catalogRevision };
+  return call<T>(mode === "edit" ? "edit_practice" : mode === "demo" ? "start_practice_demo" : "read_practice", `/api/practice-${mode}`, body);
 }
 
 export type PaperSaveOptions = {
@@ -157,13 +141,13 @@ export const api = {
       throw failure;
     }
   },
-  readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>postLocal("read_notation","/api/notation-read",request,60000,request.type==="release"),
-  notationDocument: (bytes:number[]):Promise<number[]> => postLocal("notation_document","/api/notation-document",{bytes},30000),
-  mapScore: (request: ScoreMappingRequest): Promise<ScoreMappingResult> => postLocal("map_score", "/api/score-map", request),
+  readNotation:<T>(request:import("./features/scores/notationReadTypes").NotationReadRequest):Promise<T>=>call("read_notation","/api/notation-read",request,60000,request.type==="release"),
+  notationDocument: (bytes:number[]):Promise<number[]> => call("notation_document","/api/notation-document",{bytes},30000),
+  mapScore: (request: ScoreMappingRequest): Promise<ScoreMappingResult> => call("map_score", "/api/score-map", request),
   openDataFolder: () => invoke<void>("open_practice_data_folder"),
   session: async (): Promise<EngineSession> => {
     const readSequence = ++sessionReadSequence;
-    const session = isTauri() ? await invoke<EngineSession>("engine_command", { command: { type: "session" } }) : await http<EngineSession>("/api/session");
+    const session = isTauri() ? await invoke<EngineSession>("engine_command", { command: { type: "session" } }) : await local<EngineSession>("/api/session");
     return { ...session, readSequence };
   },
   currentSessionRead: (session: EngineSession) => session.readSequence === undefined || session.readSequence === sessionReadSequence,
@@ -172,7 +156,7 @@ export const api = {
   selectSoundfont: () => invoke<SoundFontStatus | null>("select_soundfont"),
   resetSoundfont: () => invoke<SoundFontStatus>("reset_soundfont"),
   state: () =>
-    isTauri() ? invoke<Snapshot>("engine_state") : http<Snapshot>("/api/state"),
+    isTauri() ? invoke<Snapshot>("engine_state") : local<Snapshot>("/api/state"),
   liveNotes: async (epoch: number | undefined, createdAtMs: number, events: LiveNoteEvent[], engineId?: string): Promise<LiveNoteReceipt> => {
     if (epoch === undefined) {
       let accepted = 0, expired = 0;
@@ -183,7 +167,7 @@ export const api = {
       }
       return { accepted, expired };
     }
-    return postLocal("play_live_notes", "/api/live-notes", { epoch, engineId, createdAtMs, events }, 3500);
+    return call("play_live_notes", "/api/live-notes", { epoch, engineId, createdAtMs, events }, 3500);
   },
   /** Every state the engine publishes, in order: pushed events on the desktop, a long poll
    * in the browser. Returns the unsubscribe function. */
@@ -202,7 +186,7 @@ export const api = {
       let revision = 0, failures = 0;
       while (!stopped) {
         try {
-          const next = await http<{ revision: number; state: Snapshot }>(`/api/state/next?after=${revision}`);
+          const next = await local<{ revision: number; state: Snapshot }>(`/api/state/next?after=${revision}`, undefined, 30000);
           failures = 0;
           revision = next.revision;
           if (!stopped) onState(next.state);
@@ -220,22 +204,22 @@ export const api = {
   song: () =>
     isTauri()
       ? invoke<LoadedSong | null>("engine_song")
-      : http<LoadedSong | null>("/api/song"),
+      : local<LoadedSong | null>("/api/song"),
   devices: async (refresh = false, target: DeviceScanTarget = "all") => readDeviceSnapshot(await (isTauri()
     ? invoke<unknown>("midi_devices", { refresh, target: refresh ? target : undefined })
-    : refresh ? postLocal<unknown>("midi_devices", "/api/devices/refresh", { refresh: true, target }, 3000) : http<unknown>("/api/devices"))),
+    : refresh ? local<unknown>("/api/devices/refresh", { refresh: true, target }, 3000) : local<unknown>("/api/devices"))),
   command: engineCommand,
   adjustPlayback: (source: PlaybackAdjustmentSource, command: PlaybackAdjustmentCommand, createdAtMs = Date.now()): Promise<{ok: boolean}> => source.stateOrder
-    ? postLocal("adjust_playback", "/api/playback-adjustment", {
+    ? call("adjust_playback", "/api/playback-adjustment", {
         engineId: source.stateOrder.engineId, contentId: source.contentId, createdAtMs,
         scoreRevision: source.scoreRevision ?? 0, command,
       })
     : engineCommand(command),
   commandForEngine: <T = { ok: boolean }>(engineId: string | undefined, command: EngineCommand): Promise<T> => engineId
-    ? postLocal<T>("engine_scoped_command", controlCommands.has(command.type) ? "/api/control-scoped" : historyReadCommands.has(command.type) ? "/api/history-read-scoped" : "/api/command-scoped", { engineId, command }, controlCommands.has(command.type) ? 3500 : 125000)
+    ? call<T>("engine_scoped_command", controlCommands.has(command.type) ? "/api/control-scoped" : historyReadCommands.has(command.type) ? "/api/history-read-scoped" : "/api/command-scoped", { engineId, command }, controlCommands.has(command.type) ? 3500 : 125000)
     : engineCommand<T>(command),
   adjustForSong: (song: PracticeEditScope, command: PlaybackAdjustmentCommand): Promise<{ok: boolean}> => song.engineId
-    ? postLocal("adjust_playback", "/api/playback-adjustment", { engineId: song.engineId, contentId: song.contentId, scoreRevision: song.scoreRevision, createdAtMs: Date.now(), command })
+    ? call("adjust_playback", "/api/playback-adjustment", { engineId: song.engineId, contentId: song.contentId, scoreRevision: song.scoreRevision, createdAtMs: Date.now(), command })
     : engineCommand(command),
   editPractice: <T = { ok: boolean }>(song: PracticeEditScope, command: PracticeEditCommand, catalogRevision?: string, requestId?: string) =>
     practiceRequest<T>("edit", song, command, requestId, catalogRevision),
