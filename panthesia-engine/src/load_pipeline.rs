@@ -53,35 +53,6 @@ pub(crate) struct Assets {
     pub error: Option<String>,
 }
 impl Assets {
-    /// Reuse the selected, aligned score after its association has been saved.
-    /// Reading the sidecar again retains the same meter, hands and finger restoration.
-    pub(crate) fn read_selected(
-        file: &MidiFile,
-        path: &Path,
-        score: notation::ScoreAsset,
-    ) -> Result<Self, String> {
-        let sidecar = library::load_song_sidecar(path, &file.content_id)
-            .map_err(|error| format!("曲目附加信息读取失败：{error}"))?;
-        if sidecar
-            .score
-            .as_ref()
-            .map(|association| association.content_id.as_str())
-            != Some(score.source_fingerprint.as_str())
-        {
-            return Err("保存后的谱面关联与所选版本不一致，请重新读取曲库。".into());
-        }
-        let grid = if sidecar.meter_map.is_some() || sidecar.meter.is_some() {
-            Some(Player::sidecar_grid(file, &sidecar)?)
-        } else {
-            None
-        };
-        Ok(Self {
-            sidecar: Some(sidecar),
-            grid,
-            notation: Some(score),
-            error: None,
-        })
-    }
     pub fn read(file: &MidiFile, path: &Path, versions: &[ScoreVersion]) -> Self {
         Self::read_checked(file, path, versions, &|| Ok(())).unwrap_or_else(|error| Self {
             sidecar: None,
@@ -263,7 +234,7 @@ impl Input {
     }
     pub fn read(
         self,
-        data: &Path,
+        _data: &Path,
         mut names: impl FnMut(&str) -> Result<Vec<ScoreVersion>, String>,
         check: impl Fn() -> Result<(), String>,
     ) -> Result<Prepared, String> {
@@ -376,17 +347,12 @@ impl Prepared {
 mod tests {
     use super::*;
     use crate::{Command, Engine, data_root_lock::DataRootLock, runtime_request::Request};
-    use panthesia_core::{
-        exercise::ExerciseSpec,
-        library::{FingerHint, MeterCorrection, NoteHandHint},
-        practice::PracticePart,
-    };
+    use panthesia_core::exercise::ExerciseSpec;
     use std::{
         sync::mpsc,
         thread,
         time::{Duration, Instant, UNIX_EPOCH},
     };
-    const SCORE: &[u8] = include_bytes!("../../panthesia-core/src/score_performance_test.musicxml");
     fn root() -> PathBuf {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../work/load-unit")

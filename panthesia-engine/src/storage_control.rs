@@ -172,15 +172,3 @@ impl crate::Engine {
     }
 }
 
-/// Indexers may resume after publication, but must leave an interrupted transaction's inputs intact.
-pub(crate) fn workspace_writable(data: &Path) -> Result<(), String> {
-    if crate::asset_storage::pending(data)
-        || data
-            .join("practice-import-journal.json")
-            .try_exists()
-            .unwrap_or(true)
-    {
-        return Err("曲库资料尚待恢复，已暂停自动整理，请重新启动练习室完成恢复".into());
-    }
-    Ok(())
-}

@@ -375,10 +375,6 @@ pub(crate) fn commit(
 ) -> Result<(), String> {
     commit_at(data, writes, observed, || Ok(()))
 }
-pub(crate) fn changed_before_commit(error: &str) -> bool {
-    error.starts_with("准备期间资料已改变，请重新读取后再保存：")
-        || error == "准备保存时资料再次改变，请重新读取"
-}
 pub(crate) fn commit_at(
     data: &Path,
     writes: Vec<DeferredWrite>,

@@ -1,5 +1,5 @@
 //! Public command routing and worker admission; playback cadence belongs to the driver.
-use crate::{Command, DeviceSnapshot, Engine, Preferences, Snapshot, is_control_command};
+use crate::{Command, DeviceSnapshot, Engine, Snapshot, is_control_command};
 use crate::{
     asset_edit, audio, demo_loading, file_locations, fingerings, history_reader,
     load_pipeline,
@@ -7,8 +7,7 @@ use crate::{
 };
 use panthesia_core::exercise::ExerciseSpec;
 use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex, atomic::Ordering, mpsc},
+    sync::{atomic::Ordering, mpsc},
     time::Duration,
 };
 

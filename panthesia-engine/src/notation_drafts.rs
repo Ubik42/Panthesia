@@ -58,32 +58,6 @@ pub struct DraftListing {
     pub drafts: Vec<DraftSummary>,
     pub issues: Vec<String>,
 }
-/// Keep machine provenance when a retained draft becomes an adopted score version.
-pub(crate) fn automatic_origins(data: &Path, check: &impl Fn() -> Result<(), String>) -> Result<std::collections::BTreeMap<String, String>, String> {
-    let mut origins = std::collections::BTreeMap::new();
-    let entries = match std::fs::read_dir(data.join("notation-drafts")) {
-        Ok(entries) => entries,
-        Err(e) if e.kind()==std::io::ErrorKind::NotFound => return Ok(origins),
-        Err(e) => return Err(e.to_string()),
-    };
-    for (index,entry) in entries.enumerate() {
-        check()?;
-        if index>=4096 { break; }
-        let path=entry.map_err(|e|e.to_string())?.path();
-        if !path.extension().is_some_and(|e|e=="json") {continue;}
-        let Some(id)=path.file_stem().and_then(|s|s.to_str()).filter(|id|valid_id(id)) else {continue;};
-        let Ok(bytes)=atomic_file::read_limited(&path,32_768) else {continue;};
-        let Ok(record)=serde_json::from_slice::<DraftRecord>(&bytes) else {continue;};
-        if record.id!=id || validate(&record).is_err() {continue;}
-        let origin=match record.kind.as_str() {
-            "midiToNotation"=>"MIDI 自动转谱初稿；拍号、声部、分手与节奏待校对",
-            "paperToNotation"=>"纸谱自动识别初稿；音高、节奏、声部与谱面对应待校对",
-            _=>continue,
-        };
-        origins.insert(record.hash,origin.into());
-    }
-    Ok(origins)
-}
 fn valid_id(id: &str) -> bool {
     id.len() == 64 && id.bytes().all(|byte| byte.is_ascii_hexdigit())
 }

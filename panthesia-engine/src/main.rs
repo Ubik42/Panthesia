@@ -1,6 +1,6 @@
 mod service_lane;
 use panthesia_engine::{Command, Engine, data_root_lock::DataRootLock};
-use std::{path::PathBuf, sync::{Arc,Mutex, atomic::{AtomicUsize, Ordering}}};
+use std::{path::PathBuf, sync::{Arc, atomic::{AtomicUsize, Ordering}}};
 use tiny_http::{Header, Method, Response, Server};
 
 #[derive(Default)]

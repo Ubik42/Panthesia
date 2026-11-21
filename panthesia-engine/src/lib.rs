@@ -11,7 +11,6 @@ mod background_tasks;
 mod device_catalog;
 pub use device_catalog::Snapshot as DeviceSnapshot;
 mod load_pipeline;
-mod operation_journal;
 mod song_metadata;
 mod metadata_defaults;
 mod exercise_assets;

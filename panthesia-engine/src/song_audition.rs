@@ -2,7 +2,6 @@
 use crate::*;
 use serde_json::{Value, json};
 
-const EVENT_LIMIT: usize = 16_384;
 #[derive(Clone, Copy)]
 struct Event {
     at: f64,

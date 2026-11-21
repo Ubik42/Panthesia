@@ -436,7 +436,7 @@ pub fn hints(assigned: &HashMap<(usize, usize), PracticePart>) -> Vec<NoteHandHi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Command, Player};
+    use crate::Player;
 
     #[test]
     fn interleaved_layout_requires_confirmed_alternating_hands() {

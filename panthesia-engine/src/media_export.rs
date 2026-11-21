@@ -42,30 +42,6 @@ pub struct MediaExportSummary {
     pub ladders: usize,
 }
 impl MediaExportSummary {
-    fn from_package(value: &serde_json::Value) -> Self {
-        let count = |field: &str| value[field].as_array().map_or(0, Vec::len);
-        let number = |field: &str| value[field].as_u64().unwrap_or(0) as usize;
-        if let Some(totals)=value.get("archiveTotals"){
-            let total=|name:&str|totals[name].as_u64().unwrap_or(0)as usize;
-            return Self{performances:count("performances"),scores:total("scores"),paper_books:total("paperBooks"),paper_pages:total("paperPages"),fingerings:total("fingerings"),finger_actions:total("fingerActions"),hands:total("hands"),passages:total("passages"),ladders:total("ladders")};
-        }
-        Self {
-            performances:1,
-            scores: count("scores"),
-            paper_books: count("papers"),
-            paper_pages: value["papers"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|paper| paper["pages"].as_u64().unwrap_or(0) as usize)
-                .sum(),
-            fingerings: number("fingerings"),
-            finger_actions: number("fingerActions"),
-            hands: number("hands"),
-            passages: count("passages"),
-            ladders: count("ladders"),
-        }
-    }
 }
 pub struct Payload {
     pub bytes: Vec<u8>,
@@ -97,7 +73,7 @@ impl Engine {
         let (prepared, _, observed) = atomic_file::capture_matching(
             Arc::new(move |path: &Path| asset_storage::captures(&data, path)),
             || {
-                let mut reader = context.into_player(false)?;
+                let reader = context.into_player(false)?;
                 if reader
                     .file
                     .as_ref()
@@ -106,7 +82,7 @@ impl Engine {
                     return Err("曲目已切换，请返回来源曲目后重新导出".into());
                 }
                 check()?;
-                let mut title=reader.title.clone();
+                let title=reader.title.clone();
                 let (bytes, summary) = match input.kind {
                     MediaExportKind::PracticeMidi => {
                         let value=reader.export_practice_variant()?;

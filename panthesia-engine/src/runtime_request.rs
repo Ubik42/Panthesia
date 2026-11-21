@@ -2,15 +2,9 @@ use crate::{Command, Player, Snapshot, background_tasks::TaskToken, fingerings};
 use std::sync::{Arc, Mutex, mpsc};
 
 pub(crate) type Reply = mpsc::SyncSender<Result<serde_json::Value, String>>;
-pub(crate) enum RecentSource {
-    File(String, Vec<std::path::PathBuf>),
-    Exercise(panthesia_core::exercise::ExerciseSpec),
-}
 pub(crate) enum Request {
-    SongAuditionAbort(String),
     PaperNavigationContext { content_id: String, reply: mpsc::SyncSender<Result<crate::paper_navigation::Context, String>> },
     PaperNavigationInstall { prepared: crate::paper_navigation::Prepared, sequence: u64, latest: Arc<std::sync::atomic::AtomicU64>, received: std::time::Instant, token: TaskToken, reply: Reply },
-    ScopedImportContext { origin: crate::song_switch::Origin, cancelled: Arc<std::sync::atomic::AtomicBool>, received: std::time::Instant, reply: mpsc::SyncSender<Result<crate::song_switch::Origin, String>> },
     PlaybackAdjustment(crate::state_order::PlaybackAdjustment, std::time::Instant, Reply),
     LiveNotes(crate::live_notes::Input,std::time::Instant,mpsc::SyncSender<Result<crate::live_notes::Acknowledgement,String>>),
     InputContext{name:Option<String>,reply:mpsc::SyncSender<Result<u64,String>>},
@@ -30,7 +24,6 @@ pub(crate) enum Request {
     PracticeEditBegin{id:String,kind:crate::practice_edit::Kind,strict:bool,scope:Option<crate::practice_edit::Scope>,reply:mpsc::SyncSender<Result<crate::asset_edit::Context,String>>},
     DocumentContext(mpsc::SyncSender<Result<(crate::asset_edit::Context,Snapshot,bool),String>>),
     CurrentSource {content_id: String, reply: mpsc::SyncSender<Result<Option<std::path::PathBuf>, String>>},
-    PackagePresence {content_id:String,reply:mpsc::SyncSender<Result<bool,String>>},
     SongSwitchBegin { id: String, origin: crate::song_switch::Origin, reply: mpsc::SyncSender<Result<crate::asset_edit::Context,String>> },
     AssetReadContext{registry:bool,export:bool,editor:bool,scope:Option<crate::practice_edit::Scope>,reply:mpsc::SyncSender<Result<crate::asset_edit::Context,String>>},
     AssetEditBegin{id:String,apply:bool,registry:bool,runtime:bool,reply:mpsc::SyncSender<Result<crate::asset_edit::Context,String>>},
@@ -44,8 +37,6 @@ pub(crate) enum Request {
     SaveFinished { result: Result<(), String>, replies: Vec<crate::pending_save::Completion> },
     Command(Command, Reply),
     ImportContext(mpsc::SyncSender<Result<crate::song_switch::Origin, String>>),
-    PreparationContext { current: crate::operation_journal::PreparationOrigin, reply: mpsc::SyncSender<Result<crate::song_switch::Origin, String>> },
-    RecentSource(String, mpsc::SyncSender<Result<RecentSource, String>>),
     #[cfg(test)]
     ExerciseCommit(crate::song_switch::Origin, crate::exercise_loading::Prepared, TaskToken, Reply),
     #[cfg(test)]
@@ -84,7 +75,7 @@ pub(crate) fn handle(player: &mut Player, request: Request, shared: &Arc<Mutex<S
 fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapshot>>) {
     let allowed = match &request {
         Request::Command(command, _) => crate::storage_control::allowed(command)||(matches!(command,Command::Note{..})&&player.recorder.is_recording()),
-        Request::SongAuditionAbort(_) | Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
+        Request::LiveNotes(..) | Request::SoundChangeAbort(_) | Request::DocumentContext(_) | Request::CurrentSource{..} | Request::AssetEditFinish{..} | Request::RecordingSaveFinish {..} | Request::StartupFinished(_) | Request::Shutdown | Request::SaveFinished { .. } | Request::StorageFence(_) | Request::StorageRecoveryObserved(_) => true,
         Request::ScoreMappingContext{..} | Request::ScoreMappingInstall{..} if !player.closing.load(std::sync::atomic::Ordering::Acquire) => true,
         _ => false,
     };
@@ -93,7 +84,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
         return;
     }
     match request {
-        Request::SongAuditionAbort(id) => {player.stop_song_audition(Some(&id));}
         Request::PaperNavigationContext { content_id, reply } => {
             crate::pending_save::respond(reply, player.capture_paper_navigation(&content_id));
         }
@@ -150,7 +140,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
                 .map(|file|file.source_path.clone());
             crate::pending_save::respond(reply,result);
         }
-        Request::PackagePresence {content_id,reply}=>{crate::pending_save::respond(reply,Ok(player.history.song(&content_id).is_some()));}
         Request::SongSwitchBegin {id,origin,reply} => {
             let result=player.begin_song_switch(id.clone(),&origin);
             if reply.send(result).is_err() { let _=player.finish_asset_edit(&id,Err("曲目切换调用已关闭".into())); }
@@ -209,29 +198,6 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::state_projection::publish(&player, &shared);
             for reply in replies { reply(result.clone()); }
         }
-        Request::RecentSource(id, reply) => {
-            let result = player
-                .history
-                .song(&id)
-                .ok_or_else(|| "找不到该练习记录".to_string())
-                .map(|record| {
-                    if let Some(spec) = record.setup.as_ref().and_then(|s| s.exercise_spec) {
-                        RecentSource::Exercise(spec)
-                    } else {
-                        RecentSource::File(
-                            record.display_name.clone(),
-                            record
-                                .setup
-                                .as_ref()
-                                .and_then(|s| s.source_path.clone())
-                                .into_iter()
-                                .chain(record.library.source_path.clone())
-                                .collect(),
-                        )
-                    }
-                });
-            crate::pending_save::respond(reply,result);
-        }
         #[cfg(test)]
         Request::ExerciseCommit(origin, prepared, token, reply) => {
             let result = player.check_switch_origin(&origin, "生成技术练习")
@@ -271,24 +237,10 @@ fn handle_inner(player: &mut Player, request: Request, shared: &Arc<Mutex<Snapsh
             crate::state_projection::publish(&player, &shared);
             crate::pending_save::respond(reply,result);
         }
-        Request::ScopedImportContext { origin, cancelled, received, reply } => {
-            if cancelled.load(std::sync::atomic::Ordering::Acquire) || received.elapsed() > std::time::Duration::from_secs(2) {
-                crate::pending_save::respond(reply, Err("后台任务已取消，导入准备请求已结束或过期".into()));
-                return;
-            }
-            let result = player.check_switch_origin(&origin, "导入").and_then(|_| player.begin_import());
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply, result);
-        }
         Request::ImportContext(reply) => {
             let result = player.begin_import();
             crate::state_projection::publish(&player, &shared);
             crate::pending_save::respond(reply,result);
-        }
-        Request::PreparationContext { current, reply } => {
-            let result = current.check(player).and_then(|_| player.begin_import());
-            crate::state_projection::publish(&player, &shared);
-            crate::pending_save::respond(reply, result);
         }
         Request::Command(command, reply) => {
             if matches!(
@@ -321,7 +273,6 @@ impl Request {
     fn reject(self, message: &str) {
         macro_rules! fail { ($reply:expr) => { let _ = $reply.send(Err(message.into())); }; }
         match self {
-            Self::SongAuditionAbort(_) => {}
             Self::LiveNotes(_,_,reply) => {fail!(reply);}
             Self::InputContext{reply,..}=>{fail!(reply);}
             Self::InputCommit{reply,..}=>{fail!(reply);}
@@ -341,7 +292,6 @@ impl Request {
             Self::PracticeEditBegin{reply,..}=>{fail!(reply);}
             Self::DocumentContext(reply)=>{fail!(reply);}
             Self::CurrentSource{reply,..}=>{fail!(reply);}
-            Self::PackagePresence {reply,..}=>{fail!(reply);}
             Self::AssetReadContext{reply,..}=>{fail!(reply);}
             Self::AssetEditBegin{reply,..}=>{fail!(reply);}
             Self::AssetEditFinish{reply,..}=>{if let Some(reply)=reply{fail!(reply);}}
@@ -356,8 +306,7 @@ impl Request {
             #[cfg(test)]
             Self::ExerciseCommit(_, _, _, reply) | Self::LoadCommit(_, _, _, reply) => { fail!(reply); }
             Self::SongSwitchBegin {reply,..} => { fail!(reply); }
-            Self::ImportContext(reply) | Self::ScopedImportContext { reply, .. } | Self::PreparationContext { reply, .. } => { fail!(reply); }
-            Self::RecentSource(_, reply) => { fail!(reply); }
+            Self::ImportContext(reply) => { fail!(reply); }
         }
     }
 }

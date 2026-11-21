@@ -33,7 +33,6 @@ pub(crate) struct Prepared {
     pub assets: Assets,
     bytes: Vec<u8>,
     destination: PathBuf,
-    source: PathBuf,
     watches: Vec<Watch>,
 }
 impl Prepared {
@@ -84,7 +83,6 @@ impl Prepared {
             assets,
             bytes,
             destination,
-            source,
             watches,
         };
         check()?;

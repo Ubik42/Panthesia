@@ -66,9 +66,6 @@ fn save(data:&Path,store:&Store)->Result<(),String> {
     if bytes.len()>16_000_000{return Err("原谱关联资料达到容量上限，请先整理关联".into());}
     panthesia_core::utils::atomic_file::write(&data.join("score-sources.json"),&bytes).map_err(|e|e.to_string())
 }
-pub(crate) fn registered_origins(data: &Path) -> Result<BTreeMap<(String, String), String>, String> {
-    Ok(load(data)?.entries.into_values().map(|source|((source.content_id,source.baseline),format!("用户登记的原谱：{}",source.path.display()))).collect())
-}
 pub fn read_original(path: &Path) -> Result<Vec<u8>, String> {
     if !path.is_absolute() {
         return Err("请选择原谱文件的完整位置".into());

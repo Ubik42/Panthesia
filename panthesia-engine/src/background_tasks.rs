@@ -77,12 +77,6 @@ impl TaskToken {
         record.status.stage = "committing";
         Ok(())
     }
-    /// Called by the owning worker before it publishes completion.
-    pub fn is_committing(&self) -> bool {
-        self.0
-            .lock()
-            .map_or(true, |record| record.status.state == "committing")
-    }
     fn finish(&self, result: Reply) {
         let Ok(mut record) = self.0.lock() else {
             return;
@@ -317,15 +311,6 @@ impl TaskPool {
     ) -> Reply {
         let ticket = self.submit(label, content_id, Box::new(work))?;
         self.wait_result(ticket)
-    }
-    /// Observable work can keep a compact result receipt independently of its caller.
-    pub fn start(
-        &self,
-        label: &str,
-        work: impl FnOnce(TaskToken) -> Reply + Send + 'static,
-    ) -> Result<String, String> {
-        self.submit(label, None, Box::new(work))
-            .map(|ticket| ticket.id)
     }
     /// Only readers should use replacement; durable work keeps its existing commit policy.
     pub fn run_latest(

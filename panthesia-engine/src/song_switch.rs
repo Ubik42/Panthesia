@@ -66,13 +66,6 @@ impl Input {
     ) -> Result<Value, String> {
         self.apply_response(reader, token, true)
     }
-    pub(super) fn apply_silent(
-        self,
-        reader: &mut Player,
-        token: &background_tasks::TaskToken,
-    ) -> Result<(), String> {
-        self.apply_response(reader, token, false).map(drop)
-    }
     fn apply_response(
         self,
         reader: &mut Player,
@@ -96,7 +89,7 @@ impl Input {
             }
             _ => {}
         }
-        let compact_import = !describe_song || false;
+        let _compact_import = !describe_song || false;
         match self {
             Self::Practice(command) | Self::ScopedPractice { command, .. } => {
                 reader.command(command)
@@ -184,10 +177,6 @@ pub(crate) struct Playback {
     revision: u64,
 }
 impl Playback {
-    pub(super) fn source_descriptor(&self)->Option<(PathBuf,String,String)>{
-        let source=self.source_file.as_ref().unwrap_or(&self.file);
-        Some((source.source_path.clone()?,source.content_id.clone(),self.title.clone()))
-    }
     pub(super) fn take(reader: &mut Player) -> Result<Self, String> {
         let sound = reader.prepare_track_sound();
         Ok(Self {
@@ -363,7 +352,7 @@ impl Engine {
                 flush.flush()?;
                 Ok(serde_json::json!({"ok":true}))
             })?;
-            let (mut outcome, writes, observed) = context.prepare_switch(prepared, &token)?;
+            let (outcome, writes, observed) = context.prepare_switch(prepared, &token)?;
             token.check()?;
             token.begin_commit()?;
             let data = self.data.clone();

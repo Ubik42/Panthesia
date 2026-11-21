@@ -2,13 +2,6 @@ use crate::{preferences::ScoreVersion, *};
 use panthesia_core::library::{self as metadata, SongSidecar};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
-fn read_score(path: &Path) -> Result<Vec<u8>, String> {
-    let bytes=panthesia_core::utils::atomic_file::read_dependency(path,panthesia_core::source_score_window::ASSET_LIMIT).map_err(|e|e.to_string())?;
-    if bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
-        return Err("谱面超过 64 MiB，请整理或重新导入".into());
-    }
-    Ok(bytes)
-}
 fn sidecar(path: &Path, cid: &str) -> Result<SongSidecar, String> {
     match metadata::load_song_sidecar(path, cid) {
         Ok(s) => Ok(s),
@@ -58,90 +51,6 @@ pub(super) fn versions(
 }
 
 impl Player {
-    fn persist_score_registry_with_restore(
-        &mut self,
-        cid: &str,
-        previous: &Option<Vec<ScoreVersion>>,
-    ) -> Result<(), String> {
-        if let Err(error) = self.preferences.save(&self.preferences_path) {
-            if let Some(rows) = previous {
-                self.preferences.score_versions.insert(cid.into(), rows.clone());
-            } else {
-                self.preferences.score_versions.remove(cid);
-            }
-            return Err(error);
-        }
-        Ok(())
-    }
-    fn persist_score_registry_and_associations(
-        &mut self,
-        cid: &str,
-        previous: &Option<Vec<ScoreVersion>>,
-        updates: &[(PathBuf, Option<PathBuf>)],
-    ) -> Result<(), String> {
-        let snapshots: Result<Vec<_>, String> = updates
-            .iter()
-            .map(|(path, _)| {
-                Ok((
-                    path.clone(),
-                    metadata::metadata_sidecar_path(path).is_file(),
-                    sidecar(path, cid)?,
-                ))
-            })
-            .collect();
-        let snapshots = match snapshots {
-            Ok(snapshots) => snapshots,
-            Err(error) => {
-                if let Some(rows) = previous {
-                    self.preferences.score_versions.insert(cid.into(), rows.clone());
-                } else {
-                    self.preferences.score_versions.remove(cid);
-                }
-                return Err(error);
-            }
-        };
-        self.persist_score_registry_with_restore(cid, previous)?;
-        for (index, (path, score)) in updates.iter().enumerate() {
-            let result = if let Some(score) = score {
-                metadata::save_score_association(path, cid, score)
-            } else {
-                metadata::clear_score_association(path, cid)
-            };
-            if let Err(error) = result {
-                let mut recovery_errors = Vec::new();
-                for (old_path, existed, old_sidecar) in snapshots[..=index].iter().rev() {
-                    let restored = if *existed {
-                        metadata::save_song_sidecar(old_path, cid, old_sidecar.clone())
-                            .map(|_| ())
-                            .map_err(|e| e.to_string())
-                    } else {
-                        panthesia_core::utils::atomic_file::discard_or_remove(&metadata::metadata_sidecar_path(old_path))
-                            .map_err(|e| e.to_string())
-                    };
-                    if let Err(restore_error) = restored {
-                        recovery_errors.push(restore_error);
-                    }
-                }
-                if let Some(rows) = previous {
-                    self.preferences.score_versions.insert(cid.into(), rows.clone());
-                } else {
-                    self.preferences.score_versions.remove(cid);
-                }
-                if let Err(restore_error) = self.preferences.save(&self.preferences_path) {
-                    recovery_errors.push(restore_error);
-                }
-                return if recovery_errors.is_empty() {
-                    Err(error.to_string())
-                } else {
-                    Err(format!(
-                        "谱面关联失败：{error}；恢复旧资料也失败，请重新读取曲目并检查谱面：{}",
-                        recovery_errors.join("；")
-                    ))
-                };
-            }
-        }
-        Ok(())
-    }
     pub(super) fn store_score_version_file(
         &mut self,
         score: &notation::ScoreAsset,
