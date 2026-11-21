@@ -16,7 +16,7 @@
 .daily-workbench[data-skin] .scores-dialog :is(.dialog-heading p,.parameter-help,.score-version-path,.score-version-items small,.score-version-source-actions p,.score-manager-footer > span,.score-route-visits time,.score-route-tools label) { color: var(--instrument-muted); }
 .daily-workbench[data-skin] .scores-dialog.settings-dialog :is(button,select,input:not([type=range])) { background: var(--instrument-panel); color: var(--instrument-text); border-color: var(--instrument-line); }
 .daily-workbench[data-skin] .scores-dialog.settings-dialog :is(.browse-detail-tabs > button[aria-selected=true],.score-version-items > button[aria-pressed=true]) { background: var(--instrument-selected); border-color: var(--instrument-accent); box-shadow: none; }
-.daily-workbench[data-skin] .scores-dialog.settings-dialog :is(button.primary,button.primary-button) { background: var(--instrument-accent); color: #fff; border-color: var(--instrument-accent); }
+.daily-workbench[data-skin] .scores-dialog.settings-dialog :is(button.primary,button.primary-button) { background: var(--instrument-accent); color: var(--gray-100); border-color: var(--instrument-accent); }
 .daily-workbench[data-skin] .scores-dialog :is(.score-version-current > span,.score-route-ready,.score-route-position) { color: var(--instrument-accent); }
 .scores-dialog > .dialog-heading {
   flex: none;
@@ -24,7 +24,7 @@
 }
 .scores-dialog > .dialog-heading p {
   margin: 4px 0 0;
-  color: #aebed0;
+  color: var(--blue-78);
 }
 .scores-dialog > .browse-detail-workspace {
   display: flex;
@@ -53,19 +53,19 @@
   flex: none;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #3c4b5e;
+  border-top: 1px solid var(--blue-41);
   justify-content: space-between;
 }
 .score-manager-footer > span {
   font-size: 0.8rem;
-  color: #9fb2c9;
+  color: var(--gray-75);
 }
 .score-manager-local-progress {
-  color: #b9d8f8;
+  color: var(--blue-86);
   margin: 6px 0;
   padding: 8px 10px;
-  border-left: 3px solid #88add8;
-  background: #477cd615;
+  border-left: 3px solid var(--blue-75);
+  background: color-mix(in oklab, var(--indigo-60) 8%, transparent);
   font-size: 0.82rem;
   line-height: 1.6;
 }
@@ -80,14 +80,14 @@
   box-sizing: border-box;
 }
 .score-import-version-name span {
-  color: #e6c388;
+  color: var(--amber-83);
 }
 .score-manager-draft-problem {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  color: #e6c388;
+  color: var(--amber-83);
   font-size: 0.82rem;
   margin: 8px 0;
 }
@@ -121,7 +121,7 @@
 }
 .score-version-browser-heading p,
 .score-import-heading p {
-  color: #aebed0;
+  color: var(--blue-78);
   font-size: 0.82rem;
   margin: 0;
   line-height: 1.6;
@@ -164,19 +164,19 @@
   gap: 10px;
   text-align: left;
   padding: 12px;
-  border: 1px solid #3d4b5d;
-  background: #202b38;
+  border: 1px solid var(--blue-41);
+  background: var(--gray-29);
   border-radius: 9px;
   min-height: 64px;
 }
 .score-version-items > button:hover {
-  border-color: #7d9bc0;
-  background: #29384b;
+  border-color: var(--blue-67);
+  background: var(--blue-33);
 }
 .score-version-items > button[aria-pressed="true"] {
-  border-color: #a9cf7e;
-  background: linear-gradient(110deg, #34482d, #253644);
-  box-shadow: inset 3px 0 #a9cf7e;
+  border-color: var(--green-80);
+  background: linear-gradient(110deg, var(--green-39), var(--blue-32));
+  box-shadow: inset 3px 0 var(--green-80);
 }
 .score-version-items > button > span:first-child {
   display: grid;
@@ -188,14 +188,14 @@
   font-size: 0.88rem;
 }
 .score-version-list small {
-  color: #a9bcd0;
+  color: var(--blue-78);
   font-size: 0.76rem;
 }
 .score-version-detail {
   padding: 18px;
-  border: 1px solid #43546a;
+  border: 1px solid var(--blue-43);
   border-radius: 12px;
-  background: #1c2632;
+  background: var(--gray-26);
   min-width: 0;
 }
 .score-version-current {
@@ -209,13 +209,13 @@
   overflow-wrap: anywhere;
 }
 .score-version-current > span {
-  color: #b8d995;
+  color: var(--green-86);
   font-size: 0.78rem;
 }
 .score-version-path {
   font-size: 0.75rem;
   line-height: 1.6;
-  color: #99afc9;
+  color: var(--gray-75);
   overflow-wrap: anywhere;
   margin: 8px 0 16px;
 }
@@ -229,7 +229,7 @@
 .score-version-name-status span {
   flex-basis: 100%;
   font-size: 0.78rem;
-  color: #dfc58b;
+  color: var(--amber-83);
   line-height: 1.6;
 }
 .score-version-main-actions {
@@ -242,7 +242,7 @@
   min-height: 36px;
 }
 .score-version-source-actions {
-  border-top: 1px solid #384b60;
+  border-top: 1px solid var(--blue-41);
   margin-top: 18px;
   padding-top: 12px;
 }
@@ -252,7 +252,7 @@
 .score-version-source-actions p {
   font-size: 0.8rem;
   line-height: 1.6;
-  color: #afbed0;
+  color: var(--blue-78);
 }
 .score-version-source-actions button {
   margin: 0 6px 6px 0;
@@ -263,27 +263,27 @@
   gap: 8px;
   align-items: center;
   margin-top: 20px;
-  border-top: 1px solid #384b60;
+  border-top: 1px solid var(--blue-41);
   padding-top: 14px;
 }
 .score-version-remove small {
-  color: #9cafc4;
+  color: var(--gray-75);
   font-size: 0.75rem;
 }
 .score-version-warning {
   font-size: 0.82rem;
   line-height: 1.6;
-  color: #e6c388;
+  color: var(--amber-83);
 }
 .score-version-empty {
   padding: 24px 12px;
-  border: 1px dashed #42556d;
+  border: 1px dashed var(--blue-46);
   border-radius: 9px;
-  color: #adbed1;
+  color: var(--blue-78);
   line-height: 1.8;
 }
 .score-version-orphans {
-  border-top: 1px solid #42556d;
+  border-top: 1px solid var(--blue-46);
   margin-top: 16px;
   padding-top: 12px;
 }
@@ -293,7 +293,7 @@
   padding: 10px 0;
 }
 .score-version-orphans small {
-  color: #aebed0;
+  color: var(--blue-78);
   overflow-wrap: anywhere;
 }
 .score-version-orphans button {
@@ -310,7 +310,7 @@
   flex-basis: 100%;
   font-size: 0.8rem;
   line-height: 1.6;
-  color: #aebed0;
+  color: var(--blue-78);
 }
 .scores-dialog .browse-detail-section:has(> .paper-score) {
   overflow: hidden;

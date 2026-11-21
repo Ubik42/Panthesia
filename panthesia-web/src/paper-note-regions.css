@@ -1,12 +1,12 @@
 .paper-note-editor {
   flex-basis: 100%;
-  border-top: 1px solid #3d4852;
+  border-top: 1px solid var(--blue-39);
   padding-top: 8px;
 }
 .paper-note-editor > summary {
   width: fit-content;
   cursor: pointer;
-  color: #e5edf4;
+  color: var(--gray-96);
   font-weight: 600;
 }
 .paper-note-editor-controls,
@@ -29,8 +29,8 @@
   max-width: min(440px, 75vw);
 }
 .paper-note-anchor-row {
-  color: #cbd6df;
-  border-top: 1px solid #38434d;
+  color: var(--gray-89);
+  border-top: 1px solid var(--blue-37);
 }
 .paper-note-region {
   position: absolute !important;
@@ -39,20 +39,20 @@
   justify-content: flex-start;
   min-height: 0;
   padding: 0;
-  border: 2px solid #2f7e73;
+  border: 2px solid var(--green-57);
   border-radius: 3px;
-  background: #53b6a344 !important;
-  color: #164a43;
+  background: color-mix(in oklab, var(--teal-76) 27%, transparent) !important;
+  color: var(--green-39);
   font-size: 11px;
 }
 .paper-note-region span {
-  background: #d9f7ef;
+  background: var(--teal-96);
   padding: 1px 4px;
   font-weight: 700;
 }
 .paper-note-region.draft {
   pointer-events: none;
   border-style: dashed;
-  border-color: #e8ba5e;
-  background: #e8ba5e33 !important;
+  border-color: var(--amber-83);
+  background: color-mix(in oklab, var(--amber-83) 20%, transparent) !important;
 }

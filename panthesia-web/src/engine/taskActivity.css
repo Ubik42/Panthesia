@@ -1,9 +1,9 @@
 .task-activity {
   padding: 12px;
   margin: 12px 0;
-  border: 1px solid #536443;
+  border: 1px solid var(--green-49);
   border-radius: 6px;
-  background: #293226;
+  background: var(--gray-30);
   font-size: 13px;
 }
 .task-activity > div {
@@ -17,7 +17,7 @@
 }
 .task-activity p {
   margin: 8px 0;
-  color: #b5c4ae;
+  color: var(--gray-82);
   line-height: 1.6;
 }
 
@@ -28,15 +28,15 @@
   gap: 8px 12px;
   padding: 12px;
   margin: 12px 0;
-  border: 1px solid #658655;
+  border: 1px solid var(--green-57);
   border-radius: 6px;
-  background: #293226;
-  color: #e0edda;
+  background: var(--gray-30);
+  color: var(--green-93);
   line-height: 1.6;
 }
 .saved-edit-notice > span { flex: 1 1 160px; }
 .task-activity > div { flex-wrap: wrap; }
 .task-activity > div > span { flex-basis: 160px; }
 
-.task-activity-error { color: #f0c7b8; }
+.task-activity-error { color: var(--orange-88); }
 .task-activity-error button { flex-shrink: 0; }

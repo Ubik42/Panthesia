@@ -7,19 +7,19 @@
   z-index: 6;
   padding: 14px 0 0;
   margin-top: -14px;
-  border-bottom: 1px solid #4c5c69;
-  background: #222a33;
+  border-bottom: 1px solid var(--blue-46);
+  background: var(--gray-29);
 }
 .browse-detail-masthead .browse-detail-heading {
   margin: 0 0 7px;
-  color: #edf2f7;
+  color: var(--gray-96);
   font-size: 19px;
   font-weight: 650;
   line-height: 1.45;
 }
 .browse-detail-subtitle {
   margin: 0 0 12px;
-  color: #adbdce;
+  color: var(--blue-78);
   font-size: 12px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -37,14 +37,14 @@
   font-size: 12px;
 }
 .browse-detail-actions > .primary {
-  color: #1c2b15;
-  border-color: #b3df87;
-  background: #aad87d;
+  color: var(--green-25);
+  border-color: var(--green-86);
+  background: var(--green-81);
   font-weight: 650;
 }
 .browse-detail-actions > .primary:hover:not(:disabled) {
-  color: #1c2b15;
-  background: #c5e99f;
+  color: var(--green-25);
+  background: var(--green-86);
 }
 .browse-detail-tabs {
   position: relative;
@@ -61,18 +61,18 @@
   padding: 6px 8px;
   border-color: transparent;
   background: transparent;
-  color: #b6c6d8;
+  color: var(--blue-82);
   font-size: 12px;
   white-space: nowrap;
 }
 .browse-detail-tabs > button[aria-selected="true"] {
-  color: #e3efcd;
-  border-color: #6a8350;
-  background: #3b4c30;
+  color: var(--green-93);
+  border-color: var(--green-57);
+  background: var(--green-39);
 }
 .browse-detail-tab-count {
   font-size: 10px;
-  color: #c8d9b8;
+  color: var(--green-87);
   font-variant-numeric: tabular-nums;
 }
 .browse-detail-section {
@@ -90,14 +90,14 @@
 }
 .browse-detail-section h4 {
   margin: 0 0 10px;
-  color: #d3dfec;
+  color: var(--gray-89);
   font-size: 14px;
 }
 .browse-detail-section p {
   line-height: 1.65;
 }
 .browse-detail-section .parameter-help {
-  color: #aebed1;
+  color: var(--blue-78);
   font-size: 12px;
   line-height: 1.65;
 }

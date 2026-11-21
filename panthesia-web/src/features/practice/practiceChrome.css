@@ -3,8 +3,8 @@
   min-height: 44px;
   padding: 4px 12px;
   gap: 14px;
-  background: #24272c;
-  border-bottom: 1px solid #101217;
+  background: var(--gray-27);
+  border-bottom: 1px solid var(--gray-18);
   flex-wrap: wrap;
 }
 .workspace-topbar .app-name {
@@ -24,23 +24,23 @@
   border: 1px solid transparent;
   border-radius: 3px;
   font-size: 13px;
-  color: #d5d9df;
+  color: var(--gray-89);
 }
 .application-menubar .toolbar-more > summary > svg {
   display: none;
 }
 .application-menubar .toolbar-more[open] > summary,
 .application-menubar .toolbar-more > summary:hover {
-  background: #3a3f47;
-  border-color: #515a66;
+  background: var(--blue-37);
+  border-color: var(--blue-46);
 }
 .application-menubar .toolbar-more-actions {
   min-width: 230px;
   padding: 5px;
-  background: #292e35;
-  border: 1px solid #59616d;
+  background: var(--gray-29);
+  border: 1px solid var(--blue-50);
   border-radius: 3px;
-  box-shadow: 0 6px 16px #0005;
+  box-shadow: 0 6px 16px color-mix(in oklab, var(--gray-0) 33%, transparent);
 }
 .application-menubar .toolbar-more-actions > button {
   min-height: 34px;
@@ -51,7 +51,7 @@
   justify-content: flex-start;
 }
 .application-menubar .toolbar-more-actions > button:hover {
-  background: #414a56;
+  background: var(--blue-39);
 }
 .workspace-topbar > .engine-indicator {
   font-size: 0;
@@ -65,8 +65,8 @@
 .practice-panel .practice-view-toolbar {
   min-height: 37px;
   height: auto;
-  background: #22272e;
-  border-bottom: 1px solid #11161c;
+  background: var(--gray-27);
+  border-bottom: 1px solid var(--gray-21);
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -83,7 +83,7 @@
 .practice-view-toolbar .toolbar-more > summary {
   background: transparent;
   border: 0;
-  color: #a8b1bd;
+  color: var(--gray-75);
   font-size: 11px;
 }
 .practice-view-toolbar .toolbar-more > summary > svg:first-child {
@@ -96,33 +96,33 @@
   padding: 8px 12px;
 }
 .practice-panel .practice-view-tabs button.selected {
-  background: #343e47;
-  box-shadow: inset 0 -2px #a9c7bc;
-  color: #edf3f0;
+  background: var(--blue-37);
+  box-shadow: inset 0 -2px var(--gray-82);
+  color: var(--gray-96);
 }
 .practice-passage-details {
   flex: none;
-  border-top: 1px solid #3b444e;
-  background: #232931;
+  border-top: 1px solid var(--blue-39);
+  background: var(--gray-27);
   font-size: 12px;
 }
 .score-rhythm-note {
   flex: none;
   margin: 0;
   padding: 6px 13px;
-  color: var(--instrument-muted, #71809a);
-  background: var(--instrument-panel, #fff);
+  color: var(--instrument-muted, var(--blue-60));
+  background: var(--instrument-panel, var(--gray-100));
   font-size: 11px;
   line-height: 1.6;
 }
 .practice-passage-details > summary {
   cursor: pointer;
   padding: 6px 14px;
-  color: #aebac7;
+  color: var(--blue-78);
 }
 .practice-transport {
-  background: #242b33;
-  border-top: 1px solid #4c5661;
+  background: var(--gray-29);
+  border-top: 1px solid var(--blue-46);
   padding: 10px 14px;
   gap: 10px;
 }
@@ -131,7 +131,7 @@
   display: none;
 }
 .practice-welcome {
-  background: #20262d;
+  background: var(--gray-27);
   max-width: 640px;
   padding: 30px;
 }

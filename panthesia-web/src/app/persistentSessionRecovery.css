@@ -1,17 +1,17 @@
 .persistent-session-recovery {
   margin: 14px 0;
   padding: 13px 15px;
-  border: 1px solid #6c6248;
+  border: 1px solid var(--amber-49);
   border-radius: 9px;
-  background: #302d25;
-  color: #e1d6bd;
+  background: var(--gray-31);
+  color: var(--amber-90);
   text-align: left;
   font-size: 12px;
   line-height: 1.8;
 }
 .persistent-session-problem > strong {
   font-size: 13px;
-  color: #f2dfb8;
+  color: var(--amber-90);
 }
 .persistent-session-recovery p {
   margin: 7px 0;
@@ -34,7 +34,7 @@
 }
 .persistent-session-recovery details {
   margin-top: 10px;
-  border-top: 1px solid #635b47;
+  border-top: 1px solid var(--amber-49);
   padding-top: 10px;
 }
 .persistent-session-recovery summary {
@@ -52,13 +52,13 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 7px 0;
-  border-bottom: 1px solid #534e40;
+  border-bottom: 1px solid var(--orange-41);
 }
 .persistent-session-message {
-  color: #c9dfb8;
+  color: var(--green-87);
 }
 .persistent-session-failure {
-  color: #ffd0b6;
+  color: var(--orange-88);
 }
 .persistent-session-text {
   margin-top: 13px;
@@ -77,6 +77,6 @@
   resize: vertical;
   font-size: 12px;
   line-height: 1.7;
-  background: #191f25;
-  color: #d4dee8;
+  background: var(--gray-24);
+  color: var(--gray-89);
 }

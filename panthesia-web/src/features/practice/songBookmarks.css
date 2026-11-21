@@ -1,9 +1,9 @@
 .song-bookmarks {
   flex: none;
   padding: 6px 16px;
-  border-top: 1px solid var(--instrument-line, #dce2ed);
-  background: var(--instrument-panel, #fff);
-  color: var(--instrument-text, #273147);
+  border-top: 1px solid var(--instrument-line, var(--gray-92));
+  background: var(--instrument-panel, var(--gray-100));
+  color: var(--instrument-text, var(--blue-32));
   font-size: 11px;
 }
 .bookmark-actions,
@@ -21,10 +21,10 @@
 }
 .song-bookmarks :is(button, select, input) {
   min-height: 27px;
-  border: 1px solid var(--instrument-line, #dce2ed);
+  border: 1px solid var(--instrument-line, var(--gray-92));
   border-radius: 4px;
   padding: 3px 7px;
-  background: var(--instrument-surface, #f5f6fa);
+  background: var(--instrument-surface, var(--gray-96));
   color: inherit;
   font: inherit;
 }
@@ -38,13 +38,13 @@
 }
 .bookmark-actions small {
   margin-left: auto;
-  color: var(--instrument-muted, #71809a);
+  color: var(--instrument-muted, var(--blue-60));
 }
 .bookmark-ruler {
   position: relative;
   height: 19px;
   margin: 5px 6px 0;
-  border-bottom: 1px solid var(--instrument-line, #dce2ed);
+  border-bottom: 1px solid var(--instrument-line, var(--gray-92));
 }
 .bookmark-ruler button {
   position: absolute;
@@ -54,14 +54,14 @@
   padding: 0 2px;
   border: 0;
   background: transparent;
-  color: var(--instrument-muted, #71809a);
+  color: var(--instrument-muted, var(--blue-60));
 }
 .bookmark-ruler button.user,
 .bookmark-ruler button.selected {
-  color: var(--accent, #6b71dc);
+  color: var(--accent, var(--indigo-58));
 }
 .bookmark-ruler button.selected {
-  background: var(--instrument-surface, #f5f6fa);
+  background: var(--instrument-surface, var(--gray-96));
 }
 .bookmark-editor {
   padding-top: 8px;
@@ -78,7 +78,7 @@
   opacity: 0.45;
 }
 .song-bookmarks :is(button, select, input):focus-visible {
-  outline: 2px solid var(--accent, #6b71dc);
+  outline: 2px solid var(--accent, var(--indigo-58));
   outline-offset: 2px;
 }
 @media (max-width: 800px) {

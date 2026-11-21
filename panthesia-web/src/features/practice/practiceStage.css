@@ -65,7 +65,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--instrument-line, #dce2ed);
+  background: var(--instrument-line, var(--gray-92));
   touch-action: none;
   z-index: 4;
   outline-offset: -2px;
@@ -74,7 +74,7 @@
   width: 3px;
   height: 34px;
   border-radius: 3px;
-  background: var(--instrument-muted, #71809a);
+  background: var(--instrument-muted, var(--blue-60));
 }
 .practice-stage[data-axis="rows"] > .practice-stage-divider span {
   width: 34px;
@@ -82,7 +82,7 @@
 }
 .practice-stage-divider:hover,
 .practice-stage-divider:focus-visible {
-  background: var(--instrument-accent, #6474d1);
+  background: var(--instrument-accent, var(--indigo-60));
 }
 .practice-split-arrangement {
   display: flex;

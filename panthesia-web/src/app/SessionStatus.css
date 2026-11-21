@@ -43,14 +43,14 @@
   align-items: center;
   gap: 10px;
   padding: 9px 16px;
-  background: #352d24;
-  color: #efd4b2;
-  border-bottom: 1px solid #725a40;
+  background: var(--gray-31);
+  color: var(--orange-88);
+  border-bottom: 1px solid var(--amber-49);
   line-height: 1.6;
 }
 .session-problem-strip.severity-blocking {
-  background: #3a2d27;
-  border-color: #8c6250;
+  background: var(--gray-31);
+  border-color: var(--orange-56);
 }
 .session-problem-strip > svg {
   flex-shrink: 0;
@@ -63,12 +63,12 @@
   gap: 2px;
 }
 .session-problem-strip strong {
-  color: #f2dfc7;
+  color: var(--amber-90);
   font-size: 13px;
   font-weight: 600;
 }
 .session-problem-strip > div > span {
-  color: #d7c3b0;
+  color: var(--gray-82);
   font-size: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -5,9 +5,9 @@
   gap: 6px 12px;
   flex: none;
   padding: 5px 16px;
-  background: var(--instrument-panel, #fff);
-  color: var(--instrument-text, #273147);
-  border-bottom: 1px solid var(--instrument-line, #dce2ed);
+  background: var(--instrument-panel, var(--gray-100));
+  color: var(--instrument-text, var(--blue-32));
+  border-bottom: 1px solid var(--instrument-line, var(--gray-92));
   font-size: 11px;
 }
 .keyboard-range-controls > label {
@@ -16,8 +16,8 @@
   gap: 8px;
 }
 .keyboard-range-controls :is(select, button) {
-  border: 1px solid var(--instrument-line, #dce2ed);
-  background: var(--instrument-surface, #f5f6fa);
+  border: 1px solid var(--instrument-line, var(--gray-92));
+  background: var(--instrument-surface, var(--gray-96));
   color: inherit;
   border-radius: 4px;
   min-height: 27px;
@@ -25,7 +25,7 @@
   font-size: 11px;
 }
 .keyboard-range-controls output {
-  color: var(--instrument-muted, #71809a);
+  color: var(--instrument-muted, var(--blue-60));
   font-variant-numeric: tabular-nums;
 }
 .keyboard-range-buttons {
@@ -33,12 +33,12 @@
   gap: 3px;
 }
 .keyboard-range-controls .keyboard-range-outside {
-  color: var(--instrument-accent, #6474d1);
+  color: var(--instrument-accent, var(--indigo-60));
   margin-left: auto;
 }
 .keyboard-range-settings {
   margin: 16px 0;
-  border: 1px solid var(--instrument-line, #46505b);
+  border: 1px solid var(--instrument-line, var(--blue-43));
   border-radius: 8px;
   padding: 12px;
   min-width: 0;
@@ -49,7 +49,7 @@
 }
 .keyboard-range-settings p {
   line-height: 1.6;
-  color: var(--instrument-muted, #aab8cc);
+  color: var(--instrument-muted, var(--blue-78));
   font-size: 12px;
 }
 .keyboard-range-limits {
@@ -64,5 +64,5 @@
   margin-top: 12px;
 }
 .waterfall-density-control { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
-.waterfall-density-control input[type="range"] { width: 92px; min-width: 60px; height: 24px; padding: 0; accent-color: var(--instrument-accent, #6474d1); }
+.waterfall-density-control input[type="range"] { width: 92px; min-width: 60px; height: 24px; padding: 0; accent-color: var(--instrument-accent, var(--indigo-60)); }
 .waterfall-density-control output { min-width: 60px; font-variant-numeric: tabular-nums; }

@@ -7,7 +7,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #252a32;
+  background: var(--gray-29);
   padding: 0.5rem 0;
 }
 .hand-editor-options {
@@ -50,10 +50,10 @@
 }
 .hand-editor-receipt,
 .hand-editor-warning {
-  border: 1px solid #776446;
+  border: 1px solid var(--amber-49);
   border-radius: 8px;
   padding: 0.8rem 1rem;
-  background: #352f24;
+  background: var(--gray-31);
   font-size: 12px;
   line-height: 1.7;
   margin: 0.8rem 0;

@@ -1,9 +1,9 @@
 /* Layout copied from Synthesia's official song-list and playing screenshots.
    Panthesia keeps its own name and the user's practice and data rules. */
 .synthesia-layout {
-  --synth-blue: #147eae;
-  --synth-blue-deep: #116d96;
-  --synth-line: #9da7aa;
+  --synth-blue: var(--blue-57);
+  --synth-blue-deep: var(--blue-50-c10);
+  --synth-line: var(--blue-71);
 }
 .synthesia-layout .workspace-topbar[hidden],
 .synthesia-layout .workspace[hidden] {
@@ -15,11 +15,11 @@
   left: 8px;
   right: 8px;
   top: 62px;
-  border: 1px solid #8aa6b4;
+  border: 1px solid var(--blue-71);
   border-radius: 5px;
-  box-shadow: 0 10px 25px #0005;
-  background: #f3f5f6;
-  color: #273542;
+  box-shadow: 0 10px 25px color-mix(in oklab, var(--gray-0) 33%, transparent);
+  background: var(--gray-96);
+  color: var(--blue-32);
 }
 .synthesia-layout .workspace-topbar .engine-indicator {
   display: none;
@@ -31,8 +31,8 @@
   gap: 8px;
   padding: 0 14px;
   background: var(--synth-blue);
-  color: white;
-  border-bottom: 1px solid #08618a;
+  color: var(--gray-100);
+  border-bottom: 1px solid var(--blue-50-c10);
 }
 .synthesia-layout .synthesia-library-header button,
 .synthesia-layout .synthesia-back {
@@ -40,17 +40,17 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: white;
-  background: #11729d;
-  border: 1px solid #4e9cbe;
+  color: var(--gray-100);
+  background: var(--blue-50-c10);
+  border: 1px solid var(--blue-66);
   border-radius: 5px;
-  box-shadow: inset 0 1px #ffffff18;
+  box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 9%, transparent);
   min-height: 38px;
   padding: 5px 15px;
   font-size: 17px;
 }
 .synthesia-layout .synthesia-library-header button:hover {
-  background: #238bb7;
+  background: var(--blue-57);
 }
 /* One control bar, then the timeline, then score / falling notes / keyboard. */
 .synthesia-layout > .workspace {
@@ -71,9 +71,9 @@
   padding: 0 10px;
   background: var(--synth-blue);
   border: 0;
-  border-bottom: 1px solid #096792;
+  border-bottom: 1px solid var(--blue-50-c10);
   border-radius: 0;
-  color: white;
+  color: var(--gray-100);
   overflow: visible;
 }
 .synthesia-layout .synthesia-transport .practice-transport-main {
@@ -82,7 +82,7 @@
   flex: none;
 }
 .synthesia-layout .synthesia-transport button {
-  color: white;
+  color: var(--gray-100);
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -91,7 +91,7 @@
   border-radius: 0;
 }
 .synthesia-layout .synthesia-transport button:hover:not(:disabled) {
-  background: #ffffff20;
+  background: color-mix(in oklab, var(--gray-100) 13%, transparent);
 }
 .synthesia-layout .synthesia-transport button:disabled {
   opacity: 0.35;
@@ -100,7 +100,7 @@
   margin-right: 20px;
   padding: 5px 12px;
   min-height: 36px;
-  border: 1px solid #4e9cbe;
+  border: 1px solid var(--blue-66);
   border-radius: 5px;
   font-size: 17px;
 }
@@ -108,8 +108,8 @@
   order: -1;
   min-width: 46px;
   padding: 8px 13px;
-  border-left: 1px solid #ffffff20;
-  border-right: 1px solid #ffffff20;
+  border-left: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
 }
 .synthesia-transport .play-button svg,
 .synthesia-transport .practice-transport-main > button svg {
@@ -128,8 +128,8 @@
   margin: 0;
   position: relative;
   padding: 0 4px;
-  border-left: 1px solid #ffffff20;
-  border-right: 1px solid #ffffff20;
+  border-left: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
 }
 .synthesia-layout .synthesia-transport .practice-speed > label,
 .synthesia-layout .synthesia-transport .practice-speed-reset {
@@ -144,7 +144,7 @@
   font-size: 25px;
   font-weight: 400;
   line-height: 1;
-  color: white;
+  color: var(--gray-100);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -186,7 +186,7 @@
   height: 48px;
   padding: 5px;
   background: none;
-  color: white;
+  color: var(--gray-100);
   border: 0;
   border-radius: 0;
 }
@@ -208,17 +208,17 @@
   height: 27px;
 }
 .synthesia-layout .synthesia-transport .toolbar-more-actions {
-  color: #304750;
-  background: #e7edf0;
-  border: 6px solid #147eae;
+  color: var(--blue-39);
+  background: var(--gray-96);
+  border: 6px solid var(--blue-57);
   border-radius: 8px;
-  box-shadow: 0 8px 25px #0005;
+  box-shadow: 0 8px 25px color-mix(in oklab, var(--gray-0) 33%, transparent);
   padding: 9px;
 }
 .synthesia-layout .synthesia-transport .toolbar-more-actions button {
-  color: #304750;
-  background: #f5f5f5;
-  border: 1px solid #aebac0;
+  color: var(--blue-39);
+  background: var(--gray-96);
+  border: 1px solid var(--blue-78);
   border-radius: 5px;
   min-height: 38px;
   text-align: left;
@@ -228,11 +228,11 @@
   .synthesia-transport
   .toolbar-more-actions
   button[aria-pressed="true"] {
-  background: #b8e0ed;
-  color: #174960;
+  background: var(--gray-89);
+  color: var(--blue-41);
 }
 .synthesia-layout .synthesia-transport .practice-volume {
-  color: #304750;
+  color: var(--blue-39);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -254,8 +254,8 @@
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: linear-gradient(#555, #343434);
-  color: #fff;
+  background: linear-gradient(var(--blue-43), var(--gray-33));
+  color: var(--gray-100);
 }
 .synthesia-layout .practice-timeline .time-ruler-labels {
   position: absolute;
@@ -275,10 +275,10 @@
 }
 .synthesia-layout .practice-timeline .time-ruler-labels strong {
   font-size: 13px;
-  color: white;
+  color: var(--gray-100);
 }
 .synthesia-layout .practice-timeline .time-ruler-labels small {
-  color: #e0e0e0;
+  color: var(--gray-92);
 }
 .synthesia-layout .practice-timeline .time-ruler-track {
   position: absolute;
@@ -291,10 +291,10 @@
   opacity: 1;
 }
 .synthesia-layout .practice-timeline .time-ruler-track line {
-  stroke: #bfc5c9;
+  stroke: var(--blue-82);
 }
 .synthesia-layout .practice-timeline .time-ruler-track text {
-  fill: #fff;
+  fill: var(--gray-100);
   font-size: 10px;
 }
 .synthesia-layout .practice-timeline .time-ruler-track input {
@@ -305,7 +305,7 @@
   margin: 0;
   opacity: 0.65;
   cursor: pointer;
-  accent-color: #8fc549;
+  accent-color: var(--green-75);
 }
 .synthesia-layout .practice-timeline .time-ruler-seconds {
   position: absolute;
@@ -314,7 +314,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #efefef;
+  color: var(--gray-96);
   font-size: 10px;
   pointer-events: none;
 }
@@ -337,7 +337,7 @@
 .synthesia-layout
   .synthesia-transport
   .synthesia-metronome[aria-pressed="true"] {
-  background: #ffffff35;
+  background: color-mix(in oklab, var(--gray-100) 21%, transparent);
 }
 /* Song setup follows the official two-column listen / hands layout. */
 .synthesia-song-setup {
@@ -345,8 +345,8 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  background: #eee;
-  color: #30383d;
+  background: var(--gray-96);
+  color: var(--gray-33);
 }
 .synthesia-song-setup .synthesia-library-header h1 {
   flex: 1;
@@ -382,15 +382,15 @@
   justify-content: center;
   gap: 14px;
   min-height: 150px;
-  border: 1px solid #a8a8a8;
+  border: 1px solid var(--gray-75);
   border-radius: 7px;
-  background: linear-gradient(#dedede, #c5c5c5);
-  box-shadow: inset 0 1px #fff;
-  color: #3e4548;
+  background: linear-gradient(var(--gray-89), var(--gray-82));
+  box-shadow: inset 0 1px var(--gray-100);
+  color: var(--blue-39);
 }
 .synthesia-layout .synthesia-setup-body button:hover:not(:disabled) {
-  background: linear-gradient(#d1e7ef, #b5d9e8);
-  border-color: #5597b3;
+  background: linear-gradient(var(--gray-92), var(--gray-85));
+  border-color: var(--blue-63);
 }
 .synthesia-layout .synthesia-setup-body button strong {
   font-size: 23px;
@@ -398,11 +398,11 @@
 }
 .synthesia-layout .synthesia-setup-body button span {
   font-size: 14px;
-  color: #757e83;
+  color: var(--blue-60);
 }
 .synthesia-layout .synthesia-setup-body .synthesia-listen-card {
   min-height: 180px;
-  border: 2px dotted #7898a6;
+  border: 2px dotted var(--blue-67);
 }
 .synthesia-wait-options h2 {
   font-size: 29px;
@@ -411,7 +411,7 @@
   margin: 0 0 5px;
 }
 .synthesia-wait-options > p {
-  color: #8a8f92;
+  color: var(--blue-67);
   font-size: 19px;
   text-align: center;
   margin: 0 0 20px;
@@ -491,4 +491,4 @@
   background: transparent;
   border-radius: 0;
 }
-.synthesia-layout .practice-timeline .time-ruler-labels>span:first-child {color:#fff;}
+.synthesia-layout .practice-timeline .time-ruler-labels>span:first-child {color:var(--gray-100);}

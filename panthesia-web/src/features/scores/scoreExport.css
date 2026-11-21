@@ -4,8 +4,8 @@
   gap: 12px;
   padding: 16px;
   margin: 18px 0 12px;
-  background: linear-gradient(115deg, #253b32, #243448);
-  border: 1px solid #4c6b62;
+  background: linear-gradient(115deg, var(--teal-34), var(--blue-32));
+  border: 1px solid var(--green-49);
   border-radius: 9px;
 }
 .score-export-dialog > footer {
@@ -14,12 +14,12 @@
   z-index: 1;
   margin-top: 20px;
   padding: 12px 0;
-  border-top: 1px solid #465264;
-  background: #252a32;
+  border-top: 1px solid var(--blue-43);
+  background: var(--gray-29);
 }
 .score-export-artifact > svg {
   flex: 0 0 auto;
-  color: #c2dfaa;
+  color: var(--green-87);
 }
 .score-export-artifact > div {
   flex: 1;
@@ -33,10 +33,10 @@
 }
 .score-export-artifact span {
   font-size: 12px;
-  color: #c0cdd7;
+  color: var(--gray-85);
 }
 .score-export-artifact b {
-  color: #c2dfaa;
+  color: var(--green-87);
   font-size: 12px;
   font-weight: 500;
 }
@@ -46,8 +46,8 @@
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 12px;
-  background: #253344;
-  border-left: 3px solid #80aacb;
+  background: var(--blue-32);
+  border-left: 3px solid var(--blue-71);
 }
 .score-export-task span {
   flex: 1;
@@ -55,14 +55,14 @@
 }
 .score-export-note {
   line-height: 1.75;
-  background: #3b3226;
-  color: #f0d2a2;
+  background: var(--gray-31);
+  color: var(--orange-88);
   padding: 10px 12px;
-  border-left: 3px solid #d5a965;
+  border-left: 3px solid var(--amber-77);
 }
 .score-export-cache {
   margin: 18px 0;
-  border-top: 1px solid var(--border, #465264);
+  border-top: 1px solid var(--border, var(--blue-43));
   padding-top: 12px;
 }
 .score-export-cache summary {
@@ -71,7 +71,7 @@
 }
 .score-export-cache p {
   font-size: 12px;
-  color: var(--muted, #bbc7d4);
+  color: var(--muted, var(--blue-82));
   line-height: 1.7;
 }
 .score-export-cache ul {
@@ -83,7 +83,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border, #465264);
+  border-bottom: 1px solid var(--border, var(--blue-43));
 }
 .score-export-cache li > div {
   flex: 1;
@@ -97,7 +97,7 @@
 }
 .score-export-cache small {
   font-size: 12px;
-  color: var(--muted, #bbc7d4);
+  color: var(--muted, var(--blue-82));
 }
 .score-export-spinner {
   animation: score-export-spin 1s linear infinite;
@@ -121,7 +121,7 @@
 }
 .score-export-conflict-row {
   padding: 12px 0;
-  border-bottom: 1px solid var(--border, #465264);
+  border-bottom: 1px solid var(--border, var(--blue-43));
 }
 .score-export-conflict-row ol {
   list-style: none;
@@ -137,7 +137,7 @@
 .score-export-conflict-row li b {
   flex: 0 0 65px;
   font-weight: 500;
-  color: #b7c8d8;
+  color: var(--blue-82);
   font-size: 12px;
 }
 .score-export-position-pages,
@@ -160,7 +160,7 @@
 }
 .score-export-dialog button:focus-visible,
 .score-export-cache summary:focus-visible {
-  outline: 2px solid #c2dfaa;
+  outline: 2px solid var(--green-87);
   outline-offset: 3px;
 }
 @media (max-width: 650px) {

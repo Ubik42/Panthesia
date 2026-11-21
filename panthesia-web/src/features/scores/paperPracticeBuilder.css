@@ -5,7 +5,7 @@
   margin-bottom: 6px;
 }
 .paper-practice-dialog .dialog-heading p {
-  color: var(--muted, #a9b4c6);
+  color: var(--muted, var(--blue-78));
   margin: 0;
 }
 .paper-practice-context {
@@ -16,7 +16,7 @@
 }
 .paper-practice-context > span {
   padding: 5px 9px;
-  background: #477cd61b;
+  background: color-mix(in oklab, var(--indigo-60) 11%, transparent);
   border-radius: 6px;
   font-size: 0.85rem;
 }
@@ -25,7 +25,7 @@
   flex-wrap: wrap;
   gap: 7px;
   margin-bottom: 12px;
-  color: var(--muted, #a9b4c6);
+  color: var(--muted, var(--blue-78));
   font-size: 0.85rem;
 }
 .paper-practice-dialog .paper-practice-fields {
@@ -53,15 +53,15 @@
   gap: 12px;
 }
 .paper-practice-notice {
-  color: #b8d4ff;
+  color: var(--blue-86);
 }
 .paper-practice-invalid {
-  color: #eec584;
+  color: var(--amber-83);
   font-size: 0.85rem;
 }
 .paper-practice-pending {
-  border: 1px solid #a3814e;
-  background: #a3814e16;
+  border: 1px solid var(--amber-67);
+  background: color-mix(in oklab, var(--amber-67) 9%, transparent);
   border-radius: 9px;
   padding: 12px;
   margin: 14px 0;

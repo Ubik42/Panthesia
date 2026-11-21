@@ -1,5 +1,5 @@
 .duet-runtime-panel {
-  color: var(--instrument-text, #273147);
+  color: var(--instrument-text, var(--blue-32));
   font-size: 13px;
   line-height: 1.6;
 }
@@ -16,17 +16,17 @@
 }
 .duet-runtime-title p {
   margin: 0;
-  color: var(--instrument-muted, #68758a);
+  color: var(--instrument-muted, var(--blue-55));
 }
 .duet-runtime-title > span {
   flex: none;
-  border: 1px solid var(--instrument-line, #d8dce4);
+  border: 1px solid var(--instrument-line, var(--gray-89));
   border-radius: 5px;
   padding: 3px 8px;
-  color: #a16a33;
+  color: var(--orange-56);
 }
 .duet-runtime-title > span.ready {
-  color: #3f856b;
+  color: var(--green-57);
 }
 .duet-runtime-field {
   display: grid;
@@ -48,15 +48,15 @@
 .duet-runtime-device select,
 .duet-runtime-actions button {
   padding: 8px 11px;
-  border: 1px solid var(--instrument-line, #d8dce4);
+  border: 1px solid var(--instrument-line, var(--gray-89));
   border-radius: 5px;
-  background: var(--instrument-surface, #f5f6f9);
+  background: var(--instrument-surface, var(--gray-96));
   color: inherit;
   font-size: 13px;
 }
 .duet-runtime-field small {
   overflow-wrap: anywhere;
-  color: var(--instrument-muted, #68758a);
+  color: var(--instrument-muted, var(--blue-55));
 }
 .duet-runtime-device {
   display: flex;
@@ -65,23 +65,23 @@
   font-weight: 650;
 }
 .duet-runtime-help {
-  color: var(--instrument-muted, #68758a);
+  color: var(--instrument-muted, var(--blue-55));
   margin: 16px 0;
 }
 .duet-runtime-issues,
 .duet-runtime-error {
-  color: #b45a40;
+  color: var(--red-55);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 .duet-runtime-probe {
   padding: 13px 15px;
-  border-left: 3px solid #bc8d58;
-  background: var(--instrument-surface, #f5f6f9);
+  border-left: 3px solid var(--amber-67);
+  background: var(--instrument-surface, var(--gray-96));
   margin: 16px 0;
 }
 .duet-runtime-probe.ready {
-  border-color: #589d86;
+  border-color: var(--green-66);
 }
 .duet-runtime-probe p {
   margin: 5px 0;
@@ -93,10 +93,10 @@
   padding-top: 12px;
 }
 .duet-runtime-actions .duet-runtime-save {
-  background: var(--accent, #7079d9);
-  color: #fff;
+  background: var(--accent, var(--indigo-60));
+  color: var(--gray-100);
 }
 .device-settings-body[hidden] {
   display: none;
 }
-.duet-runtime-device>span{flex:none;white-space:nowrap}.duet-runtime-device>select{flex:1;min-width:0}.daily-workbench .duet-runtime-actions .duet-runtime-save{background:var(--instrument-text,#273147);color:var(--instrument-panel,#fff);border-color:var(--instrument-text,#273147)}
+.duet-runtime-device>span{flex:none;white-space:nowrap}.duet-runtime-device>select{flex:1;min-width:0}.daily-workbench .duet-runtime-actions .duet-runtime-save{background:var(--instrument-text,var(--blue-32));color:var(--instrument-panel,var(--gray-100));border-color:var(--instrument-text,var(--blue-32))}

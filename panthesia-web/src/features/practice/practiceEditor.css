@@ -1,7 +1,7 @@
 .practice-draft-strip {
-  border: 1px solid var(--border, #3d4855);
+  border: 1px solid var(--border, var(--blue-39));
   border-radius: 10px;
-  background: #202b34;
+  background: var(--gray-29);
   padding: 0.8rem 1rem;
   margin: 0.7rem 0;
 }
@@ -17,7 +17,7 @@
   top: 0;
   z-index: 3;
   padding: 12px 0;
-  background: var(--panel, #272e38);
+  background: var(--panel, var(--gray-29));
 }
 .practice-editor-dialog .dialog-heading > div {
   min-width: 0;
@@ -50,7 +50,7 @@
   gap: 1rem;
 }
 .practice-draft-strip-heading strong {
-  color: #e4edf2;
+  color: var(--gray-96);
   font-size: 13px;
 }
 .practice-draft-tabs {
@@ -68,12 +68,12 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.5rem 0.7rem;
-  background: #17212a;
+  background: var(--gray-24);
   border-radius: 7px;
 }
 .practice-draft-tabs > button[aria-pressed="true"] {
-  border-color: #80c6b7;
-  background: #28483f;
+  border-color: var(--teal-76);
+  background: var(--green-39);
 }
 .practice-draft-tabs > button span {
   overflow: hidden;
@@ -119,8 +119,8 @@
 .practice-draft-conflict {
   margin: 0.8rem 0;
   padding: 0.85rem 1rem;
-  border: 1px solid #796543;
-  background: #352f24;
+  border: 1px solid var(--amber-49);
+  background: var(--gray-31);
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.65;
@@ -134,7 +134,7 @@
   margin: 0.3rem 0.5rem 0.3rem 0;
 }
 .practice-receipt-result {
-  border-top: 1px solid #796543;
+  border-top: 1px solid var(--amber-49);
   padding-top: 0.7rem;
   margin-top: 0.6rem;
 }
@@ -149,7 +149,7 @@
 .practice-saved-details {
   border-radius: 6px;
   padding: 0.5rem 0.7rem;
-  background: #191d2280;
+  background: color-mix(in oklab, var(--gray-24) 50%, transparent);
   font-size: 12px;
 }
 .practice-saved-details dl {
@@ -162,7 +162,7 @@
   min-width: 0;
 }
 .practice-saved-details dt {
-  color: #a6b6c2;
+  color: var(--blue-78);
   font-size: 11px;
 }
 .practice-saved-details dd {
@@ -175,7 +175,7 @@
   overflow: auto;
 }
 .practice-draft-notice {
-  color: #aed8c8;
+  color: var(--teal-87);
   font-size: 13px;
 }
 .practice-list-pager {
@@ -193,10 +193,10 @@
   padding: 0.25rem 0.5rem;
 }
 .practice-input-problem {
-  border-left: 3px solid #d4ad6c;
+  border-left: 3px solid var(--amber-77);
   padding: 0.6rem 0.8rem;
-  background: #3b3224;
-  color: #efdcba;
+  background: var(--gray-31);
+  color: var(--amber-90);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -206,7 +206,7 @@
   gap: 0.6rem;
   padding-bottom: 0.7rem;
   margin-bottom: 0.7rem;
-  border-bottom: 1px solid #39434e;
+  border-bottom: 1px solid var(--blue-37);
 }
 .practice-editor-summary strong {
   font-size: 15px;
@@ -228,7 +228,7 @@
 .practice-reveal-selection {
   font-size: 11px;
   margin-bottom: 0.6rem;
-  color: #c3e4d4;
+  color: var(--teal-87);
 }
 .practice-settings-summary {
   display: grid;
@@ -239,9 +239,9 @@
 .practice-settings-summary > span {
   padding: 0.6rem;
   border-radius: 7px;
-  background: #202c34;
+  background: var(--gray-29);
   font-size: 12px;
-  color: #bfd1d9;
+  color: var(--gray-85);
 }
 @media (max-width: 650px) {
   .practice-draft-strip {
@@ -269,7 +269,7 @@
     max-height: 38vh;
     padding-right: 0;
     border-right: 0;
-    border-bottom: 1px solid #3b4451;
+    border-bottom: 1px solid var(--blue-39);
     padding-bottom: 12px;
   }
 }

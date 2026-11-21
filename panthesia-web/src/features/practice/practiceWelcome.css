@@ -7,7 +7,7 @@
   flex-direction: column;
   align-items: center;
   padding: 24px clamp(18px, 4vw, 56px) 34px;
-  background: radial-gradient(ellipse at 50% 18%, #4a665a28, transparent 65%);
+  background: radial-gradient(ellipse at 50% 18%, color-mix(in oklab, var(--green-49) 16%, transparent), transparent 65%);
 }
 .practice-welcome-art {
   position: relative;
@@ -18,27 +18,27 @@
 .practice-welcome-art svg {
   display: block;
   width: 100%;
-  filter: drop-shadow(0 10px 12px #0004);
+  filter: drop-shadow(0 10px 12px color-mix(in oklab, var(--gray-0) 27%, transparent));
 }
 .welcome-key {
-  fill: #a8b8b9;
-  stroke: #bdcecd;
+  fill: var(--blue-78);
+  stroke: var(--gray-85);
   stroke-width: 0.7;
 }
 .welcome-key-lit {
-  fill: #c0df9c;
-  stroke: #e1f5c8;
+  fill: var(--green-86);
+  stroke: var(--green-93);
 }
 .welcome-key-black {
-  fill: #202932;
-  stroke: #56636a;
+  fill: var(--gray-27);
+  stroke: var(--blue-50);
   stroke-width: 1;
 }
 .practice-welcome-note {
   position: absolute;
   top: -18px;
   right: 12px;
-  color: #b4d993;
+  color: var(--green-86);
   font-size: 27px;
   transform: rotate(15deg);
 }
@@ -48,18 +48,18 @@
   flex: none;
 }
 .practice-welcome-eyebrow {
-  color: #b9cfac;
+  color: var(--green-83);
   font-size: 12px;
   letter-spacing: 0.12em;
 }
 .practice-welcome-intro h2 {
   margin: 8px 0;
   font-size: clamp(22px, 2.3vw, 30px);
-  color: #e4ece6;
+  color: var(--gray-92);
   font-weight: 600;
 }
 .practice-welcome-intro p {
-  color: #adbac9;
+  color: var(--blue-78);
   margin: 8px 0 18px;
   font-size: 13px;
   line-height: 1.7;
@@ -70,10 +70,10 @@
   justify-content: flex-start;
   gap: 14px;
   padding: 13px 16px;
-  border: 1px solid #768e5d;
+  border: 1px solid var(--green-57);
   border-radius: 9px;
-  background: #34442c;
-  color: #e0edcb;
+  background: var(--green-39);
+  color: var(--green-93);
   text-align: left;
 }
 .practice-welcome-resume > span {
@@ -83,7 +83,7 @@
   gap: 5px;
 }
 .practice-welcome-resume small {
-  color: #bed2ad;
+  color: var(--green-83);
   font-size: 11px;
 }
 .practice-welcome-resume strong {
@@ -106,9 +106,9 @@
   min-height: 68px;
   flex: 1 1 175px;
   padding: 10px 13px;
-  border-color: #405160;
+  border-color: var(--blue-43);
   border-radius: 8px;
-  background: #222c36;
+  background: var(--gray-29);
   text-align: left;
 }
 .practice-welcome-choices button > span {
@@ -118,11 +118,11 @@
 .practice-welcome-choices strong {
   font-size: 13px;
   font-weight: 500;
-  color: #d4e0e9;
+  color: var(--gray-89);
 }
 .practice-welcome-choices small {
   font-size: 11px;
-  color: #a7b5c6;
+  color: var(--blue-78);
   line-height: 1.5;
 }
 .practice-welcome-device {
@@ -132,7 +132,7 @@
   margin-bottom: auto;
   border-color: transparent;
   background: transparent;
-  color: #aabccb;
+  color: var(--blue-78);
   font-size: 12px;
 }
 .practice-welcome-device span {

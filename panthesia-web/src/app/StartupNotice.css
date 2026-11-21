@@ -9,10 +9,10 @@
   width: min(680px, calc(100% - 48px));
   margin: auto;
   padding: 36px;
-  border: 1px solid #3f4c38;
+  border: 1px solid var(--green-39);
   border-radius: 14px;
-  background: linear-gradient(135deg, #252e24, #1c2025);
-  box-shadow: 0 20px 70px #0003;
+  background: linear-gradient(135deg, var(--gray-30), var(--gray-24));
+  box-shadow: 0 20px 70px color-mix(in oklab, var(--gray-0) 20%, transparent);
 }
 .startup-symbol {
   display: grid;
@@ -20,7 +20,7 @@
   flex: 0 0 64px;
   height: 64px;
   border-radius: 18px;
-  background: #a9df7415;
+  background: color-mix(in oklab, var(--green-84) 8%, transparent);
   color: var(--accent);
 }
 .startup-copy {
@@ -35,11 +35,11 @@
   font-size: 24px;
   font-weight: 600;
   line-height: 1.4;
-  color: #edf1e9;
+  color: var(--gray-96);
   margin: 10px 0;
 }
 .startup-copy p {
-  color: #bac2b8;
+  color: var(--gray-82);
   line-height: 1.8;
   margin: 8px 0;
   overflow-wrap: anywhere;
@@ -63,20 +63,20 @@
   color: var(--muted);
 }
 .startup-actions button {
-  border-color: #68884c;
-  background: #40552e;
-  color: #ecf5e4;
+  border-color: var(--green-57);
+  background: var(--green-39);
+  color: var(--teal-96);
 }
 .startup-spinner {
   animation: startup-spin 1.5s linear infinite;
 }
 .startup-failed {
-  border-color: #786044;
-  background: linear-gradient(135deg, #30291f, #1c2025);
+  border-color: var(--amber-49);
+  background: linear-gradient(135deg, var(--gray-31), var(--gray-24));
 }
 .startup-failed .startup-symbol {
-  background: #dfb07415;
-  color: #dfb074;
+  background: color-mix(in oklab, var(--amber-77) 8%, transparent);
+  color: var(--amber-77);
 }
 @keyframes startup-spin {
   to {

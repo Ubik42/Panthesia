@@ -28,7 +28,7 @@
 .meter-map-table th,
 .meter-map-table td {
   padding: 9px 8px;
-  border-bottom: 1px solid var(--border, #394049);
+  border-bottom: 1px solid var(--border, var(--blue-37));
   white-space: nowrap;
 }
 .meter-map-table input {
@@ -84,23 +84,23 @@
 .meter-map-dialog .meter-map-table thead th {
   position: sticky;
   top: 0;
-  background: #242a33;
+  background: var(--gray-29);
   z-index: 1;
 }
 .meter-map-dialog .dialog-actions {
   position: sticky;
   bottom: 0;
   padding: 14px 0;
-  background: #242a33;
+  background: var(--gray-29);
   z-index: 2;
 }
 
 .meter-source-changed {
   padding: 12px 14px;
   margin: 12px 0;
-  border-left: 3px solid #c8a65c;
-  background: #352f23;
-  color: #f0dfb4;
+  border-left: 3px solid var(--amber-77);
+  background: var(--gray-31);
+  color: var(--amber-90);
   border-radius: 4px;
 }
 .meter-source-changed p {
@@ -112,14 +112,14 @@
 }
 .meter-preview-summary {
   padding: 0.75rem 1rem;
-  border: 1px solid #42545f;
+  border: 1px solid var(--blue-43);
   border-radius: 7px;
-  background: #223039;
-  color: #c6ded5;
+  background: var(--gray-29);
+  color: var(--teal-87);
   font-size: 13px;
 }
 .meter-map-dialog .browse-detail-masthead {
-  background: #252a32;
+  background: var(--gray-29);
 }
 .meter-map-dialog .browse-detail-section {
   padding: 0.5rem 0 1rem;

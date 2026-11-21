@@ -1,13 +1,13 @@
-.metadata-defaults{border:1px solid var(--line,#68718a);border-radius:8px;padding:10px 12px;font-size:13px;min-width:0}
+.metadata-defaults{border:1px solid var(--line,var(--blue-55));border-radius:8px;padding:10px 12px;font-size:13px;min-width:0}
 .metadata-defaults summary{cursor:pointer;font-weight:600;line-height:1.6}
 .metadata-defaults summary span{font-weight:400;margin-left:12px;color:var(--muted,inherit)}
 .metadata-defaults p{line-height:1.6;margin:10px 0}
 .metadata-defaults-scroll{max-height:300px;overflow:auto;overscroll-behavior:contain}
 .metadata-defaults table{width:100%;border-collapse:collapse;table-layout:fixed;text-align:left}
-.metadata-defaults th,.metadata-defaults td{padding:9px 7px;border-bottom:1px solid var(--line,#68718a);overflow-wrap:anywhere;white-space:pre-wrap;vertical-align:top}
+.metadata-defaults th,.metadata-defaults td{padding:9px 7px;border-bottom:1px solid var(--line,var(--blue-55));overflow-wrap:anywhere;white-space:pre-wrap;vertical-align:top}
 .metadata-defaults th:first-child{width:40px}
 .metadata-defaults th:nth-child(2){width:85px}
 .metadata-defaults th small{display:block;font-size:11px;font-weight:400;margin-top:4px}
-.library-metadata-editor .metadata-defaults input[type=checkbox]{width:16px;height:16px;min-width:16px;accent-color:var(--accent,#686bdb)}
+.library-metadata-editor .metadata-defaults input[type=checkbox]{width:16px;height:16px;min-width:16px;accent-color:var(--accent,var(--indigo-58))}
 .metadata-defaults-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 @media(max-width:800px){.metadata-defaults{padding:8px}.metadata-defaults th:nth-child(2){width:62px}.metadata-defaults th:first-child{width:42px}.metadata-defaults th,.metadata-defaults td{padding:7px 4px}}

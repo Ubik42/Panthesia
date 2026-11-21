@@ -21,4 +21,4 @@
 .daily-workbench .score-route summary { color: var(--instrument-text); }
 .daily-workbench .notation-pane .score-message { color: var(--instrument-muted); }
 .daily-workbench .notation-pane .score-rhythm-note { border-bottom: 1px solid var(--instrument-line); }
-.daily-workbench .score-paper { box-shadow: 0 2px 10px #18243c16; }
+.daily-workbench .score-paper { box-shadow: 0 2px 10px color-mix(in oklab, var(--indigo-26) 9%, transparent); }

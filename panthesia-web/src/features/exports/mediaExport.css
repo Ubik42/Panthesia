@@ -5,7 +5,7 @@
 }
 .media-export-dialog header p {
   margin: 5px 0 0;
-  color: #b8c7d5;
+  color: var(--blue-82);
   overflow-wrap: anywhere;
 }
 .media-export-intro {
@@ -16,18 +16,18 @@
 }
 .media-export-intro > svg {
   flex: 0 0 auto;
-  color: #acd1af;
+  color: var(--green-83);
 }
 .media-export-intro p {
   margin: 0;
   line-height: 1.8;
   font-size: 13px;
-  color: #c3cfdc;
+  color: var(--gray-85);
 }
 .media-export-progress {
   padding: 12px;
-  background: #263548;
-  border-left: 3px solid #88b1d2;
+  background: var(--blue-32);
+  border-left: 3px solid var(--blue-75);
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
@@ -40,9 +40,9 @@
 .media-export-result {
   padding: 18px;
   margin: 18px 0;
-  border: 1px solid #526e61;
+  border: 1px solid var(--green-49);
   border-radius: 9px;
-  background: linear-gradient(120deg, #263a30, #263346);
+  background: linear-gradient(120deg, var(--teal-34), var(--blue-32));
 }
 .media-export-result-heading {
   display: flex;
@@ -51,18 +51,18 @@
   flex-wrap: wrap;
 }
 .media-export-result strong {
-  color: #e2eddc;
+  color: var(--green-93);
   overflow-wrap: anywhere;
 }
 .media-export-result span,
 .media-export-result p {
-  color: #c2cfdc;
+  color: var(--gray-85);
   line-height: 1.8;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 .media-export-warning {
-  color: #f0d2a2 !important;
+  color: var(--orange-88) !important;
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
@@ -75,7 +75,7 @@
 }
 .media-export-cache > p {
   font-size: 12px;
-  color: #b6c6d5;
+  color: var(--blue-82);
   line-height: 1.8;
 }
 .media-export-cache-toolbar {
@@ -93,7 +93,7 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  border-bottom: 1px solid #465261;
+  border-bottom: 1px solid var(--blue-43);
 }
 .media-export-cache li > div {
   flex: 1;
@@ -108,13 +108,13 @@
 .media-export-cache small,
 .media-export-cache li p {
   font-size: 12px;
-  color: #b8c7d5;
+  color: var(--blue-82);
   line-height: 1.7;
 }
 .media-export-cache button[aria-pressed="true"] {
-  border-color: #a9cb97;
-  color: #d4e7c6;
-  background: #344638;
+  border-color: var(--green-80);
+  color: var(--green-93);
+  background: var(--green-39);
 }
 .media-export-result {
   scroll-margin-top: 18px;
@@ -126,15 +126,15 @@
   gap: 10px;
   position: sticky;
   bottom: 0;
-  background: #252a32;
-  border-top: 1px solid #465261;
+  background: var(--gray-29);
+  border-top: 1px solid var(--blue-43);
   margin-top: 18px;
   padding: 14px 0;
   z-index: 1;
 }
 .media-export-dialog button:focus-visible,
 .media-export-cache summary:focus-visible {
-  outline: 2px solid #c2dfaa;
+  outline: 2px solid var(--green-87);
   outline-offset: 3px;
 }
 @media (max-width: 650px) {

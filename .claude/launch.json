@@ -4,7 +4,7 @@
     {
       "name": "service",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "set PANTHESIA_DATA_ROOT=D:\Music\_tools\Panthesia\work\web-preview-data&& cargo run -q -p panthesia-engine --bin panthesia-service -- --silent"],
+      "runtimeArgs": ["/c", "set PANTHESIA_DATA_ROOT=D:/Music/_tools/Panthesia/work/web-preview-data&& cargo run -q -p panthesia-engine --bin panthesia-service -- --silent"],
       "port": 32124
     },
     {

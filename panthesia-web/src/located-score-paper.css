@@ -9,7 +9,7 @@
 .located-paper-dialog > .dialog-actions {
   position: sticky;
   z-index: 2;
-  background: #252a32;
+  background: var(--gray-29);
 }
 
 .located-paper-dialog > .dialog-heading {
@@ -18,7 +18,7 @@
 
 .located-paper-dialog > .dialog-actions {
   bottom: 0;
-  border-top: 1px solid #414b56;
+  border-top: 1px solid var(--blue-39);
   padding: 10px 0;
 }
 
@@ -36,9 +36,9 @@
 
 .located-paper-summary {
   padding: 10px 14px;
-  background: #2b343b;
-  border: 1px solid #48535f;
-  color: #dce4ec;
+  background: var(--gray-33);
+  border: 1px solid var(--blue-43);
+  color: var(--gray-92);
   border-radius: 4px;
 }
 
@@ -50,8 +50,8 @@
   height: min(32vh, 300px);
   overflow: auto;
   margin: 8px 0 12px;
-  border: 1px solid var(--border, #d6d1c8);
-  background: white;
+  border: 1px solid var(--border, var(--gray-85));
+  background: var(--gray-100);
 }
 
 .located-paper-sheet {
@@ -69,14 +69,14 @@
   box-sizing: border-box;
   min-width: 10px;
   min-height: 10px;
-  border: 2px solid #1b729c;
-  background: #1b729c30;
+  border: 2px solid var(--blue-50-c10);
+  background: color-mix(in oklab, var(--blue-50-c10) 19%, transparent);
   pointer-events: none;
 }
 
 .located-paper-highlight.excluded {
-  border-color: #a64937;
-  background: #a6493728;
+  border-color: var(--red-55);
+  background: color-mix(in oklab, var(--red-55) 16%, transparent);
 }
 
 .located-paper-pages,
@@ -127,7 +127,7 @@
 .located-paper-note-list {
   max-height: 130px;
   overflow: auto;
-  border: 1px solid var(--border, #d6d1c8);
+  border: 1px solid var(--border, var(--gray-85));
 }
 
 .located-paper-note-row {
@@ -135,7 +135,7 @@
 }
 
 .located-paper-note-row + .located-paper-note-row {
-  border-top: 1px solid var(--border, #d6d1c8);
+  border-top: 1px solid var(--border, var(--gray-85));
 }
 
 .located-paper-note-row button {
@@ -143,6 +143,6 @@
   flex: 1;
 }
 
-.located-paper-note-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; color: #bdcad8; font-size: 12px; }
+.located-paper-note-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; color: var(--gray-85); font-size: 12px; }
 .located-paper-note-pagination > span { margin-right: auto; }
 .located-paper-note-pagination button { padding: 4px 10px; }

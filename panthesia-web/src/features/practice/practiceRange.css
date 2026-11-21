@@ -11,30 +11,30 @@
 .practice-range-controls button {
   padding: 4px 7px;
   min-height: 26px;
-  border: 1px solid var(--instrument-line, #d8dce4);
-  background: var(--instrument-panel, #fff);
-  color: var(--instrument-muted, #68758a);
+  border: 1px solid var(--instrument-line, var(--gray-89));
+  background: var(--instrument-panel, var(--gray-100));
+  color: var(--instrument-muted, var(--blue-55));
   border-radius: 4px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space:nowrap;
 }
 .practice-range-controls button > b {
-  color: var(--instrument-text, #273147);
+  color: var(--instrument-text, var(--blue-32));
   font-size: 10px;
   margin-right: 3px;
 }
 .practice-range-controls button[aria-pressed="true"] {
-  background: #315e61;
-  color: #fff;
-  border-color: #315e61;
+  background: var(--blue-46);
+  color: var(--gray-100);
+  border-color: var(--blue-46);
 }
 .practice-range-hint {
-  color: var(--instrument-text, #273147);
+  color: var(--instrument-text, var(--blue-32));
   padding: 3px 6px;
 }
 .practice-range-error {
-  color: #ae543e;
+  color: var(--red-55);
 }
 .practice-range-overview {
   height: 7px;
@@ -42,7 +42,7 @@
   flex: 0 0 7px;
   min-height:7px;
   width:100%;
-  background: var(--instrument-line, #d8dce4);
+  background: var(--instrument-line, var(--gray-89));
   border-radius: 3px;
   margin: 3px 0;
   overflow: hidden;
@@ -50,21 +50,21 @@
 .practice-range-overview > i {
   position: absolute;
   inset: 0 auto 0 0;
-  background: #729c9b88;
+  background: color-mix(in oklab, var(--blue-67) 53%, transparent);
 }
 .practice-range-overview > i.draft {
-  background: #91b7db;
+  background: var(--blue-75);
 }
 .practice-range-overview > b {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--accent, #747cd8);
+  background: var(--accent, var(--indigo-60));
 }
 .score-paper g.practice-range-note:not(.playing-note) .notehead {
-  fill: #347e9a;
-  stroke: #347e9a;
+  fill: var(--blue-57);
+  stroke: var(--blue-57);
 }
 .time-ruler .practice-range-toolbar {
   flex: 0 0 auto;

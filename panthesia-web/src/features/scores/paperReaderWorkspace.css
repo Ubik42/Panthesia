@@ -33,8 +33,8 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0 12px 12px;
-  background: #1e2733;
-  border: 1px solid #3c4b60;
+  background: var(--gray-27);
+  border: 1px solid var(--blue-41);
   border-radius: 10px;
   scrollbar-gutter: stable;
 }
@@ -45,9 +45,9 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #1e2733;
+  background: var(--gray-27);
   padding: 12px 0 10px;
-  border-bottom: 1px solid #3c4b60;
+  border-bottom: 1px solid var(--blue-41);
   margin-bottom: 10px;
 }
 .paper-reader-tools-heading h3 {
@@ -56,7 +56,7 @@
 }
 .paper-reader-tools-heading span {
   font-size: 0.78rem;
-  color: #a9b9cd;
+  color: var(--blue-78);
 }
 .paper-reader-tools .paper-follow-controls {
   display: flex;
@@ -90,7 +90,7 @@
   flex-wrap: wrap;
   padding: 10px 0;
   gap: 7px;
-  border-top: 1px solid #3c4b60;
+  border-top: 1px solid var(--blue-41);
 }
 .paper-reader-tools .paper-anchor-row > span,
 .paper-reader-tools .paper-note-anchor-row > span {
@@ -121,8 +121,8 @@
 .paper-reader .paper-controls .paper-follow-status {
   padding: 5px 8px;
   border-radius: 6px;
-  color: #bad4fa;
-  background: #477cd61c;
+  color: var(--blue-86);
+  background: color-mix(in oklab, var(--indigo-60) 11%, transparent);
   font-size: 0.78rem;
   white-space: nowrap;
 }

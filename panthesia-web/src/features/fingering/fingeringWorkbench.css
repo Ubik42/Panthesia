@@ -8,16 +8,16 @@
 .fingering-workbench-search {
   display: grid;
   gap: 7px;
-  color: #bdccdc;
+  color: var(--gray-85);
   font-size: 12px;
 }
 .fingering-workbench-search input {
   min-height: 35px;
   padding: 7px 10px;
-  background: #1c2530;
-  border: 1px solid #4c5b6b;
+  background: var(--gray-26);
+  border: 1px solid var(--blue-46);
   border-radius: 5px;
-  color: #e0e9f2;
+  color: var(--gray-92);
 }
 .fingering-workbench-rows {
   flex: 1;
@@ -37,7 +37,7 @@
   align-items: center;
   gap: 12px 20px;
   padding: 16px 0;
-  border-top: 1px solid #40505e;
+  border-top: 1px solid var(--blue-43);
 }
 .fingering-workbench-rows article > div:first-child {
   min-width: 0;
@@ -47,14 +47,14 @@
   font-size: 15px;
   line-height: 1.6;
   margin: 0 0 5px;
-  color: #e0e9f2;
+  color: var(--gray-92);
   overflow-wrap: anywhere;
 }
 .fingering-workbench-rows p {
   margin: 5px 0;
   font-size: 12px;
   line-height: 1.65;
-  color: #b2c3d6;
+  color: var(--blue-82);
 }
 .fingering-workbench-actions {
   display: flex;
@@ -67,19 +67,19 @@
   font-size: 12px;
 }
 .fingering-workbench-actions button:first-child {
-  border-color: #87a866;
-  color: #d2e9b9;
+  border-color: var(--green-66);
+  color: var(--green-93);
 }
 .fingering-workbench-storage {
   padding: 10px 12px;
-  background: #413528;
-  border: 1px solid #8a6f4f;
+  background: var(--orange-35);
+  border: 1px solid var(--orange-56);
   font-size: 12px;
   line-height: 1.7;
 }
 .fingering-workbench-button span {
   margin-left: 7px;
-  color: #edbd93;
+  color: var(--amber-83);
   font-size: 11px;
 }
 .fingering-workbench-empty {

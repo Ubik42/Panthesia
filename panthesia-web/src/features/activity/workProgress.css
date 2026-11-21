@@ -11,13 +11,13 @@
   place-items: center;
   padding: 0 4px;
   border-radius: 10px;
-  background: #3c5142;
-  color: #d8f0cd;
+  background: var(--green-39);
+  color: var(--green-93);
   font-size: 11px;
 }
 .work-progress-button.needs-attention b {
-  background: #604628;
-  color: #ffe0aa;
+  background: var(--orange-41);
+  color: var(--amber-90);
 }
 .work-progress-backdrop {
   z-index: 1200;
@@ -32,10 +32,10 @@
   flex-direction: column;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid #4b5b69;
-  background: #202832;
-  color: #e7eef5;
-  box-shadow: 0 24px 80px #0009;
+  border: 1px solid var(--blue-46);
+  background: var(--gray-27);
+  color: var(--gray-96);
+  box-shadow: 0 24px 80px color-mix(in oklab, var(--gray-0) 60%, transparent);
   text-align: left;
 }
 .work-progress-heading {
@@ -47,7 +47,7 @@
 }
 .work-progress-eyebrow {
   font-size: 12px;
-  color: #b6c8d5;
+  color: var(--blue-82);
 }
 .work-progress-heading h2 {
   font-size: 25px;
@@ -58,7 +58,7 @@
   margin: 12px 26px 18px;
   font-size: 13px;
   line-height: 1.7;
-  color: #bdcbd9;
+  color: var(--gray-85);
 }
 .work-progress-tools {
   display: flex;
@@ -66,7 +66,7 @@
   align-items: center;
   gap: 12px;
   padding: 0 26px 18px;
-  border-bottom: 1px solid #46515e;
+  border-bottom: 1px solid var(--blue-43);
 }
 .work-progress-tools > label {
   min-width: 200px;
@@ -74,8 +74,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #526273;
-  background: #18212b;
+  border: 1px solid var(--blue-50);
+  background: var(--gray-24);
   border-radius: 8px;
   padding: 0 10px;
 }
@@ -85,7 +85,7 @@
   min-width: 0;
   width: 100%;
   padding: 9px 0;
-  color: #e8f1fa;
+  color: var(--gray-96);
 }
 .work-progress-tools input:focus-visible {
   outline-offset: 4px;
@@ -110,12 +110,12 @@
   border-color: transparent;
 }
 .work-progress-filters button[aria-pressed="true"] {
-  color: #e5f0d5;
-  border-color: #72825a;
-  background: #3e4c35;
+  color: var(--green-93);
+  border-color: var(--green-57);
+  background: var(--green-39);
 }
 .work-progress-filters span {
-  color: #b9cbd6;
+  color: var(--blue-82);
   font-size: 11px;
 }
 .work-progress-results {
@@ -135,7 +135,7 @@
   align-items: start;
   gap: 14px;
   padding: 19px 0;
-  border-bottom: 1px solid #3e4b59;
+  border-bottom: 1px solid var(--blue-39);
 }
 .work-progress-row:last-child {
   border-bottom: 0;
@@ -146,16 +146,16 @@
   gap: 6px;
   padding-top: 3px;
   font-size: 12px;
-  color: #c4d1e0;
+  color: var(--gray-85);
 }
 .phase-attention .work-progress-phase {
-  color: #f3c88e;
+  color: var(--amber-83);
 }
 .phase-running .work-progress-phase {
-  color: #a9dfd0;
+  color: var(--teal-87);
 }
 .phase-completed .work-progress-phase {
-  color: #a8cfab;
+  color: var(--green-83);
 }
 .work-progress-copy {
   min-width: 0;
@@ -170,11 +170,11 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
-  color: #eef4fa;
+  color: var(--gray-96);
 }
 .work-progress-row-heading > span {
   font-size: 12px;
-  color: #bdcbdc;
+  color: var(--gray-85);
   overflow-wrap: anywhere;
 }
 .work-progress-copy p,
@@ -183,14 +183,14 @@
   font-size: 12px;
   line-height: 1.8;
   overflow-wrap: anywhere;
-  color: #c4cfda;
+  color: var(--gray-85);
   margin: 7px 0 0;
 }
 .work-progress-copy summary {
   cursor: pointer;
 }
 .work-progress-copy summary > span {
-  color: #b7dded;
+  color: var(--gray-89);
   white-space: nowrap;
 }
 .work-progress-row-actions {
@@ -209,8 +209,8 @@
 }
 .work-progress-row-actions .work-progress-stop {
   background: transparent;
-  border-color: #52616e;
-  color: #d9c8b4;
+  border-color: var(--blue-50);
+  color: var(--gray-82);
 }
 .work-progress-empty {
   display: flex;
@@ -219,15 +219,15 @@
   padding: 40px 20px;
   gap: 12px;
   text-align: center;
-  color: #b8d9c6;
+  color: var(--teal-87);
 }
 .work-progress-empty strong {
-  color: #e3ecf1;
+  color: var(--gray-92);
   font-size: 16px;
 }
 .work-progress-empty p {
   margin: 0;
-  color: #bac9d5;
+  color: var(--blue-82);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -238,11 +238,11 @@
   flex-wrap: wrap;
   gap: 12px;
   padding: 13px 26px;
-  border-top: 1px solid #45515e;
-  background: #1b232c;
+  border-top: 1px solid var(--blue-43);
+  background: var(--gray-26);
 }
 .work-progress-footer > span {
-  color: #b8c7d4;
+  color: var(--blue-82);
   font-size: 12px;
 }
 .work-progress-footer button {
@@ -259,12 +259,12 @@
   overflow-wrap: anywhere;
 }
 .work-progress-error {
-  background: #50352e;
-  color: #ffd0b9;
+  background: var(--orange-35);
+  color: var(--orange-88);
 }
 .work-progress-notice {
-  background: #29483e;
-  color: #c0edcf;
+  background: var(--green-39);
+  color: var(--teal-91);
 }
 .work-progress-spin {
   animation: work-progress-spin 1.2s linear infinite;
@@ -319,12 +319,12 @@
 
 .work-progress-result-count {
   margin: 13px 26px 0;
-  color: #aebfcc;
+  color: var(--blue-78);
   font-size: 12px;
 }
 .work-progress-row-actions .work-progress-copy-input {
   background: transparent;
-  color: #c3d4e2;
+  color: var(--gray-85);
   border-color: transparent;
 }
 @media (max-width: 700px) {

@@ -1,6 +1,6 @@
 :root {
-  --accent: #8995fa;
-  --muted: #a0abc4;
+  --accent: var(--indigo-67);
+  --muted: var(--gray-75);
   font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
 }
 .daily-workbench .practice-speed .bpm-number {
@@ -12,23 +12,23 @@
 }
 .device-dialog .device-settings-footer {
   padding: 16px 28px;
-  background: #f7f9fd;
-  border-top: 1px solid #e2e8f2;
+  background: var(--gray-100);
+  border-top: 1px solid var(--gray-92);
   margin: 0;
 }
 .device-dialog .device-settings-footer > .device-done {
-  background: #6b7bd4;
-  border-color: #6b7bd4;
-  color: #fff;
+  background: var(--indigo-60);
+  border-color: var(--indigo-60);
+  color: var(--gray-100);
   min-width: 85px;
 }
 .device-dialog .device-scan {
-  background: #f5f7fc;
-  border-color: #e1e6f1;
-  color: #8292af;
+  background: var(--gray-96);
+  border-color: var(--gray-92);
+  color: var(--blue-67);
 }
 .device-dialog .device-scan strong {
-  color: #7486aa;
+  color: var(--blue-63);
 }
 .device-dialog .device-help,
 .device-dialog .device-section p {
@@ -40,24 +40,24 @@
   gap: 10px;
   margin: 15px 0;
   font-size: 11px;
-  color: #7b8daa;
+  color: var(--blue-63);
 }
 .sound-output-meter meter {
   flex: 1;
   height: 9px;
-  accent-color: #7688da;
+  accent-color: var(--indigo-67);
 }
 .sound-output-meter small {
   min-width: 102px;
   font-size: 10px;
-  color: #8494b0;
+  color: var(--blue-67);
 }
 .sound-output-meter meter::-webkit-meter-bar {
-  background: #e7ebf6;
+  background: var(--gray-92);
   border: 0;
 }
 .sound-output-meter meter::-webkit-meter-optimum-value {
-  background: #7b8cdf;
+  background: var(--indigo-67);
 }
 .sound-routing-selectors {
   display: grid;
@@ -78,17 +78,17 @@
 }
 .device-advanced-settings > summary {
   padding: 9px 0;
-  color: #8394b6;
+  color: var(--blue-67);
   font-size: 12px;
   cursor: pointer;
 }
 .device-dialog .device-advanced-settings select {
-  color: #526888;
+  color: var(--blue-50);
 }
 .device-dialog .device-readonly-notice {
-  background: #f0f3fb;
-  border-color: #dde5f4;
-  color: #7c8caf;
+  background: var(--gray-96);
+  border-color: var(--gray-92);
+  color: var(--blue-63);
 }
 button,
 input,
@@ -103,19 +103,19 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline-color: #7d8bec;
+  outline-color: var(--indigo-67);
 }
 .daily-workbench {
-  background: #f5f6fa;
+  background: var(--gray-96);
 }
 .daily-workbench .workspace-topbar {
   height: 54px;
   min-height: 54px;
   padding: 7px 19px;
-  background: #fff;
-  border-bottom: 1px solid #e3e6ef;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-92);
   gap: 19px;
-  color: #727e97;
+  color: var(--blue-60);
   box-shadow: none;
   z-index: 20;
 }
@@ -123,48 +123,48 @@ summary:focus-visible {
   font-size: 15px;
   min-width: 125px;
   gap: 9px;
-  color: #29324b;
+  color: var(--blue-33);
 }
 .daily-workbench .app-name svg {
-  color: #6978d8;
+  color: var(--indigo-60);
 }
 .daily-workbench .application-menubar .toolbar-more > summary {
-  color: #768199;
+  color: var(--blue-60);
   font-size: 12px;
   padding: 6px 9px;
   min-height: 31px;
 }
 .daily-workbench .application-menubar .toolbar-more > summary:hover,
 .daily-workbench .application-menubar .toolbar-more[open] > summary {
-  color: #4e5eb6;
+  color: var(--indigo-53);
   border-color: transparent;
-  background: #edf0fb;
+  background: var(--gray-96);
 }
 .daily-workbench .application-menubar .toolbar-more-actions {
-  background: #fff;
-  border: 1px solid #d9deeb;
-  color: #4a5773;
-  box-shadow: 0 12px 32px #26325525;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-89);
+  color: var(--blue-46);
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--blue-33) 15%, transparent);
   border-radius: 6px;
   padding: 6px;
 }
 .daily-workbench .application-menubar .toolbar-more-actions > button {
-  color: #56617d;
+  color: var(--blue-50);
   font-size: 12px;
   min-height: 36px;
 }
 .daily-workbench .application-menubar .toolbar-more-actions > button:hover {
-  color: #495bc0;
-  background: #edf0fc;
+  color: var(--indigo-53);
+  background: var(--gray-96);
 }
 .daily-workbench .workspace-topbar > .icon-button {
-  color: #8993a8;
+  color: var(--blue-67);
   background: transparent;
   border-color: transparent;
 }
 .daily-workbench .workspace-topbar > .icon-button:hover {
-  background: #eef0f6;
-  color: #4e5eb6;
+  background: var(--gray-96);
+  color: var(--indigo-53);
 }
 .daily-workbench .engine-indicator i {
   width: 5px;
@@ -175,14 +175,14 @@ summary:focus-visible {
   flex: 1;
 }
 .daily-workbench .practice-panel {
-  background: #172034;
+  background: var(--indigo-26);
 }
 .daily-workbench .practice-panel .practice-view-toolbar {
   padding: 0 22px;
-  background: #fff;
-  border-bottom: 1px solid #e0e6ef;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-92);
   min-height: 43px;
-  color: #8792a8;
+  color: var(--blue-67);
 }
 .daily-workbench .practice-view-tabs {
   background: transparent;
@@ -192,37 +192,37 @@ summary:focus-visible {
 .daily-workbench .practice-panel .practice-view-tabs button {
   background: transparent;
   border-radius: 0;
-  color: #8b96ad;
+  color: var(--blue-67);
   font-size: 12px;
   padding: 13px 15px;
   box-shadow: none;
 }
 .daily-workbench .practice-panel .practice-view-tabs button.selected {
-  box-shadow: inset 0 -2px #6979df;
+  box-shadow: inset 0 -2px var(--indigo-60);
   background: transparent;
-  color: #5d6dca;
+  color: var(--indigo-58);
 }
 .daily-workbench .practice-view-toolbar .toolbar-more > summary {
-  color: #8e99b0;
+  color: var(--blue-67);
 }
 .daily-workbench .practice-view-toolbar > .view-legend {
   display: none;
 }
 .daily-workbench .practice-view-toolbar .toolbar-more-actions {
-  color: #cad3e6;
+  color: var(--gray-85);
 }
 .daily-workbench .piano-stage {
-  background: #172034;
+  background: var(--indigo-26);
 }
 .daily-workbench .practice-passage-details {
-  background: #eef1f8;
-  border-color: #dce2ee;
-  color: #7e8ca8;
+  background: var(--gray-96);
+  border-color: var(--gray-92);
+  color: var(--blue-63);
   font-size: 10px;
 }
 .daily-workbench .practice-passage-details > summary {
   padding: 6px 22px;
-  color: #8c9ab6;
+  color: var(--blue-67);
 }
 .time-ruler.practice-timeline {
   display: flex;
@@ -231,10 +231,10 @@ summary:focus-visible {
   height: auto;
   gap: 0;
   flex: none;
-  background: #f8f9fc;
-  border-top: 1px solid #e0e5ef;
+  background: var(--gray-100);
+  border-top: 1px solid var(--gray-92);
   padding: 10px 24px 8px;
-  color: #7887a1;
+  color: var(--blue-63);
 }
 .time-ruler-labels {
   display: flex;
@@ -246,16 +246,16 @@ summary:focus-visible {
 }
 .time-ruler-labels > span:first-child {
   min-width: 120px;
-  color: #637699;
+  color: var(--blue-55);
 }
 .time-ruler-labels small {
   font-size: 10px;
   font-weight: 400;
-  color: #7d8da9;
+  color: var(--blue-63);
   margin-left: 9px;
 }
 .time-ruler-labels strong {
-  color: #657594;
+  color: var(--blue-55);
   font-weight: 550;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -270,15 +270,15 @@ summary:focus-visible {
   height: 19px;
   flex: none;
   width: 100%;
-  color: #b1bdd0;
+  color: var(--blue-78);
   overflow: visible;
 }
 .time-ruler-track line {
-  stroke: #a9b6cd;
+  stroke: var(--blue-78);
   stroke-width: 0.7;
 }
 .time-ruler-track text {
-  fill: #97a5c0;
+  fill: var(--blue-71);
   font-size: 8px;
 }
 .time-ruler-track input {
@@ -288,11 +288,11 @@ summary:focus-visible {
   cursor: pointer;
 }
 .daily-workbench input[type="range"]::-webkit-slider-runnable-track {
-  background: #dce2ee;
+  background: var(--gray-92);
   height: 3px;
 }
 .daily-workbench input[type="range"]::-webkit-slider-thumb {
-  background: #7d8be1;
+  background: var(--indigo-67);
   width: 9px;
   height: 13px;
   border-radius: 3px;
@@ -301,43 +301,43 @@ summary:focus-visible {
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: #7c89a4;
+  color: var(--blue-63);
   font-variant-numeric: tabular-nums;
 }
 .daily-workbench .practice-transport {
-  background: #fff;
-  border-top: 1px solid #e9edf4;
+  background: var(--gray-100);
+  border-top: 1px solid var(--gray-96);
   padding: 12px 24px;
   gap: 20px;
   min-height: 70px;
-  color: #8b97b0;
+  color: var(--blue-67);
 }
 .daily-workbench .practice-transport-main {
   gap: 11px;
 }
 .daily-workbench .practice-transport .icon-button {
   border: 0;
-  color: #9ba7bf;
+  color: var(--blue-71);
   background: transparent;
 }
 .daily-workbench .practice-transport .play-button {
-  border: 1px solid #6675d5;
-  background: #6675d5;
-  color: #fff;
+  border: 1px solid var(--indigo-60);
+  background: var(--indigo-60);
+  color: var(--gray-100);
   border-radius: 5px;
-  box-shadow: 0 3px 8px #5868b628;
+  box-shadow: 0 3px 8px color-mix(in oklab, var(--indigo-53) 16%, transparent);
   padding: 9px 18px;
   min-width: 125px;
   font-size: 12px;
 }
 .daily-workbench .practice-transport .play-button:hover {
-  background: #5565c5;
-  color: #fff;
+  background: var(--indigo-53);
+  color: var(--gray-100);
 }
 .daily-workbench .play-button kbd {
-  background: #ffffff1a;
-  border-color: #ffffff25;
-  color: #cbd2fa;
+  background: color-mix(in oklab, var(--gray-100) 10%, transparent);
+  border-color: color-mix(in oklab, var(--gray-100) 15%, transparent);
+  color: var(--blue-86);
   font-size: 9px;
 }
 .daily-workbench .practice-speed {
@@ -346,13 +346,13 @@ summary:focus-visible {
 }
 .daily-workbench .practice-speed label {
   gap: 10px;
-  color: #8996b1;
+  color: var(--blue-67);
   font-size: 11px;
 }
 .daily-workbench .practice-speed label small {
   font-size: 9px;
   margin-left: 4px;
-  color: #8390aa;
+  color: var(--blue-67);
 }
 .daily-workbench .practice-speed input[type="range"] {
   width: 100px;
@@ -360,9 +360,9 @@ summary:focus-visible {
 .daily-workbench .bpm-number {
   width: 58px;
   padding: 7px 5px;
-  background: #f5f7fc;
-  color: #6679a4;
-  border: 1px solid #e1e7f2;
+  background: var(--gray-96);
+  color: var(--blue-55);
+  border: 1px solid var(--gray-92);
   border-radius: 4px;
   font-size: 13px;
   text-align: center;
@@ -370,7 +370,7 @@ summary:focus-visible {
 }
 .daily-workbench .practice-speed-reset {
   border: 0;
-  color: #6d7f9f;
+  color: var(--blue-60);
   background: transparent;
   font-size: 10px;
   padding: 4px;
@@ -378,36 +378,36 @@ summary:focus-visible {
 }
 .daily-workbench .practice-volume {
   font-size: 10px;
-  color: #93a2bd;
+  color: var(--blue-71);
 }
 .daily-workbench .practice-volume input {
   width: 76px;
 }
 .device-dialog.settings-dialog {
   width: min(840px, calc(100vw - 40px));
-  background: #fff;
-  border: 1px solid #dce2ee;
-  color: #485774;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-92);
+  color: var(--blue-46);
   color-scheme: light;
-  box-shadow: 0 22px 70px #14213c40;
+  box-shadow: 0 22px 70px color-mix(in oklab, var(--indigo-26) 25%, transparent);
   border-radius: 10px;
 }
 .device-dialog > .dialog-heading {
-  background: #f9fafe;
-  border-color: #e2e8f2;
+  background: var(--gray-100);
+  border-color: var(--gray-92);
   padding: 23px 28px;
 }
 .device-dialog h2 {
-  color: #293956;
+  color: var(--blue-33);
   font-weight: 600;
   font-size: 21px;
 }
 .device-dialog .device-subtitle {
-  color: #7b89a3;
+  color: var(--blue-63);
   font-size: 12px;
 }
 .device-dialog .icon-button {
-  color: #6d7f9f;
+  color: var(--blue-60);
   background: transparent;
   border: 0;
 }
@@ -417,7 +417,7 @@ summary:focus-visible {
 .device-dialog .device-section {
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #e7ebf4;
+  border-bottom: 1px solid var(--gray-92);
   border-radius: 0;
   padding: 17px 0;
   margin: 0 0 10px;
@@ -427,44 +427,44 @@ summary:focus-visible {
   display: flex;
   gap: 9px;
   align-items: center;
-  color: #596e92;
+  color: var(--blue-55);
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 16px;
 }
 .device-dialog .device-section h3 svg,
 .device-audio-endpoint h3 svg {
-  color: #8292cb;
+  color: var(--indigo-67);
 }
 .device-dialog label {
-  color: #7f8eaa;
+  color: var(--blue-63);
   font-size: 12px;
 }
 .device-dialog select,
 .device-dialog input {
-  background: #f7f9fd;
-  color: #556b90;
-  border: 1px solid #dce4f1;
+  background: var(--gray-100);
+  color: var(--blue-55);
+  border: 1px solid var(--gray-92);
   border-radius: 5px;
   padding: 9px 12px;
   min-height: 37px;
 }
 .device-dialog button {
-  color: #7588b0;
-  background: #f5f7fc;
-  border-color: #dce4f1;
+  color: var(--blue-63);
+  background: var(--gray-96);
+  border-color: var(--gray-92);
   border-radius: 5px;
   font-size: 11px;
   min-height: 34px;
 }
 .device-dialog button:hover:not(:disabled) {
-  background: #eaf0fc;
-  color: #5a6eb0;
+  background: var(--gray-96);
+  color: var(--indigo-53);
 }
 .device-dialog .device-help,
 .device-dialog .device-section p,
 .device-dialog .device-operation {
-  color: #74829d;
+  color: var(--blue-60);
   font-size: 11px;
   line-height: 1.7;
 }
@@ -472,7 +472,7 @@ summary:focus-visible {
   width: 100%;
 }
 .device-audio-endpoint {
-  border-bottom: 1px solid #e7ebf4;
+  border-bottom: 1px solid var(--gray-92);
   padding: 18px 0;
 }
 .device-audio-endpoint > label {
@@ -490,49 +490,49 @@ summary:focus-visible {
 }
 .sound-test-row > span {
   font-size: 10px;
-  color: #6d7f9f;
+  color: var(--blue-60);
   line-height: 1.7;
 }
 .device-dialog .sound-test-button {
-  background: #6e7dd5;
-  border-color: #6e7dd5;
-  color: #fff;
+  background: var(--indigo-60);
+  border-color: var(--indigo-60);
+  color: var(--gray-100);
   min-width: 155px;
   min-height: 39px;
 }
 .device-dialog .sound-test-button:hover:not(:disabled) {
-  background: #5c6ec7;
-  color: #fff;
+  background: var(--indigo-58);
+  color: var(--gray-100);
 }
 .desktop-close-backdrop {
-  background: #18213a66;
+  background: color-mix(in oklab, var(--indigo-26) 40%, transparent);
   backdrop-filter: blur(5px);
 }
 .desktop-close-dialog {
-  color: #526587;
-  background: #fff;
-  border: 1px solid #dde4f1;
+  color: var(--blue-50);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-92);
   border-radius: 10px;
-  box-shadow: 0 20px 60px #15244b44;
+  box-shadow: 0 20px 60px color-mix(in oklab, var(--indigo-26) 27%, transparent);
 }
 .desktop-close-dialog h2 {
-  color: #334b73;
+  color: var(--blue-41);
 }
 .desktop-close-heading > span {
   display: none;
 }
 .desktop-close-dialog .desktop-close-icon {
-  background: #edf1fc;
-  color: #7e8fcd;
+  background: var(--gray-96);
+  color: var(--indigo-67);
 }
 .desktop-close-dialog p,
 .desktop-close-dialog footer small {
-  color: #8b9cbb;
+  color: var(--blue-67);
 }
 .desktop-close-dialog button {
-  background: #eff3fc;
-  border-color: #dce4f4;
-  color: #7186b7;
+  background: var(--gray-96);
+  border-color: var(--gray-92);
+  color: var(--blue-63);
 }
 .desktop-close-steps {
   display: none;

@@ -1,10 +1,10 @@
 .score-route-preview {
   margin: 10px 0;
   padding: 12px 14px;
-  border: 1px solid #4b5663;
-  border-left: 3px solid #69c5a3;
+  border: 1px solid var(--blue-46);
+  border-left: 3px solid var(--teal-76);
   border-radius: 4px;
-  background: #1d242a;
+  background: var(--gray-26);
 }
 .score-route-preview header {
   display: flex;
@@ -21,10 +21,10 @@
   line-height: 1.5;
 }
 .score-route-ready {
-  color: #8ad8ad;
+  color: var(--teal-84);
 }
 .score-route-warning {
-  color: #f2c576;
+  color: var(--amber-83);
 }
 .score-route-visits {
   max-height: 220px;
@@ -32,7 +32,7 @@
   padding: 0;
   overflow: auto;
   list-style: none;
-  border-top: 1px solid #3b4851;
+  border-top: 1px solid var(--blue-39);
 }
 .score-route-visits li {
   display: flex;
@@ -40,23 +40,23 @@
   flex-wrap: wrap;
   gap: 5px 12px;
   padding: 8px 2px;
-  border-bottom: 1px solid #323f47;
+  border-bottom: 1px solid var(--blue-37);
 }
 .score-route-position {
   min-width: 2ch;
-  color: #8fb7a8;
+  color: var(--teal-76);
   font-variant-numeric: tabular-nums;
 }
 .score-route-visits time {
   margin-left: auto;
-  color: #b7c2cc;
+  color: var(--blue-82);
   font-variant-numeric: tabular-nums;
 }
 .score-route-partial {
-  color: #e7c67d;
+  color: var(--amber-83);
 }
 .score-route-diagnostic {
-  color: #e7c67d;
+  color: var(--amber-83);
   overflow-wrap: anywhere;
 }
 .score-route-tools {
@@ -70,7 +70,7 @@
   display: grid;
   gap: 5px;
   font-size: 0.78rem;
-  color: #b2c3d3;
+  color: var(--blue-82);
 }
 .score-route-tools input {
   width: 130px;
@@ -89,14 +89,14 @@
 }
 .score-route-tools p {
   flex-basis: 100%;
-  color: #e6c388;
+  color: var(--amber-83);
 }
 .score-route-visits li.selected {
-  outline: 1px solid #9ccf7c;
+  outline: 1px solid var(--green-80);
   outline-offset: -1px;
-  background: #34482d;
+  background: var(--green-39);
 }
 .score-route-visits li:focus-visible {
-  outline: 2px solid #b7dc97;
+  outline: 2px solid var(--green-86);
   outline-offset: -2px;
 }

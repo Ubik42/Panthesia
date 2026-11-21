@@ -16,9 +16,9 @@
   align-items: center;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #5e754954;
+  border: 1px solid color-mix(in oklab, var(--green-57) 33%, transparent);
   border-radius: 10px;
-  background: linear-gradient(110deg, #3b4b302e, #263337);
+  background: linear-gradient(110deg, color-mix(in oklab, var(--green-39) 18%, transparent), var(--blue-32));
 }
 .about-version > span {
   display: grid;
@@ -27,17 +27,17 @@
   height: 42px;
   flex: none;
   border-radius: 11px;
-  color: #c5e49e;
-  background: #69814b33;
+  color: var(--green-86);
+  background: color-mix(in oklab, var(--green-57) 20%, transparent);
 }
 .about-version strong {
-  color: #e5eedb;
+  color: var(--green-93);
   font-size: 19px;
   font-weight: 600;
 }
 .about-version p {
   margin: 3px 0 0;
-  color: #b4c3bb;
+  color: var(--gray-82);
   font-size: 12px;
 }
 .about-facts {
@@ -77,10 +77,10 @@
 .about-warning {
   padding: 10px 12px;
   margin: 12px 0;
-  border: 1px solid #866343;
+  border: 1px solid var(--orange-56);
   border-radius: 7px;
-  color: #e5c39e;
-  background: #5c43292e;
+  color: var(--amber-83);
+  background: color-mix(in oklab, var(--orange-41) 18%, transparent);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -94,7 +94,7 @@
 }
 .about-details summary {
   cursor: pointer;
-  color: #bed1bd;
+  color: var(--green-83);
   padding-block: 4px;
 }
 .about-details pre {
@@ -103,7 +103,7 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #191f26;
+  background: var(--gray-24);
   font-family: inherit;
   font-size: 11px;
   user-select: text;

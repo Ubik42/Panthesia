@@ -5,7 +5,7 @@
   gap: 0.6rem 1rem;
   margin: 0.6rem 0 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #39434e;
+  border-bottom: 1px solid var(--blue-37);
 }
 .practice-catalog-toolbar > button,
 .practice-draft-copy button {
@@ -26,24 +26,24 @@
 }
 .catalog-source-warning {
   padding: 0.65rem 0.85rem;
-  color: #ead4a5;
-  background: #433a282e;
-  border-left: 3px solid #b89e5b;
+  color: var(--orange-88);
+  background: color-mix(in oklab, var(--orange-35) 18%, transparent);
+  border-left: 3px solid var(--amber-67);
   border-radius: 0 5px 5px 0;
   line-height: 1.65;
 }
 .catalog-latest {
   padding: 0.9rem 1rem;
   margin: 0.6rem 0;
-  background: #232e35;
-  border: 1px solid #43515c;
+  background: var(--gray-29);
+  border: 1px solid var(--blue-43);
   border-radius: 7px;
   overflow-wrap: anywhere;
   font-size: 12px;
   line-height: 1.6;
 }
 .catalog-latest strong {
-  color: #d3e4bf;
+  color: var(--green-87);
 }
 .catalog-latest p {
   margin: 0.45rem 0;

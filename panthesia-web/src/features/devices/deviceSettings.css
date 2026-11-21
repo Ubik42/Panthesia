@@ -11,7 +11,7 @@
   padding: 22px 24px 18px;
   flex-shrink: 0;
   align-items: flex-start;
-  border-bottom: 1px solid #39424d;
+  border-bottom: 1px solid var(--blue-37);
 }
 .device-dialog .device-subtitle {
   margin: 7px 0 0;
@@ -26,8 +26,8 @@
   scrollbar-gutter: stable;
 }
 .device-section {
-  background: #252b32;
-  border: 1px solid #3d4853;
+  background: var(--gray-29);
+  border: 1px solid var(--blue-39);
   border-radius: 10px;
   padding: 16px 18px;
   margin-bottom: 14px;
@@ -39,16 +39,16 @@
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 650;
-  color: #edf2e8;
+  color: var(--gray-96);
 }
 .device-section h3 svg {
-  color: #afc895;
+  color: var(--green-80);
 }
 .device-section > label {
   display: block;
   margin-bottom: 7px;
   font-size: 12px;
-  color: #c4cdd5;
+  color: var(--gray-85);
 }
 .device-section select {
   min-width: 0;
@@ -56,7 +56,7 @@
   padding: 10px;
 }
 .device-dialog .device-help {
-  color: #a6b2bf;
+  color: var(--gray-75);
   font-size: 12px;
   line-height: 1.75;
   margin: 10px 0 0;
@@ -66,12 +66,12 @@
   align-items: center;
   gap: 7px;
   margin: 11px 0 0;
-  color: #bdd6a5;
+  color: var(--green-83);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 .device-connection.device-connection-offline {
-  color: #e8c389;
+  color: var(--amber-83);
 }
 .device-inline-actions {
   display: flex;
@@ -82,14 +82,14 @@
 }
 .device-inline-actions > span {
   font-size: 12px;
-  color: #a6b2bf;
+  color: var(--gray-75);
 }
 .device-scan {
   margin-top: 12px;
   padding: 10px 11px;
-  border: 1px solid #3c4950;
+  border: 1px solid var(--blue-39);
   border-radius: 7px;
-  background: #20272c;
+  background: var(--gray-27);
 }
 .device-scan-row {
   display: flex;
@@ -103,11 +103,11 @@
   flex-wrap: wrap;
   gap: 4px 10px;
   font-size: 11px;
-  color: #a6b6bf;
+  color: var(--blue-78);
 }
 .device-scan-row strong {
   font-weight: 500;
-  color: #ccd8cc;
+  color: var(--teal-87);
 }
 .device-scan-row button {
   display: inline-flex;
@@ -121,16 +121,16 @@
 .device-scan p {
   margin: 7px 0 0;
   font-size: 11px;
-  color: #9eacb8;
+  color: var(--gray-75);
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
 .device-scan-warning {
-  border-color: #766145;
+  border-color: var(--amber-49);
 }
 .device-scan-warning .device-scan-row > span > span,
 .device-scan-warning p {
-  color: #e2c49c;
+  color: var(--amber-83);
 }
 .device-output-scans {
   display: grid;
@@ -154,7 +154,7 @@
 .device-calibration {
   margin-top: 12px;
   padding: 12px;
-  background: #1d242b;
+  background: var(--gray-26);
   border-radius: 7px;
 }
 .device-calibration p {
@@ -165,16 +165,16 @@
 .device-inline-error {
   margin: 12px 0;
   padding: 11px 13px;
-  border: 1px solid #886447;
+  border: 1px solid var(--orange-56);
   border-radius: 7px;
-  background: #3b3027;
-  color: #f2d0a9;
+  background: var(--gray-31);
+  color: var(--orange-88);
   overflow-wrap: anywhere;
   line-height: 1.7;
   font-size: 12px;
 }
 .device-operation {
-  color: #c9deb6;
+  color: var(--green-87);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -182,8 +182,8 @@
   flex-shrink: 0;
   padding: 14px 24px;
   margin: 0;
-  border-top: 1px solid #39424d;
-  background: #22282e;
+  border-top: 1px solid var(--blue-37);
+  background: var(--gray-27);
 }
 .device-settings-footer > button:first-child {
   margin-right: auto;
@@ -234,10 +234,10 @@
 .device-readonly-notice {
   margin: 0 0 14px;
   padding: 11px 13px;
-  border: 1px solid #6b6450;
+  border: 1px solid var(--amber-49);
   border-radius: 8px;
-  background: #343024;
-  color: #e7d7b6;
+  background: var(--gray-31);
+  color: var(--amber-90);
   font-size: 12px;
   line-height: 1.8;
   overflow-wrap: anywhere;

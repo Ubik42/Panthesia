@@ -6,7 +6,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: min(11vh, 100px) 20px 24px;
-  background: rgb(7 11 16 / 72%);
+  background: color-mix(in oklab, var(--gray-18) 72%, transparent);
   backdrop-filter: blur(5px);
   overscroll-behavior: contain;
 }
@@ -17,13 +17,13 @@
   max-height: min(750px, calc(89vh - 24px));
   max-height: min(750px, calc(89dvh - 24px));
   min-height: 0;
-  color: #edf1f6;
-  border: 1px solid #53634c;
+  color: var(--gray-96);
+  border: 1px solid var(--green-49);
   border-radius: 13px;
-  background: #20262e;
+  background: var(--gray-27);
   box-shadow:
-    0 26px 90px rgb(0 0 0 / 55%),
-    0 0 0 1px rgb(178 219 140 / 5%);
+    0 26px 90px color-mix(in oklab, var(--gray-0) 55%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--green-86) 5%, transparent);
   overflow: hidden;
   animation: action-search-in 140ms ease-out;
 }
@@ -33,7 +33,7 @@
   justify-content: space-between;
   gap: 18px;
   padding: 21px 22px 13px;
-  background: linear-gradient(115deg, rgb(166 209 127 / 9%), transparent 72%);
+  background: linear-gradient(115deg, color-mix(in oklab, var(--green-80) 9%, transparent), transparent 72%);
 }
 .action-search-heading > div {
   min-width: 0;
@@ -49,14 +49,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #b0bdca;
+  color: var(--blue-78);
   font-size: 12px;
 }
 .action-search-heading .icon-button {
   flex-shrink: 0;
   width: 30px;
   min-height: 30px;
-  color: #c3ccd6;
+  color: var(--gray-85);
   background: transparent;
   border-color: transparent;
 }
@@ -66,15 +66,15 @@
   gap: 12px;
   margin: 0 16px 10px;
   padding: 13px 14px;
-  border: 1px solid #647e51;
+  border: 1px solid var(--green-57);
   border-radius: 8px;
-  background: #171e25;
-  color: #badd9b;
-  box-shadow: 0 0 0 2px rgb(170 216 128 / 5%);
+  background: var(--gray-24);
+  color: var(--green-86);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--green-81) 5%, transparent);
 }
 .action-search-input:focus-within {
-  border-color: #b3df88;
-  box-shadow: 0 0 0 2px rgb(179 223 136 / 13%);
+  border-color: var(--green-86);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--green-86) 13%, transparent);
 }
 .action-search-input > input {
   width: 100%;
@@ -87,21 +87,21 @@
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  color: #f0f5ed;
+  color: var(--gray-96);
   font-size: 16px;
   line-height: 1.5;
 }
 .action-search-input > input::placeholder {
-  color: #98a6b6;
+  color: var(--blue-71);
 }
 .action-search-input > svg {
   flex-shrink: 0;
 }
 .action-search kbd {
   padding: 3px 5px;
-  border: 1px solid #4b5663;
+  border: 1px solid var(--blue-46);
   border-radius: 4px;
-  color: #c2cbd5;
+  color: var(--gray-85);
   font-family: inherit;
   font-size: 11px;
   line-height: 1.35;
@@ -118,7 +118,7 @@
 }
 .action-search-group {
   padding: 13px 13px 7px;
-  color: #b9c9a8;
+  color: var(--green-83);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
@@ -132,7 +132,7 @@
   gap: 13px;
   text-align: left;
   white-space: normal;
-  color: #e3eaf2;
+  color: var(--gray-92);
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -142,19 +142,19 @@
     border-color 0.1s;
 }
 .action-search-option:hover {
-  background: #2c3540;
+  background: var(--gray-33);
 }
 .action-search-option[aria-selected="true"] {
-  background: #354330;
-  border-color: #647d50;
+  background: var(--teal-34);
+  border-color: var(--green-57);
 }
 .action-search-option[aria-disabled="true"] {
-  color: #b8c1cd;
+  color: var(--blue-82);
   cursor: default;
 }
 .action-search-option[aria-selected="true"][aria-disabled="true"] {
-  background: #333a44;
-  border-color: #5b6573;
+  background: var(--gray-33);
+  border-color: var(--blue-50);
 }
 .action-search-icon {
   display: grid;
@@ -163,12 +163,12 @@
   height: 34px;
   flex-shrink: 0;
   border-radius: 7px;
-  background: rgb(181 207 153 / 8%);
-  color: #c0dda5;
+  background: color-mix(in oklab, var(--green-83) 8%, transparent);
+  color: var(--green-87);
 }
 .action-search-option[aria-disabled="true"] .action-search-icon {
-  color: #aeb9c7;
-  background: rgb(184 194 207 / 6%);
+  color: var(--blue-78);
+  background: color-mix(in oklab, var(--blue-82) 6%, transparent);
 }
 .action-search-copy {
   flex: 1;
@@ -182,35 +182,35 @@
   line-height: 1.5;
 }
 .action-search-copy > span {
-  color: #b8c3d0;
+  color: var(--blue-82);
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .action-search-option[aria-selected="true"] .action-search-copy > span {
-  color: #cad6c1;
+  color: var(--teal-87);
 }
 .action-search-option[aria-disabled="true"] .action-search-copy > span {
-  color: #aeb9c8;
+  color: var(--blue-78);
 }
 .action-search-option > kbd,
 .action-search-enter {
   flex-shrink: 0;
 }
 .action-search-enter {
-  color: #cce9b7;
+  color: var(--green-87);
 }
 .action-search-message {
   padding: 9px 21px;
-  border-top: 1px solid #39434e;
-  color: #b5c1ce;
+  border-top: 1px solid var(--blue-37);
+  color: var(--blue-82);
   font-size: 12px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 .action-search-message[role="alert"] {
-  color: #f4c298;
-  background: #352d25;
+  color: var(--amber-83);
+  background: var(--gray-31);
 }
 .action-search > footer {
   display: flex;
@@ -218,8 +218,8 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-top: 1px solid #39434e;
-  background: #1b2229;
+  border-top: 1px solid var(--blue-37);
+  background: var(--gray-26);
 }
 .action-search-hints,
 .action-search-hints > span {
@@ -228,7 +228,7 @@
 }
 .action-search-hints {
   gap: 14px;
-  color: #bac4d0;
+  color: var(--blue-82);
   font-size: 11px;
 }
 .action-search-hints > span {
@@ -237,13 +237,13 @@
 .action-search > footer > button {
   min-height: 30px;
   padding: 5px 9px;
-  background: #382e2b;
-  color: #edc4b3;
-  border-color: #735448;
+  background: var(--gray-31);
+  color: var(--orange-88);
+  border-color: var(--amber-49);
   font-size: 12px;
 }
 .action-search button:focus-visible {
-  outline: 2px solid #b3df88;
+  outline: 2px solid var(--green-86);
   outline-offset: 2px;
 }
 .action-search-empty {
@@ -253,10 +253,10 @@
   gap: 12px;
   padding: 40px 18px;
   text-align: center;
-  color: #b4c0cf;
+  color: var(--blue-82);
 }
 .action-search-empty strong {
-  color: #e5ecf5;
+  color: var(--gray-92);
   font-size: 15px;
 }
 .action-search-empty p {

@@ -7,8 +7,8 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  background: #eee;
-  color: #30383d;
+  background: var(--gray-96);
+  color: var(--gray-33);
   color-scheme: light;
 }
 .product-screen-title {
@@ -24,7 +24,7 @@
 }
 .synthesia-layout .product-page button:focus-visible,
 .synthesia-layout .product-home button:focus-visible {
-  outline: 3px solid #f1b94c;
+  outline: 3px solid var(--amber-83);
   outline-offset: -4px;
 }
 .product-home {
@@ -32,8 +32,8 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  background: #b5cfdb;
-  color: #30383d;
+  background: var(--gray-85);
+  color: var(--gray-33);
   color-scheme: light;
   overflow: auto;
 }
@@ -44,7 +44,7 @@
   background: var(--synth-blue);
   padding: 28px 4%;
   min-height: 145px;
-  color: white;
+  color: var(--gray-100);
 }
 .product-home-brand img {
   width: 78px;
@@ -57,7 +57,7 @@
     serif;
   margin: 0;
   letter-spacing: -2px;
-  color: white;
+  color: var(--gray-100);
 }
 .product-home-body {
   display: grid;
@@ -75,23 +75,23 @@
   padding-top: 40px;
 }
 .synthesia-layout .product-home-actions button {
-  background: #129d0c;
-  border: 1px solid #6cab61;
+  background: var(--green-62);
+  border: 1px solid var(--green-66);
   border-radius: 7px;
-  box-shadow: inset 0 1px #ffffff55;
-  color: #fff;
+  box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 33%, transparent);
+  color: var(--gray-100);
   min-height: 104px;
   font-size: 36px;
   font-weight: 400;
   padding: 16px;
 }
 .synthesia-layout .product-home-actions button:hover:not(:disabled) {
-  background: #1aaa14;
+  background: var(--green-62);
 }
 .synthesia-layout .product-home-actions .product-home-settings {
   margin-top: 30px;
   background: var(--synth-blue);
-  border-color: #6eb6d6;
+  border-color: var(--blue-75);
 }
 .product-home-recent {
   min-width: 0;
@@ -105,9 +105,9 @@
   margin: 0 20px 14px;
 }
 .product-recent-list {
-  border: 1px solid #aaa;
+  border: 1px solid var(--gray-75);
   border-radius: 14px;
-  background: #efefef;
+  background: var(--gray-96);
   overflow: auto;
   min-height: 180px;
 }
@@ -117,10 +117,10 @@
   padding: 21px;
   text-align: left;
   border: 0;
-  border-bottom: 1px solid #aaa;
+  border-bottom: 1px solid var(--gray-75);
   border-radius: 0;
-  background: #efefef;
-  color: #333;
+  background: var(--gray-96);
+  color: var(--gray-31);
   font-size: 25px;
   font-weight: 400;
   line-height: 1.35;
@@ -130,7 +130,7 @@
   min-height: 76px;
 }
 .synthesia-layout .product-recent-list button:hover:not(:disabled) {
-  background: #d3e7f0;
+  background: var(--gray-92);
 }
 .product-recent-list button:last-child {
   border-bottom: 0;
@@ -138,7 +138,7 @@
 .product-recent-list p {
   padding: 24px;
   font-size: 19px;
-  color: #626b70;
+  color: var(--blue-50);
 }
 .product-settings-body {
   display: grid;
@@ -147,14 +147,14 @@
   min-height: 0;
 }
 .product-settings-body > nav {
-  background: #eee;
+  background: var(--gray-96);
   display: flex;
   flex-direction: column;
   padding: 22px 0;
   gap: 4px;
 }
 .synthesia-layout .product-settings-body > nav button {
-  color: #30383d;
+  color: var(--gray-33);
   background: transparent;
   border: 0;
   text-align: left;
@@ -163,11 +163,11 @@
   border-radius: 0;
 }
 .synthesia-layout .product-settings-body > nav button[aria-current] {
-  background: #0aa7df;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
 }
 .product-settings-body > section {
-  background: #b5cfdb;
+  background: var(--gray-85);
   padding: 35px 6%;
   overflow: auto;
 }
@@ -181,9 +181,9 @@
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  background: #fafafa;
-  color: #333;
-  border: 1px solid #aaa;
+  background: var(--gray-100);
+  color: var(--gray-31);
+  border: 1px solid var(--gray-75);
   border-radius: 8px;
   min-height: 90px;
   padding: 20px 25px;
@@ -195,7 +195,7 @@
 }
 .product-settings-body > section > button span {
   font-size: 16px;
-  color: #667078;
+  color: var(--blue-55);
 }
 .product-track-grid {
   flex: 1;
@@ -209,21 +209,21 @@
 }
 .product-track-card {
   background: var(--part-color);
-  color: white;
+  color: var(--gray-100);
   border-radius: 9px;
-  border: 1px solid #ffffff88;
+  border: 1px solid color-mix(in oklab, var(--gray-100) 53%, transparent);
   overflow: hidden;
-  box-shadow: inset 0 1px #fff4;
+  box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 27%, transparent);
 }
 .synthesia-layout .product-track-card button {
   background: transparent;
   border: 0;
   border-radius: 0;
-  color: #fff;
+  color: var(--gray-100);
   box-shadow: none;
 }
 .synthesia-layout .product-track-card button:hover:not(:disabled) {
-  background: #ffffff20;
+  background: color-mix(in oklab, var(--gray-100) 13%, transparent);
 }
 .synthesia-layout .product-track-instrument {
   display: flex;
@@ -248,12 +248,12 @@
 }
 .product-track-instrument small {
   font-size: 17px;
-  color: #fff;
+  color: var(--gray-100);
 }
 .product-track-controls {
   display: grid;
   grid-template-columns: 1.35fr 1fr 1fr 1fr;
-  border-top: 1px solid #ffffff66;
+  border-top: 1px solid color-mix(in oklab, var(--gray-100) 40%, transparent);
 }
 .synthesia-layout .product-track-controls button {
   display: flex;
@@ -262,7 +262,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100px;
-  border-right: 1px solid #ffffff66;
+  border-right: 1px solid color-mix(in oklab, var(--gray-100) 40%, transparent);
   font-size: 19px;
 }
 .product-track-controls button:last-child {
@@ -280,31 +280,31 @@
   justify-content: flex-end;
   padding: 15px 25px;
   min-height: 65px;
-  background: #b5cfdb;
-  border-top: 1px solid #9aafb9;
-  color: #344c59;
+  background: var(--gray-85);
+  border-top: 1px solid var(--gray-75);
+  color: var(--blue-41);
   font-size: 16px;
 }
 .synthesia-layout .product-page-footer button {
-  background: #eee;
-  color: #344c59;
-  border: 1px solid #a4adb1;
+  background: var(--gray-96);
+  color: var(--blue-41);
+  border: 1px solid var(--gray-75);
   padding: 10px 20px;
   font-size: 18px;
   min-height: 42px;
 }
 .product-track-screen .song-details-dialog {
   color-scheme: light;
-  background: #b5cfdb;
-  color: #333;
-  border: 8px solid #174e66;
+  background: var(--gray-85);
+  color: var(--gray-31);
+  border: 8px solid var(--blue-41);
   width: min(950px, 92vw);
   max-height: 85vh;
 }
 .product-track-screen .song-details-dialog > header {
-  background: #b5cfdb;
-  color: #333;
-  border-color: #8ba6b2;
+  background: var(--gray-85);
+  color: var(--gray-31);
+  border-color: var(--blue-71);
 }
 .product-track-picker {
   padding: 18px;
@@ -318,17 +318,17 @@
   font-size: 23px;
   padding: 15px 20px;
   min-height: 58px;
-  background: #eee;
-  color: #333;
-  border: 1px solid #aaa;
+  background: var(--gray-96);
+  color: var(--gray-31);
+  border: 1px solid var(--gray-75);
   border-radius: 4px;
   text-align: left;
   font-weight: 400;
 }
 .synthesia-layout .product-track-picker button[aria-pressed="true"] {
-  background: #c4ddeb;
-  border-color: #3b83b3;
-  box-shadow: inset 5px 0 #3b83b3;
+  background: var(--gray-89);
+  border-color: var(--blue-57);
+  box-shadow: inset 5px 0 var(--blue-57);
 }
 .product-color-grid {
   display: grid;
@@ -365,17 +365,17 @@
   .product-track-picker.picker-instrument
   > nav
   button[aria-selected="true"] {
-  background: #08a9df;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
 }
 .product-instrument-list {
-  border: 1px solid #aaa;
+  border: 1px solid var(--gray-75);
   border-radius: 10px;
-  background: #eee;
+  background: var(--gray-96);
 }
 .synthesia-layout .product-instrument-list button {
   border: 0;
-  border-bottom: 1px solid #aaa;
+  border-bottom: 1px solid var(--gray-75);
   border-radius: 0;
   flex-shrink: 0;
 }
@@ -386,9 +386,9 @@
   font-size: 21px;
 }
 .product-track-picker select {
-  color: #333;
-  background: #fff;
-  border: 1px solid #999;
+  color: var(--gray-31);
+  background: var(--gray-100);
+  border: 1px solid var(--blue-71);
   padding: 10px;
   font-size: 21px;
 }
@@ -397,7 +397,7 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  background: #172027;
+  background: var(--gray-24);
 }
 .product-freeplay-stage > .piano-stage,
 .product-freeplay-stage > canvas {
@@ -410,7 +410,7 @@
   grid-template-columns: 210px minmax(0, 1fr);
 }
 .product-hand-tools {
-  background: #b5cfdb;
+  background: var(--gray-85);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -427,29 +427,29 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #eee;
-  color: #333;
-  border: 1px solid #9aa5aa;
+  background: var(--gray-96);
+  color: var(--gray-31);
+  border: 1px solid var(--blue-71);
   min-height: 54px;
   font-size: 18px;
 }
 .synthesia-layout .product-hand-tools button[aria-pressed="true"] {
-  background: #397bb4;
-  color: white;
+  background: var(--blue-57);
+  color: var(--gray-100);
 }
 .product-hand-tools label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-size: 16px;
-  color: #344c59;
+  color: var(--blue-41);
   margin-top: 8px;
 }
 .product-hand-tools select,
 .product-hand-time input {
-  color: #333;
-  background: #fafafa;
-  border: 1px solid #999;
+  color: var(--gray-31);
+  background: var(--gray-100);
+  border: 1px solid var(--blue-71);
   min-width: 0;
   max-width: 100%;
   padding: 7px;
@@ -459,7 +459,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #18242d;
+  background: var(--gray-26);
   overflow: hidden;
 }
 .product-hand-time {
@@ -467,8 +467,8 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: #e5ebee;
-  color: #3d515b;
+  background: var(--gray-92);
+  color: var(--blue-43);
   padding: 8px;
   flex-shrink: 0;
   min-height: 52px;
@@ -482,9 +482,9 @@
   width: 85px;
 }
 .synthesia-layout .product-hand-time button {
-  background: #d3e0e6;
-  color: #333;
-  border: 1px solid #9aa5aa;
+  background: var(--gray-89);
+  color: var(--gray-31);
+  border: 1px solid var(--blue-71);
   padding: 5px;
 }
 .product-hand-svg {
@@ -500,14 +500,14 @@
 }
 .product-hand-svg rect[role="button"]:focus {
   outline: none;
-  stroke: white;
+  stroke: var(--gray-100);
   stroke-width: 3px;
 }
 .product-inline-error {
   margin: 0;
   padding: 12px;
-  background: #fff2de;
-  color: #613c11;
+  background: var(--gray-96);
+  color: var(--orange-41);
 }
 @media (max-width: 900px) {
   .product-home-brand {
@@ -592,14 +592,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  color: #334c58;
+  color: var(--blue-41);
   font-size: 16px;
 }
 .product-label-settings h3 {
   font-size: 19px;
   margin: 5px 0;
   font-weight: 500;
-  border-bottom: 1px solid #9eafb8;
+  border-bottom: 1px solid var(--gray-75);
   padding-bottom: 8px;
 }
 .product-label-settings label {
@@ -609,15 +609,15 @@
   gap: 12px;
 }
 .product-label-settings select {
-  background: #f7f7f7;
-  color: #333;
-  border: 1px solid #9baab0;
+  background: var(--gray-96);
+  color: var(--gray-31);
+  border: 1px solid var(--gray-75);
   font-size: 16px;
   padding: 8px;
   max-width: 190px;
 }
 .product-label-settings input {
-  accent-color: #167eae;
+  accent-color: var(--blue-57);
   width: 18px;
   height: 18px;
 }
@@ -634,8 +634,8 @@
 }
 .synthesia-layout .product-bookmark-menu select {
   max-width: 100%;
-  color: #333;
-  background: #f7f7f7;
+  color: var(--gray-31);
+  background: var(--gray-96);
   padding: 8px;
   font-size: 16px;
 }
@@ -645,9 +645,9 @@
 }
 .synthesia-layout .product-bookmark-menu button,
 .synthesia-layout .product-loop-menu button {
-  color: #344c58;
-  background: #eef2f4;
-  border: 1px solid #a9b7be;
+  color: var(--blue-41);
+  background: var(--gray-96);
+  border: 1px solid var(--blue-78);
   border-radius: 4px;
   font-size: 16px;
   min-height: 38px;
@@ -666,32 +666,32 @@
   gap: 10px;
   align-items: center;
   font-size: 16px;
-  color: #344c58;
+  color: var(--blue-41);
   margin-top: 18px;
 }
 
 .product-song-options-dialog .settings-dialog {
   color-scheme: light;
-  background: #eaf0f3;
-  color: #334c58;
+  background: var(--gray-96);
+  color: var(--blue-41);
   width: min(900px, 94vw);
 }
 .product-song-options-dialog .settings-dialog > header {
-  background: #b5cfdb;
-  color: #334c58;
-  border-color: #9aafb9;
+  background: var(--gray-85);
+  color: var(--blue-41);
+  border-color: var(--gray-75);
 }
 .product-song-options-dialog .practice-variant {
   position: relative;
   inset: auto;
   margin: 18px;
-  border: 1px solid #a8b7be;
-  background: #fff;
-  color: #334c58;
+  border: 1px solid var(--blue-78);
+  background: var(--gray-100);
+  color: var(--blue-41);
   border-radius: 5px;
 }
 .product-song-options-dialog .practice-variant > summary {
-  color: #334c58;
+  color: var(--blue-41);
   padding: 18px;
   font-size: 20px;
 }
@@ -700,20 +700,20 @@
   max-height: 55vh;
   width: auto;
   box-shadow: none;
-  background: #f4f7f9;
-  color: #334c58;
+  background: var(--gray-96);
+  color: var(--blue-41);
   overflow: auto;
 }
 .product-song-options-dialog .variant-body p {
   font-size: 15px;
-  color: #4e6571;
+  color: var(--blue-50);
 }
 .product-song-options-dialog .variant-body button,
 .product-song-options-dialog .variant-body input,
 .product-song-options-dialog .variant-body select {
-  color: #334c58;
-  background: #fff;
-  border: 1px solid #a6b5bd;
+  color: var(--blue-41);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-75);
 }
 
 .product-setup-start {
@@ -730,15 +730,15 @@
   background: transparent;
   border: 0;
   border-radius: 0;
-  color: white;
+  color: var(--gray-100);
   font-size: 26px;
   min-height: 50px;
   padding: 8px 15px;
 }
 .synthesia-layout .synthesia-setup-body button[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 3px #558da6;
-  border-color: #558da6;
-  background: linear-gradient(#d9e7ee, #c8dce6);
+  box-shadow: inset 0 0 0 3px var(--blue-63);
+  border-color: var(--blue-63);
+  background: linear-gradient(var(--gray-92), var(--gray-89));
 }
 .synthesia-layout
   .synthesia-song-setup
@@ -750,7 +750,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: white;
+  color: var(--gray-100);
   padding: 10px;
   cursor: pointer;
 }
@@ -768,18 +768,18 @@
   grid-template-columns: 200px minmax(0, 1fr) 150px;
 }
 .product-hand-right {
-  border-left: 1px solid #92a7b2;
+  border-left: 1px solid var(--blue-71);
   padding: 20px 12px;
 }
 .product-hand-right p {
   font-size: 15px;
-  color: #455f6b;
+  color: var(--blue-46);
   line-height: 1.7;
 }
 .synthesia-layout .product-hand-continue {
   margin-left: auto;
   background: var(--synth-blue);
-  color: white;
+  color: var(--gray-100);
   min-width: 130px;
 }
 @media (max-width: 1000px) {
@@ -804,15 +804,15 @@
   gap: 0;
 }
 .synthesia-layout .product-label-tabs button {
-  background: #e1ebef;
-  color: #344c59;
-  border: 1px solid #91a7b3;
+  background: var(--gray-92);
+  color: var(--blue-41);
+  border: 1px solid var(--blue-71);
   border-radius: 0;
   min-height: 42px;
 }
 .synthesia-layout .product-label-tabs button[aria-selected="true"] {
-  background: #039cd3;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
 }
 .product-label-modes {
   display: flex;
@@ -829,14 +829,14 @@
   padding: 8px 12px;
   text-align: left;
   background: transparent;
-  color: #293f4b;
+  color: var(--blue-37);
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
 .synthesia-layout .product-label-modes button[aria-checked="true"] {
-  background: #049ed6;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
 }
 .product-label-modes small {
   font-size: 15px;
@@ -863,14 +863,14 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 .product-track-card.accepts-part-setting {
-  outline: 3px dashed #fff;
+  outline: 3px dashed var(--gray-100);
   outline-offset: 4px;
 }
 .synthesia-layout .product-page-footer .product-all-parts {
   margin-right: auto;
-  background: #058fbe;
-  color: white;
-  border: 2px dashed white;
+  background: var(--blue-57);
+  color: var(--gray-100);
+  border: 2px dashed var(--gray-100);
   min-width: 200px;
 }
 .product-narrow-metronome {
@@ -893,7 +893,7 @@
   position: fixed;
   inset: 0;
   padding: 0;
-  background: #edf1f3;
+  background: var(--gray-96);
   z-index: 100;
   display: flex;
   align-items: stretch;
@@ -910,8 +910,8 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  background: #edf1f3;
-  color: #2d4350;
+  background: var(--gray-96);
+  color: var(--blue-37);
   color-scheme: light;
   box-shadow: none;
 }
@@ -929,7 +929,7 @@
 .product-settings-leaf .browse-detail-masthead {
   position: static;
   grid-row: 1/3;
-  background: #c5d9e2;
+  background: var(--gray-89);
   min-width: 0;
   overflow: auto;
 }
@@ -947,7 +947,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #304955;
+  color: var(--blue-39);
   white-space: normal;
   text-align: left;
 }
@@ -955,8 +955,8 @@
   .product-settings-leaf
   .browse-detail-tabs
   button[aria-selected="true"] {
-  background: #039ed6;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
   box-shadow: none;
 }
 .product-settings-leaf .browse-detail-section {
@@ -965,13 +965,13 @@
   min-height: 0;
   overflow: auto;
   padding: 24px 32px;
-  background: #edf1f3;
+  background: var(--gray-96);
 }
 .product-settings-leaf .dialog-actions {
-  background: #b5cfdb;
+  background: var(--gray-85);
   margin: 0;
   padding: 12px 24px;
-  border-top: 1px solid #9aafb9;
+  border-top: 1px solid var(--gray-75);
   flex-shrink: 0;
 }
 .synthesia-layout
@@ -979,16 +979,16 @@
   button:not(.synthesia-back):not(.browse-detail-tabs button):not(
     [aria-selected="true"]
   ):not([aria-checked="true"]) {
-  color: #2b4350;
-  background: #e1e9ed;
-  border-color: #9daeb8;
+  color: var(--blue-37);
+  background: var(--gray-92);
+  border-color: var(--gray-75);
   box-shadow: none;
 }
 .synthesia-layout .product-settings-leaf input,
 .synthesia-layout .product-settings-leaf select {
-  background: #fff;
-  color: #2b4350;
-  border-color: #9daeb8;
+  background: var(--gray-100);
+  color: var(--blue-37);
+  border-color: var(--gray-75);
 }
 .product-settings-leaf .device-settings-body {
   width: min(100%, 1100px);
@@ -1002,9 +1002,9 @@
 .product-settings-leaf .device-audio-endpoint,
 .product-settings-leaf .device-section,
 .product-settings-leaf .device-advanced-settings {
-  background: #dce7ec;
-  color: #2d4350;
-  border-color: #a4b7c1;
+  background: var(--gray-92);
+  color: var(--blue-37);
+  border-color: var(--blue-78);
 }
 .product-settings-leaf .device-help,
 .product-settings-leaf .device-note,
@@ -1012,12 +1012,12 @@
 .product-settings-leaf .device-section h3,
 .product-settings-leaf .interface-footer-note,
 .product-settings-leaf .device-connection {
-  color: #405b68;
+  color: var(--blue-46);
 }
 .product-settings-leaf .interface-display-preview,
 .product-settings-leaf .computer-key-settings,
 .product-settings-leaf .shortcut-settings {
-  color: #2d4350;
+  color: var(--blue-37);
 }
 @media (max-width: 760px) {
   .product-settings-leaf .browse-detail-workspace {
@@ -1043,7 +1043,7 @@
   margin: 15px 12px 18px;
 }
 .product-device-list > div {
-  border: 1px solid #a6adb1;
+  border: 1px solid var(--gray-75);
   border-radius: 15px;
   overflow: hidden;
   margin-bottom: 36px;
@@ -1056,9 +1056,9 @@
   margin: 0;
   min-height: 68px;
   border: 0;
-  border-bottom: 1px solid #a6adb1;
+  border-bottom: 1px solid var(--gray-75);
   border-radius: 0;
-  background: #eee;
+  background: var(--gray-96);
   padding: 16px 20px;
   font-size: 22px;
   font-weight: 400;
@@ -1071,17 +1071,17 @@
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 22px;
-  color: #30383d;
+  color: var(--gray-33);
 }
 .synthesia-layout .product-settings-body .product-device-row > small {
   margin-left: auto;
   font-size: 18px;
   white-space: nowrap;
-  color: #3a62a0;
+  color: var(--blue-50-c10);
 }
 .product-device-row b {
   font-size: 38px;
-  color: #7a858b;
+  color: var(--blue-60);
   font-weight: 400;
   line-height: 1;
 }
@@ -1112,39 +1112,39 @@
   }
 }
 .synthesia-layout .product-settings-leaf .browse-detail-masthead {
-  background: #eee;
+  background: var(--gray-96);
 }
 .synthesia-layout .product-settings-leaf .browse-detail-section {
-  background: #b5cfdb;
+  background: var(--gray-85);
 }
 .synthesia-layout
   .product-settings-leaf
   .browse-detail-masthead
   .browse-detail-tabs
   > button {
-  border-bottom: 1px solid #a7afb4;
-  background: #eee;
-  color: #30383d;
+  border-bottom: 1px solid var(--gray-75);
+  background: var(--gray-96);
+  color: var(--gray-33);
 }
 .synthesia-layout
   .product-settings-leaf
   .browse-detail-masthead
   .browse-detail-tabs
   > button[aria-selected="true"] {
-  background: #039ed6;
-  color: white;
+  background: var(--blue-66);
+  color: var(--gray-100);
   box-shadow: none;
 }
 .synthesia-layout
   .product-settings-leaf
   .synthesia-library-header
   .synthesia-back {
-  color: #fff;
-  background: linear-gradient(#1c8bb5, #197ba4);
-  border: 1px solid #54a7c6;
+  color: var(--gray-100);
+  background: linear-gradient(var(--blue-57), var(--blue-57));
+  border: 1px solid var(--blue-66);
 }
 .synthesia-layout .product-settings-leaf .interface-save-status {
-  color: #405967;
+  color: var(--blue-46);
 }
 
-.song-file-status { font-size: 12px; color: #955132; margin-left: auto; }
+.song-file-status { font-size: 12px; color: var(--red-55); margin-left: auto; }

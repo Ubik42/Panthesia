@@ -1,17 +1,17 @@
 .score-conversion-panel {
   margin: 12px 0 18px;
   padding: 16px;
-  border: 1px solid #536653;
+  border: 1px solid var(--green-49);
   border-radius: 9px;
-  background: linear-gradient(125deg, #25332b, #202a35);
+  background: linear-gradient(125deg, var(--gray-30), var(--gray-29));
 }
 .score-pdf-panel {
-  background: linear-gradient(125deg, #263044, #222a32);
-  border-color: #52677f;
+  background: linear-gradient(125deg, var(--blue-32), var(--gray-29));
+  border-color: var(--blue-50);
 }
 .score-pdf-note {
   font-size: 12px;
-  color: #f0d2a2;
+  color: var(--orange-88);
   line-height: 1.7;
   overflow-wrap: anywhere;
   margin: 6px 0 0;
@@ -22,13 +22,13 @@
   align-items: center;
   gap: 8px 12px;
   padding: 12px;
-  border: 1px solid #52677f;
+  border: 1px solid var(--blue-50);
   border-radius: 6px;
-  background: #263044;
+  background: var(--blue-32);
   margin: 10px 0;
 }
 .paper-prepared-export strong {
-  color: #e0eaf6;
+  color: var(--gray-92);
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -36,30 +36,30 @@
   overflow-wrap: anywhere;
 }
 .paper-prepared-export span {
-  color: #b9cce3;
+  color: var(--gray-85);
   font-size: 12px;
 }
 .paper-prepared-export small {
   flex-basis: 100%;
-  color: #c1cad8;
+  color: var(--gray-85);
   line-height: 1.7;
 }
 .score-conversion-heading {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #d4e6c6;
+  color: var(--green-93);
 }
 .score-conversion-heading > span {
   margin-left: auto;
-  color: #bbcad9;
+  color: var(--blue-82);
   font-size: 12px;
 }
 .score-conversion-heading strong {
   font-size: 15px;
 }
 .score-conversion-progress {
-  color: #d1dce8;
+  color: var(--gray-89);
   font-size: 13px;
   line-height: 1.8;
   overflow-wrap: anywhere;
@@ -83,7 +83,7 @@
   list-style: none;
   margin: 12px 0;
   padding: 0;
-  border-top: 1px solid #40515e;
+  border-top: 1px solid var(--blue-43);
 }
 .score-draft-list li {
   display: flex;
@@ -91,7 +91,7 @@
   align-items: center;
   gap: 8px;
   padding: 11px 0;
-  border-bottom: 1px solid #40515e;
+  border-bottom: 1px solid var(--blue-43);
 }
 .score-draft-list li > div {
   flex: 1 1 290px;
@@ -102,14 +102,14 @@
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
-  color: #e2eaf2;
+  color: var(--gray-92);
 }
 .score-draft-list small {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 5px;
-  color: #acbdd0;
+  color: var(--blue-78);
   font-size: 11px;
   margin-top: 4px;
   overflow-wrap: anywhere;
@@ -135,32 +135,32 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #bbdda4;
+  color: var(--green-87);
 }
 .score-conversion-warning {
-  border-left: 3px solid #d7ab68;
+  border-left: 3px solid var(--amber-77);
   padding: 8px 10px;
-  background: #393125;
-  color: #f0d2a2;
+  background: var(--gray-31);
+  color: var(--orange-88);
   font-size: 12px;
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
 .score-conversion-help {
-  color: #b4c1d1;
+  color: var(--blue-82);
   font-size: 12px;
   line-height: 1.8;
   margin: 10px 0 0;
 }
 .score-draft-toggle {
-  color: #c8dcae;
+  color: var(--green-87);
   font-size: 11px;
   border-color: transparent;
   background: transparent;
   padding: 5px 0;
 }
 .score-conversion-panel button:focus-visible {
-  outline: 2px solid #b5e590;
+  outline: 2px solid var(--green-86);
   outline-offset: 3px;
 }
 @media (max-width: 650px) {

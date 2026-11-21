@@ -1,18 +1,18 @@
-.external-program { margin: 14px 0; padding: 14px 16px; border: 1px solid #455b70; border-radius: 12px; background: #1c2a36; text-align: left; }
+.external-program { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--blue-46); border-radius: 12px; background: var(--gray-29); text-align: left; }
 .external-program-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .external-program-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
-.external-program-heading strong { font-size: 15px; color: #edf4fb; }
-.external-program-heading > div > span { font-size: 12px; color: #b4c5d5; }
-.external-program-badge { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; font-size: 12px; color: #e9c58f; }
-.external-program-badge.available { color: #9ad8bc; }
-.external-program-status { margin: 10px 0 6px; color: #d2dfea; line-height: 1.6; font-size: 13px; overflow-wrap: anywhere; }
-.external-program-location { margin: 6px 0; font-size: 12px; color: #b4c5d5; }
+.external-program-heading strong { font-size: 15px; color: var(--gray-96); }
+.external-program-heading > div > span { font-size: 12px; color: var(--blue-82); }
+.external-program-badge { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; font-size: 12px; color: var(--amber-83); }
+.external-program-badge.available { color: var(--teal-84); }
+.external-program-status { margin: 10px 0 6px; color: var(--gray-89); line-height: 1.6; font-size: 13px; overflow-wrap: anywhere; }
+.external-program-location { margin: 6px 0; font-size: 12px; color: var(--blue-82); }
 .external-program-location summary { cursor: pointer; padding: 3px 0; }
-.external-program-location code { display: block; padding: 6px 0; color: #d5e2ef; white-space: pre-wrap; overflow-wrap: anywhere; }
+.external-program-location code { display: block; padding: 6px 0; color: var(--gray-92); white-space: pre-wrap; overflow-wrap: anywhere; }
 .external-program-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .external-program-actions button { display: inline-flex; align-items: center; gap: 6px; }
-.external-program-error { color: #ffc0ad; overflow-wrap: anywhere; font-size: 13px; }
-.external-program-notice { color: #b9decf; font-size: 12px; }
+.external-program-error { color: var(--orange-88); overflow-wrap: anywhere; font-size: 13px; }
+.external-program-notice { color: var(--teal-87); font-size: 12px; }
 .external-program-spinner { animation: external-program-spin 1.2s linear infinite; }
 @keyframes external-program-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .external-program-spinner { animation: none; } }

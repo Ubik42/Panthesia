@@ -3,7 +3,7 @@
   height: min(920px, 92vh);
   max-height: 92vh;
   gap: 10px;
-  background: #222a33;
+  background: var(--gray-29);
 }
 .fingering-dialog > .dialog-heading {
   flex: none;
@@ -22,14 +22,14 @@
   scrollbar-gutter: stable;
 }
 .fingering-dialog .fingering-workspace-body .browse-detail-masthead {
-  background: #222a33;
+  background: var(--gray-29);
 }
 .fingering-dialog > .dialog-actions {
   flex: none;
   flex-wrap: wrap;
   margin: 0;
   padding: 10px 0 0;
-  border-top: 1px solid #445362;
+  border-top: 1px solid var(--blue-43);
   gap: 8px;
 }
 .fingering-dialog > .dialog-actions button {
@@ -42,7 +42,7 @@
 }
 .fingering-dialog .fingering-options label {
   line-height: 1.6;
-  color: #c2cfe0;
+  color: var(--gray-85);
 }
 .fingering-dialog .fingering-options input,
 .fingering-dialog .fingering-options select {
@@ -54,23 +54,23 @@
   font-variant-numeric: tabular-nums;
 }
 .fingering-dialog .fingering-options input[aria-invalid="true"] {
-  border-color: #d9927c;
-  background: #3b2e2b;
+  border-color: var(--orange-71);
+  background: var(--gray-31);
 }
 .fingering-dialog .fingering-help {
-  color: #b4c5d8;
+  color: var(--blue-82);
   line-height: 1.7;
 }
 .fingering-dialog .fingering-table-wrap {
   max-height: 52vh;
-  border-color: #4b5b6b;
+  border-color: var(--blue-46);
 }
 .fingering-dialog .fingering-table {
   line-height: 1.6;
 }
 .fingering-dialog .fingering-table th {
-  background: #293541;
-  color: #cad9e8;
+  background: var(--blue-32);
+  color: var(--gray-89);
 }
 .fingering-dialog .fingering-table td:last-child {
   min-width: 200px;
@@ -89,7 +89,7 @@
   line-height: 1.8;
 }
 .fingering-dialog .finger-position:focus-visible {
-  outline: 2px solid #a9ca80;
+  outline: 2px solid var(--green-80);
   outline-offset: 3px;
 }
 @media (max-width: 680px) {

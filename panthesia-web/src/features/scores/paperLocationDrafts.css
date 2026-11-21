@@ -1,7 +1,7 @@
 .paper-location-drafts {
-  border: 1px solid var(--border, #3b4658);
+  border: 1px solid var(--border, var(--blue-39));
   border-radius: 12px;
-  background: var(--panel, #171f2b);
+  background: var(--panel, var(--gray-24));
   margin: 10px 0;
   padding: 10px 12px;
 }
@@ -31,11 +31,11 @@
 .paper-location-drafts-heading strong {
   border-radius: 20px;
   padding: 1px 8px;
-  background: #477cd62b;
-  color: #abcaff;
+  background: color-mix(in oklab, var(--indigo-60) 17%, transparent);
+  color: var(--blue-86);
 }
 .paper-location-drafts-heading span {
-  color: var(--muted, #a9b4c6);
+  color: var(--muted, var(--blue-78));
   font-size: 0.85rem;
 }
 .paper-location-drafts ul {
@@ -48,7 +48,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 0;
-  border-top: 1px solid var(--border, #3b4658);
+  border-top: 1px solid var(--border, var(--blue-39));
 }
 .paper-location-drafts li > div {
   display: grid;
@@ -60,17 +60,17 @@
 .paper-location-drafts li span,
 .paper-location-drafts li small {
   font-size: 0.82rem;
-  color: var(--muted, #a9b4c6);
+  color: var(--muted, var(--blue-78));
 }
 .paper-location-drafts li small {
-  color: #eec584;
+  color: var(--amber-83);
 }
 .paper-location-draft-status {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  color: var(--muted, #a9b4c6);
+  color: var(--muted, var(--blue-78));
 }
 @media (max-width: 650px) {
   .paper-location-drafts li {

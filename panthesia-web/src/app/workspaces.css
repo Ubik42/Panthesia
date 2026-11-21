@@ -5,15 +5,15 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  background: #20242a;
-  border-bottom: 1px solid #101217;
+  background: var(--gray-26);
+  border-bottom: 1px solid var(--gray-18);
 }
 .workspace-topbar .app-name {
   min-width: 110px;
   padding: 0;
   font-size: 16px;
   font-weight: 650;
-  color: #eef1f5;
+  color: var(--gray-96);
   border: 0;
   background: transparent;
 }
@@ -41,10 +41,10 @@
   flex-wrap: wrap;
   padding: 10px 13px;
   margin: 8px 0;
-  border: 1px solid #755438;
+  border: 1px solid var(--amber-49);
   border-radius: 8px;
-  background: #332b24;
-  color: #e9caa8;
+  background: var(--gray-31);
+  color: var(--orange-88);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -57,7 +57,7 @@
   max-height: min(88vh, 920px);
   overflow: auto;
 }
-.song-metadata-dialog .dialog-heading p { margin: 5px 0 0; color: #9eafc3; }
+.song-metadata-dialog .dialog-heading p { margin: 5px 0 0; color: var(--gray-75); }
 .song-metadata-dialog .file-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .song-metadata-dialog .file-path { overflow-wrap: anywhere; }
 @media (max-width: 600px) {
@@ -74,7 +74,7 @@
   bottom: 0;
   z-index: 30;
   width: min(330px, 85%);
-  box-shadow: 0 8px 32px #0008;
+  box-shadow: 0 8px 32px color-mix(in oklab, var(--gray-0) 53%, transparent);
 }
 .workbench > .workspace[data-practice-compact] > .practice-inspector {
   right: 0;

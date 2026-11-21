@@ -1,6 +1,6 @@
 .score-document-preview {
   margin: 16px 0;
-  border: 1px solid var(--instrument-line, #46505b);
+  border: 1px solid var(--instrument-line, var(--blue-43));
   border-radius: 10px;
   overflow: hidden;
 }
@@ -35,14 +35,14 @@
   max-height: min(52vh, 560px);
   overflow: auto;
   overscroll-behavior: contain;
-  background: #c5c4c0;
+  background: var(--gray-82);
   padding: 12px;
 }
 .score-document-paper {
   min-width: 100%;
-  background: #fff;
-  color: #111;
-  box-shadow: 0 2px 8px #0003;
+  background: var(--gray-100);
+  color: var(--gray-18);
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--gray-0) 20%, transparent);
 }
 .score-document-paper > svg {
   display: block;

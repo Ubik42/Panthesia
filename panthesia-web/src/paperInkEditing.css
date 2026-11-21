@@ -7,9 +7,9 @@
   display: block;
   padding: 6px 8px;
   margin: -2px 0 8px;
-  background: #20262e;
-  border-bottom: 1px solid #455366;
-  box-shadow: 0 3px 8px #0003;
+  background: var(--gray-27);
+  border-bottom: 1px solid var(--blue-43);
+  box-shadow: 0 3px 8px color-mix(in oklab, var(--gray-0) 20%, transparent);
 }
 .paper-annotation-tools.ink-editing > button {
   display: none;
@@ -45,11 +45,11 @@
   padding-bottom: 3px;
 }
 .paper-ink-main button[aria-pressed="true"] {
-  border-color: #659cd7;
-  background: #324c67;
+  border-color: var(--blue-66);
+  background: var(--blue-41);
 }
 .paper-ink-help {
-  color: #bdc8d5;
+  color: var(--blue-82);
 }
 .paper-annotation-tools.ink-editing > [role="status"] {
   display: block;
@@ -60,7 +60,7 @@
   scroll-padding-top: 104px;
 }
 .paper-ink-layer.active:focus-visible {
-  outline: 2px solid #3679b9;
+  outline: 2px solid var(--blue-57);
   outline-offset: 3px;
 }
 @media (max-width: 600px) {

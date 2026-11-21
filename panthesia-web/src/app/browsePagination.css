@@ -51,18 +51,18 @@
   padding: 4px;
   text-align: center;
   font-size: 12px;
-  color: #e1e8ee;
-  background: #171e26;
-  border: 1px solid #4a596a;
+  color: var(--gray-92);
+  background: var(--gray-24);
+  border: 1px solid var(--blue-46);
   border-radius: 5px;
 }
 .browse-page-number input[aria-invalid="true"] {
-  border-color: #d5a264;
+  border-color: var(--amber-77);
 }
 .browse-page-message {
   flex-basis: 100%;
   margin: 0;
-  color: #e2bf93;
+  color: var(--amber-83);
   line-height: 1.5;
 }
 @media (max-width: 420px) {
