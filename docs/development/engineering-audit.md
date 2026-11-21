@@ -52,7 +52,7 @@ piano-layout/lib.rs、wgpu-jumpstart/lib.rs 与 core/utils/fps_ticker.rs 均有�
 
 ## B01 实施更新
 
-关系目录、MIDI 持有副本与移动回退已接入当前源码；详见 current-plan.md 检查点及 song-core.md。原调查统计和 a67ea54 包保持其原日期含义，不代表新实现的运行验证。
+关系目录、MIDI 持有副本与移动回退已接入当前源码；（后已由 R2 的清单存储取代，见 panthesia-format.md。）原调查统计和 a67ea54 包保持其原日期含义，不代表新实现的运行验证。
 
 只读迁移分析确认 Look at the Sky 并非简单的五份同一文件：四条旧记录可以精确按内容关联，一条旧内容当前未命中。源工程清单能明确当前四份演奏属于同一歌曲，当前主演奏和原调对齐文件完全相同。该段记录第一轮只读调查；后续迁移结果如下。
 

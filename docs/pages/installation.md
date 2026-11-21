@@ -15,4 +15,4 @@
 
 `Open-Web.cmd` 用于本机浏览器开发调试。正式打包使用 `scripts/package-practice.ps1 -Destination <新目录> -Configuration Release`。
 
-歌曲原件可以保持在用户音乐目录中；未来的数据迁移遵循[歌曲数据规范](../development/song-core.md)。不要把内部索引/sidecar 的手工编辑作为日常安装步骤。
+歌曲原件可以保持在用户音乐目录中；歌曲数据写在文件旁的 `.panthesia` 清单中（[格式说明](../development/panthesia-format.md)）。不要把内部索引/sidecar 的手工编辑作为日常安装步骤。

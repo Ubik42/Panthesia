@@ -2,6 +2,15 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-21 · RF 第三批：任务推送、App 拆分、模式清理、CSS 层叠层（提交 d5daecf、6789c2f、db49c5e、963ccf9、a989662 及本批 CSS 提交）
+
+- 任务列表推送：任务池加修订号与条件变量，任务入队、开始、阶段、来源、提交、结束、取消时前进；引擎 `next_tasks`，桌面发 `engine-tasks` 事件，调试服务 `/api/tasks/next` 长轮询。前端任务监视器与状态共用同一个订阅函数。主页空闲时界面不再发出请求（原来每秒一次 `tasks`）。
+- `App.tsx` 拆分：`App.tsx` 只提供模型（12 行）；`app/useAppModel` 组合会话、导航与操作，经 `AppContext` 提供；窗口视图拆为 `AppShell` → `AppMenu`、`AppNotices`、`ProductScreens`、`PracticeWorkspace`、`AppDialogs`，各自只读取用到的值。按关注点拆出 `useSongOpening`（打开文件、最近打开、外部转交）、`useAppDialogs`（对话框开关与参数、应用菜单的外部点击关闭）、`useKeyboardViewport`（舞台键盘范围）。`useAppModel` 约 550 行，仍可按恢复、命令、工作入口继续拆。拆分用脚本按顶层声明生成返回值与解构，再用 `scripts/organize-imports.mjs`（TypeScript 服务）删除无用导入；每步在浏览器中核对主页、歌曲设置、演奏、设置页与对话框。
+- 模式：引擎只接受 wait / listen（flow 为人声部连续伴奏）；评分时代的 recital / memory 在前端与引擎中的锁、隐藏提示、快捷键限制与说明文字删除。
+- CSS 层叠层：构建时 PostCSS 插件把 `tokens.css` 放入 `tokens` 层，其余样式表放入 `components` 层（相对优先级不变）；`src/layers.css` 声明层顺序并在 `state` 层隐藏 `[hidden]`，删除 6 条分散的 `[hidden] { display: none !important }`。其余 24 处 `!important` 是对通用控件皮肤（`.workbench button` 等）与主题文件的覆盖；把通用皮肤整体降层会同时改变依赖主题覆盖的地方，在无法逐一截图核对时风险高，留到各屏视觉重做时处理。
+- 计划：第 3.5 节状态与传输按实际设计更新（推送、外部 store、AppContext；不引入 zustand）。
+- 检查：`cargo test --workspace` 全部通过（core 245、desktop 18、engine 98）；`npm run build` 通过。
+
 ## 2026-11-21 · RF 第二批：颜色 token、类型生成、模块归位（提交 140b88b、4b08619、9866df5、53b0277、bfa7939、bf453f4、09e225e、342838e）
 
 - 状态推送修正：采集序号每次发布都增长，原来 16 ms 一次的发布让长轮询每秒返回 60 次；状态源改为对去掉序号的快照计算内容哈希，内容变化才前进。空闲时长轮询等满 20 秒。首次会话读取的可选调用短路了参数，导致界面停在"正在连接"，已修正（浏览器调试中实测：主页、歌曲设置、演奏舞台、播放进度均正常）。
