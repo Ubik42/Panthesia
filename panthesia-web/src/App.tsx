@@ -99,7 +99,6 @@ import { PracticeTimeline } from "./features/practice/PracticeTimeline";
 import { usePracticeRange } from "./features/practice/usePracticeRange";
 import { FingeringDialog } from "./FingeringDialog";
 import { ImportDialog } from "./ImportDialog";
-import { LegacyExerciseTracksDialog } from "./LegacyExerciseTracksDialog";
 import { Notation } from "./Notation";
 import { PackageDialog } from "./PackageDialog";
 import { PaperScore } from "./PaperScore";
@@ -254,7 +253,6 @@ export default function App() {
     [exerciseDialog, setExerciseDialog] = useState(false),
     [metadata, setMetadata] = useState(false),
     [fingeringDraft, setFingeringDraft] = useState<import("./features/fingering/fingeringWorkbenchStore").FingeringDraft | null>(null),
-    [legacyExerciseDialog, setLegacyExerciseDialog] = useState(false),
     [libraryLaunch, setLibraryLaunch] = useState<
       "normal" | "missing" | "review"
     >("normal"),
@@ -946,7 +944,6 @@ export default function App() {
             <button disabled={!song} onClick={()=>action({type:"mode",value:"listen"})}>连续播放</button>
             <button disabled={busy || openingActive} onClick={()=>void run({type:"recording",active:!state.recording},state.recording)}> {state.recording?"停止录制":"录制演奏"}</button>
             <PreparationButton store={workspaceSessions.exercise} name="技术练习…" readyLabel="已生成" disabled={openingActive} open={()=>setExerciseDialog(true)}/>
-            {song?.generated && song.notes.length>0 && song.notes.every(n=>n.part==="left") && <button disabled={busy} onClick={()=>setLegacyExerciseDialog(true)}>核对旧版左手资料…</button>}
           </>},
           {label:"视图",content:<>
             <button onClick={()=>setView("score")}>五线谱</button><button disabled={!song} onClick={()=>setView("combined")}>谱面与瀑布</button><button onClick={()=>setView("keyboard")}>瀑布与琴键</button><button disabled={!song} onClick={()=>setView("paper")}>PDF / 图片谱页</button>
@@ -1285,13 +1282,6 @@ export default function App() {
             await refreshConfirmedSession();
             void updateCollection().catch(() => {});
           }}
-        />
-      )}
-      {legacyExerciseDialog && song?.generated && (
-        <LegacyExerciseTracksDialog
-          contentId={song.contentId}
-          close={() => setLegacyExerciseDialog(false)}
-          changed={refresh}
         />
       )}
       {metadata && song && (

@@ -1,6 +1,5 @@
 mod portable_song;
 mod owned_annotations;
-pub mod library_migration;
 #[cfg(test)]
 mod unified_asset_tests;
 pub mod song_repository;
@@ -86,8 +85,6 @@ mod library_metadata;
 mod synthesia_import;
 mod metadata_discovery;
 pub use synthesia_import::{ImportOptions as SynthesiaImportOptions, ImportPreview as SynthesiaImportPreview, ImportRow as SynthesiaImportRow};
-mod legacy_exercise_tracks;
-mod legacy_exercise_history;
 mod audio;
 mod track_sound;
 mod track_appearance;
@@ -143,8 +140,6 @@ use panthesia_core::{
         PracticeHistoryStore, SongPracticeSetup,
     },
 };
-#[cfg(test)]
-use panthesia_core::practice::PracticeHands;
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
@@ -1081,14 +1076,6 @@ impl Player {
         if matches!(command, Command::Session) {
             let song = self.command(Command::CurrentSong)?;
             return Ok(serde_json::json!({ "song": song, "state": self.snapshot() }));
-        }
-        if let Command::PreviewLegacyExerciseHistory{content_id}=command {return legacy_exercise_history::preview(self,&content_id);}
-        if let Command::ReviewLegacyExerciseHistory{content_id,old_id,current_id,fingerprint,approve}=command {return legacy_exercise_history::update(self,&content_id,&old_id,&current_id,&fingerprint,approve);}
-        if let Command::PreviewLegacyExerciseTracks { content_id } = command {
-            return legacy_exercise_tracks::preview(self, &content_id);
-        }
-        if let Command::ApplyLegacyExerciseTracks { content_id, fingerprint, restore_conditions } = command {
-            return legacy_exercise_tracks::apply(self, &content_id, &fingerprint, restore_conditions);
         }
         if self.finger_demo.is_some() && !matches!(&command, Command::StartFingerDemo{..}|Command::FingerDemoControl{..}|Command::StartHeldFingerDemo{..}|Command::StopFingerDemo{..}|Command::FingerDemoState|Command::CurrentSong|Command::Volume{..}|Command::SoundFont{..}) {
             self.panic();
@@ -2336,8 +2323,6 @@ impl Player {
             }
             Command::Bookmarks | Command::SaveBookmark{..}|Command::RemoveBookmark{..} => unreachable!(),
             Command::ReadRepertoire { .. } | Command::SongCatalog | Command::EditRepertoire { .. } | Command::InspectNotation { .. } => return Err("作品资料需通过后台任务处理".into()),
-            Command::PreviewLegacyExerciseTracks { .. } | Command::ApplyLegacyExerciseTracks { .. }
-                | Command::PreviewLegacyExerciseHistory { .. } | Command::ReviewLegacyExerciseHistory { .. } => unreachable!(),
         }
         if persist {
             self.persist()?;

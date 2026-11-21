@@ -6,48 +6,6 @@ use panthesia_core::{
 use serde::Serialize;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-/// Index immutable practice conditions once for whole-song background scans.
-pub(crate) struct Selection<'a> {
-    tracks: HashMap<usize, (panthesia_core::song_config::PlayerConfig, PracticePart)>,
-    players: &'a std::collections::BTreeMap<(usize, usize), panthesia_core::song_config::PlayerConfig>,
-    assigned: &'a HashMap<(usize, usize), PracticePart>,
-    wanted: Option<PracticePart>,
-}
-impl<'a> Selection<'a> {
-    pub(crate) fn new(
-        config: &'a SongConfig,
-        assigned: &'a HashMap<(usize, usize), PracticePart>,
-        wanted: &str,
-    ) -> Self {
-        let mut tracks = HashMap::with_capacity(config.tracks.len());
-        for track in config.tracks.iter() {
-            // Preserve the original first-track lookup if a legacy setup contains duplicates.
-            tracks.entry(track.track_id)
-                .or_insert((track.player, track.practice_part));
-        }
-        Self {
-            tracks,
-            players: &config.note_players,
-            assigned,
-            wanted: match wanted {
-                "left" => Some(PracticePart::LeftHand),
-                "right" => Some(PracticePart::RightHand),
-                "other" => Some(PracticePart::Other),
-                _ => None,
-            },
-        }
-    }
-    pub(crate) fn selected_part(&self, track: usize, index: usize) -> Option<PracticePart> {
-        let (player, fallback) = self.tracks.get(&track)?;
-        if *player != panthesia_core::song_config::PlayerConfig::Human
-            || self.players.get(&(track, index)).is_some_and(|p| *p != panthesia_core::song_config::PlayerConfig::Human) {
-            return None;
-        }
-        let part = self.assigned.get(&(track, index)).copied().unwrap_or(*fallback);
-        self.wanted.is_none_or(|wanted| wanted == part).then_some(part)
-    }
-}
-
 pub fn part(
     config: &SongConfig,
     assigned: &HashMap<(usize, usize), PracticePart>,

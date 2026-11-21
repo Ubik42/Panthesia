@@ -1763,10 +1763,6 @@ export type EngineCommand =
   | { type: "readLibraryOpen"; "id": string; "metadata_only"?: boolean }
   | { type: "cancelLibraryOpen"; "id": string }
   | { type: "releaseLibraryOpen"; "id": string }
-  | { type: "previewLegacyExerciseTracks"; "content_id": string }
-  | { type: "applyLegacyExerciseTracks"; "content_id": string; "fingerprint": string; "restore_conditions"?: boolean }
-  | { type: "previewLegacyExerciseHistory"; "content_id": string }
-  | { type: "reviewLegacyExerciseHistory"; "content_id": string; "old_id": string; "current_id": string; "fingerprint": string; "approve": boolean }
   | { type: "metadataTemplates" }
   | { type: "readMetadataDefaults" }
   | { type: "resetMetadataDefaults"; "fields": Array<string>; "expected": SongMetadata; "proof": string }

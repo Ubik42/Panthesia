@@ -1,5 +1,5 @@
 //! Owned exercise preparation shared by generated and historical practice.
-use crate::{Player, legacy_exercise_tracks, load_pipeline};
+use crate::{Player, load_pipeline};
 use panthesia_music::MidiFile;
 use panthesia_core::{
     exercise::{ExercisePattern, ExercisePlan, ExerciseSpec, ExerciseTonality},
@@ -119,7 +119,6 @@ impl Prepared {
     }
     pub fn install(self, player: &mut Player) -> Result<(), String> {
         self.check()?;
-        legacy_exercise_tracks::capture_before_install(player, &self.file, self.plan.spec)?;
         let assets = match self.assets {
             Some(assets) => {
                 assets.store(&player.data, &self.file.content_id)?;
