@@ -1,6 +1,6 @@
 import { memo,useMemo,useEffect,useRef,useState } from "react";
 import { clock,type LoadedSong } from "../../api";
-import { usePlaybackFields } from "./PlaybackView";
+import { usePlaybackFields } from "./usePlaybackFields";
 import { rangeTime } from "./PracticeRangeControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";

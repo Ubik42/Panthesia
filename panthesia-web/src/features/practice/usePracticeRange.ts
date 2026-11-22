@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LoadedSong, Note, Snapshot } from "../../api";
 import type { PlaybackStore } from "./playbackStore";
-import { usePlaybackFields } from "./PlaybackView";
+import { usePlaybackFields } from "./usePlaybackFields";
 const fields = ["passage", "contentId", "scoreRevision"] as const;
 type Draft = {
   source: string;

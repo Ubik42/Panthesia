@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import type { PlaybackStore } from "../practice/playbackStore";
 
 export interface WrittenVisit {
   ordinal: number;
@@ -22,7 +23,7 @@ const visitLabel = (visit: WrittenVisit, practice: boolean) =>
 
 export function ScoreRoute({
   route,
-  position,
+  store,
   seek,
   disabled,
   loop,
@@ -30,7 +31,7 @@ export function ScoreRoute({
   practice = false,
 }: {
   route: WrittenRoute;
-  position: number;
+  store: PlaybackStore;
   seek: (position: number) => void;
   disabled: boolean;
   loop: (start: number, end: number) => Promise<void>;
@@ -38,14 +39,20 @@ export function ScoreRoute({
   practice?: boolean;
 }) {
   const label = (visit: WrittenVisit) => visitLabel(visit, practice);
-  let low = 0,
-    high = route.visits.length;
-  while (low < high) {
-    const middle = Math.floor((low + high) / 2);
-    if (route.visits[middle].start <= position + 0.001) low = middle + 1;
-    else high = middle;
-  }
-  const current = route.visits[Math.max(0, low - 1)];
+  // Render only when playback enters another written visit, not on every position update.
+  const visitAt = useCallback(() => {
+    const position = store.getSnapshot().position;
+    let low = 0,
+      high = route.visits.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (route.visits[middle].start <= position + 0.001) low = middle + 1;
+      else high = middle;
+    }
+    return Math.max(0, low - 1);
+  }, [store, route]);
+  const current = route.visits[useSyncExternalStore(store.subscribe, visitAt, visitAt)];
+  const position = () => store.getSnapshot().position;
   const [selected, setSelected] = useState<number | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -97,7 +104,7 @@ export function ScoreRoute({
                 (v) => v.measure === Number(e.target.value),
               );
               setSelected(
-                (visits.find((v) => v.start >= position) ?? visits[0]).ordinal,
+                (visits.find((v) => v.start >= position()) ?? visits[0]).ordinal,
               );
             }}
           >

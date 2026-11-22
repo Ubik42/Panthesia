@@ -17,7 +17,7 @@ type SoundFontStatus,
 } from "../../api";
 import { TaskActivity } from "../../engine/TaskActivity";
 import type { PlaybackStore } from "../practice/playbackStore";
-import { usePlaybackFields } from "../practice/PlaybackView";
+import { usePlaybackFields } from "../practice/usePlaybackFields";
 import { DuetRuntimePanel } from "../settings/DuetRuntimePanel";
 import { DeviceScanNotice } from "./DeviceScanNotice";
 import "./deviceSettings.css";

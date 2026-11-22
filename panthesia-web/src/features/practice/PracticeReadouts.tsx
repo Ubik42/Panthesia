@@ -3,7 +3,7 @@ import {
   displayPitch,
   type DisplayPreferences,
 } from "../settings/displayPreferences";
-import { usePlaybackFields } from "./PlaybackView";
+import { usePlaybackFields } from "./usePlaybackFields";
 import type { PlaybackStore } from "./playbackStore";
 import {
   activeMeasures,

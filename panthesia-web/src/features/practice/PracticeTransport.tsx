@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { EngineCommand } from "../../api";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePlaybackFields } from "./PlaybackView";
+import { usePlaybackFields } from "./usePlaybackFields";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 

@@ -14,7 +14,7 @@ self.onmessage = async ({ data }) => {
       toolkit = new VerovioToolkit(await createModule());
       toolkit.setOptions({
         breaks: "auto",
-        pageWidth: 2100,
+        pageWidth: data.pageWidth ?? 2100,
         pageHeight: 2970,
         scale: 40,
         svgHtml5: true,

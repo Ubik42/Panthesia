@@ -20,7 +20,7 @@ import { SongBookmarks, type BookmarkNavigation } from "./SongBookmarks";
 import { LabelsIcon, MetronomeIcon } from "./SynthesiaToolbarIcons";
 import type { PracticeRangeController } from "./usePracticeRange";
 import type { PlaybackStore } from "./playbackStore";
-import { usePlaybackFields } from "./PlaybackView";
+import { usePlaybackFields } from "./usePlaybackFields";
 export function PerformanceTools({
   song,
   playback,

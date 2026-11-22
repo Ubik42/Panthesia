@@ -8,11 +8,12 @@ import type { ScoreMappingRequest } from "./mappingTypes";
 import type { PracticeRange } from "../practice/usePracticeRange";
 import { TaskActivity } from "../../engine/TaskActivity";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import type { PlaybackStore } from "../practice/playbackStore";
+import { usePlaybackFields } from "../practice/usePlaybackFields";
 import {
   api,
   pitchName,
   type Note,
-  type Snapshot,
   type LoadedSong,
 } from "../../api";
 import { ScoreNoteEditor, type ScoreMapping } from "./ScoreNoteEditor";
@@ -45,9 +46,10 @@ interface Asset {
   route?: WrittenRoute | null;
 }
 type Mapping = ScoreMapping;
+const playbackSpeed = ["speed"] as const;
 export function Notation({
   song,
-  state,
+  store,
   seek,
   changed,
   detail,
@@ -67,7 +69,7 @@ export function Notation({
   loop:(start:number,end:number)=>Promise<boolean>;
   toolRequest?: ScoreToolRequest | null;
   clearToolRequest?: () => void;
-  state: Snapshot;
+  store: PlaybackStore;
   seek: (position: number) => void;
   changed: () => Promise<void>;
   detail: (note: Note) => void;
@@ -76,6 +78,9 @@ export function Notation({
   canEdit: boolean;
   onEdit: (value: boolean) => void;
 }) {
+  // Position changes every frame; read it on demand and react to it in subscriptions, never by rendering.
+  const { speed } = usePlaybackFields(store, playbackSpeed);
+  const position = () => store.getSnapshot().position;
   const [rangeSelection, setRangeSelection] = useState<{
     first: number;
     last: number;
@@ -162,6 +167,15 @@ export function Notation({
   const [zoom, setZoom] = useState(0),
     [simpleFingers, setSimpleFingers] = useState(false),
     [paperWidth, setPaperWidth] = useState(900);
+  // "Fit width" reflows systems to the pane instead of enlarging A4 pages: the staff size is
+  // the 100% size (0.5 px per Verovio unit), reduced until a system fits the pane.
+  const [paneHeight, setPaneHeight] = useState(0),
+    [systemUnits, setSystemUnits] = useState(0);
+  // Wider systems hold more measures and grow taller, hence the 1.15 margin; below 0.35 the
+  // staff stops being readable, and the follow scroll keeps the current note in view instead.
+  const staffScale = systemUnits && paneHeight ? Math.max(0.35, Math.min(0.5, (paneHeight - 16) / (systemUnits * 1.15))) : 0.5;
+  useEffect(() => setSystemUnits(0), [song.contentId, song.scoreRevision]);
+  const layoutWidth = zoom ? 2100 : Math.min(9600, Math.max(1200, Math.round(paperWidth / staffScale / 400) * 400));
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     try {
@@ -188,7 +202,11 @@ export function Notation({
     if (!el) return;
     const update = () => {
       setPaperWidth(Math.max(240, el.clientWidth - 24));
-
+      // The space below the toolbar, independent of how much score is loaded into it.
+      // Messages above the score come and go; the toolbar and the pane do not.
+      const box = el.closest(".notation-pane");
+      const room = (box?.clientHeight ?? 0) - (box?.querySelector<HTMLElement>(".notation-toolbar")?.offsetHeight ?? 0);
+      if (room > 0) setPaneHeight(room);
     };
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -230,6 +248,15 @@ export function Notation({
   }, [song.notes, song.fingerActions]);
   const pageView = useScorePage(pages,page);
   const html = useMemo(() => ({ __html: pageView.markup }), [pageView.markup]);
+  useEffect(() => {
+    if (zoom || !pageView.markup || !root.current) return;
+    const systems = [...root.current.querySelectorAll("g.system")];
+    const tallest = Math.max(0, ...systems.map((system) => system.getBoundingClientRect().height));
+    // Measured once, on the standard-size layout (rendered pixels per unit is the paper width
+    // over the layout width). Re-measuring after each reflow would chase taller systems that
+    // hold more measures and shrink the staff without end.
+    if (tallest) setSystemUnits((units) => units || Math.round(tallest / (paperWidth / layoutWidth)));
+  }, [pageView.markup, zoom, paperWidth, layoutWidth]);
   useEffect(()=>{
     const selected=new Set(practiceRange?mapping.filter(m=>m.start<practiceRange.end&&m.end>practiceRange.start).map(m=>m.id):[]);
     root.current?.querySelectorAll("g.note").forEach(note=>note.classList.toggle("practice-range-note",selected.has(note.id)));
@@ -241,8 +268,7 @@ export function Notation({
   const [reload, setReload] = useState(0);
   const [sourceRhythm, setSourceRhythm] = useState(false);
   const [rangeAnchor,setRangeAnchor]=useState<{first?:number;position?:number;last?:boolean}>({});
-  const desiredFollow=useRef(true),pendingRange=useRef(false),currentPosition=useRef(state.position);
-  currentPosition.current=state.position;
+  const desiredFollow=useRef(true),pendingRange=useRef(false),currentPosition={get current(){return position();}};
   const rangeSong=useRef(`${song.engineId}:${song.contentId}:${song.scoreRevision}`);
   useEffect(()=>{
     const identity=`${song.engineId}:${song.contentId}:${song.scoreRevision}`;
@@ -315,7 +341,7 @@ export function Notation({
         setAsset(data);
         void renderScore(data, controller.signal, (stage, page, total) => {
           if (!disposed) setRenderStage(stage === "index" ? `正在对应谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
-        }).then(async result => {
+        }, layoutWidth).then(async result => {
           if (disposed) return;
           setPages(result.pages);
           if(rangeAnchor.last)setPage(Math.max(0,result.pages.length-1));
@@ -351,38 +377,53 @@ export function Notation({
       mappingWorking.current = false;
       controller.abort();
     };
-  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm, rangeAnchor]);
+  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm, rangeAnchor, layoutWidth]);
   useEffect(()=>{
     const window=asset?.window;
-    if(!window||!follow||loading||pendingRange.current)return;
-    const inside=window.intervals ? window.intervals.some(interval=>state.position>=interval.start&&state.position<interval.end) : state.position>=window.start&&(state.position<window.end||window.first+window.count>=window.total);
-    if(!inside && !(window.intervals && state.position>=song.duration && window.intervals.some(interval=>interval.end>=song.duration))) {
-      pendingRange.current=true;desiredFollow.current=true;
-      setRangeAnchor({position:state.position});
-    }
-  },[asset,follow,loading,state.position,song.duration]);
+    if(!window||!follow||loading)return;
+    const check=()=>{
+      if(pendingRange.current)return;
+      const at=position();
+      const inside=window.intervals ? window.intervals.some(interval=>at>=interval.start&&at<interval.end) : at>=window.start&&(at<window.end||window.first+window.count>=window.total);
+      if(!inside && !(window.intervals && at>=song.duration && window.intervals.some(interval=>interval.end>=song.duration))) {
+        pendingRange.current=true;desiredFollow.current=true;
+        setRangeAnchor({position:at});
+      }
+    };
+    check();
+    return store.subscribe(check);
+  },[asset,follow,loading,song.duration,store]);
   const timeIndex = useMemo(() => new NotationTimeIndex(mapping), [mapping]);
   useEffect(() => {
-    const {active: current, next} = timeIndex.at(state.position);
-    if (follow) {
-      if (next) setPage(next.page);
-    }
-    activeIds.current.forEach((id) =>
-      root.current
-        ?.querySelector(`[id="${CSS.escape(id)}"]`)
-        ?.classList.remove("playing-note"),
-    );
-    activeIds.current = current.filter((n) => n.page === page).map((n) => n.id);
-    activeIds.current.forEach((id) =>
-      root.current
-        ?.querySelector(`[id="${CSS.escape(id)}"]`)
-        ?.classList.add("playing-note"),
-    );
-    if (follow && next?.page === page && scroll.current) {
-      const note = root.current?.querySelector(`[id="${CSS.escape(next.id)}"]`);
-      if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note);
-    }
-  }, [state.position, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth]);
+    // Rendered markup, page or zoom changed: element handles and the last target are stale.
+    const elements = new Map<string, Element | null>();
+    const element = (id: string) => {
+      if (!elements.has(id)) elements.set(id, root.current?.querySelector(`[id="${CSS.escape(id)}"]`) ?? null);
+      return elements.get(id) ?? null;
+    };
+    activeIds.current.forEach((id) => element(id)?.classList.remove("playing-note"));
+    activeIds.current = [];
+    let revealed = "";
+    const update = () => {
+      const { active: current, next } = timeIndex.at(position());
+      if (follow && next && next.page !== page) setPage(next.page);
+      const ids = current.filter((n) => n.page === page).map((n) => n.id);
+      if (ids.length !== activeIds.current.length || ids.some((id, i) => id !== activeIds.current[i])) {
+        const keep = new Set(ids);
+        activeIds.current.forEach((id) => keep.has(id) || element(id)?.classList.remove("playing-note"));
+        const had = new Set(activeIds.current);
+        ids.forEach((id) => had.has(id) || element(id)?.classList.add("playing-note"));
+        activeIds.current = ids;
+      }
+      if (follow && next?.page === page && scroll.current && next.id !== revealed) {
+        revealed = next.id;
+        const note = element(next.id);
+        if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note, [note.closest("g.system"), note.closest("g.staff")]);
+      }
+    };
+    update();
+    return store.subscribe(update);
+  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth]);
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -425,7 +466,7 @@ export function Notation({
         new Set(
           notes
             .map((n) =>
-              fingerSequence(n, n ? actionsForNote(song, n) : [], state.speed),
+              fingerSequence(n, n ? actionsForNote(song, n) : [], speed),
             )
             .filter(Boolean),
         ),
@@ -461,7 +502,7 @@ export function Notation({
         );
         label.setAttribute(
           "data-actions-valid",
-          String(actions.every((a) => actionUsable(a, state.speed))),
+          String(actions.every((a) => actionUsable(a, speed))),
         );
       }
       label.setAttribute("x", String(point.x));
@@ -470,7 +511,7 @@ export function Notation({
       label.setAttribute("text-anchor", "middle");
       label.setAttribute(
         "fill",
-        actions.some((a) => !actionUsable(a, state.speed))
+        actions.some((a) => !actionUsable(a, speed))
           ? "#9a4b08"
           : notes[0]?.part === "left"
             ? "#0765a3"
@@ -508,7 +549,7 @@ export function Notation({
     page,
     song.notes,
     song.fingerActions,
-    state.speed,
+    speed,
     showFingers,
     selected,
     edit,
@@ -526,7 +567,7 @@ export function Notation({
     const unique = Array.from(
       new Map(choices.map((n) => [`${n.track}:${n.index}`, n])).values(),
     );
-    const n = unique.find((n) => n.end >= state.position) ?? unique[0];
+    const n = unique.find((n) => n.end >= position()) ?? unique[0];
     if (!n) {
       if (edit)
         setSelectionError("此谱音没有可靠的演奏对应关系，请先核对乐谱配对。");
@@ -546,7 +587,7 @@ export function Notation({
       const choices = mapping
         .filter((m) => m.id === id && m.page === page)
         .sort((a, b) => a.start - b.start);
-      const choice = choices.find((m) => m.end >= state.position) ?? choices[0];
+      const choice = choices.find((m) => m.end >= position()) ?? choices[0];
       if (!choice || editorBusy) return;
       if(selectPracticeNote){const note=notesById.get(`${choice.track}:${choice.index}`);if(note)selectPracticeNote(note);return;}
       if (canEdit) {
@@ -673,7 +714,7 @@ export function Notation({
           key={`${song.contentId}:${song.scoreRevision}:${sourceRhythm}`}
           route={asset.route}
           practice={asset.practiceNotation}
-          position={state.position}
+          store={store}
           seek={seek}
           disabled={editorBusy}
           selectRange={(first, last) => setRangeSelection({ first, last })}
@@ -796,7 +837,7 @@ export function Notation({
             onBusy={setEditorBusy}
             seek={seek}
             locate={locate}
-            rate={state.speed}
+            rate={speed}
           />
         )}
       </div>

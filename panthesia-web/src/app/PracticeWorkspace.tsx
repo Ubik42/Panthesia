@@ -2,7 +2,8 @@ import { useApp } from "./AppContext";
 import { PerformanceTools } from "../features/practice/PerformanceTools";
 import { topInputScope,topPopup } from "./inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
-import { PlaybackView } from "../features/practice/PlaybackView";
+import { usePlaybackFields } from "../features/practice/usePlaybackFields";
+import type { PlaybackStore } from "../features/practice/playbackStore";
 import { PracticeStageReadout } from "../features/practice/PracticeReadouts";
 import { PracticeStage } from "../features/practice/PracticeStage";
 import { PracticeTransport } from "../features/practice/PracticeTransport";
@@ -278,16 +279,12 @@ export function PracticeWorkspace() {
               {productScreens.screen === "performance" &&
                 (view === "score" || view === "combined") &&
                 song && (
-                  <PlaybackView
-                    store={playback}
-                    contentId={song?.contentId ?? null}
-                  >
-                    {(live) => (
-                      <Notation
+                  state.contentId === song.contentId && (
+<Notation
                         toolRequest={scoreToolRequest}
                         clearToolRequest={clearScoreToolRequest}
                         song={song}
-                        state={live}
+                        store={playback}
                         seek={(position) => action({ type: "seek", position })}
                         selectPracticeNote={
                           practiceRange.picking ? practiceRange.pick : undefined
@@ -316,29 +313,23 @@ export function PracticeWorkspace() {
                           setEditFingers(value);
                         }}
                       />
-                    )}
-                  </PlaybackView>
+                  )
                 )}
             </div>
             {productScreens.screen === "performance" &&
               view === "paper" &&
               song && (
-                <PlaybackView
-                  store={playback}
-                  contentId={song?.contentId ?? null}
-                >
-                  {(live) => (
-                    <PaperScore
+                state.contentId === song.contentId && (
+<FollowingPaperScore
+                      store={playback}
                       engineId={song.engineId ?? undefined}
                       contentId={song.contentId}
                       revision={paperRevision}
-                      playback={{ measure: live.measure }}
                       contextKey={JSON.stringify(
                         song.meterMap ?? song.meterCorrection,
                       )}
                     />
-                  )}
-                </PlaybackView>
+                )
               )}
             {selectedNote &&
               view !== "score" &&
@@ -430,4 +421,11 @@ export function PracticeWorkspace() {
       </div>
     </>
   );
+}
+
+const measureField = ["measure"] as const;
+/** The paper reader follows the playing measure; only a measure change renders it. */
+function FollowingPaperScore({ store, ...props }: Omit<Parameters<typeof PaperScore>[0], "playback"> & { store: PlaybackStore }) {
+  const { measure } = usePlaybackFields(store, measureField);
+  return <PaperScore {...props} playback={{ measure }} />;
 }
