@@ -4,6 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 
 [dependencies]
+panthesia-analysis.workspace = true
 panthesia-core.workspace = true
 panthesia-vst3.workspace = true
 panthesia-music.workspace = true

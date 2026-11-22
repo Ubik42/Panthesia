@@ -266,32 +266,10 @@ pub fn transform(source: &MidiFile, variant: &Variant) -> Result<MidiFile, Strin
 }
 
 /// A labelled, editable heuristic, used only when no MIDI key signature is available.
+/// The song's main key (tonic, minor) estimated from its notes.
 pub(super) fn key_estimate(file: &MidiFile) -> (u8, bool) {
-    let mut histogram = [0f64; 12];
-    for note in file
-        .tracks
-        .iter()
-        .flat_map(|t| t.notes.iter())
-        .filter(|n| n.channel != 9)
-    {
-        histogram[usize::from(note.note % 12)] += note.duration.as_secs_f64().max(0.05).min(8.);
-    }
-    let profiles = [
-        [5., 0., 2., 0., 3., 2., 0., 4., 0., 2., 0., 1.],
-        [5., 0., 2., 3., 0., 2., 0., 4., 2., 0., 2., 0.],
-    ];
-    let mut best = (f64::NEG_INFINITY, 0, false);
-    for tonic in 0..12 {
-        for (minor, profile) in profiles.iter().enumerate() {
-            let score = (0..12)
-                .map(|p| histogram[p] * profile[(p + 12 - tonic) % 12])
-                .sum::<f64>();
-            if score > best.0 {
-                best = (score, tonic as u8, minor == 1);
-            }
-        }
-    }
-    (best.1, best.2)
+    panthesia_analysis::main_key(&panthesia_analysis::notes(&file.source), &file.musical_time)
+        .map_or((0, false), |key| (key.tonic, key.minor))
 }
 impl Player {
     pub(super) fn export_practice_variant(&self) -> Result<serde_json::Value, String> {

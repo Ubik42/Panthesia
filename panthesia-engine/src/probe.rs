@@ -237,33 +237,7 @@ fn filename_key(stem: &str) -> Option<String> {
 
 /// Krumhansl–Kessler key profiles correlated with the duration-weighted pitch-class histogram.
 fn estimate_key(file: &MidiFile) -> Option<String> {
-    const MAJOR: [f64; 12] = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-    const MINOR: [f64; 12] = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-    let mut histogram = [0f64; 12];
-    for track in file.tracks.iter().filter(|t| !t.has_drums || t.has_other_than_drums) {
-        for n in track.notes.iter() {
-            histogram[usize::from(n.note % 12)] += n.duration.as_secs_f64().min(4.);
-        }
-    }
-    if histogram.iter().sum::<f64>() <= 0. {
-        return None;
-    }
-    let correlate = |profile: &[f64; 12], tonic: usize| {
-        let x: Vec<f64> = (0..12).map(|i| histogram[(i + tonic) % 12]).collect();
-        let mx = x.iter().sum::<f64>() / 12.;
-        let my = profile.iter().sum::<f64>() / 12.;
-        let (mut sxy, mut sxx, mut syy) = (0., 0., 0.);
-        for i in 0..12 {
-            sxy += (x[i] - mx) * (profile[i] - my);
-            sxx += (x[i] - mx).powi(2);
-            syy += (profile[i] - my).powi(2);
-        }
-        if sxx <= 0. { f64::MIN } else { sxy / (sxx * syy).sqrt() }
-    };
-    (0..12)
-        .flat_map(|t| [(correlate(&MAJOR, t), t, false), (correlate(&MINOR, t), t, true)])
-        .max_by(|a, b| a.0.total_cmp(&b.0))
-        .map(|(_, tonic, minor)| key_name(tonic, minor))
+    panthesia_analysis::main_key(&panthesia_analysis::notes(&file.source), &file.musical_time).map(|key| key.harte())
 }
 
 /// Piano-roll PNG: time left to right, pitch bottom to top, colour by hand when the manifest

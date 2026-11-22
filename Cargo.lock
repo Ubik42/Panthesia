@@ -2925,6 +2925,7 @@ dependencies = [
  "csv",
  "midir",
  "oxisynth",
+ "panthesia-analysis",
  "panthesia-core",
  "panthesia-music",
  "panthesia-notation",

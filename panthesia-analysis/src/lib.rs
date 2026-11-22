@@ -156,6 +156,21 @@ pub fn keys(notes: &[Note], time: &MusicalTime) -> Vec<KeySegment> {
     out
 }
 
+/// The key that lasts longest, for a song-level key.
+pub fn main_key(notes: &[Note], time: &MusicalTime) -> Option<Key> {
+    let segments = keys(notes, time);
+    let end = notes.iter().map(|n| n.end).max().unwrap_or(0).max(time.measures.last().map_or(0, |m| m.end_tick));
+    let mut spans: Vec<(Key, u64)> = Vec::new();
+    for (i, segment) in segments.iter().enumerate() {
+        let until = segments.get(i + 1).map_or(end, |next| next.tick);
+        match spans.iter_mut().find(|(k, _)| *k == segment.key) {
+            Some((_, span)) => *span += until.saturating_sub(segment.tick),
+            None => spans.push((segment.key, until.saturating_sub(segment.tick))),
+        }
+    }
+    spans.into_iter().max_by_key(|(_, span)| *span).map(|(key, _)| key)
+}
+
 /// Best state sequence for per-step state scores, with a cost (by step) for changing state.
 fn viterbi(emissions: &[Vec<f64>], change_cost: impl Fn(usize) -> f64) -> Vec<usize> {
     let Some(first) = emissions.first() else { return vec![] };
