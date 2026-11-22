@@ -2,6 +2,18 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · R3 演奏舞台渲染器（提交 8bebaba、94120bb、f057428）
+
+- 测量方法：19,200 音符、4 声部、300 秒的压力曲（`work/web-preview-songs/stress-19200.mid`），Playwright 无头 Chromium（ANGLE D3D11，取消帧率上限），2560×1440、DPR 2、CPU 降速 4 倍模拟慢机器，取 5 秒播放中的帧回调耗时。原 Canvas2D：绘制 p50 5.9 ms、p99 9.9–17.4 ms，超出 16.7 ms 目标；采样剖析显示主要开销是逐音符 `drawImage` 与 2D 合成。
+- 新瀑布层 `waterfallLayer.ts`：背景渐变与键盘光晕、琴键列线、拍线与小节线（细分线虚线在着色器中生成）、循环接缝、音符（圆角 SDF、右侧渐淡、顶部高光、发光、深色描边，参照 Synthesia 让相邻音符分开）合成一个 WebGL2 实例化绘制，画在 2D 画布下方；2D 画布只画文字标签、琴键与光效。同条件下绘制 p50 1.2 ms、p99 3.2 ms（加描边后 3.9 ms）。没有 WebGL2 或上下文丢失时，同一接口在 2D 画布上画平面形状。删除音符精灵缓存，标签缓存改名 `WaterfallLabels`；着色器编译与单位四边形与光效渲染器共用 `webglProgram.ts`。
+- 琴键保持 Canvas2D：底图按尺寸与标签缓存，每帧只重画按下的键，剖析中占不到 1%，改 GPU 不划算。时钟（`WaterfallClock` 插值）、标签模式（含首调级数）、小节线与循环预览在此前已实现，本阶段只换了绘制层。
+- 舞台颜色集中到 `stageTheme.ts`（背景按皮肤、光晕按光效配色、琴键按皮肤与材质、指法与网格墨色），Piano 与琴键绘制中不再有内联色值。
+- CSS：清除剩余 24 处 `!important`。能确定对手规则的改为提高选择器特异性（速度输入框、双手卡片、导出警告）；重复的练习对话框宽度与未使用的 `practice-result` 样式删除；其余原样移入各文件顶层的 `@layer overrides`，构建插件保留该层，层序为 tokens → components → overrides → state，因此 `[hidden]` 也能盖过窄屏节拍器规则。
+- 检查：`npm run build`、`cargo check` 通过；浏览器 5 个用例通过；桌面 Debug 构建打开压力曲，WebView2 中瀑布层为 `webgl2`，每帧 742 个实例，跟随刷新率约 57 fps。
+- 未做：与 MIDIVisualizer 逐项对照光效（光效渲染器已是其方程的移植，本阶段未改）。
+
+下一入口：RO 依赖 Keel PF 阶段，跳过；进入 R5 谱面显示（谱面窗口化、跟随、只读阅读器；从 Score IR 生成）。
+
 ## 2026-11-22 · R4 分层歌曲模型与统一导入（提交 cc06368、407a3a5、e6818ed、58a33ac、89a1fb3、eb28436、c08e08b）
 
 - `panthesia-notation`：乐谱模型（MusicXML / Score IR、反复展开、乐谱→演奏、对齐、装饰音、谱面视图与窗口、练习谱生成、转调拼写、手别枚举）从 core 拆出；core 去掉只有乐谱代码用的依赖。测试数不变。
