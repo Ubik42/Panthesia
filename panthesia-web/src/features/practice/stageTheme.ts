@@ -7,6 +7,13 @@ export const stageBackdrops = {
   rosewood: { top: "#211811", middle: "#30261d", bottom: "#413328" },
 } as const satisfies Record<DisplayPreferences["skin"], unknown>;
 
+/** One colour per pitch class (C, C#, … B) for the "按音高" note palette: a colour wheel around
+ * the circle of fifths, so neighbouring keys of a scale stay distinct. */
+export const pitchColors = [
+  "#ff6b6b", "#5ec8f5", "#ffd166", "#b38cf0", "#7ee08a", "#ff9f5a",
+  "#4f8ff7", "#ffe873", "#f07ad8", "#5be0c4", "#ffb35c", "#8fa2ff",
+] as const;
+
 /** Glow that rises from the keyboard, keyed by the effect palette. */
 export const stageAtmospheres = {
   aurora: "#245a6150",
@@ -25,6 +32,7 @@ export const stageInk = {
   lyric: "#aebbd3",
   lyricSung: "#ffe7a3",
   shadow: "#000000c0",
+  ledBase: "#ffffff1a",
   sectionTag: "#ffd27a",
   sectionText: "#2a1d05",
   fingerOnWhite: "#294432",

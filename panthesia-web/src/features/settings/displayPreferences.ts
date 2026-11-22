@@ -39,7 +39,12 @@ export type DisplayPreferences = {
   tonic: number;
   octave: boolean;
   fontSize: number;
-  palette: "standard" | "accessible";
+  /** Note colours: by track and hand, a blue / orange pair for colour-blind players, or one colour per pitch class. */
+  palette: "standard" | "accessible" | "pitch";
+  /** How much of the waterfall backdrop covers the background image (0 shows only the image). */
+  backgroundOpacity: number;
+  /** A light strip along the top edge of the keys, lit in the colours of the sounding notes. */
+  ledStrip: boolean;
   range: KeyboardRangeMode;
   keyboardViewport: KeyboardViewport | null;
   keyboardLow: number;
@@ -121,6 +126,8 @@ export const displayDefaults: DisplayPreferences = {
   octave: true,
   fontSize: 10,
   palette: "standard",
+  backgroundOpacity: 100,
+  ledStrip: true,
   range: "song",
   keyboardViewport: null, keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
@@ -213,7 +220,9 @@ export function normalizeDisplayPreferences(
     keyLabels: ["c", "white", "all", "none"].includes(raw.keyLabels ?? "")
       ? raw.keyLabels!
       : "c",
-    palette: raw.palette === "accessible" ? "accessible" : "standard",
+    palette: raw.palette === "accessible" || raw.palette === "pitch" ? raw.palette : "standard",
+    backgroundOpacity: size(raw.backgroundOpacity, 0, 100, 100),
+    ledStrip: typeof raw.ledStrip === "boolean" ? raw.ledStrip : true,
     tonic:
       Number.isInteger(raw.tonic) && raw.tonic! >= 0 && raw.tonic! < 12
         ? raw.tonic!

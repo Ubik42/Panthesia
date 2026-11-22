@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import type { DisplayPreferences } from "./displayPreferences";
+import { chooseStageBackground, clearStageBackground, useStageBackground } from "../../stage/stageBackground";
 
 export function PianoEffectsSettings({ value, change, compact = false, openAppearance }: {
   value: DisplayPreferences; change: (patch: Partial<DisplayPreferences>) => void; compact?: boolean; openAppearance?:()=>void;
@@ -10,6 +11,7 @@ export function PianoEffectsSettings({ value, change, compact = false, openAppea
       <div className="skin-options" role="group" aria-label="界面皮肤">
         {([{id:"studio",name:"练习室",description:"雾白 · 海蓝"},{id:"midnight",name:"午夜",description:"墨紫 · 银光"},{id:"rosewood",name:"玫瑰木",description:"奶油 · 黄铜"}] as const).map(skin=><button type="button" key={skin.id} className="skin-option" data-preview-skin={skin.id} aria-pressed={value.skin===skin.id} onClick={()=>change({skin:skin.id})}><span className="skin-swatch" aria-hidden="true"><i/><i/><i/></span><strong>{skin.name}</strong><small>{skin.description}</small></button>)}
       </div>
+      <StageBackdropSettings value={value} change={change} />
       <div className="appearance-section-heading"><h3>琴键与光影</h3><span>保留清楚的落键反馈</span></div>
     </>}
     <div className="effects-heading"><Sparkles size={15} /><span>琴键光影</span>
@@ -52,5 +54,24 @@ export function PianoEffectsSettings({ value, change, compact = false, openAppea
         <p className="parameter-help">数值越高线条越清楚，0% 为完全透明。实线标记小节与拍，虚线标记细分；设置立即生效并自动保存。</p>
       </div>
     </>}
+  </section>;
+}
+
+/** Stage background: a picture behind the waterfall, how much the backdrop covers it, and the key light strip. */
+function StageBackdropSettings({ value, change }: { value: DisplayPreferences; change: (patch: Partial<DisplayPreferences>) => void }) {
+  const image = useStageBackground();
+  return <section className="stage-backdrop-settings" aria-label="舞台背景">
+    <div className="appearance-section-heading"><h3>舞台背景</h3><span>图片、透明度与灯带</span></div>
+    <label className="effects-intensity">背景不透明度 <output>{value.backgroundOpacity}%</output>
+      <input aria-label="背景不透明度" type="range" min="0" max="100" value={value.backgroundOpacity} onChange={e => change({ backgroundOpacity: Number(e.target.value) })} />
+    </label>
+    <div className="effects-presets">
+      <label className="stage-backdrop-pick">选择背景图片…
+        <input type="file" accept="image/*" hidden onChange={e => { const file = e.target.files?.[0]; if (file) void chooseStageBackground(file).then(() => value.backgroundOpacity === 100 && change({ backgroundOpacity: 55 })); e.target.value = ""; }} />
+      </label>
+      {image && <button type="button" onClick={clearStageBackground}>移除图片</button>}
+    </div>
+    <label className="effects-motion"><input type="checkbox" checked={value.ledStrip} onChange={e => change({ ledStrip: e.target.checked })} />琴键上沿灯带，随发声的音符亮起</label>
+    <p className="parameter-help">不透明度为 100% 时只见舞台底色；调低后，背景图片（或窗口底色）透过瀑布显示。图片只保存在本机。</p>
   </section>;
 }

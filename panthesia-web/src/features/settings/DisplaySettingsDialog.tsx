@@ -189,6 +189,7 @@ export function DisplaySettingsDialog({
                       >
                         <option value="standard">曲目颜色</option>
                         <option value="accessible">左右手蓝橙配色</option>
+                        <option value="pitch">按音高（12 色）</option>
                       </select>
                     </label>
                     <PreviewBarsControl value={value.previewBars} change={previewBars=>update({previewBars})} label="前方预览" ariaLabel="键盘音符预览小节数"/>

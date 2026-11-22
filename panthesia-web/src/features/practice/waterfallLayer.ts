@@ -6,6 +6,8 @@ export type Backdrop = {
   middle: string;
   bottom: string;
   atmosphere: string;
+  /** 0–1: how much the backdrop covers what lies behind the stage (a background image). */
+  opacity: number;
 };
 
 /** Everything under the note labels: backdrop, key columns, grid lines and note bodies.
@@ -77,6 +79,7 @@ uniform float ratio;
 uniform vec3 sky[3];
 uniform vec4 atmosphere;
 uniform float baseline;
+uniform float backdropOpacity;
 out vec4 fragColor;
 void main(){
   vec2 size = box.zw;
@@ -86,7 +89,9 @@ void main(){
     vec2 center = vec2(size.x * 0.5, baseline);
     float reach = max(size.x * 0.6, baseline);
     float a = atmosphere.a * clamp(1.0 - distance(local, center) / reach, 0.0, 1.0);
-    fragColor = vec4(mix(c, atmosphere.rgb, a), 1.0);
+    // Premultiplied: the glow stays visible over a see-through backdrop.
+    float o = max(backdropOpacity, a);
+    fragColor = vec4(mix(c * backdropOpacity, atmosphere.rgb * a, a / max(o, 0.0001)), o);
     return;
   }
   if (params.x == 0.0) {
@@ -151,7 +156,7 @@ class WaterfallGpu implements WaterfallLayer {
   private initialize() {
     if (this.disposed) return;
     const gl = this.canvas.getContext("webgl2", {
-      alpha: false,
+      alpha: true,
       antialias: false,
       depth: false,
       stencil: false,
@@ -176,7 +181,7 @@ class WaterfallGpu implements WaterfallLayer {
         gl.vertexAttribDivisor(location, 1);
       }
       gl.bindVertexArray(null);
-      for (const name of ["viewport", "ratio", "sky", "atmosphere", "baseline"])
+      for (const name of ["viewport", "ratio", "sky", "atmosphere", "baseline", "backdropOpacity"])
         this.uniforms[name] = gl.getUniformLocation(program, name);
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);
@@ -195,13 +200,15 @@ class WaterfallGpu implements WaterfallLayer {
     }
     gl.viewport(0, 0, w, h);
     const bottom = rgba(backdrop.bottom);
-    gl.clearColor(bottom[0], bottom[1], bottom[2], 1);
+    const opacity = Math.max(0, Math.min(1, backdrop.opacity));
+    gl.clearColor(bottom[0] * opacity, bottom[1] * opacity, bottom[2] * opacity, opacity);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(this.program);
     const u = this.uniforms;
     gl.uniform2f(u.viewport, width, height);
     gl.uniform1f(u.ratio, dpr);
     gl.uniform1f(u.baseline, baseline);
+    gl.uniform1f(u.backdropOpacity, opacity);
     gl.uniform3fv(u.sky, [backdrop.top, backdrop.middle, backdrop.bottom].flatMap((c) => rgba(c).slice(0, 3)));
     gl.uniform4fv(u.atmosphere, rgba(backdrop.atmosphere));
     this.count = 0;
@@ -269,8 +276,11 @@ class Waterfall2d implements WaterfallLayer {
     sky.addColorStop(0, backdrop.top);
     sky.addColorStop(0.6, backdrop.middle);
     sky.addColorStop(1, backdrop.bottom);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, backdrop.opacity));
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, width, baseline);
+    ctx.restore();
     const glow = ctx.createRadialGradient(width / 2, baseline, 0, width / 2, baseline, Math.max(width * 0.6, baseline));
     glow.addColorStop(0, backdrop.atmosphere);
     glow.addColorStop(1, "transparent");

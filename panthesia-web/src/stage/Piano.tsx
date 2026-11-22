@@ -16,7 +16,8 @@ import type { PracticeRange } from "../features/practice/usePracticeRange";
 import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
-import { stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
+import { pitchColors, stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
+import { useStageBackground } from "./stageBackground";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
@@ -64,6 +65,7 @@ export function Piano({
   canInteract?: () => boolean;
   practiceRange?: PracticeRange | null;
 }) {
+  const backgroundImage = useStageBackground();
   const viewport = useMemo(
     () => keyboardViewport ?? viewportFromRange(keyboardRange),
     [keyboardViewport, keyboardRange.low, keyboardRange.high],
@@ -327,6 +329,7 @@ export function Piano({
       layer.begin(width, height, baseline, dpr, {
         ...stageBackdrops[display.skin],
         atmosphere: stageAtmospheres[display.effectsPalette],
+        opacity: display.backgroundOpacity / 100,
       });
       for (const pitch of white) {
         const { x } = geometry(pitch, width);
@@ -472,6 +475,8 @@ export function Piano({
       const colorFor = (note: LoadedSong["notes"][number]) =>
         display.palette === "accessible"
           ? handColor(note.part, display)
+          : display.palette === "pitch"
+            ? pitchColors[note.pitch % 12]
           : customTracks.has(note.track)
             ? (trackColors.get(note.track) ?? palette.right)
             : note.part === "left"
@@ -666,6 +671,22 @@ export function Piano({
         colors: visualNotes,
         labels: keyLabels,
       });
+      // Light strip along the top of the keys, lit in the colours of the sounding notes.
+      if (display.ledStrip) {
+        ctx.save();
+        ctx.fillStyle = stageInk.ledBase;
+        ctx.fillRect(0, baseline - 3, width, 3);
+        ctx.shadowBlur = reduced ? 6 : 18;
+        for (const pitch of new Set([...visualNotes.keys(), ...state.pressed])) {
+          if (!keyLayout.has(pitch)) continue;
+          const { x, w } = geometry(pitch, width);
+          const color = visualNotes.get(pitch) ?? palette.right;
+          ctx.shadowColor = color;
+          ctx.fillStyle = color;
+          ctx.fillRect(x - w * 0.6, baseline - 3, w * 2.2, 3);
+        }
+        ctx.restore();
+      }
       if (song && (display.keyLabelMode === "finger" || (display.keyLabelMode === "legacy" && ["auto", "finger", "both"].includes(display.noteLabels)))) {
         for (const { note: n, action: a } of keyActions) {
           if (display.keyLabelsOwnOnly && !ownsPracticeNote(n.part,n.playbackMode,state.hands)) continue;
@@ -791,6 +812,7 @@ export function Piano({
   });
   return (
     <div className="piano-surface">
+    {backgroundImage && <div className="piano-backdrop-image" style={{ backgroundImage: `url(${backgroundImage})` }} aria-hidden="true" />}
     <canvas ref={waterfallCanvas} className="piano-waterfall" aria-hidden="true" />
     <canvas
       ref={canvas}

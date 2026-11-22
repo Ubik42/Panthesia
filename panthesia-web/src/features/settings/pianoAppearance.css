@@ -78,3 +78,5 @@
   .appearance-workspace .appearance-fields { grid-template-columns: 1fr; }
   .piano-appearance-preview canvas { height: 190px; }
 }
+.stage-backdrop-pick { display: inline-flex; align-items: center; cursor: pointer; }
+.effects-presets .stage-backdrop-pick { padding: 6px 12px; border: 1px solid var(--blue-46); border-radius: 6px; }

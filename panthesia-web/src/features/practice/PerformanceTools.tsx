@@ -218,6 +218,26 @@ export function PerformanceTools({
         <label>
           <input
             type="checkbox"
+            aria-label="琴键灯带"
+            checked={display.ledStrip}
+            onChange={(event) => setDisplay((previous) => ({ ...previous, ledStrip: event.target.checked }))}
+          />
+          灯带
+        </label>
+        <label>
+          背景
+          <input
+            type="range"
+            aria-label="背景不透明度"
+            min={0}
+            max={100}
+            value={display.backgroundOpacity}
+            onChange={(event) => setDisplay((previous) => ({ ...previous, backgroundOpacity: Number(event.target.value) }))}
+          />
+        </label>
+        <label>
+          <input
+            type="checkbox"
             aria-label="显示拍号"
             checked={display.meterLabels}
             onChange={(event) => setDisplay((previous) => ({ ...previous, meterLabels: event.target.checked }))}
