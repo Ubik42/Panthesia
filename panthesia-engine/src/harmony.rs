@@ -6,7 +6,7 @@ use crate::player::Player;
 use panthesia_analysis::harte::{Chord, Key};
 use panthesia_core::manifest_store;
 use panthesia_music::MidiFile;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
@@ -18,6 +18,8 @@ pub struct Harmony {
     pub origin: String,
     /// What produced the chords: `score`, `pop909`, `analysis`, or the tool a manifest names.
     pub tool: String,
+    /// Saved in the song's manifest (edited, imported or adopted), so analysis no longer moves it.
+    pub saved: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -35,11 +37,20 @@ pub struct ChordItem {
     pub degree: String,
 }
 
+/// One chord as the user wrote it, at a tick of the shown (possibly transposed) song: a Harte
+/// label (`F#:min7/b3`) or a chord name (`F#m7/A`); `N` for no chord.
+#[derive(Clone, Deserialize)]
+pub struct ChordEdit {
+    pub tick: u64,
+    pub label: String,
+}
+
 /// Chords on the source tick grid, before transposition.
 struct Source {
     segments: Vec<(u64, u64, Option<Chord>)>,
     origin: String,
     tool: String,
+    saved: bool,
     /// Read from the untransposed song: shift by the practice transposition when shown.
     follows_transpose: bool,
 }
@@ -65,7 +76,7 @@ fn manifest_chords(music: &Path, end: u64) -> Option<Source> {
         .collect();
     let origin = layer.provenance.as_ref().map(|p| format!("{:?}", p.origin).to_lowercase()).unwrap_or_else(|| "human".into());
     let tool = layer.provenance.as_ref().and_then(|p| p.tool.clone()).unwrap_or_else(|| "manifest".into());
-    Some(Source { segments, origin, tool, follows_transpose: true })
+    Some(Source { segments, origin, tool, saved: true, follows_transpose: true })
 }
 
 /// POP909 writes `start end label` in MIDI seconds beside each song.
@@ -83,14 +94,18 @@ fn pop909_chords(file: &MidiFile, music: &Path) -> Option<Source> {
             Some((tick(start), tick(end), chord))
         })
         .collect();
-    (!segments.is_empty()).then(|| Source { segments, origin: "imported".into(), tool: "pop909".into(), follows_transpose: true })
+    (!segments.is_empty()).then(|| Source { segments, origin: "imported".into(), tool: "pop909".into(), saved: false, follows_transpose: true })
 }
 
+/// No chords for a single melodic line: there is no harmony to recognise.
 fn analysed_chords(file: &MidiFile) -> Source {
     let notes = panthesia_analysis::notes(&file.source);
+    if panthesia_analysis::polyphony(&notes) < 1.3 {
+        return Source { segments: vec![], origin: "generated".into(), tool: "analysis".into(), saved: false, follows_transpose: false };
+    }
     let keys = panthesia_analysis::keys(&notes, &file.musical_time);
     let segments = panthesia_analysis::chords(&notes, &file.musical_time, &keys).into_iter().map(|s| (s.tick, s.end, s.chord)).collect();
-    Source { segments, origin: "generated".into(), tool: "analysis".into(), follows_transpose: false }
+    Source { segments, origin: "generated".into(), tool: "analysis".into(), saved: false, follows_transpose: false }
 }
 
 fn shifted(chord: Chord, semitones: i16) -> Chord {
@@ -148,8 +163,74 @@ impl Player {
                 }
             })
             .collect();
-        let harmony = Harmony { chords, origin: source.origin, tool: source.tool };
+        let harmony = Harmony { chords, origin: source.origin, tool: source.tool, saved: source.saved };
         self.harmony_cache = Some((identity, harmony.clone()));
         Some(harmony)
+    }
+}
+
+impl Player {
+    /// The file whose manifest holds the chords, and the shown transposition.
+    fn chord_target(&self, content_id: &str) -> Result<(std::path::PathBuf, i16), String> {
+        let file = self.file.as_ref().filter(|f| f.content_id == content_id).ok_or("曲目已切换，请重新打开和弦编辑")?;
+        let original = self.source_file.as_ref().unwrap_or(file);
+        let music = original.source_path.clone().filter(|_| self.exercise.is_none()).ok_or("这首曲目不能保存和弦")?;
+        Ok((music, i16::from(self.variant().transpose)))
+    }
+
+    fn write_chords(&mut self, music: &Path, items: Vec<(u64, Option<Chord>)>, provenance: panthesia_core::manifest::Provenance, status: Option<&str>) -> Result<Value, String> {
+        let mut rows: Vec<Value> = Vec::new();
+        let mut previous: Option<Option<Chord>> = None;
+        for (tick, chord) in items {
+            if previous == Some(chord) {
+                continue;
+            }
+            previous = Some(chord);
+            rows.push(serde_json::json!({ "tick": tick, "chord": chord.map_or_else(|| "N".to_string(), Chord::harte) }));
+        }
+        manifest_store::edit(music, true, |manifest, performance, _| {
+            let key = manifest.layer_key("chords", performance);
+            let mut body = serde_json::Map::new();
+            body.insert("items".into(), Value::Array(rows));
+            manifest.layers.insert(
+                key,
+                panthesia_core::manifest::Layer { provenance: Some(provenance), status: status.map(str::to_string), body, ..Default::default() },
+            );
+            Ok(((), true))
+        })?;
+        self.harmony_cache = None;
+        self.command(crate::Command::CurrentSong)
+    }
+
+    /// Store edited chords as the song's own (`human`); they are never replaced by analysis.
+    pub(crate) fn save_chords(&mut self, content_id: &str, edits: Vec<ChordEdit>) -> Result<Value, String> {
+        let (music, transpose) = self.chord_target(content_id)?;
+        if edits.len() > 20_000 {
+            return Err("和弦过多，最多 20000 个".into());
+        }
+        let mut items = edits
+            .iter()
+            .map(|edit| {
+                let chord = Chord::parse(&edit.label).or_else(|_| Chord::parse_name(&edit.label))?;
+                Ok((edit.tick, chord.map(|c| shifted(c, -transpose))))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        items.sort_by_key(|(tick, _)| *tick);
+        self.write_chords(&music, items, panthesia_core::manifest::Provenance::new(panthesia_core::manifest::Origin::Human, None), None)
+    }
+
+    /// Keep the analysis result as the song's chords, so later analysis changes do not move it.
+    pub(crate) fn adopt_chords(&mut self, content_id: &str) -> Result<Value, String> {
+        let (music, transpose) = self.chord_target(content_id)?;
+        let harmony = self.harmony().ok_or("请先打开曲目")?;
+        if harmony.origin != "generated" || harmony.saved {
+            return Err("当前和弦不是自动分析结果".into());
+        }
+        let items = harmony
+            .chords
+            .iter()
+            .map(|c| (c.tick, c.harte.as_deref().and_then(|label| Chord::parse(label).ok().flatten()).map(|c| shifted(c, -transpose))))
+            .collect();
+        self.write_chords(&music, items, panthesia_core::manifest::Provenance::new(panthesia_core::manifest::Origin::Generated, Some("analysis")), Some("accepted"))
     }
 }

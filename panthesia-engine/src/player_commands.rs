@@ -396,6 +396,8 @@ impl Player {
             Command::SetMetadata { value } => return self.save_current_metadata(value, None),
             Command::EditMetadata { value, expected } => return self.save_current_metadata(value, Some(expected)),
             Command::PairScoreFile { .. } => return Err("乐谱文件配对由引擎入口读取文件后处理".into()),
+            Command::SaveChords { content_id, chords } => return self.save_chords(&content_id, chords),
+            Command::AdoptChords { content_id } => return self.adopt_chords(&content_id),
             Command::VstEditor => {
                 self.vst
                     .as_ref()

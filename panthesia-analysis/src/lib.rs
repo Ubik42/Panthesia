@@ -156,6 +156,23 @@ pub fn keys(notes: &[Note], time: &MusicalTime) -> Vec<KeySegment> {
     out
 }
 
+/// Average number of notes sounding while anything sounds. A single melodic line is about 1;
+/// chord recognition needs harmony to recognise (the engine asks for 1.3 or more).
+pub fn polyphony(notes: &[Note]) -> f64 {
+    let mut edges: Vec<(u64, i32)> = notes.iter().flat_map(|n| [(n.start, 1), (n.end, -1)]).collect();
+    edges.sort();
+    let (mut sounding, mut covered, mut total, mut previous) = (0i32, 0u64, 0u64, 0u64);
+    for (tick, change) in edges {
+        if sounding > 0 {
+            covered += tick - previous;
+            total += (tick - previous) * sounding as u64;
+        }
+        sounding += change;
+        previous = tick;
+    }
+    if covered == 0 { 0.0 } else { total as f64 / covered as f64 }
+}
+
 /// The key that lasts longest, for a song-level key.
 pub fn main_key(notes: &[Note], time: &MusicalTime) -> Option<Key> {
     let segments = keys(notes, time);

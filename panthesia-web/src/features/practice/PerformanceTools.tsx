@@ -5,7 +5,7 @@ import {
   Music2 as ScoreIcon,
   Search as ZoomIcon,
 } from "lucide-react";
-import type { Dispatch, SetStateAction, RefObject } from "react";
+import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../app/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
@@ -21,6 +21,7 @@ import { LabelsIcon, MetronomeIcon } from "./SynthesiaToolbarIcons";
 import type { PracticeRangeController } from "./usePracticeRange";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackFields } from "./usePlaybackFields";
+import { ChordsDialog } from "./ChordsDialog";
 export function PerformanceTools({
   song,
   playback,
@@ -62,7 +63,7 @@ export function PerformanceTools({
   setEditFingers: (value: boolean) => void;
   clearSelection: () => void;
   action: (command: EngineCommand) => void;
-  run: (command: EngineCommand) => Promise<boolean>;
+  run: (command: EngineCommand, changesSong?: boolean) => Promise<boolean>;
   adjustRealtime: (command: {
     type: "seek";
     position: number;
@@ -93,8 +94,10 @@ export function PerformanceTools({
     "recording",
     "passage",
   ]);
+  const [chordsOpen, setChordsOpen] = useState(false);
   return (
     <div className="synthesia-play-tools">
+      {chordsOpen && song && <ChordsDialog song={song} close={() => setChordsOpen(false)} run={run} />}
       <ToolbarMore
         icon={<ScoreIcon size={27} />}
         label="歌曲设置"
@@ -197,6 +200,7 @@ export function PerformanceTools({
               <option value="both">级数与和弦名</option>
             </select>
             <small>{song.harmony.origin === "generated" ? "自动分析" : song.harmony.origin === "imported" ? "来自标注" : "已编辑"}</small>
+            <button disabled={busy} onClick={() => setChordsOpen(true)}>编辑…</button>
           </label>
         )}
         {!!song?.importedLayers.lyrics.length && (

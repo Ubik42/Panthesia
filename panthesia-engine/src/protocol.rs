@@ -142,6 +142,13 @@ pub enum Command {
         path: PathBuf,
         content_id: String,
     },
+    SaveChords {
+        content_id: String,
+        chords: Vec<crate::harmony::ChordEdit>,
+    },
+    AdoptChords {
+        content_id: String,
+    },
     ExportAnnotatedScore {
         content_id: String,
         score_revision: u64,

@@ -1,0 +1,53 @@
+.chords-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(560px, 92vw);
+}
+.chords-source {
+  margin: 0;
+  color: var(--gray-75);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.chords-error {
+  margin: 0;
+  color: var(--orange-88);
+}
+.chords-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 50vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chords-list li,
+.chords-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chords-list li > span {
+  flex: 0 0 9.5em;
+  color: var(--gray-75);
+  font-variant-numeric: tabular-nums;
+}
+.chords-list li > input {
+  flex: 1;
+  min-width: 0;
+}
+.chords-add input[type="number"] {
+  width: 4.5em;
+}
+.chords-add > input:not([type="number"]) {
+  flex: 1;
+  min-width: 0;
+}
+.chords-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

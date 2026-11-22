@@ -249,6 +249,43 @@ impl Chord {
         out
     }
 
+    /// A chord as people write it: `F#m7/A#`, `B♭maj7`, `C°`, `Dsus2`, `G7sus4`, `A6`, `N`.
+    pub fn parse_name(text: &str) -> Result<Option<Chord>, String> {
+        let text = text.trim();
+        if text.is_empty() || text == "N" || text == "N.C." {
+            return Ok(None);
+        }
+        let (body, bass) = match text.split_once('/') {
+            Some((body, bass)) => (body, Some(bass)),
+            None => (text, None),
+        };
+        let accidentals = body.char_indices().skip(1).take_while(|(_, c)| matches!(c, '#' | '♯' | 'b' | '♭')).count();
+        let split = body.char_indices().nth(1 + accidentals).map_or(body.len(), |(i, _)| i);
+        let (root, suffix) = body.split_at(split);
+        let root = pitch_class(root).ok_or_else(|| format!("和弦根音无法识别：{text}"))?;
+        const SUFFIXES: [(&str, Quality); 26] = [
+            ("m(maj7)", Quality::MinorMajor7), ("mmaj7", Quality::MinorMajor7), ("maj7", Quality::Major7),
+            ("M7", Quality::Major7), ("Δ7", Quality::Major7), ("m7b5", Quality::HalfDiminished7),
+            ("m7♭5", Quality::HalfDiminished7), ("ø7", Quality::HalfDiminished7), ("ø", Quality::HalfDiminished7),
+            ("°7", Quality::Diminished7), ("dim7", Quality::Diminished7), ("7sus4", Quality::Sus4Flat7),
+            ("sus2", Quality::Sus2), ("sus4", Quality::Sus4), ("sus", Quality::Sus4), ("min7", Quality::Minor7),
+            ("m7", Quality::Minor7), ("m6", Quality::Minor6), ("dim", Quality::Diminished), ("°", Quality::Diminished),
+            ("aug", Quality::Augmented), ("+", Quality::Augmented), ("min", Quality::Minor), ("m", Quality::Minor),
+            ("6", Quality::Major6), ("7", Quality::Dominant7),
+        ];
+        let quality = if suffix.is_empty() {
+            Quality::Major
+        } else {
+            SUFFIXES.iter().find(|(s, _)| *s == suffix).map(|(_, q)| *q).ok_or_else(|| format!("和弦性质无法识别：{text}"))?
+        };
+        let bass = match bass {
+            Some(name) => Some(pitch_class(name.trim()).ok_or_else(|| format!("低音无法识别：{text}"))?),
+            None => None,
+        }
+        .filter(|&b| b != root);
+        Ok(Some(Chord { root, quality, bass }))
+    }
+
     /// A MusicXML chord symbol: root and bass pitch classes and the `kind` value. Extended
     /// chords keep their seventh chord (a dominant ninth is a dominant seventh); `none` is no
     /// chord; kinds without a counterpart here return an error.
@@ -376,5 +413,11 @@ mod tests {
         assert_eq!(chord("B:maj").name(Some(gb)), "C♭");
         assert_eq!(chord("Gb:maj7/5").name(Some(gb)), "G♭maj7/D♭");
         assert_eq!(chord("Ab:sus4(b7)").degree(Key::parse("Ab:maj").unwrap()), "1⁷sus4");
+        let name = |s: &str| Chord::parse_name(s).unwrap().unwrap().harte();
+        assert_eq!(name("F#m7/A"), "F#:min7/b3");
+        assert_eq!(name("B♭maj7"), "A#:maj7");
+        assert_eq!(name("G7sus4"), "G:sus4(b7)");
+        assert_eq!(name("C°"), "C:dim");
+        assert!(Chord::parse_name("Hm").is_err());
     }
 }

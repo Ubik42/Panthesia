@@ -1284,6 +1284,7 @@ export interface Harmony {
   "chords": Array<ChordItem>;
   "origin": string;
   "tool": string;
+  "saved": boolean;
 }
 
 export interface ChordItem {
@@ -1294,6 +1295,11 @@ export interface ChordItem {
   "harte": string | null;
   "name": string;
   "degree": string;
+}
+
+export interface ChordEdit {
+  "tick": number;
+  "label": string;
 }
 
 export interface PassageCatalog {
@@ -1446,6 +1452,8 @@ export type EngineCommand =
   | { type: "renameScoreVersion"; "expected_name"?: string | null; "id": string; "content_id": string; "name": string }
   | { type: "pairScore"; "expected"?: ScoreReviewExpectation | null; "bytes": Array<number>; "name": string; "content_id": string }
   | { type: "pairScoreFile"; "path": string; "content_id": string }
+  | { type: "saveChords"; "content_id": string; "chords": Array<ChordEdit> }
+  | { type: "adoptChords"; "content_id": string }
   | { type: "exportAnnotatedScore"; "content_id": string; "score_revision": number; "options": ScoreExportOptions; "download"?: boolean; "fingerprint"?: string | null }
   | { type: "scoreMap"; "score_revision"?: number | null; "midi": Array<number>; "notes": Array<unknown>; "content_id": string }
   | { type: "finger"; "track": number; "index": number; "finger"?: number | null }
