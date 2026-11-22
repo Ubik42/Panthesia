@@ -1,0 +1,10 @@
+[package]
+name = "panthesia-audio"
+version = "0.1.0"
+edition.workspace = true
+license = "GPL-3.0-or-later"
+description = "Panthesia accompaniment audio: decoding, resampling and alignment with a performance"
+
+[dependencies]
+symphonia = { version = "0.6", features = ["mp3"] }
+rustfft = "6.4"
