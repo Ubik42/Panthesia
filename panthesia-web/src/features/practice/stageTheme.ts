@@ -14,6 +14,16 @@ export const pitchColors = [
   "#4f8ff7", "#ffe873", "#f07ad8", "#5be0c4", "#ffb35c", "#8fa2ff",
 ] as const;
 
+/** Virtual hands: slender white hands with soft grey edges and joint creases. */
+export const handSkin = {
+  fill: "#f7f8fa",
+  shade: "#dde2ea",
+  outline: "#8e97a8",
+  crease: "#7d879a66",
+  nail: "#ffffff",
+  shadow: "#0b0e1466",
+} as const;
+
 /** Glow that rises from the keyboard, keyed by the effect palette. */
 export const stageAtmospheres = {
   aurora: "#245a6150",

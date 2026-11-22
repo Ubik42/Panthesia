@@ -77,12 +77,15 @@ export function fingerChain(base: V3, target: V3, lengths: number[]): V3[] {
     }
     return points;
 }
+/** Each hand has 11 degrees of freedom: the wrist's position along the keys, and for each finger
+ * its sideways spread and its flexion (the three phalanges bend together, the last two coupled).
+ * Lengths are in white-key widths: long, slender fingers. */
 const offset = [-1.65, -0.8, 0, 0.8, 1.5], depth = [0.57, 0.31, 0.24, 0.31, 0.44], lengths = [
-    [1.05, 0.8, 0.65],
-    [1.3, 0.85, 0.6],
-    [1.45, 0.95, 0.65],
-    [1.35, 0.85, 0.6],
-    [1.05, 0.7, 0.5],
+    [1.2, 0.95, 0.75],
+    [1.6, 1.05, 0.75],
+    [1.8, 1.15, 0.8],
+    [1.65, 1.05, 0.75],
+    [1.3, 0.85, 0.65],
 ];
 export function handPose(track: HandTrack, time: number, rate: number, baseline: number, height: number, geometry: Geometry): HandPose | null {
     if (!track.notes.length)

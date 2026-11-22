@@ -1,152 +1,154 @@
 import type { HandPose, V3 } from "./virtualHandPose";
-type Point = {
-    x: number;
-    y: number;
-};
-/** Top-down cartoon skin. Original Canvas implementation; no upstream code or assets. */
+import { handSkin } from "./stageTheme";
+
+type Point = { x: number; y: number };
+
+/** Widths of the three phalanges of each finger (thumb … little), in white-key widths: slender
+ * and tapering toward the tip. */
+const PHALANX = [
+  [0.68, 0.6, 0.52],
+  [0.56, 0.5, 0.44],
+  [0.58, 0.52, 0.45],
+  [0.54, 0.48, 0.42],
+  [0.47, 0.42, 0.37],
+];
+
+/** Top-down view of slender white hands: a palm and five jointed fingers, one continuous
+ * silhouette with a soft edge, joint creases and a shadow on the keys. Original Canvas
+ * drawing; no code, parameters or images from other projects. */
 export class HandDrawing {
-    private ctx: CanvasRenderingContext2D;
-    private size = "";
-    constructor(private canvas: HTMLCanvasElement) {
-        this.ctx = canvas.getContext("2d")!;
+  private ctx: CanvasRenderingContext2D;
+  private size = "";
+  constructor(private canvas: HTMLCanvasElement) {
+    this.ctx = canvas.getContext("2d")!;
+  }
+  draw(poses: HandPose[], width: number, height: number, baseline: number, opacity: number) {
+    const ratio = Math.min(devicePixelRatio || 1, 1.75, Math.sqrt(4_000_000 / Math.max(1, width * height)));
+    const size = `${width}:${height}:${ratio}`;
+    if (size !== this.size) {
+      this.size = size;
+      this.canvas.width = Math.ceil(width * ratio);
+      this.canvas.height = Math.ceil(height * ratio);
     }
-    draw(poses: HandPose[], width: number, height: number, baseline: number, opacity: number) {
-        const ratio = Math.min(devicePixelRatio || 1, 1.75, Math.sqrt(4_000_000 / Math.max(1, width * height)));
-        const size = `${width}:${height}:${ratio}`;
-        if (size !== this.size) {
-            this.size = size;
-            this.canvas.width = Math.ceil(width * ratio);
-            this.canvas.height = Math.ceil(height * ratio);
-        }
-        const c = this.ctx;
-        c.setTransform(ratio, 0, 0, ratio, 0, 0);
-        c.clearRect(0, 0, width, height);
-        c.save();
+    const c = this.ctx;
+    c.setTransform(ratio, 0, 0, ratio, 0, 0);
+    c.clearRect(0, 0, width, height);
+    c.save();
+    c.beginPath();
+    c.rect(0, baseline, width, height - baseline);
+    c.clip();
+    this.canvas.style.opacity = String(opacity);
+    for (const h of poses) this.hand(h);
+    c.restore();
+    this.canvas.style.visibility = poses.length ? "visible" : "hidden";
+    this.canvas.dataset.handRenderer = "top-down-slender";
+    this.canvas.dataset.handPoses = String(poses.length);
+  }
+
+  private hand(h: HandPose) {
+    const c = this.ctx;
+    const u = h.unit;
+    const project = (p: V3): Point => ({ x: h.wrist.x + p.x * u, y: h.baseline + (p.y - p.z * 0.16) * h.vertical });
+    const chains = h.fingers.map((f) => f.points.map(project));
+    const wrist = project({ x: 0, y: h.wrist.y, z: h.wrist.z });
+    const knuckles = chains.slice(1).map((p) => p[0]).sort((a, b) => a.x - b.x);
+    const palm = this.palm(knuckles, chains[0][0], wrist, u, h.side);
+    // Fingers as round-capped strokes, one stroke per phalanx, narrowing toward the tip.
+    const strokeFinger = (i: number, extra: number) => {
+      const pts = chains[i];
+      for (let k = 0; k < 3; k++) {
+        c.lineWidth = PHALANX[i][k] * u + extra;
         c.beginPath();
-        c.rect(0, baseline, width, height - baseline);
-        c.clip();
-        c.globalAlpha = 1;
-        this.canvas.style.opacity = String(opacity);
-        for (const h of poses)
-            this.hand(h);
-        c.restore();
-        this.canvas.style.visibility = poses.length ? "visible" : "hidden";
-        this.canvas.dataset.handRenderer = "top-down-cartoon";
-        this.canvas.dataset.handPoses = String(poses.length);
-    }
-    private hand(h: HandPose) {
-        const c = this.ctx, u = h.unit;
-        const project = (p: V3): Point => ({ x: h.wrist.x + p.x * u, y: h.baseline + (p.y - p.z * .16) * h.vertical });
-        const chains = h.fingers.map(f => f.points.map(project));
-        const wrist = project({ x: 0, y: h.wrist.y, z: h.wrist.z });
-        const palm = new Path2D();
-        const bases = chains.slice(1).map(p => p[0]).sort((a, b) => a.x - b.x);
-        const a = bases[0], b = bases[3], half = u * 1.02;
-        palm.moveTo(wrist.x - half, wrist.y + u * .5);
-        palm.bezierCurveTo(wrist.x - half * 1.13, wrist.y - u * .9, a.x - u * .42, a.y + u * .9, a.x - u * .38, a.y + u * .08);
-        palm.quadraticCurveTo((a.x + b.x) / 2, a.y - u * .35, b.x + u * .36, b.y + u * .08);
-        palm.bezierCurveTo(b.x + u * .48, b.y + u * .9, wrist.x + half * 1.12, wrist.y - u * .8, wrist.x + half, wrist.y + u * .5);
-        palm.closePath();
-        const fingers = chains.map((pts, i) => this.finger(pts, u * [.36, .32, .34, .32, .27][i]));
-        // A single outline around the complete silhouette keeps knuckles continuous.
-        const fill = c.createLinearGradient(wrist.x - u * 2, 0, wrist.x + u * 2, 0);
-        fill.addColorStop(0, "#edb78f");
-        fill.addColorStop(.45, "#f8d2ad");
-        fill.addColorStop(1, "#e8ad84");
-        const paint = (path: Path2D, color: string | CanvasGradient, outline = false) => {
-            c.fillStyle = color;
-            c.fill(path);
-            if (outline) {
-                c.strokeStyle = "#a56d51";
-                c.lineWidth = Math.max(1, u * .035);
-                c.stroke(path);
-            }
-        };
-        c.save();
-        c.shadowColor = "rgba(21,13,10,.25)";
-        c.shadowBlur = u * .3;
-        c.shadowOffsetY = u * .15;
-        const shadow = new Path2D(palm);
-        for (const finger of fingers) shadow.addPath(finger);
-        c.fillStyle = "#bf8868";
-        c.fill(shadow);
-        c.restore();
-        // Sleeve and cuff remain behind the wrist.
-        c.fillStyle = h.side === "left" ? "#348f79" : "#368797";
-        c.strokeStyle = "#245b57";
-        c.lineWidth = u * .045;
-        c.beginPath();
-        c.roundRect(wrist.x - half * 1.14, wrist.y + u * .24, half * 2.28, u * 3, [u * .2, u * .2, 0, 0]);
-        c.fill();
+        c.moveTo(pts[k].x, pts[k].y);
+        c.lineTo(pts[k + 1].x, pts[k + 1].y);
         c.stroke();
-        c.fillStyle = "#f5f0e7";
+      }
+    };
+    const order = h.thumbUnder ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 0];
+    const edge = Math.max(1.2, u * 0.07);
+    c.save();
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    // Shadow on the keys, below and to the side of the hand.
+    c.save();
+    c.translate(u * 0.12, u * 0.22);
+    c.filter = `blur(${Math.max(2, u * 0.25)}px)`;
+    c.fillStyle = handSkin.shadow;
+    c.strokeStyle = handSkin.shadow;
+    c.fill(palm);
+    for (const i of order) strokeFinger(i, 0);
+    c.restore();
+    // Outline pass, then fill pass: the parts merge into one silhouette without seams.
+    c.strokeStyle = handSkin.outline;
+    c.fillStyle = handSkin.outline;
+    c.lineWidth = edge * 2;
+    c.stroke(palm);
+    for (const i of order) strokeFinger(i, edge * 2);
+    const light = c.createLinearGradient(wrist.x - u * 2, 0, wrist.x + u * 2, 0);
+    light.addColorStop(0, handSkin.shade);
+    light.addColorStop(h.side === "right" ? 0.35 : 0.65, handSkin.fill);
+    light.addColorStop(1, handSkin.shade);
+    c.fillStyle = light;
+    c.strokeStyle = light;
+    c.fill(palm);
+    for (const i of order) strokeFinger(i, 0);
+    // Joint creases and a pale nail at each tip.
+    c.strokeStyle = handSkin.crease;
+    c.lineWidth = Math.max(0.6, u * 0.03);
+    for (let i = 0; i < 5; i++) {
+      if (i === 0 && h.thumbUnder) continue;
+      const pts = chains[i];
+      for (const j of [1, 2]) {
+        const a = pts[j - 1], b = pts[j + 1], len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len, r = PHALANX[i][j] * u * 0.32;
         c.beginPath();
-        c.roundRect(wrist.x - half * 1.13, wrist.y + u * .12, half * 2.26, u * .45, u * .07);
-        c.fill();
+        c.moveTo(pts[j].x - nx * r, pts[j].y - ny * r);
+        c.lineTo(pts[j].x + nx * r, pts[j].y + ny * r);
         c.stroke();
-        // Fill one silhouette after its outline, so adjoining parts have no seams.
-        const parts = [palm];
-        for (let i = h.thumbUnder ? 1 : 0; i < 5; i++)
-            parts.push(fingers[i]);
-        if (!h.thumbUnder) {
-            const t = chains[0], ix = chains[1][0], web = new Path2D();
-            web.moveTo(t[0].x, t[0].y + u * .3);
-            web.lineTo(t[1].x, t[1].y);
-            web.quadraticCurveTo((t[1].x + ix.x) / 2, (t[1].y + ix.y) / 2 + u * .6, ix.x, ix.y + u * .12);
-            web.lineTo(wrist.x, wrist.y);
-            web.closePath();
-            parts.push(web);
-        }
-        else
-            paint(fingers[0], fill, true);
-        c.strokeStyle = "#a56d51";
-        c.lineJoin = "round";
-        c.lineWidth = Math.max(1.2, u * .045);
-        for (const part of parts) c.stroke(part);
-        for (const part of parts) paint(part, fill);
-        for (let i = 0; i < 5; i++) {
-            if (i === 0 && h.thumbUnder)
-                continue;
-            const pts = chains[i], tip = pts[3], near = pts[2], angle = Math.atan2(tip.y - near.y, tip.x - near.x) + Math.PI / 2;
-            const r = u * [.29, .255, .27, .255, .215][i];
-            c.save();
-            c.clip(fingers[i]);
-            c.translate(near.x*.3+tip.x*.7,near.y*.3+tip.y*.7);
-            c.rotate(angle);
-            c.fillStyle = "#fbe0ca";
-            c.strokeStyle = "#c98f72";
-            c.lineWidth = Math.max(.7, u * .018);
-            c.beginPath();
-            c.roundRect(-r*.66,-r*.3,r*1.32,r*1.15,[r*.5,r*.5,r*.2,r*.2]);
-            c.fill();c.stroke();c.restore();
-            c.strokeStyle = "rgba(154,91,60,.3)";
-            c.lineWidth = Math.max(.6, u * .018);
-            for (const j of [1, 2]) {
-                const q = pts[j], v = pts[Math.min(3, j + 1)], n = Math.atan2(v.y - q.y, v.x - q.x);
-                c.save();
-                c.translate(q.x, q.y);
-                c.rotate(n);
-                c.beginPath();
-                c.moveTo(0, -r * .53);
-                c.quadraticCurveTo(-r * .16, 0, 0, r * .53);
-                c.stroke();
-                c.restore();
-            }
-        }
+      }
+      const tip = pts[3], near = pts[2], d = Math.hypot(tip.x - near.x, tip.y - near.y) || 1;
+      const w = PHALANX[i][2] * u;
+      c.save();
+      c.translate(tip.x - ((tip.x - near.x) / d) * w * 0.18, tip.y - ((tip.y - near.y) / d) * w * 0.18);
+      c.rotate(Math.atan2(tip.y - near.y, tip.x - near.x));
+      c.fillStyle = handSkin.nail;
+      c.beginPath();
+      c.ellipse(0, 0, w * 0.32, w * 0.27, 0, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
     }
-    private finger(p: Point[], r: number) {
-        const sides = [-1, 1].map(sign => p.map((v, i) => {
-            const a = p[Math.max(0, i - 1)], b = p[Math.min(3, i + 1)], d = Math.max(.001, Math.hypot(b.x - a.x, b.y - a.y));
-            const radius = r * [1, .96, .87, .78][i];
-            return { x: v.x - (b.y - a.y) / d * radius * sign, y: v.y + (b.x - a.x) / d * radius * sign };
-        }));
-        const path = new Path2D(), edge = [...sides[0], ...sides[1].slice().reverse()];
-        const last = edge[edge.length - 1];
-        path.moveTo((last.x + edge[0].x) / 2, (last.y + edge[0].y) / 2);
-        edge.forEach((v, i) => { const next = edge[(i + 1) % edge.length]; path.quadraticCurveTo(v.x, v.y, (v.x + next.x) / 2, (v.y + next.y) / 2); });
-        path.closePath();
-        return path;
-    }
-    hide() { this.canvas.style.visibility = "hidden"; this.canvas.dataset.handPoses = "0"; }
-    dispose() { this.hide(); this.canvas.width = 1; this.canvas.height = 1; }
+    c.restore();
+  }
+
+  /** The palm: the four knuckles, the thumb's base (thenar) on the index side, and a short wrist. */
+  private palm(knuckles: Point[], thumb: Point, wrist: Point, u: number, side: "left" | "right") {
+    const s = side === "right" ? 1 : -1;
+    const [a, , , d] = knuckles;
+    const index = side === "right" ? a : d;
+    const little = side === "right" ? d : a;
+    const half = u * 1.05;
+    const path = new Path2D();
+    const start = { x: wrist.x - s * half, y: wrist.y + u * 0.9 };
+    path.moveTo(start.x, start.y);
+    // Thenar: bulge out to the thumb's base, then in to the index knuckle.
+    path.quadraticCurveTo(thumb.x - s * u * 0.45, thumb.y + u * 0.9, thumb.x - s * u * 0.25, thumb.y);
+    path.quadraticCurveTo(thumb.x + s * u * 0.1, index.y + u * 0.2, index.x - s * u * 0.2, index.y);
+    // Across the knuckles.
+    path.quadraticCurveTo((a.x + d.x) / 2, Math.min(a.y, d.y) - u * 0.25, little.x + s * u * 0.22, little.y);
+    // Little-finger edge down to the wrist.
+    path.quadraticCurveTo(little.x + s * u * 0.4, (little.y + wrist.y) / 2, wrist.x + s * half * 0.92, wrist.y);
+    path.lineTo(wrist.x + s * half * 0.85, wrist.y + u * 0.9);
+    path.closePath();
+    return path;
+  }
+
+  hide() {
+    this.canvas.style.visibility = "hidden";
+    this.canvas.dataset.handPoses = "0";
+  }
+  dispose() {
+    this.hide();
+    this.canvas.width = 1;
+    this.canvas.height = 1;
+  }
 }
