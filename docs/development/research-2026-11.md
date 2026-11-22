@@ -58,7 +58,7 @@ Rust 生态没有可直接用的符号域和声分析库（`kord` 只解析和�
 
 许可证 **AGPL-3.0**。整体水平不高，**不作为本项目的参考实现**。Python 管线：分离 → ByteDance 转录 → BPM / 第一拍 → 规则清理 → 分手 → 重叠裁切，全部是手调阈值的启发式，只在 8 首曲目上调过，绑定特定转录模型，固定速度假设，踏板平滑与量化未实现。
 
-唯一采纳的一点：裁切或合并音符时，以"实际发声结束时间（含踏板）是否改变"作为判据。这条判据用于第 3.3 节的演奏清理。
+唯一采纳的一点：裁切或合并音符时，以"实际发声结束时间（含踏板）是否改变"作为判据。这条判据留给以后的演奏清理功能。
 
 手别分离不参考该仓库。pygame-piano-animator 的 `hand_split.py` 在同一 beam search 骨架上考虑了更完整的演奏约束（演奏者手型决定的跨度、按住的键、物理移动速度上限、双手交错检测、颤音整段归一只手、重复和弦沿用分法、轨道先验仅在手跟不上时让步），并与指法规划、动画自检共用约束，在 MAESTRO 1276 首上做过统计验证。该仓库无许可证，只学习约束设计，不移植代码。我们的手别分离与指法规划按下列顺序选型：
 
@@ -95,25 +95,4 @@ Rust 生态没有可直接用的符号域和声分析库（`kord` 只解析和�
 | `SNH48钢琴PDF谱` | PDF + Audiveris/MuseScore 识谱的 MIDI/MXL 初稿 | 纸谱与识谱质量边界 |
 | `Datasets` | POP909（和弦/调/拍标注）、Hooktheory（和声 JSON）、MAESTRO（`.midi`，踏板）、GiantMIDI、Mutopia、Open_Pop_Style、`catalog.csv` | 和弦识别验证；性能与解析回归 |
 
-没有 ABC 文件，没有歌词。代表性测试子集见 current-plan.md 第 3.6 节。
-
-## 8. Serpent 工作台布局（`D:\manage\_tools\Serpent`）
-
-技术栈：Electron + Node + React + TypeScript，MIT，约 32 万行（上游 dolag233/Serpent，本地为 Ubik42 个人版）。后端是 Node（better-sqlite3、sharp），不是 Rust，与 Panthesia 无法共用后端。
-
-布局：顶栏（后退 / 前进、库切换、工作区标签页、搜索、左右栏开关）+ 左栏（入口、文件夹树、标签树、自动任务）+ 中栏（等高行网格 / 瀑布流、尺寸滑块、筛选条、排序）+ 右栏 Inspector（预览、标签、评分、描述、属性）。没有列表视图，画布没有方向键导航。
-
-代码结构：
-
-- 好的部分是一批纯 TS 模块，带单测：栏宽拖拽与自动隐藏（`panel-drag-session`、`panel-auto-hide`、`shell-preferences`）、工作区标签页与共享历史（`workspace-tabs`、`workspace-nav-history`、`use-workspace-tabs`）、自研虚拟化（`virtual-browse-canvas`、`asset-grid-layout`、`card-size-stops`）、选择与框选（`useAssetSelection`、`marquee-*`）、搜索表达式解析器（`shared/search-expression.ts`，递归下降，带位置诊断）、标签树模型、自动任务分组模型。
-- 差的部分：`App.tsx` 17,673 行，233 个 useState，状态全部集中再经 props 下传；`styles.css` 20,113 行全局 CSS，结构与美术混写；Inspector、侧栏、筛选栏都是 60–150 个 props 的受控大组件。
-- 后端边界干净：渲染层只通过 `SerpentLibraryApi` 接口（zod 校验的 `type` 判别联合请求 + `Result` 返回）访问主进程，不直接依赖 Electron。
-
-能否做成共用框架：
-
-- 后端不能共用（Node 与 Rust）。可共用的是前端工作台层：外壳、面板、标签页、虚拟化、选择、搜索解析、树、Popover、设计 token 的结构约定，加上"一个 API 接口 + 判别联合请求 + Result"的传输模式。
-- 现在不在 Serpent 内部抽包：App.tsx 单体需要大面积重构，且 fork 的高频冲突文件（App.tsx、NavigationSidebar、styles.css）会让以后每次合并上游都冲突。
-- 做法：把上述纯模块复制进 Panthesia `src/workbench/`，类型泛化为 `Item` / `Location`，用 zustand store 承接状态，组件按 Panthesia 领域重写。NOTICE 记录来源提交。等 Panthesia 的 `src/workbench/` 稳定、有第三个应用要用时，再抽成独立包（`@ubik/workbench`），并让 Serpent 反向接入。
-- 估计工作量 3–4 周（纯模块移植 3–5 天；外壳与结构 CSS 1 周；侧栏、筛选、Inspector 按曲库领域重写 1–2 周）。
-
-**2026-11-21 更新**：本节"复制模块到 Panthesia `src/workbench/`"的建议已作废。Serpent 已脱离上游并改名为 Keel（曾定名 Keel），作为通用文件库管理曲库；Panthesia 不做曲库界面，作为外部演奏程序由 Keel 按文件类型打开，歌曲数据写在文件旁的 `.panthesia` 清单中。见 current-plan.md 第 1、3.7 节与 Keel 的 `docs/进度.md` 3.6 节。
+没有 ABC 文件，没有歌词。代表性测试子集见 current-plan.md 第 3.7 节。

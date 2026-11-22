@@ -1,10 +1,10 @@
 # 当前架构决策
 
-更新：2026-11-21（R2 删除集中曲库、RF 前端基础之后）。阶段与任务见 [current-plan.md](current-plan.md)。
+更新：2026-11-22（R0–R10、RO 之后）。阶段与任务见 [current-plan.md](current-plan.md)。
 
 ## A01 产品壳与后台能力
 
-Panthesia 是打开一首歌就能练的专用程序。曲库由 Keel 管理；Panthesia 只有启动页、歌曲设置与演奏舞台（Synthesia 式布局）。DuET、Audiveris、MuseScore、转调量化、谱面准备等作为后台能力，只从歌曲设置或全局设置的二级入口进入。
+Panthesia 是打开一首歌就能练的专用程序。曲库由 Keel 管理；Panthesia 只有启动页、歌曲页与演奏舞台，界面规范见 [interface-design.md](interface-design.md)。转录、分离、DuET、转调量化、谱面生成等作为后台能力，从歌曲页或设置进入；演奏舞台不放任务与诊断。
 
 ## A02 模块边界
 
@@ -47,17 +47,17 @@ Panthesia 是打开一首歌就能练的专用程序。曲库由 Keel 管理；P
 
 ## A06 渲染与谱面
 
-屏幕读取时间锚点推算显示时刻，引擎拥有事实时钟；React 只处理低频状态，实时字段由显示组件按字段订阅 `playbackStore`。瀑布通过索引查询可见区间；不逐帧遍历全曲、序列化全谱或重建 React 树。谱面页和节拍索引由后台生成，页/范围缓存有上限。舞台渲染器改为 WebGL2 在 R3 进行。
+屏幕读取时间锚点推算显示时刻，引擎拥有事实时钟；React 只处理低频状态，实时字段由显示组件按字段订阅 `playbackStore`。瀑布通过索引查询可见区间；不逐帧遍历全曲、序列化全谱或重建 React 树。谱面页和节拍索引由后台生成，页/范围缓存有上限。瀑布与光效为 WebGL2，见 [stage-rendering.md](stage-rendering.md)。
 
 ## A07 前端结构与样式
 
 `App.tsx` 只提供模型；`app/useAppModel` 组合会话（`usePracticeSession`）、导航、对话框（`useAppDialogs`）、打开文件（`useSongOpening`）与操作；`AppShell` 由 `AppMenu`、`AppNotices`、`ProductScreens`、`PracticeWorkspace`、`AppDialogs` 组成，各自从 `AppContext` 读取用到的值。业务组件按领域放在 `features/*`、`stage/`、`app/`，`src/` 根目录不放业务组件。
 
-样式只用 `tokens.css` 的变量（按原界面颜色拟合的 OKLCH token）。构建时所有样式表进入 CSS 层叠层：`tokens` → `components` → `state`（`[hidden]` 等状态规则）。剩余的 `!important` 在各屏视觉重做时消除。
+样式只用 `tokens.css` 的变量（按原界面颜色拟合的 OKLCH token）。构建时所有样式表进入 CSS 层叠层：`tokens` → `components` → `overrides` → `state`（`[hidden]` 等状态规则）。不使用 `!important`。
 
 ## A08 原创替换与来源
 
-Neothesia 应用逻辑逐模块退出：先稳定领域协议，再以功能规格和独立实现替换消费者。已有 GPL 代码在退出前准确保留来源。midly、cpal、midir、rtrb、oxisynth、Verovio、PDF.js 等通用依赖单独记录来源和许可。审计已见代码不能称为严格 clean-room；后续实现记录真实开发来源。台账见 [source-independence.md](source-independence.md)。
+Neothesia 应用逻辑逐模块退出：先稳定领域协议，再以功能规格和独立实现替换消费者。已有 GPL 代码在退出前准确保留来源。midly、cpal、midir、rtrb、oxisynth、Verovio、PDF.js 等通用依赖单独记录来源和许可。审计已见代码不能称为严格 clean-room；后续实现记录真实开发来源。来源与许可见 [sources-and-licences.md](sources-and-licences.md)。
 
 ## A09 迁移方式
 
@@ -65,7 +65,7 @@ Neothesia 应用逻辑逐模块退出：先稳定领域协议，再以功能规�
 
 ## A10 源音符与标注
 
-panthesia-music 的 tick-native 源演奏保持原字节身份，NoteId 按原物理轨与正力度 NoteOn 序号建立。视图索引、转调后音高和秒数均为投影。清单中的音符引用为 `[轨, 起点 tick, 音高]`；无法对应到当前演奏的条目放入图层的 `unmatched`，读取时原样带回，不丢弃。不以曲名或近似音高推断同一内容。详见 [音乐领域协议](music-domain.md)。
+panthesia-music 的 tick-native 源演奏保持原字节身份，NoteId 按原物理轨与正力度 NoteOn 序号建立。视图索引、转调后音高和秒数均为投影。清单中的音符引用为 `[轨, 起点 tick, 音高]`；无法对应到当前演奏的条目放入图层的 `unmatched`，读取时原样带回，不丢弃。不以曲名或近似音高推断同一内容。详见 [music-model.md](music-model.md)。
 
 ## A11 歌曲设置、声部与分手
 
@@ -77,11 +77,11 @@ panthesia-music 的 tick-native 源演奏保持原字节身份，NoteId 按原�
 
 PlaybackSession 拥有时钟、事件/等待目标游标、所需琴键与节拍边界，只接收内存时间线和只读角色投影。暂停、定位、换曲、退出共用 panic 的停止代次，陈旧输出包由 sound_runtime 的代次检查丢弃。模式、等待与手别切换保持当前位置；seek 与循环才重建游标。预备拍、节拍器与状态投影共用 musical_position；节拍按拍边界触发一次，迟到时不补发。
 
-瀑布延续可见区间索引。高度不超过 512 像素的音符缓存完整形状，更长音符用固定纹理分段绘制；音符缓存限制为 8 MiB / 128 项。
+瀑布延续可见区间索引，音符由 WebGL2 实例化绘制，不再缓存音符精灵。
 
 ## A13 谱面页面与排版
 
-页源按内容/布局身份共享，准备前取得租期，当前页通过带请求身份的 worker RPC 加载。SVG 使用 32 MiB / 16 页 LRU；最后一个读者退出时中止并释放排版线程。纸谱仅按需取得页面；切源或取消时拒绝过期结果。WASM 整曲布局及整曲映射仍待替换（R5）。
+页源按内容/布局身份共享，准备前取得租期，当前页通过带请求身份的 worker RPC 加载。SVG 使用 32 MiB / 16 页 LRU；最后一个读者退出时中止并释放排版线程。纸谱仅按需取得页面；切源或取消时拒绝过期结果。跟随播放只移动高亮，不重新排版。
 
 ## A14 实际音高与书写符号
 
@@ -95,4 +95,4 @@ SourceDocument 从原文件建立一次书面索引，MusicXML timewise 只在�
 
 ## A16 MIDIVisualizer 实时视觉层
 
-采用 WebView 内的独立 WebGL2 实例图层；后端只投影输入力度与击键身份，播放时钟与音频所有权保持在 Rust。与 Canvas2D 瀑布共享帧调度和几何，暂态效果使用有界批次；显卡异常时切回同一状态的 Canvas2D。详见 [visual-renderer.md](visual-renderer.md)。
+采用 WebView 内的独立 WebGL2 实例图层；后端只投影输入力度与击键身份，播放时钟与音频所有权保持在 Rust。与 Canvas2D 瀑布共享帧调度和几何，暂态效果使用有界批次；显卡异常时切回同一状态的 Canvas2D。详见 [stage-rendering.md](stage-rendering.md)。

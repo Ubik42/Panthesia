@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Panthesia
   text: 钢琴练习软件
-  tagline: 开源，交互参照 Synthesia
+  tagline: 开源，打开一首歌就能练
   actions:
     - theme: brand
       text: 启动与安装

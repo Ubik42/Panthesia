@@ -1,6 +1,6 @@
 # `.panthesia` 歌曲清单格式（版本 1）
 
-歌曲数据跟着文件走：清单放在乐曲文件旁边，用相对路径引用素材，自身保存图层与练习设置。规则来源见 [current-plan.md](current-plan.md) 3.1、3.7。机器校验用 [panthesia-format.schema.json](panthesia-format.schema.json)。
+歌曲数据跟着文件走：清单放在乐曲文件旁边，用相对路径引用素材，自身保存图层与练习设置。规则来源见 [current-plan.md](current-plan.md) 3.1、3.6。机器校验用 [panthesia-format.schema.json](panthesia-format.schema.json)。
 
 ## 文件
 

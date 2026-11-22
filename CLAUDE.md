@@ -2,14 +2,14 @@
 
 开源 Windows 钢琴练习软件。Tauri 2（Rust）+ React 19 + Vite。GPL-3.0，部分初始代码来自 Neothesia（见 NOTICE.md）。
 
-定位（2026-11-21）：打开一首歌就能练的专用程序，不做曲库管理。曲库由 Keel（`D:\Manage\_tools\Keel`）管理并按文件类型打开 Panthesia。歌曲数据写在文件旁的 `.panthesia` 清单中（`current-plan.md` 3.7）；本地只保存练习历史、最近打开与缓存。
+定位（2026-11-21）：打开一首歌就能练的专用程序，不做曲库管理。曲库由 Keel（`D:\Manage\_tools\Keel`）管理并按文件类型打开 Panthesia。歌曲数据写在文件旁的 `.panthesia` 清单中（`current-plan.md` 3.6）；本地只保存练习历史、最近打开与缓存。
 
 ## 先读
 
 0. `GOAL.md`：长期目标、授权与启动方式。
 1. `docs/development/current-plan.md`：长期目标、目标架构、当前阶段。唯一任务队列。
 2. `docs/development/progress.md`：最近一轮做了什么、下一入口。
-3. `docs/development/interaction-model.md`：界面参照与用户授权的差异。
+3. `docs/development/interface-design.md`：界面规范。
 
 每轮结束在 `progress.md` 追加一条记录；阶段状态变化时更新 `current-plan.md` 第 4 节。
 
@@ -54,7 +54,7 @@ cd panthesia-web; npm run build          # 协议校验 + tsc + vite
 已授权（2026-11-21）：R2 的真实资料迁移（在原文件旁写 `.panthesia` 清单、导出只在副本存储中的歌曲、迁移练习历史、核对通过后移除旧 `library/`）可以直接执行，不再询问。条件：执行前重新完整备份 `%APPDATA%\com.ubik.neothesia`；先在备份副本上跑通；Panthesia 已退出；逐首核对能从新位置打开且图层与设置一致；任何一首不一致就停止、从备份恢复并报告。
 用户数据：真实资料在 `%APPDATA%\com.ubik.neothesia`（旧 ID，由 `product::profile_root` 选中），备份在 `work/user-data-backup/com.ubik.neothesia-20261121.zip`。开发测试一律设置 `PANTHESIA_DATA_ROOT` 指向 `work/` 下的临时目录，不在真实资料上做实验。迁移代码必须先在其副本上跑通。
 
-测试语料：`D:\Music\MIDI`（见 `current-plan.md` 第 3.6 节），只读。
+测试语料：`D:\Music\MIDI`（见 `current-plan.md` 第 3.7 节），只读。
 
 ## 规则
 

@@ -1,5 +1,5 @@
-/* Palette tokens, fitted to the colors the interface used (scripts/tokenize-colors.py).
-   Styles use only these variables and the theme variables defined from them. */
+/* Palette tokens (OKLCH, named by hue family and lightness) and the semantic tokens built on them.
+   Styles use only these variables; new components use the semantic tokens. */
 :root {
   --gray-0: oklch(0.0% 0.000 0);
   --gray-18: oklch(17.6% 0.016 259);

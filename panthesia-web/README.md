@@ -16,9 +16,9 @@
 
 ## 样式
 
-- 颜色只用 `src/tokens.css` 的变量。这些变量由 `scripts/tokenize-colors.py` 按原界面颜色拟合（OKLCH），重新设计时直接修改变量值。
+- 颜色、圆角、间距只用 `src/tokens.css` 的变量：调色板 token（按色相族与亮度命名）与其上的语义 token（`--surface-*`、`--text-*`、`--accent` 等，见 [界面规范](../docs/development/interface-design.md) 第 2 节）。新组件只用语义 token。
+- 构建时样式表进入 CSS 层叠层：`tokens` → `components` → `overrides` → `state`。不使用 `!important`。
 - `scripts/prune-css.mjs [--list] [--write]` 删除源码中不会出现的类名对应的选择器。
-- 尚待处理：约 40 处 `!important` 与多套主题文件互相覆盖，在 RF 重写各屏时改用 CSS 层叠层（`@layer`）解决。
 
 ## 检查
 
