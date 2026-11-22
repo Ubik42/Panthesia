@@ -169,13 +169,15 @@ export function Notation({
     [paperWidth, setPaperWidth] = useState(900);
   // "Fit width" reflows systems to the pane instead of enlarging A4 pages: the staff size is
   // the 100% size (0.5 px per Verovio unit), reduced until a system fits the pane.
+  // The visible score height; messages above the score shrink it for a while.
+  const [viewportHeight, setViewportHeight] = useState(0);
   const [paneHeight, setPaneHeight] = useState(0),
     [systemUnits, setSystemUnits] = useState(0);
   // Wider systems hold more measures and grow taller, hence the 1.15 margin; below 0.35 the
   // staff stops being readable, and the follow scroll keeps the current note in view instead.
   const staffScale = systemUnits && paneHeight ? Math.max(0.35, Math.min(0.5, (paneHeight - 16) / (systemUnits * 1.15))) : 0.5;
   useEffect(() => setSystemUnits(0), [song.contentId, song.scoreRevision]);
-  const layoutWidth = zoom ? 2100 : Math.min(9600, Math.max(1200, Math.round(paperWidth / staffScale / 400) * 400));
+  const layoutWidth = zoom ? undefined : Math.min(9600, Math.max(1200, Math.round(paperWidth / staffScale / 400) * 400));
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     try {
@@ -207,6 +209,7 @@ export function Notation({
       const box = el.closest(".notation-pane");
       const room = (box?.clientHeight ?? 0) - (box?.querySelector<HTMLElement>(".notation-toolbar")?.offsetHeight ?? 0);
       if (room > 0) setPaneHeight(room);
+      setViewportHeight(el.clientHeight);
     };
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -249,14 +252,14 @@ export function Notation({
   const pageView = useScorePage(pages,page);
   const html = useMemo(() => ({ __html: pageView.markup }), [pageView.markup]);
   useEffect(() => {
-    if (zoom || !pageView.markup || !root.current) return;
+    if (layoutWidth === undefined || !pageView.markup || !root.current) return;
     const systems = [...root.current.querySelectorAll("g.system")];
     const tallest = Math.max(0, ...systems.map((system) => system.getBoundingClientRect().height));
     // Measured once, on the standard-size layout (rendered pixels per unit is the paper width
     // over the layout width). Re-measuring after each reflow would chase taller systems that
     // hold more measures and shrink the staff without end.
     if (tallest) setSystemUnits((units) => units || Math.round(tallest / (paperWidth / layoutWidth)));
-  }, [pageView.markup, zoom, paperWidth, layoutWidth]);
+  }, [pageView.markup, paperWidth, layoutWidth]);
   useEffect(()=>{
     const selected=new Set(practiceRange?mapping.filter(m=>m.start<practiceRange.end&&m.end>practiceRange.start).map(m=>m.id):[]);
     root.current?.querySelectorAll("g.note").forEach(note=>note.classList.toggle("practice-range-note",selected.has(note.id)));
@@ -395,7 +398,7 @@ export function Notation({
   },[asset,follow,loading,song.duration,store]);
   const timeIndex = useMemo(() => new NotationTimeIndex(mapping), [mapping]);
   useEffect(() => {
-    // Rendered markup, page or zoom changed: element handles and the last target are stale.
+    // Rendered markup, page, zoom or viewport size changed: element handles and the last target are stale.
     const elements = new Map<string, Element | null>();
     const element = (id: string) => {
       if (!elements.has(id)) elements.set(id, root.current?.querySelector(`[id="${CSS.escape(id)}"]`) ?? null);
@@ -423,7 +426,7 @@ export function Notation({
     };
     update();
     return store.subscribe(update);
-  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth]);
+  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth, viewportHeight]);
   useEffect(() => {
     const el = root.current;
     if (!el) return;

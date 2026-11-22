@@ -77,7 +77,7 @@ class Layout {
       alterations?: [string, string][];
     },
     progress: Pending["progress"],
-    pageWidth: number,
+    pageWidth: number | undefined,
   ) {
     this.worker.onmessage = ({ data }) => {
       const request = this.pending.get(data.id);
@@ -179,8 +179,8 @@ export async function renderScore(
   asset: { bytes: number[]; compressed: boolean },
   signal: AbortSignal,
   progress: (stage: string, page?: number, total?: number) => void,
-  /** Verovio page width in its own units; 2100 is A4 portrait. */
-  pageWidth = 2100,
+  /** Verovio page width in its own units for a layout fitted to the pane; A4 pages without it. */
+  pageWidth?: number,
 ): Promise<RenderedScore> {
   signal.throwIfAborted();
   const digest = await crypto.subtle.digest(
@@ -188,7 +188,7 @@ export async function renderScore(
     new Uint8Array(asset.bytes),
   );
   signal.throwIfAborted();
-  const key = `pages-v4:${pageWidth}:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
+  const key = `pages-v4:${pageWidth ?? "a4"}:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
   let lease = layouts.get(key);
   if (!lease) {
     const created = { references: 0 } as LayoutLease;

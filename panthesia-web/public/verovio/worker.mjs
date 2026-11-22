@@ -14,7 +14,9 @@ self.onmessage = async ({ data }) => {
       toolkit = new VerovioToolkit(await createModule());
       toolkit.setOptions({
         breaks: "auto",
+        // A fitted layout (page width given) reflows to the pane: pages are as tall as their systems.
         pageWidth: data.pageWidth ?? 2100,
+        adjustPageHeight: data.pageWidth != null,
         pageHeight: 2970,
         scale: 40,
         svgHtml5: true,
