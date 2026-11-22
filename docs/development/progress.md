@@ -2,6 +2,12 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · 舞台美术与 Look at the Sky 检查（提交 9935447 及本条）
+
+- 舞台美术（参照 MIDIVisualizer、SeeMusic）：背景图片与背景不透明度（WebGL 瀑布改为透明画布、预乘背景，键盘光晕保留）；音符“按音高（12 色）”配色；琴键上沿灯带（默认开启）。舞台“显示设置”可直接开关灯带、调背景。
+- Look at the Sky（副本在 `work/web-preview-songs/look-at-the-sky/`）：虚拟双手规划 2468 个音全部分到左右手（右 1235、左 1233）并有指法，舞台上两只手正常绘制。
+- 版本比对：`versions/` 中“原调_乐谱量化”与“原调_自动对齐”起音完全相同，只有时值对齐到网格；两个“C 大调”版是整体移调；根目录 MIDI 与“原调_自动对齐”字节相同。四个版本都可由一份 MIDI 在运行时转调、量化得到。整理需用户确认（会删除或移动曲库文件）。
+
 ## 2026-11-22 · RD–RP：文档整理、歌曲页、Keel 同步、演奏舞台排版（提交 49936a8、fb8eba0、eba051a、73ba593 及本条）
 
 - RD：开发文档从 17 份合并为 10 份，每份一个职责（`interface-design.md` 取代 Synthesia 复刻规范；`music-model.md`、`stage-rendering.md`、`sources-and-licences.md`、`notation-benchmarks.md` 为合并结果）；删除旧批次证据 JSON、未用字体、引用已删模块的前端脚本与 `useBrowsePane`；计划改写为“已完成 / 进行中 / 待办”三部分。
