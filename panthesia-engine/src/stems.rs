@@ -4,8 +4,10 @@
 //! there). The player reconciles the stream with the transport every tick: stems sound while
 //! a continuous mode plays, follow seeks and speed, and are moved back when they drift.
 //!
-//! Rate conversion (file rate, alignment rate, practice speed) is Catmull-Rom interpolation in
-//! the callback; a speed other than 1 therefore also changes pitch until time stretching lands.
+//! Stems are resampled to the device rate when prepared. At the original speed the callback
+//! interpolates (Catmull-Rom, for the alignment's small rate); at other practice speeds it mixes
+//! the stems and stretches the mix with Signalsmith Stretch, so the pitch stays. Its latency
+//! (about 120 ms) is made up by reading that far ahead after every placement.
 use crate::player::Player;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::Serialize;
@@ -66,7 +68,33 @@ impl Output {
         let (mut trash_tx, trash) = rtrb::RingBuffer::<Arc<Set>>::new(8);
         let position = Arc::new(AtomicU64::new(0f64.to_bits()));
         let published = position.clone();
+        let mut stretch = panthesia_audio::stretch::Stretch::new(rate as f32);
+        let (input_latency, output_latency) = stretch.latency();
+        // Room for one block at the fastest speed (2x), allocated once.
+        const BLOCK: usize = 1024;
+        let room = (BLOCK * 2 + 8).max(input_latency * 2);
+        let (mut mix_l, mut mix_r) = (vec![0f32; room], vec![0f32; room]);
+        let (mut out_l, mut out_r) = (vec![0f32; BLOCK], vec![0f32; BLOCK]);
         let (mut set, mut frame, mut step, mut playing, mut gains) = (None::<Arc<Set>>, 0f64, 1f64, false, Vec::<f32>::new());
+        // Stretching: how far reading runs ahead of what is heard, and the fractional input.
+        let (mut lead, mut carry) = (0f64, 0f64);
+        let mix = |set: &Set, gains: &[f32], from: f64, l: &mut [f32], r: &mut [f32]| {
+            let start = from.floor() as isize;
+            for (k, (a, b)) in l.iter_mut().zip(r.iter_mut()).enumerate() {
+                let (mut x, mut y) = (0f32, 0f32);
+                let at = start + k as isize;
+                if at >= 0 {
+                    for (track, gain) in set.tracks.iter().zip(gains) {
+                        if *gain > 0.0 {
+                            x += track.left.get(at as usize).copied().unwrap_or(0.0) * gain;
+                            y += track.right.get(at as usize).copied().unwrap_or(0.0) * gain;
+                        }
+                    }
+                }
+                *a = x;
+                *b = y;
+            }
+        };
         let mut render = move |out: &mut [f32]| {
             while let Ok(control) = rx.pop() {
                 match control {
@@ -77,9 +105,23 @@ impl Output {
                         playing = false;
                     }
                     Control::Play { frame: at, step: s } => {
-                        frame = at;
                         step = s;
                         playing = true;
+                        carry = 0.0;
+                        if (step - 1.0).abs() < 0.002 {
+                            frame = at;
+                            lead = 0.0;
+                        } else {
+                            // Read ahead by the stretcher's delay, primed with what precedes.
+                            lead = input_latency as f64 + output_latency as f64 * step;
+                            frame = (at + lead).floor();
+                            stretch.reset();
+                            if let Some(set) = set.as_ref() {
+                                let prime = input_latency * 2;
+                                mix(set, &gains, frame - prime as f64, &mut mix_l[..prime], &mut mix_r[..prime]);
+                                stretch.seek(&mix_l[..prime], &mix_r[..prime], step);
+                            }
+                        }
                     }
                     Control::Pause => playing = false,
                     Control::Gains(values) => gains = values,
@@ -87,20 +129,37 @@ impl Output {
             }
             out.fill(0.0);
             let Some(set) = set.as_ref().filter(|_| playing) else { return };
-            for output in out.chunks_mut(channels) {
-                let (mut l, mut r) = (0f32, 0f32);
-                for (track, gain) in set.tracks.iter().zip(&gains) {
-                    if *gain > 0.0 {
-                        l += catmull(&track.left, frame) * gain;
-                        r += catmull(&track.right, frame) * gain;
+            if lead == 0.0 {
+                for output in out.chunks_mut(channels) {
+                    let (mut l, mut r) = (0f32, 0f32);
+                    for (track, gain) in set.tracks.iter().zip(&gains) {
+                        if *gain > 0.0 {
+                            l += catmull(&track.left, frame) * gain;
+                            r += catmull(&track.right, frame) * gain;
+                        }
                     }
+                    for (i, sample) in output.iter_mut().enumerate() {
+                        *sample = if i % 2 == 0 { l } else { r };
+                    }
+                    frame += step;
                 }
-                for (i, sample) in output.iter_mut().enumerate() {
-                    *sample = if i % 2 == 0 { l } else { r };
+            } else {
+                for block in out.chunks_mut(channels * BLOCK) {
+                    let frames = block.len() / channels;
+                    let wanted = carry + frames as f64 * step;
+                    let input = (wanted.floor() as usize).min(mix_l.len());
+                    carry = wanted - input as f64;
+                    mix(set, &gains, frame, &mut mix_l[..input], &mut mix_r[..input]);
+                    stretch.process(&mix_l[..input], &mix_r[..input], &mut out_l[..frames], &mut out_r[..frames]);
+                    for (k, output) in block.chunks_mut(channels).enumerate() {
+                        for (i, sample) in output.iter_mut().enumerate() {
+                            *sample = if i % 2 == 0 { out_l[k] } else { out_r[k] };
+                        }
+                    }
+                    frame += input as f64;
                 }
-                frame += step;
             }
-            published.store(frame.to_bits(), Ordering::Relaxed);
+            published.store((frame - lead).to_bits(), Ordering::Relaxed);
         };
         let mut scratch = vec![0f32; 8192 * channels];
         let failure = Arc::new(Mutex::new(None));
@@ -193,6 +252,8 @@ pub(crate) struct Stems {
     sent: Option<(std::time::Instant, f64)>,
     drift_ms: Option<f64>,
     corrections: u32,
+    /// Last transport position seen while playing, to tell a seek from drift.
+    transport: Option<(std::time::Instant, f64)>,
 }
 
 /// The stem files of `music`'s manifest: (path, kind, label).
@@ -217,14 +278,15 @@ fn stem_files(music: &std::path::Path) -> Vec<(PathBuf, String, String)> {
         .collect()
 }
 
-fn prepare(files: Vec<(PathBuf, String, String)>, onsets: Vec<(f64, u8)>, seconds: f64) -> Result<Prepared, String> {
+/// `rate` is the output device's; stems are resampled to it here, off the audio thread.
+fn prepare(files: Vec<(PathBuf, String, String)>, onsets: Vec<(f64, u8)>, seconds: f64, rate: f64) -> Result<Prepared, String> {
     let mut decoded = Vec::new();
     for (path, kind, label) in files {
         let pcm = panthesia_audio::decode(&path, 30.0 * 60.0).map_err(|e| format!("{}：{e}", path.display()))?;
         decoded.push((pcm, kind, label));
     }
-    let rate = decoded[0].0.rate;
-    if decoded.iter().any(|(pcm, ..)| pcm.rate != rate) {
+    let source_rate = decoded[0].0.rate;
+    if decoded.iter().any(|(pcm, ..)| pcm.rate != source_rate) {
         return Err("伴奏文件的采样率不一致".into());
     }
     // Vocals cannot be matched with piano notes: align a stem with the piano in it and let
@@ -246,7 +308,15 @@ fn prepare(files: Vec<(PathBuf, String, String)>, onsets: Vec<(f64, u8)>, second
         .iter()
         .map(|(_, kind, label)| StemState { kind: kind.clone(), label: label.clone(), gain: if kind == "piano" || kind == "accompaniment" { 0.0 } else { 1.0 } })
         .collect();
-    let set = Set { rate: f64::from(rate), tracks: decoded.into_iter().map(|(pcm, ..)| Track { left: pcm.left, right: pcm.right }).collect() };
+    let ratio = f64::from(source_rate) / rate;
+    let resample = |samples: Vec<f32>| -> Vec<f32> {
+        if (ratio - 1.0).abs() < 1e-9 {
+            return samples;
+        }
+        let length = (samples.len() as f64 / ratio).floor() as usize;
+        (0..length).map(|i| catmull(&samples, i as f64 * ratio)).collect()
+    };
+    let set = Set { rate, tracks: decoded.into_iter().map(|(pcm, ..)| Track { left: resample(pcm.left), right: resample(pcm.right) }).collect() };
     Ok(Prepared { set: Arc::new(set), alignment, stems })
 }
 
@@ -262,14 +332,25 @@ impl Player {
         }
         let onsets: Vec<(f64, u8)> = file.tracks.iter().flat_map(|t| t.notes.iter().map(|n| (n.start.as_secs_f64(), n.velocity))).collect();
         let seconds = file.duration.as_secs_f64();
+        let content_id = file.content_id.clone();
+        // A silent engine (tests, the browser debug service) prepares but never plays.
+        let (output, error) = if self.silent {
+            (None, None)
+        } else {
+            match Output::open() {
+                Ok(output) => (Some(output), None),
+                Err(error) => (None, Some(error)),
+            }
+        };
+        let rate = output.as_ref().map_or(48_000.0, |o| o.rate);
         let (tx, rx) = mpsc::channel();
         std::thread::Builder::new()
             .name("panthesia-stems".into())
             .spawn(move || {
-                let _ = tx.send(prepare(files, onsets, seconds));
+                let _ = tx.send(prepare(files, onsets, seconds, rate));
             })
             .ok();
-        self.stems = Some(Stems { content_id: file.content_id.clone(), output: None, prepared: None, loading: Some(rx), error: None, sent: None, drift_ms: None, corrections: 0 });
+        self.stems = Some(Stems { content_id, output, prepared: None, loading: Some(rx), error, sent: None, drift_ms: None, corrections: 0, transport: None });
     }
 
     pub(crate) fn stems_state(&self) -> Option<StemsState> {
@@ -309,7 +390,6 @@ impl Player {
         let (position, speed) = (self.state.position, self.state.speed);
         // Stems belong to the song; a practice variant or meter fix replaces the played file.
         let current = self.source_file.as_ref().or(self.file.as_ref()).map(|f| f.content_id.clone());
-        let silent = self.silent;
         let Some(stems) = self.stems.as_mut() else { return };
         if current.as_deref() != Some(stems.content_id.as_str()) {
             self.stems = None;
@@ -317,22 +397,13 @@ impl Player {
         }
         if let Some(rx) = &stems.loading {
             match rx.try_recv() {
-                Ok(Ok(prepared)) if silent => {
-                    // A silent engine (tests, the browser debug service) prepares but never plays.
-                    stems.loading = None;
-                    stems.prepared = Some(prepared);
-                }
                 Ok(Ok(prepared)) => {
                     stems.loading = None;
-                    match stems.output.take().map_or_else(Output::open, Ok) {
-                        Ok(output) => {
-                            output.send(Control::Load(prepared.set.clone()));
-                            output.send(Control::Gains(prepared.stems.iter().map(|s| s.gain as f32).collect()));
-                            stems.output = Some(output);
-                            stems.prepared = Some(prepared);
-                        }
-                        Err(error) => stems.error = Some(error),
+                    if let Some(output) = &stems.output {
+                        output.send(Control::Load(prepared.set.clone()));
+                        output.send(Control::Gains(prepared.stems.iter().map(|s| s.gain as f32).collect()));
                     }
+                    stems.prepared = Some(prepared);
                 }
                 Ok(Err(error)) => {
                     stems.loading = None;
@@ -351,22 +422,27 @@ impl Player {
                 output.send(Control::Pause);
             }
             stems.drift_ms = None;
+            stems.transport = None;
             return;
         }
         let alignment = &prepared.alignment;
         let target = alignment.audio_time(position) * prepared.set.rate;
-        let step = prepared.set.rate / output.rate * speed * alignment.rate;
+        let step = speed * alignment.rate;
         let actual = f64::from_bits(output.position.load(Ordering::Relaxed));
         // Re-place the stems when they start, change speed, or drift by more than 40 ms.
         let settled = stems.sent.is_some_and(|(at, _)| at.elapsed() > std::time::Duration::from_millis(300));
-        let drifted = settled && (actual - target).abs() > 0.04 * prepared.set.rate;
+        // A seek moves the transport by more than playing could have: place, do not count it.
+        let now = std::time::Instant::now();
+        let jumped = stems.transport.is_some_and(|(at, last)| (position - last - now.duration_since(at).as_secs_f64() * speed).abs() > 0.1);
+        stems.transport = Some((now, position));
+        let drifted = settled && !jumped && (actual - target).abs() > 0.04 * prepared.set.rate;
         if settled {
             stems.drift_ms = Some(((actual - target) / prepared.set.rate * 1000.0 * 10.0).round() / 10.0);
         }
         if drifted {
             stems.corrections += 1;
         }
-        if stems.sent.is_none_or(|(_, sent)| (sent - step).abs() > 1e-9) || drifted {
+        if stems.sent.is_none_or(|(_, sent)| (sent - step).abs() > 1e-9) || drifted || jumped {
             output.send(Control::Play { frame: target, step });
             stems.sent = Some((std::time::Instant::now(), step));
         }

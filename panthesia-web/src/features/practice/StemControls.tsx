@@ -35,7 +35,7 @@ export function StemControls({ store, command }: { store: PlaybackStore; command
           />
         </label>
       ))}
-      {!stems.loading && !stems.error && <small>变速时伴奏的音高会随之改变；在聆听与跟弹模式中播放。</small>}
+      {!stems.loading && !stems.error && <small>在聆听与跟弹模式中随演奏播放，变速时保持音高。</small>}
     </div>
   );
 }

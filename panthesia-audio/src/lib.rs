@@ -12,6 +12,8 @@
 //! rate 1.0023, 93% of onsets within 30 ms; a KAIRCI accompaniment against its MIDI played at
 //! the file-name tempo — offset 0, rate 1, 59%.
 
+pub mod stretch;
+
 use std::path::Path;
 
 use rustfft::{FftPlanner, num_complex::Complex32};

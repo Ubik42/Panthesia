@@ -8,3 +8,6 @@ description = "Panthesia accompaniment audio: decoding, resampling and alignment
 [dependencies]
 symphonia = { version = "0.6", features = ["mp3"] }
 rustfft = "6.4"
+
+[build-dependencies]
+cc = "1.2"

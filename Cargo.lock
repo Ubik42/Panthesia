@@ -2912,6 +2912,7 @@ dependencies = [
 name = "panthesia-audio"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "rustfft",
  "symphonia",
 ]
