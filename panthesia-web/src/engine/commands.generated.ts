@@ -1236,6 +1236,7 @@ export interface Snapshot {
   "soundfont": string;
   "soundfontStatus": string;
   "sound": SoundStatus;
+  "stems": StemsState | null;
   "audioLevel": number | null;
   "audioPerformance": AudioPerformance | null;
   "soundfontWarning": string | null;
@@ -1310,6 +1311,22 @@ export interface SectionItem {
   "tick": number;
   "seconds": number;
   "label": string;
+}
+
+export interface StemsState {
+  "loading": boolean;
+  "error": string | null;
+  "stems": Array<StemState>;
+  "confidence": number | null;
+  "offset": number | null;
+  "driftMs": number | null;
+  "corrections": number;
+}
+
+export interface StemState {
+  "kind": string;
+  "label": string;
+  "gain": number;
 }
 
 export interface PassageCatalog {
@@ -1464,6 +1481,7 @@ export type EngineCommand =
   | { type: "pairScoreFile"; "path": string; "content_id": string }
   | { type: "saveChords"; "content_id": string; "chords": Array<ChordEdit> }
   | { type: "adoptChords"; "content_id": string }
+  | { type: "stemGain"; "kind": string; "gain": number }
   | { type: "exportAnnotatedScore"; "content_id": string; "score_revision": number; "options": ScoreExportOptions; "download"?: boolean; "fingerprint"?: string | null }
   | { type: "scoreMap"; "score_revision"?: number | null; "midi": Array<number>; "notes": Array<unknown>; "content_id": string }
   | { type: "finger"; "track": number; "index": number; "finger"?: number | null }

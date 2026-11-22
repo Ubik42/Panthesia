@@ -1,0 +1,27 @@
+.stem-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--blue-39);
+  min-width: 240px;
+}
+.stem-controls p,
+.stem-controls small {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gray-75);
+}
+.stem-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stem-controls label > span {
+  flex: 0 0 3em;
+}
+.stem-controls input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}

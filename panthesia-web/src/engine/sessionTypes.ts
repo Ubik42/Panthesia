@@ -154,6 +154,7 @@ export const emptyState: Snapshot = {
   soundfont: "",
   soundfontStatus: "",
   sound: { ready: false, changing: false, error: null, lateNotes: 0, device: "", deviceId: null, pluginStatePath: null, pluginStateRestored: false, pluginStateWarning: null },
+  stems: null,
   audioLevel: null,
   audioPerformance: null,
   soundfontWarning: null,

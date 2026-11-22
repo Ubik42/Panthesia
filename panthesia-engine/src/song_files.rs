@@ -134,6 +134,8 @@ impl Player {
         if result.is_none() {
             return Err("这首曲目还没有歌曲清单".into());
         }
+        // Stems may have come or gone.
+        self.load_stems();
         self.song_files()
     }
 }

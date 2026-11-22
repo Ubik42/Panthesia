@@ -101,6 +101,8 @@ pub(crate) struct Player {
     pub(crate) manifest_settings: Option<(String, manifest_settings::Projection)>,
     /// Chord layer of the current song: (song, variant and score revision, value).
     pub(crate) harmony_cache: Option<(String, crate::harmony::Harmony)>,
+    /// Accompaniment stems of the current song.
+    pub(crate) stems: Option<crate::stems::Stems>,
 }
 impl Player {
     #[cfg(test)]
@@ -183,6 +185,7 @@ impl Player {
             finger_undo: Default::default(),
             manifest_settings: None,
             harmony_cache: None,
+            stems: None,
             config: SongConfig::default(),
             fingers: FingerAssignments::default(),
             exercise: None,
@@ -422,6 +425,7 @@ impl Player {
         }
         self.source_file = Some(file.clone().into());
         self.file = Some(file.into());
+        self.load_stems();
         let variant=self.variant();
         if variant.active() {let passage=self.state.passage.clone();self.apply_variant_memory(&variant)?;self.state.passage=passage.filter(|p|p.end<=self.state.duration);}
         self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));
@@ -945,6 +949,7 @@ impl Player {
     }
     pub(crate) fn tick(&mut self, delta: Duration) {
         if self.closing.load(Ordering::Acquire) { return; }
+        self.reconcile_stems();
         self.tick_song_audition(delta);
         if self.storage_busy.load(Ordering::Acquire) { return; }
         self.tick_finger_demo(delta);
@@ -998,6 +1003,7 @@ impl Player {
             state.state_order = Some(clock.next());
         }
         state.sound=self.sound_host.as_ref().map_or_else(sound_runtime::Status::default,sound_runtime::Host::status);
+        state.stems=self.stems_state();
         state.audio_level=self.sound_host.as_ref().and_then(sound_runtime::Host::level);
         state.audio_performance=self.sound_host.as_ref().and_then(sound_runtime::Host::performance);
         state.sound.changing|=self.sound_change.is_some();

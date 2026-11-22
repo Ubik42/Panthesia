@@ -105,6 +105,9 @@ pub struct Snapshot {
     pub soundfont: PathBuf,
     pub soundfont_status: String,
     pub sound: sound_runtime::SoundStatus,
+    /// Accompaniment stems of the current song, when its manifest lists any.
+    #[serde(default)]
+    pub stems: Option<crate::stems::StemsState>,
     pub audio_level: Option<f32>,
     pub audio_performance: Option<audio::AudioPerformance>,
     pub soundfont_warning: Option<String>,
@@ -156,6 +159,7 @@ impl Default for Snapshot {
             soundfont: PathBuf::new(),
             soundfont_status: "ready".into(),
             sound: sound_runtime::Status::default(),
+            stems: None,
             audio_level: None,
             audio_performance: None,
             playback_performance: PlaybackPerformance::default(),

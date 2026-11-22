@@ -2964,6 +2964,7 @@ dependencies = [
  "midir",
  "oxisynth",
  "panthesia-analysis",
+ "panthesia-audio",
  "panthesia-core",
  "panthesia-music",
  "panthesia-notation",

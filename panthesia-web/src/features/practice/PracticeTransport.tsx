@@ -16,6 +16,7 @@ import {
 import type { EngineCommand } from "../../api";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePlaybackFields } from "./usePlaybackFields";
+import { StemControls } from "./StemControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 
@@ -426,6 +427,7 @@ export function PracticeTransport({
             />
             <output>{`${Math.round(volume.value * 100)}%`}</output>
           </div>
+          <StemControls store={store} command={command} />
         </ToolbarMore>
         <button
           className="synthesia-app-menu"

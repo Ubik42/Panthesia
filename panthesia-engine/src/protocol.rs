@@ -149,6 +149,10 @@ pub enum Command {
     AdoptChords {
         content_id: String,
     },
+    StemGain {
+        kind: String,
+        gain: f64,
+    },
     ExportAnnotatedScore {
         content_id: String,
         score_revision: u64,

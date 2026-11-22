@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 panthesia-analysis.workspace = true
+panthesia-audio.workspace = true
 panthesia-core.workspace = true
 panthesia-vst3.workspace = true
 panthesia-music.workspace = true
