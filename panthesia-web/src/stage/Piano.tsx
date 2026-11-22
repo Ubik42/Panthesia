@@ -658,7 +658,7 @@ export function Piano({
           const completed = position >= a.at;
           ctx.font = `bold ${Math.min(13, w - 4)}px sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillStyle = sharp(n.pitch) ? "#f2d694" : "#294432";
+          ctx.fillStyle = sharp(n.pitch) ? stageInk.fingerOnBlack : stageInk.fingerOnWhite;
           ctx.fillText(
             completed ? String(a.to) : `${a.from}→${a.to}`,
             x + w / 2,

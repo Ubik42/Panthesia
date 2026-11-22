@@ -19,6 +19,36 @@ export const stageInk = {
   keyColumn: "#a6b9d2",
   measureLabel: "#aab8cc",
   required: "#efd484",
+  fingerOnBlack: "#f2d694",
+  fingerOnWhite: "#294432",
+};
+
+/** Fallboard and rail above the keys, keyed by skin. */
+export const keyboardFrames = {
+  studio: { fallboard: "#303544", edge: "#777b91" },
+  midnight: { fallboard: "#303544", edge: "#777b91" },
+  rosewood: { fallboard: "#70523a", edge: "#b78458" },
+} as const satisfies Record<DisplayPreferences["skin"], unknown>;
+
+/** White key surface from the front edge (top) to the key bottom, keyed by material. */
+export const keyMaterials = {
+  ivory: { edge: "#c3c1b1", face: "#fff6df", foot: "#dfd4b9", label: "#53635e" },
+  porcelain: { edge: "#dce4ef", face: "#ffffff", foot: "#dae4f2", label: "#53635e" },
+  glass: { edge: "#789bac", face: "#abcbd8", foot: "#496c83", label: "#eff7ff" },
+} as const satisfies Record<DisplayPreferences["pianoMaterial"], unknown>;
+
+export const keyInk = {
+  rail: "#a6475a",
+  required: "#f4db9e",
+  activeFoot: "#e0fff3",
+  activeLabel: "#53635e",
+  seam: "#101b3025",
+  lip: "#ffffff80",
+  activeLip: "#ffffffa0",
+  black: { top: "#303b4d", middle: "#182230", activeMiddle: "#3f807e", bottom: "#080d15", required: "#b68e43" },
+  blackShine: ["#ffffff20", "#ffffff04", "#ffffff0c"] as const,
+  blackEdge: "#ffffff25",
+  blackLabel: "#e9edf1",
 };
 
 export type Rgba = readonly [number, number, number, number];

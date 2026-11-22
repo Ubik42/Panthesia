@@ -103,6 +103,10 @@ void main(){
   vec3 rgb = color.rgb;
   float shine = step(1.65, local.y) * step(local.y, 2.35) * step(3.0, local.x) * step(local.x, size.x - 3.0);
   rgb = mix(rgb, vec3(1.0), shine * 0.33);
+  // A dark rim keeps touching notes apart, as in Synthesia.
+  float rim = clamp((d + 1.4) * ratio, 0.0, 1.0) * step(4.0, min(size.x, size.y));
+  rgb = mix(rgb, rgb * 0.32, rim);
+  body = mix(body, 1.0, rim);
   float glow = params.z > 0.0 ? exp(-max(d, 0.0) * max(d, 0.0) / (params.z * params.z * 0.5)) * 0.55 : 0.0;
   float a = color.a * (cover * body + (1.0 - cover) * glow);
   fragColor = vec4(rgb * a, a);

@@ -1,3 +1,4 @@
+import { keyboardFrames, keyInk, keyMaterials } from "./stageTheme";
 import {
   type DisplayPreferences,
 } from "../settings/displayPreferences";
@@ -70,13 +71,15 @@ export class PianoKeyboard {
     const paintKeys = (ctx: CanvasRenderingContext2D, base: boolean) => {
       // A raised fallboard and felt rail give the keyboard a physical edge.
       if (base) {
-        ctx.fillStyle = display.skin === "rosewood" ? "#70523a" : "#303544";
+        const frame = keyboardFrames[display.skin];
+        ctx.fillStyle = frame.fallboard;
         ctx.fillRect(0, baseline - 7, width, 5);
-        ctx.fillStyle = display.skin === "rosewood" ? "#b78458" : "#777b91";
+        ctx.fillStyle = frame.edge;
         ctx.fillRect(0, baseline - 7, width, 1);
-        ctx.fillStyle = "#a6475a";
+        ctx.fillStyle = keyInk.rail;
         ctx.fillRect(0, baseline - 2, width, 2);
       }
+      const material = keyMaterials[display.pianoMaterial];
       for (const pitch of white) {
         const { x, w } = geometry(pitch, width);
         const active = !base && (pressed.includes(pitch) || played.has(pitch));
@@ -88,44 +91,29 @@ export class PianoKeyboard {
           active
             ? (colors.get(pitch) ?? this.defaultColor)
             : required
-              ? "#f4db9e"
-              : display.pianoMaterial === "glass"
-                ? "#789bac"
-                : display.pianoMaterial === "porcelain"
-                  ? "#dce4ef"
-                  : "#c3c1b1",
+              ? keyInk.required
+              : material.edge,
         );
         keys.addColorStop(
           0.14,
           active
             ? (colors.get(pitch) ?? this.defaultColor)
-            : display.pianoMaterial === "glass"
-              ? "#abcbd8"
-              : display.pianoMaterial === "porcelain"
-                ? "#ffffff"
-                : "#fff6df",
+            : material.face,
         );
         keys.addColorStop(
           1,
           active
-            ? "#e0fff3"
-            : display.pianoMaterial === "glass"
-              ? "#496c83"
-              : display.pianoMaterial === "porcelain"
-                ? "#dae4f2"
-                : "#dfd4b9",
+            ? keyInk.activeFoot
+            : material.foot,
         );
         ctx.fillStyle = keys;
         ctx.fillRect(x + 1, baseline, w - 2, keyboardHeight - 2);
-        ctx.fillStyle = "#101b3025";
+        ctx.fillStyle = keyInk.seam;
         ctx.fillRect(x + w - 3, baseline, 1, keyboardHeight - 2);
-        ctx.fillStyle = active ? "#ffffffa0" : "#ffffff80";
+        ctx.fillStyle = active ? keyInk.activeLip : keyInk.lip;
         ctx.fillRect(x + 2, height - 6, w - 4, 2);
         if (labels.get(pitch)) {
-          ctx.fillStyle =
-            display.pianoMaterial === "glass" && !active
-              ? "#eff7ff"
-              : "#53635e";
+          ctx.fillStyle = active ? keyInk.activeLabel : material.label;
           ctx.font = `${display.fontSize}px sans-serif`;
           const label = labels.get(pitch) ?? "";
           const size = Math.min(
@@ -160,11 +148,11 @@ export class PianoKeyboard {
         );
         darkKey.addColorStop(
           0,
-          active ? (colors.get(pitch) ?? this.defaultColor) : "#303b4d",
+          active ? (colors.get(pitch) ?? this.defaultColor) : keyInk.black.top,
         );
-        darkKey.addColorStop(0.4, active ? "#3f807e" : "#182230");
-        darkKey.addColorStop(1, "#080d15");
-        ctx.fillStyle = active ? darkKey : required ? "#b68e43" : darkKey;
+        darkKey.addColorStop(0.4, active ? keyInk.black.activeMiddle : keyInk.black.middle);
+        darkKey.addColorStop(1, keyInk.black.bottom);
+        ctx.fillStyle = active ? darkKey : required ? keyInk.black.required : darkKey;
         ctx.beginPath();
         ctx.roundRect(x, baseline, w, keyboardHeight * 0.62, [0, 0, 3, 3]);
         ctx.fill();
@@ -174,9 +162,9 @@ export class PianoKeyboard {
           0,
           baseline + keyboardHeight * 0.56,
         );
-        topFace.addColorStop(0, "#ffffff20");
-        topFace.addColorStop(0.3, "#ffffff04");
-        topFace.addColorStop(1, "#ffffff0c");
+        topFace.addColorStop(0, keyInk.blackShine[0]);
+        topFace.addColorStop(0.3, keyInk.blackShine[1]);
+        topFace.addColorStop(1, keyInk.blackShine[2]);
         ctx.fillStyle = topFace;
         ctx.fillRect(
           x + 2,
@@ -184,7 +172,7 @@ export class PianoKeyboard {
           Math.max(1, w - 4),
           keyboardHeight * 0.54,
         );
-        ctx.strokeStyle = "#ffffff25";
+        ctx.strokeStyle = keyInk.blackEdge;
         ctx.lineWidth = 0.6;
         ctx.beginPath();
         ctx.moveTo(x + 2, baseline + keyboardHeight * 0.56);
@@ -200,7 +188,7 @@ export class PianoKeyboard {
           );
           if (size >= 8) {
             ctx.font = `${size}px sans-serif`;
-            ctx.fillStyle = "#e9edf1";
+            ctx.fillStyle = keyInk.blackLabel;
             ctx.textAlign = "center";
             ctx.fillText(
               label,
