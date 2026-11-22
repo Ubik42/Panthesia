@@ -109,9 +109,19 @@ impl Player {
                 .map(|(track, _, n)| FingeringNote { pitch: n.note, onset: n.start, end: n.end, anchored_finger: saved(*track, n) })
                 .collect();
             let suggestions = suggest_fingerings_with_profile(&inputs, hand, HandSpanProfile::Standard);
-            for ((track, index, n), suggestion) in notes.iter().zip(suggestions) {
+            // Where the planner finds no playable fingering (wide or crowded chords), the
+            // animation still needs a finger: by place in the chord, thumb toward the middle.
+            let rank = |i: usize| {
+                // Notes are sorted by onset, then pitch: the chord is a contiguous run.
+                let onset = notes[i].2.start;
+                let first = notes.partition_point(|n| n.2.start < onset);
+                let size = notes[first..].partition_point(|n| n.2.start == onset);
+                let spread = if size > 1 { ((i - first) * 4) / (size - 1) } else { 0 };
+                (if hand == FingeringHand::Right { spread + 1 } else { 5 - spread }) as u8
+            };
+            for (i, ((track, index, n), suggestion)) in notes.iter().zip(suggestions).enumerate() {
                 let own_part = matches!(crate::hands::part(&self.config, &self.note_hands, *track, *index), PracticePart::LeftHand | PracticePart::RightHand);
-                let finger = saved(*track, n).or(suggestion.map(|s| s.finger));
+                let finger = saved(*track, n).or(suggestion.map(|s| s.finger)).or_else(|| Some(rank(i)));
                 if let Some(finger) = finger.filter(|_| !own_part || saved(*track, n).is_none()) {
                     out.push(PlannedFinger { track: *track, index: *index, part: label.into(), finger });
                 }

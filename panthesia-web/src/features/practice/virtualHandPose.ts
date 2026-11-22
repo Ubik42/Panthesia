@@ -127,9 +127,11 @@ export function handPose(track: HandTrack, time: number, rate: number, baseline:
             if (g)
                 candidates.push({ x: g.x - sign * offset[i] * unit, weight, unit });
         };
+        // A key held long ago (usually sustained by the pedal) barely pulls the wrist: the
+        // hand moves on to what it plays now.
         anchor(prev, prev
             ? held
-                ? 3
+                ? time - prev.start > 0.6 * rate ? 0.3 : 3
                 : 3 * (1 - smooth((time - prev.end) / (0.22 * rate)))
             : 0);
         anchor(future, future ? 3 * smooth(1 - (future.start - time) / (0.34 * rate)) : 0);
@@ -160,9 +162,11 @@ export function handPose(track: HandTrack, time: number, rate: number, baseline:
     const fingers = chosen.map(({ prev, future, held, c }, i) => {
         let target: V3 = { x: sign * offset[i], y: depth[i] * 5.8, z: 0.4 };
         let pressed = false, substitution = false;
+        // Out of reach of this finger's place in the hand: the key is left to the pedal.
+        const reachable = (goal: V3 | null) => !!goal && Math.abs(goal.x - sign * offset[i]) <= 3;
         if (c) {
             const goal = world(c.pitch, i + 1, held ? -0.04 : 0.35);
-            if (goal) {
+            if (goal && reachable(goal)) {
                 target = goal;
                 pressed = held;
                 substitution = c.substitution;
