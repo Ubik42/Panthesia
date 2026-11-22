@@ -24,7 +24,7 @@
 
 ```powershell
 npm run build                                       # 协议核对 + tsc + vite
-..\scripts\verify-practice.ps1 -SkipBuild -Spec practice,playback-store   # 真实服务上运行指定浏览器用例
+..\scripts\verify-practice.ps1 -SkipBuild -Spec open-and-practice,verovio-index,paper-ink-merge   # 真实服务上运行浏览器用例
 ```
 
 每个用例使用独立资料目录；5173 或 32124 端口已被占用时停止，不接管现有服务。浏览器用例只覆盖关键流程：`open-and-practice`（打开文件、跟随练习、歌曲文件、最近打开、设置页设备）、`verovio-index`（整谱索引）、`paper-ink-merge`（纸谱墨迹合并）。针对旧界面与已删命令的用例在 RF 中删除，可在提交历史中找回；功能逻辑由 Rust 测试覆盖。
