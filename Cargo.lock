@@ -2962,6 +2962,7 @@ dependencies = [
  "chrono",
  "cpal",
  "csv",
+ "dirs",
  "midir",
  "oxisynth",
  "panthesia-analysis",

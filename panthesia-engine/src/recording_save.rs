@@ -185,20 +185,10 @@ impl Player {
             .recorder
             .freeze()
             .map_err(|_| "这段录音没有演奏音符，请开始新的录音")?;
-        let path = self
-            .recording_path
-            .get_or_insert_with(|| {
-                static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-                let time = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_nanos();
-                self.data.join("recordings").join(format!(
-                    "演奏-{time}-{}.mid",
-                    SERIAL.fetch_add(1, Ordering::Relaxed)
-                ))
-            })
-            .clone();
+        if self.recording_path.is_none() {
+            self.recording_path = Some(self.new_recording_path());
+        }
+        let path = self.recording_path.clone().unwrap_or_default();
         let replay = (!self.closing.load(Ordering::Acquire))
         .then(|| self.capture_asset_context(true, false));
         self.storage_id = Some(id);
@@ -248,5 +238,30 @@ impl Player {
                 Err(message)
             }
         }
+    }
+}
+
+impl Player {
+    /// Where takes are saved: the user's Documents, `Panthesia 录音`, so recordings are files
+    /// they can find, open again and pass on. A silent engine or one with an isolated data root
+    /// (tests, development) keeps them in its data folder instead.
+    pub(crate) fn recordings_dir(&self) -> PathBuf {
+        let isolated = self.silent || std::env::var_os("PANTHESIA_DATA_ROOT").is_some();
+        match dirs::document_dir().filter(|_| !isolated) {
+            Some(documents) => documents.join("Panthesia 录音"),
+            None => self.data.join("recordings"),
+        }
+    }
+    /// `演奏 2026-11-22 15.30.mid`, numbered when that minute already has a take.
+    pub(crate) fn new_recording_path(&self) -> PathBuf {
+        let directory = self.recordings_dir();
+        let stamp = chrono::Local::now().format("%Y-%m-%d %H.%M").to_string();
+        let mut path = directory.join(format!("演奏 {stamp}.mid"));
+        let mut n = 2;
+        while path.exists() {
+            path = directory.join(format!("演奏 {stamp} ({n}).mid"));
+            n += 1;
+        }
+        path
     }
 }

@@ -103,6 +103,8 @@ pub(crate) struct Player {
     pub(crate) harmony_cache: Option<(String, crate::harmony::Harmony)>,
     /// Accompaniment stems of the current song.
     pub(crate) stems: Option<crate::stems::Stems>,
+    /// Metronome of a free-play recording: clicks on the take's beats.
+    pub(crate) free_click: Option<FreeClick>,
 }
 impl Player {
     #[cfg(test)]
@@ -186,6 +188,7 @@ impl Player {
             manifest_settings: None,
             harmony_cache: None,
             stems: None,
+            free_click: None,
             config: SongConfig::default(),
             fingers: FingerAssignments::default(),
             exercise: None,
@@ -950,6 +953,7 @@ impl Player {
     pub(crate) fn tick(&mut self, delta: Duration) {
         if self.closing.load(Ordering::Acquire) { return; }
         self.reconcile_stems();
+        self.tick_free_click();
         self.tick_song_audition(delta);
         if self.storage_busy.load(Ordering::Acquire) { return; }
         self.tick_finger_demo(delta);
@@ -1028,5 +1032,26 @@ impl Player {
             state.tick=at.tick;state.bpm=at.bpm;state.measure=at.measure;state.beat=at.beat;
         }
         state
+    }
+}
+
+/// Clicks for a free-play take: beat 0 is the take's start, every fourth beat accented.
+pub(crate) struct FreeClick {
+    pub(crate) started: std::time::Instant,
+    pub(crate) bpm: f64,
+    pub(crate) beat: Option<u64>,
+}
+impl Player {
+    fn tick_free_click(&mut self) {
+        if !self.state.recording {
+            self.free_click = None;
+            return;
+        }
+        let Some(click) = self.free_click.as_mut() else { return };
+        let beat = (click.started.elapsed().as_secs_f64() * click.bpm / 60.0).floor() as u64;
+        if click.beat != Some(beat) {
+            click.beat = Some(beat);
+            self.sound_click(beat % 4 == 0);
+        }
     }
 }

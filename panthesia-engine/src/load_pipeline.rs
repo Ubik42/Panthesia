@@ -435,7 +435,7 @@ mod tests {
                         engine.command(Command::Generate { spec }).unwrap()["contentId"].clone();
                 }
                 "recording" => {
-                    engine.command(Command::Recording { active: true }).unwrap();
+                    engine.command(Command::Recording { active: true, bpm: None, click: false }).unwrap();
                 }
                 "file" => std::fs::write(path, b"changed").unwrap(),
                 "sidecar" => {

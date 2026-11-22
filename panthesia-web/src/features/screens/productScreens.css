@@ -1145,3 +1145,13 @@
 .product-narrow-metronome { display: block; }
 }
 }
+.product-freeplay-tempo,
+.product-freeplay-click {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-92);
+}
+.product-freeplay-tempo input {
+  width: 4.5em;
+}

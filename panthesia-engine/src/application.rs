@@ -183,7 +183,7 @@ impl Engine {
                 return Ok(serde_json::json!({"ok":true}));
             }
             Command::SoundFont { path } => return self.soundfont_task(path),
-            Command::Recording { active: false } => return self.save_recording_task(),
+            Command::Recording { active: false, .. } => return self.save_recording_task(),
             Command::Generate { spec } => return self.exercise_task(spec),
             Command::OpenPassage { id } => {
                 return self.song_switch_task(

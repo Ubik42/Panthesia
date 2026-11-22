@@ -1437,7 +1437,7 @@ export type EngineCommand =
   | { type: "latency"; "milliseconds": number }
   | { type: "generate"; "spec": ExerciseSpec }
   | { type: "panic" }
-  | { type: "recording"; "active": boolean }
+  | { type: "recording"; "active": boolean; "bpm"?: number | null; "click"?: boolean }
   | { type: "exportMidi" }
   | { type: "vstEditor" }
   | { type: "score" }

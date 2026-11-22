@@ -21,6 +21,7 @@ export function ProductScreens() {
     productScreens,
     songSetup,
     display,
+    setDisplay,
     displayDialog,
     setDisplayDialog,
     setDisplaySection,
@@ -186,11 +187,38 @@ export function ProductScreens() {
             backDisabled={state.recording || busy}
             backLabel="主页"
           >
+            <label className="product-freeplay-tempo" title="录音按这个速度写入，量化与小节线以它为准">
+              速度
+              <input
+                type="number"
+                min={30}
+                max={300}
+                value={display.recordBpm}
+                disabled={state.recording}
+                aria-label="录音速度 BPM"
+                onChange={(event) => {
+                  const bpm = Number(event.target.value);
+                  if (bpm >= 30 && bpm <= 300) setDisplay((previous) => ({ ...previous, recordBpm: bpm }));
+                }}
+              />
+              BPM
+            </label>
+            <label className="product-freeplay-click">
+              <input
+                type="checkbox"
+                checked={display.recordClick}
+                disabled={state.recording}
+                onChange={(event) => setDisplay((previous) => ({ ...previous, recordClick: event.target.checked }))}
+              />
+              节拍器
+            </label>
             <button
               disabled={busy || !connected}
               onClick={() =>
                 void run(
-                  { type: "recording", active: !state.recording },
+                  state.recording
+                    ? { type: "recording", active: false }
+                    : { type: "recording", active: true, bpm: display.recordBpm, click: display.recordClick },
                   state.recording,
                 )
               }

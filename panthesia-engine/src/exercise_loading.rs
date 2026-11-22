@@ -273,7 +273,7 @@ mod tests {
                         .unwrap();
                 }
                 "recording" => {
-                    player.command(Command::Recording { active: true }).unwrap();
+                    player.command(Command::Recording { active: true, bpm: None, click: false }).unwrap();
                 }
                 "song" => {
                     player

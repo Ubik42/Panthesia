@@ -9,8 +9,8 @@ use std::{
     sync::{Arc, OnceLock},
 };
 const TICKS_PER_BEAT: u16 = 480;
-const TEMPO_MICROS_PER_BEAT: u32 = 500_000;
-const TICKS_PER_SECOND: f64 = TICKS_PER_BEAT as f64 * 1_000_000.0 / TEMPO_MICROS_PER_BEAT as f64;
+/// Tempo of a take recorded without a chosen one (the MIDI default).
+pub const DEFAULT_BPM: f64 = 120.0;
 
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum RecorderError {
@@ -59,6 +59,8 @@ pub struct RecordedMidiEvent {
 
 pub struct RecordingInProgressState {
     started_at: Instant,
+    /// The tempo the take is written at; with the metronome on, its beats are the clicks.
+    bpm: f64,
     events: Vec<RecordedMidiEvent>,
     active_notes: HashSet<(u8, u8)>,
     has_notes: bool,
@@ -98,6 +100,7 @@ impl RecordingInProgressState {
 struct TakeData {
     duration: Duration,
     events: Vec<RecordedMidiEvent>,
+    bpm: f64,
     smf: OnceLock<Result<Smf<'static>,RecorderError>>,
 }
 /// An immutable take can be retained by the recorder while a worker encodes it.
@@ -105,7 +108,7 @@ struct TakeData {
 pub struct RecordedTake(Arc<TakeData>);
 impl RecordedTake {
     pub fn as_smf(&self) -> Result<&Smf<'static>,RecorderError> {
-        self.0.smf.get_or_init(||to_smf(&self.0.events)).as_ref().map_err(Clone::clone)
+        self.0.smf.get_or_init(||to_smf(&self.0.events,self.0.bpm)).as_ref().map_err(Clone::clone)
     }
 }
 
@@ -128,8 +131,14 @@ impl FreeplayRecorder {
     }
 
     pub fn start(&mut self) {
+        self.start_at(DEFAULT_BPM);
+    }
+
+    /// Start a take written at `bpm`, its first beat now.
+    pub fn start_at(&mut self, bpm: f64) {
         self.state = RecorderState::Recording(RecordingInProgressState {
             started_at: Instant::now(),
+            bpm: bpm.clamp(20.0, 400.0),
             events: Vec::new(),
             active_notes: HashSet::new(),
             has_notes: false,
@@ -144,7 +153,7 @@ impl FreeplayRecorder {
         if !progress.has_notes {return Err(RecorderError::NoNotesFound);}
         let duration=progress.started_at.elapsed();
         progress.finish_active_notes(duration);
-        let take=RecordedTake(Arc::new(TakeData {duration,events:progress.events,smf:OnceLock::new()}));
+        let take=RecordedTake(Arc::new(TakeData {duration,events:progress.events,bpm:progress.bpm,smf:OnceLock::new()}));
         self.state=RecorderState::Recorded(take.clone());
         Ok(take)
     }
@@ -195,11 +204,11 @@ impl FreeplayRecorder {
     }
 }
 
-fn duration_to_ticks(duration: Duration) -> u32 {
-    (duration.as_secs_f64() * TICKS_PER_SECOND).round() as u32
+fn duration_to_ticks(duration: Duration, bpm: f64) -> u32 {
+    (duration.as_secs_f64() * f64::from(TICKS_PER_BEAT) * bpm / 60.0).round() as u32
 }
 
-fn to_smf(events: &[RecordedMidiEvent]) -> Result<Smf<'static>, RecorderError> {
+fn to_smf(events: &[RecordedMidiEvent], bpm: f64) -> Result<Smf<'static>, RecorderError> {
     // Preview/export requires at least one played note, not just release/control data.
     let has_note_events = events
         .iter()
@@ -212,7 +221,7 @@ fn to_smf(events: &[RecordedMidiEvent]) -> Result<Smf<'static>, RecorderError> {
     let mut track = vec![
         TrackEvent {
             delta: 0.into(),
-            kind: TrackEventKind::Meta(MetaMessage::Tempo(TEMPO_MICROS_PER_BEAT.into())),
+            kind: TrackEventKind::Meta(MetaMessage::Tempo(((60_000_000.0 / bpm).round() as u32).into())),
         },
         TrackEvent {
             delta: 0.into(),
@@ -222,7 +231,7 @@ fn to_smf(events: &[RecordedMidiEvent]) -> Result<Smf<'static>, RecorderError> {
 
     let mut previous_ticks = 0u32;
     for event in events {
-        let current_ticks = duration_to_ticks(event.timestamp);
+        let current_ticks = duration_to_ticks(event.timestamp, bpm);
         let delta_ticks = current_ticks.saturating_sub(previous_ticks);
         previous_ticks = current_ticks;
 

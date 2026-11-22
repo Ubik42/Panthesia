@@ -53,6 +53,9 @@ export type DisplayPreferences = {
   lyrics: boolean;
   /** Section names (前奏 / 主歌 / 副歌 …) at their starting lines. */
   sections: boolean;
+  /** Free-play takes: tempo they are written at, and whether a metronome clicks its beats. */
+  recordBpm: number;
+  recordClick: boolean;
   inspector: boolean;
   keyboardEnabled: boolean;
   keyboardOctave: number;
@@ -123,6 +126,8 @@ export const displayDefaults: DisplayPreferences = {
   chordLabels: "off",
   lyrics: true,
   sections: true,
+  recordBpm: 100,
+  recordClick: false,
   inspector: false,
   keyboardEnabled: true,
   keyboardOctave: 4,
@@ -180,6 +185,8 @@ export function normalizeDisplayPreferences(
     chordLabels: raw.chordLabels === "degree" || raw.chordLabels === "name" || raw.chordLabels === "both" ? raw.chordLabels : "off",
     lyrics: typeof raw.lyrics === "boolean" ? raw.lyrics : true,
     sections: typeof raw.sections === "boolean" ? raw.sections : true,
+    recordBpm: size(raw.recordBpm, 30, 300, 100),
+    recordClick: raw.recordClick === true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
     practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",

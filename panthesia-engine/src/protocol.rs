@@ -68,6 +68,10 @@ pub enum Command {
     Panic,
     Recording {
         active: bool,
+        #[serde(default)]
+        bpm: Option<f64>,
+        #[serde(default)]
+        click: bool,
     },
     ExportMidi,
     VstEditor,

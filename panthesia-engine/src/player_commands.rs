@@ -646,19 +646,23 @@ impl Player {
                 let proposals = fingerings::basic_proposals(&context);
                 return self.commit_basic_fingers(&context, proposals);
             }
-            Command::Recording { active } => {
+            Command::Recording { active, bpm, click } => {
                 if active && self.recorder.has_take() && !self.recording_saved { return Err("上一段录音尚未保存，请先点击保存录音".into()); }
                 self.panic();
                 if active {
                     self.ensure_audio()?;
                     self.matcher.reset();
-                    self.recorder.start();
+                    let bpm = bpm.filter(|b| b.is_finite()).unwrap_or(panthesia_core::recorder::DEFAULT_BPM).clamp(20.0, 400.0);
+                    self.recorder.start_at(bpm);
+                    self.free_click = click.then(|| crate::player::FreeClick { started: std::time::Instant::now(), bpm, beat: None });
                     self.state.recording=true;
                     self.recording_saved=false;
                     self.recording_path=None;
                     self.state.status = "freePlay".into();
                 } else {
                     self.state.recording=false;
+                    self.free_click = None;
+                    let path = self.new_recording_path();
                     let smf = match self.recorder.stop() {
                         Ok(smf) => smf,
                         Err(error) => {
@@ -666,13 +670,7 @@ impl Player {
                             return Err(error.to_string());
                         }
                     };
-                    let directory = self.data.join("recordings");
-                    std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-                    let timestamp = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_millis();
-                    let path = directory.join(format!("演奏-{timestamp}.mid"));
+                    std::fs::create_dir_all(path.parent().unwrap_or(&self.data)).map_err(|e| e.to_string())?;
                     smf.save(&path).map_err(|e| e.to_string())?;
                     self.recording_saved=true;
                     self.state.mode = "listen".into();
