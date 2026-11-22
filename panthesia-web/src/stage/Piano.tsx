@@ -14,7 +14,9 @@ import { usePianoViewportGestures } from "../features/practice/usePianoViewportG
 import { PianoKeyboard } from "../features/practice/pianoKeyboard";
 import type { PracticeRange } from "../features/practice/usePracticeRange";
 import { WaterfallClock } from "../features/practice/waterfallClock";
-import { WaterfallSprites } from "../features/practice/waterfallSprites";
+import { WaterfallLabels } from "../features/practice/waterfallLabels";
+import { createWaterfallLayer } from "../features/practice/waterfallLayer";
+import { stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
 import {
@@ -142,6 +144,7 @@ export function Piano({
     return pitches;
   }, [song?.notes]);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const waterfallCanvas = useRef<HTMLCanvasElement>(null);
   const effectsCanvas = useRef<HTMLCanvasElement>(null);
   const handCanvas = useRef<HTMLCanvasElement>(null);
   const clock = useRef(new WaterfallClock());
@@ -238,8 +241,9 @@ export function Piano({
     );
     const effects = new PianoEffects(effectsCanvas.current!,()=>requestPaint.current());
     const virtualHands = new VirtualHands(handCanvas.current!,()=>requestPaint.current());
-    const sprites = new WaterfallSprites();
-    const ctx = element.getContext("2d", { alpha: false })!;
+    const labels = new WaterfallLabels();
+    const ctx = element.getContext("2d")!;
+    const layer = createWaterfallLayer(waterfallCanvas.current!, ctx, () => requestPaint.current());
     const surface = { width: 0, height: 0, dpr: 1 };
     const measure = () => {
       const bounds = element.getBoundingClientRect();
@@ -314,72 +318,14 @@ export function Piano({
       const keyboardHeight = Math.min(display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight, height * 0.45),
         baseline = height - keyboardHeight;
       const position = clock.current.sample(now);
-      sprites.backdrop(
-        ctx,
-        `${width}:${baseline}:${dpr}`,
-        width,
-        baseline,
-        dpr,
-        (ctx) => {
-          const gradient = ctx.createLinearGradient(0, 0, 0, baseline);
-          gradient.addColorStop(
-            0,
-            display.skin === "rosewood"
-              ? "#211811"
-              : display.skin === "midnight"
-                ? "#100e20"
-                : "#0a111e",
-          );
-          gradient.addColorStop(
-            0.6,
-            display.skin === "rosewood"
-              ? "#30261d"
-              : display.skin === "midnight"
-                ? "#1e1839"
-                : "#101d2a",
-          );
-          gradient.addColorStop(
-            1,
-            display.skin === "rosewood"
-              ? "#413328"
-              : display.skin === "midnight"
-                ? "#31264d"
-                : "#162d36",
-          );
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, width, baseline);
-          const atmosphere = ctx.createRadialGradient(
-            width * 0.5,
-            baseline,
-            0,
-            width * 0.5,
-            baseline,
-            Math.max(width * 0.6, baseline),
-          );
-          atmosphere.addColorStop(
-            0,
-            display.effectsPalette === "ember"
-              ? "#58372755"
-              : display.effectsPalette === "violet"
-                ? "#44336055"
-                : "#245a6150",
-          );
-          atmosphere.addColorStop(1, "transparent");
-          ctx.fillStyle = atmosphere;
-          ctx.fillRect(0, 0, width, baseline);
-          for (const pitch of white) {
-            const { x } = geometry(pitch, width);
-            ctx.strokeStyle =
-              pitch % 12 === 0
-                ? "rgba(166,185,210,.17)"
-                : "rgba(166,185,210,.065)";
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, baseline);
-            ctx.stroke();
-          }
-        },
-      );
+      layer.begin(width, height, baseline, dpr, {
+        ...stageBackdrops[display.skin],
+        atmosphere: stageAtmospheres[display.effectsPalette],
+      });
+      for (const pitch of white) {
+        const { x } = geometry(pitch, width);
+        layer.rect(x - 0.5, 0, 1, baseline, stageInk.keyColumn, pitch % 12 === 0 ? 0.17 : 0.065);
+      }
       const tempo = song?.tempo.length
         ? song.tempo
         : [{ tick: 0, seconds: 0, bpm: 120 }];
@@ -444,10 +390,8 @@ export function Piano({
               ? display.beatOpacity
               : display.subdivisionOpacity) / 100;
         if (!opacity) continue;
-        ctx.strokeStyle = `rgba(204,215,234,${opacity})`;
-        ctx.lineWidth = kind === 0 ? 1.5 : kind === 1 ? 0.9 : 0.65;
-        ctx.setLineDash(kind === 2 ? [3, 5] : []);
-        ctx.beginPath();
+        const thickness = kind === 0 ? 1.5 : kind === 1 ? 0.9 : 0.65;
+        const dash = kind === 2 ? ([3, 5] as const) : undefined;
         for (const window of windows) {
           const first = Math.max(
             0,
@@ -483,14 +427,12 @@ export function Piano({
                       : 2;
               if (type !== kind) continue;
               const y = baseline - (t + window.offset - tick) * pixels;
-              ctx.moveTo(0, y);
-              ctx.lineTo(width, y);
+              layer.rect(0, y - thickness / 2, width, thickness, stageInk.grid, opacity, dash);
             }
           }
         }
-        ctx.stroke();
       }
-      ctx.fillStyle = "#aab8cc";
+      ctx.fillStyle = stageInk.measureLabel;
       ctx.font = "11px sans-serif";
       for (const window of windows) {
         const first = Math.max(
@@ -512,8 +454,6 @@ export function Piano({
           );
         }
       }
-      ctx.setLineDash([]);
-      ctx.lineWidth = 1;
       const colorFor = (note: LoadedSong["notes"][number]) =>
         display.palette === "accessible"
           ? handColor(note.part, display)
@@ -563,28 +503,26 @@ export function Piano({
               automaticTracks.has(note.track))
           )
             {playedNotes.add(note.pitch);playedStrikes.set(note.pitch,{velocity:note.velocity,identity:`${note.track}:${note.index}:${note.tick}`});}
-          const fill = required ? "#efd484" : noteColor;
+          const fill = required ? stageInk.required : noteColor;
           const inRange =
             !practiceRange ||
             (note.start < practiceRange.end &&
               note.start + note.duration > practiceRange.start);
-          sprites.note(
-            ctx,
+          layer.note(
             x + 2,
-            y,
+            y - h,
             Math.max(2, w - 4),
             h,
             fill,
+            required ? 1 : inRange ? 0.88 : 0.24,
             display.effectsEnabled && !reduced && performanceStyle
               ? 10 * strength
               : 0,
-            dpr,
-            required ? 1 : inRange ? 0.88 : 0.24,
           );
           const action = actions.current(note, position, state.speed);
           const label = productLabel(note.pitch, "note", display, {finger: action?.to ?? note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), ...practiceKeyAt(song.practiceVariant,note.start)});
           if (label && w > 10 && h > 16) {
-            sprites.paintLabel(
+            labels.paintLabel(
               ctx,
               label,
               x + w / 2,
@@ -614,20 +552,10 @@ export function Piano({
             y = baseline - (start - tick) * pixels,
             h = Math.max(8, (end - start) * pixels);
           const fill = colorFor(note);
-          sprites.note(
-            ctx,
-            x + 2,
-            y,
-            Math.max(2, w - 4),
-            h,
-            fill,
-            0,
-            dpr,
-            0.34,
-          );
+          layer.note(x + 2, y - h, Math.max(2, w - 4), h, fill, 0.34, 0);
           const label = productLabel(note.pitch, "note", display, {finger: note.finger, own: state.mode !== "listen" && ownsPracticeNote(note.part, note.playbackMode, state.hands), ...practiceKeyAt(song.practiceVariant,note.start)});
           if (label && w > 10 && h > 16)
-            sprites.paintLabel(
+            labels.paintLabel(
               ctx,
               label,
               x + w / 2,
@@ -640,15 +568,9 @@ export function Piano({
         });
         const seam = baseline - (loopEnd - tick) * pixels;
         if (seam >= 0 && seam <= baseline) {
+          layer.rect(0, seam - 0.5, width, 1, palette.right, 0.7, [5, 5]);
           ctx.save();
           ctx.globalAlpha = 0.7;
-          ctx.strokeStyle = palette.right;
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(0, seam);
-          ctx.lineTo(width, seam);
-          ctx.stroke();
-          ctx.setLineDash([]);
           ctx.fillStyle = palette.right;
           ctx.font = "11px sans-serif";
           ctx.textAlign = "right";
@@ -656,6 +578,7 @@ export function Piano({
           ctx.restore();
         }
       }
+      layer.end();
       ctx.textAlign = "left";
       ctx.fillStyle = palette.right;
       ctx.fillRect(0, baseline - 2, width, 2);
@@ -753,6 +676,7 @@ export function Piano({
       ctx.textAlign = "left";
       element.dataset.effectParticles = String(effects.particleCount);
       element.dataset.effectRenderer = effects.renderer;
+      element.dataset.waterfallRenderer = layer.renderer;
       if (effects.active || clock.current.moving)
         frame = requestAnimationFrame(draw);
     };
@@ -796,6 +720,7 @@ export function Piano({
     return () => {
       cancelAnimationFrame(frame);
       effects.dispose();
+      layer.dispose();
       virtualHands.dispose();
       resize.disconnect();
       window.removeEventListener("resize", resized);
@@ -851,6 +776,7 @@ export function Piano({
   });
   return (
     <div className="piano-surface">
+    <canvas ref={waterfallCanvas} className="piano-waterfall" aria-hidden="true" />
     <canvas
       ref={canvas}
       data-key-low={keyboardRange.low}

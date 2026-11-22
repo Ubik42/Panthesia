@@ -1,4 +1,5 @@
 import { strikeVertex, strikeFragment } from "./midiVisualizerShaders";
+import { bindUnitQuad, linkProgram } from "./webglProgram";
 
 const CAPACITY = 2048,
   STRIDE = 10;
@@ -51,40 +52,14 @@ export class MidiVisualizerGpu {
       this.canvas.dataset.effectRenderer = "canvas2d-fallback";
       return;
     }
-    const shaders: WebGLShader[] = [];
     try {
-      const compile = (kind: number, source: string) => {
-        const shader = gl.createShader(kind);
-        if (!shader) throw Error("Shader allocation failed");
-        shaders.push(shader);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-          throw Error(gl.getShaderInfoLog(shader) || "Shader compile failed");
-        return shader;
-      };
-      const program = gl.createProgram();
-      if (!program) throw Error("Program allocation failed");
+      const program = linkProgram(gl, strikeVertex, strikeFragment);
       this.program = program;
-      gl.attachShader(program, compile(gl.VERTEX_SHADER, strikeVertex));
-      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, strikeFragment));
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-        throw Error(gl.getProgramInfoLog(program) || "Shader link failed");
       this.vao = gl.createVertexArray();
       this.instances = gl.createBuffer();
-      this.corners = gl.createBuffer();
-      if (!this.vao || !this.instances || !this.corners)
-        throw Error("Buffer allocation failed");
+      if (!this.vao || !this.instances) throw Error("Buffer allocation failed");
       gl.bindVertexArray(this.vao);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.corners);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]),
-        gl.STATIC_DRAW,
-      );
-      gl.enableVertexAttribArray(0);
-      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      this.corners = bindUnitQuad(gl);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.instances);
       gl.bufferData(gl.ARRAY_BUFFER, this.data.byteLength, gl.DYNAMIC_DRAW);
       for (const [location, size, offset] of [
@@ -112,8 +87,6 @@ export class MidiVisualizerGpu {
     } catch {
       this.release();
       this.canvas.dataset.effectRenderer = "canvas2d-fallback";
-    } finally {
-      for (const shader of shaders) gl.deleteShader(shader);
     }
   }
   get available() {
