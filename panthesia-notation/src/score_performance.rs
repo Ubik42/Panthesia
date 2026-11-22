@@ -241,6 +241,7 @@ pub fn normalized_checked(
                         segno: false,
                         coda: false,
                         tempo_bpm: None,
+                        metronome: None,
                         navigation: missing,
                         pedals: vec![],
                     }));

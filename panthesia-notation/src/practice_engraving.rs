@@ -1,9 +1,13 @@
 //! Disposable practice notation from the effective performance, never a replacement source score.
 use panthesia_music::MidiFile;
-use std::{collections::HashMap, fmt::Write};
+use crate::musicxml::{
+    self as ir, Clef, Direction, Measure, MeasureAttributes, NoteDisplay, Part, Pitch, Score, ScoreEvent,
+    ScoreEventId, ScoreEventKind, ScoreTime, SpanType, Step, TimeSignature,
+};
+use std::collections::HashMap;
 
 const DIVISIONS: u64 = 32;
-pub const GENERATOR: &str = "panthesia-practice-engraving-v5";
+pub const GENERATOR: &str = "panthesia-practice-engraving-v6";
 /// Half-open global measure ordinals. Bounds apply to each request, not the song.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -75,9 +79,6 @@ struct Lane {
 fn units(tick: f64, ppq: u16) -> u64 {
     (tick * DIVISIONS as f64 / f64::from(ppq)).round().max(0.) as u64
 }
-fn escape(value: &str) -> String {
-    quick_xml::escape::escape(value).into_owned()
-}
 fn pitch_parts(value: u8, flats: bool) -> (&'static str, i8, i16) {
     let names = if flats {
         [
@@ -113,18 +114,25 @@ fn pitch_parts(value: u8, flats: bool) -> (&'static str, i8, i16) {
     let (step, alter) = names[usize::from(value % 12)];
     (step, alter, i16::from(value) / 12 - 1)
 }
-fn pitch(value: u8, flats: bool) -> String {
-    let (step, alter, octave) = pitch_parts(value, flats);
-    format!("<pitch><step>{step}</step><alter>{alter}</alter><octave>{octave}</octave></pitch>")
+fn step_of(name: &str) -> Step {
+    match name {
+        "C" => Step::C,
+        "D" => Step::D,
+        "E" => Step::E,
+        "F" => Step::F,
+        "G" => Step::G,
+        "A" => Step::A,
+        _ => Step::B,
+    }
 }
 fn accidental(
     value: u8,
     fifths: i8,
     seen: &mut HashMap<(&'static str, i16), i8>,
     continuation: bool,
-) -> &'static str {
+) -> Option<&'static str> {
     if continuation {
-        return "";
+        return None;
     }
     let (step, alter, octave) = pitch_parts(value, fifths < 0);
     let order = if fifths < 0 {
@@ -139,13 +147,13 @@ fn accidental(
     };
     let previous = seen.insert((step, octave), alter).unwrap_or(key);
     if previous == alter {
-        return "";
+        return None;
     }
-    match alter {
-        -1 => "<accidental>flat</accidental>",
-        1 => "<accidental>sharp</accidental>",
-        _ => "<accidental>natural</accidental>",
-    }
+    Some(match alter {
+        -1 => "flat",
+        1 => "sharp",
+        _ => "natural",
+    })
 }
 // Split at beats and barlines. Each piece has an exact conventional note value.
 fn pieces(
@@ -189,11 +197,6 @@ fn pieces(
         start += length;
     }
     result
-}
-fn rests(xml: &mut String, start: u64, end: u64, measure: u64, beat: u64, voice: usize, staff: u8) {
-    for (_, length, kind, dot) in pieces(start, end, measure, beat) {
-        write!(xml,"<note><rest/><duration>{length}</duration><voice>{voice}</voice><type>{kind}</type>{}<staff>{staff}</staff></note>",if dot {"<dot/>"}else{""}).unwrap();
-    }
 }
 /// All identities refer to the original track/note indices retained by practice transforms.
 /// The check runs during preparation and rendering, outside the playback driver.
@@ -351,24 +354,20 @@ fn engrave_selected(
         }
     }
     lanes.sort_by_key(|lane| lane.staff);
-    let mut xml = format!(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?><score-partwise version=\"4.0\"><work><work-title>{}</work-title></work><identification><encoding><software>Panthesia practice engraving</software></encoding></identification><part-list><score-part id=\"P1\"><part-name>钢琴</part-name></score-part></part-list><part id=\"P1\">",
-        escape(title)
-    );
+    let time = |units: u64| ScoreTime::new(units as i64, DIVISIONS as u32);
+    let mode = |minor: bool| Some(if minor { "minor" } else { "major" }.to_string());
+    let mut measures = Vec::new();
     let mut identities = HashMap::new();
     let mut offsets = vec![0; lanes.len()];
     let mut segments: HashMap<(usize, usize), usize> = HashMap::new();
     let mut previous_meter = None;
-    let mut previous_key=None;
-    let key_at=|position:u64|keys.get(keys.partition_point(|key|units(key.tick as f64,ppq)<=position).saturating_sub(1)).filter(|key|units(key.tick as f64,ppq)<=position).map_or((fifths,minor),|key|(key.fifths,key.minor));
-    for (ordinal, measure) in file
-        .musical_time
-        .measures
-        .iter()
-        .enumerate()
-        .take(after)
-        .skip(first)
-    {
+    let mut previous_key = None;
+    let key_at = |position: u64| {
+        keys.get(keys.partition_point(|key| units(key.tick as f64, ppq) <= position).saturating_sub(1))
+            .filter(|key| units(key.tick as f64, ppq) <= position)
+            .map_or((fifths, minor), |key| (key.fifths, key.minor))
+    };
+    for (ordinal, measure) in file.musical_time.measures.iter().enumerate().take(after).skip(first) {
         check()?;
         let start = units(measure.start_tick as f64, ppq);
         let end = units(measure.end_tick as f64, ppq);
@@ -381,91 +380,106 @@ fn engrave_selected(
             } else {
                 1
             };
-        write!(
-            xml,
-            "<measure number=\"{}\"{}>",
-            measure.display_number,
-            if measure.partial {
-                " implicit=\"yes\""
-            } else {
-                ""
-            }
-        )
-        .unwrap();
+        let measure_ordinal = (ordinal - first) as u32;
+        let mut out = Measure {
+            number: measure.display_number.to_string(),
+            implicit: measure.partial,
+            start: time(start),
+            duration: time(end - start),
+            attributes: vec![],
+            barlines: vec![],
+            events: vec![],
+            harmonies: vec![],
+        };
         let meter = (measure.numerator, measure.denominator);
-        let (fifths,minor)=key_at(start);
-        if ordinal == first || previous_meter != Some(meter) || previous_key!=Some((fifths,minor)) {
-            write!(xml, "<attributes><divisions>{DIVISIONS}</divisions>").unwrap();
-            if ordinal == first || previous_key!=Some((fifths,minor)) {
-                write!(
-                    xml,
-                    "<key><fifths>{fifths}</fifths><mode>{}</mode></key>",
-                    if minor { "minor" } else { "major" }
-                )
-                .unwrap();
-            }
-            write!(
-                xml,
-                "<time><beats>{}</beats><beat-type>{}</beat-type></time>",
-                meter.0, meter.1
-            )
-            .unwrap();
-            if ordinal == first {
-                xml.push_str("<staves>2</staves><clef number=\"1\"><sign>G</sign><line>2</line></clef><clef number=\"2\"><sign>F</sign><line>4</line></clef>");
-            }
-            xml.push_str("</attributes>");
+        let (fifths, minor) = key_at(start);
+        let opening = ordinal == first;
+        if opening || previous_meter != Some(meter) || previous_key != Some((fifths, minor)) {
+            let key_changed = opening || previous_key != Some((fifths, minor));
+            out.attributes.push(MeasureAttributes {
+                onset: time(start),
+                divisions: DIVISIONS as u32,
+                key_fifths: key_changed.then_some(fifths),
+                key_mode: if key_changed { mode(minor) } else { None },
+                time_signature: Some(TimeSignature { beats: meter.0.to_string(), beat_type: meter.1.to_string() }),
+                staves: opening.then_some(2),
+                clefs: if opening {
+                    vec![
+                        Clef { staff: 1, sign: "G".into(), line: Some(2) },
+                        Clef { staff: 2, sign: "F".into(), line: Some(4) },
+                    ]
+                } else {
+                    vec![]
+                },
+            });
         }
         previous_meter = Some(meter);
-        previous_key=Some((fifths,minor));
-        let changes:std::collections::BTreeMap<_,_>=keys.iter().filter_map(|key|{let at=units(key.tick as f64,ppq);(at>start&&at<end).then_some((at,(key.fifths,key.minor)))}).collect();
-        let mut key_cursor=start;
-        for (at,(fifths,minor)) in changes {
-            write!(xml,"<forward><duration>{}</duration></forward><attributes><key><fifths>{fifths}</fifths><mode>{}</mode></key></attributes>",at-key_cursor,if minor {"minor"}else{"major"}).unwrap();key_cursor=at;
+        previous_key = Some((fifths, minor));
+        for key in keys.iter() {
+            let at = units(key.tick as f64, ppq);
+            if at > start && at < end {
+                out.attributes.push(MeasureAttributes {
+                    onset: time(at),
+                    divisions: DIVISIONS as u32,
+                    key_fifths: Some(key.fifths),
+                    key_mode: mode(key.minor),
+                    ..Default::default()
+                });
+            }
         }
-        if key_cursor>start {write!(xml,"<backup><duration>{}</duration></backup>",key_cursor-start).unwrap();}
-        if ordinal == first {
-            let bpm = file.tempo_track.bpm_at_seconds(
-                file.tempo_track
-                    .pulses_to_duration(measure.start_tick)
-                    .as_secs_f64(),
-            );
-            write!(xml,"<direction placement=\"above\"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>{bpm:.2}</per-minute></metronome></direction-type><sound tempo=\"{bpm:.2}\"/></direction>").unwrap();
+        let mut direction = 0u32;
+        let mut tempo = |out: &mut Measure, at: u64, bpm: String, shown: bool| {
+            out.events.push(ScoreEvent::Direction(Direction {
+                id: ScoreEventId { part_id: "P1".into(), measure_ordinal, kind: ScoreEventKind::Direction, ordinal: direction },
+                onset: time(at),
+                metronome: shown.then(|| bpm.clone()),
+                tempo_bpm: Some(bpm),
+                ..Default::default()
+            }));
+            direction += 1;
+        };
+        if opening {
+            let bpm = file.tempo_track.bpm_at_seconds(file.tempo_track.pulses_to_duration(measure.start_tick).as_secs_f64());
+            tempo(&mut out, start, format!("{bpm:.2}"), true);
         }
-        for event in file.tempo_track.events().iter().filter(|event| {
-            event.absolute_pulses > measure.start_tick && event.absolute_pulses < measure.end_tick
-        }) {
-            let offset = units(event.absolute_pulses as f64, ppq).saturating_sub(start);
-            let bpm = 60_000_000. / f64::from(event.tempo);
-            write!(xml,"<direction><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>{bpm:.6}</per-minute></metronome></direction-type><offset>{offset}</offset><sound tempo=\"{bpm:.6}\"/></direction>").unwrap();
+        for event in file
+            .tempo_track
+            .events()
+            .iter()
+            .filter(|event| event.absolute_pulses > measure.start_tick && event.absolute_pulses < measure.end_tick)
+        {
+            let at = units(event.absolute_pulses as f64, ppq).max(start);
+            tempo(&mut out, at, format!("{:.6}", 60_000_000. / f64::from(event.tempo)), true);
         }
         // A change exactly at a later barline needs its own active tempo as well.
-        if ordinal != first
-            && file
-                .tempo_track
-                .events()
-                .iter()
-                .any(|e| e.absolute_pulses == measure.start_tick)
-        {
-            let bpm = file.tempo_track.bpm_at_seconds(
-                file.tempo_track
-                    .pulses_to_duration(measure.start_tick)
-                    .as_secs_f64(),
-            );
-            write!(xml,"<direction><direction-type><words/></direction-type><sound tempo=\"{bpm:.6}\"/></direction>").unwrap();
+        if !opening && file.tempo_track.events().iter().any(|e| e.absolute_pulses == measure.start_tick) {
+            let bpm = file.tempo_track.bpm_at_seconds(file.tempo_track.pulses_to_duration(measure.start_tick).as_secs_f64());
+            tempo(&mut out, start, format!("{bpm:.6}"), false);
         }
+        let mut note_ordinal = 0u32;
+        let mut push = |out: &mut Measure, note: ir::Note| {
+            out.events.push(ScoreEvent::Note(ir::Note {
+                id: ScoreEventId { part_id: "P1".into(), measure_ordinal, kind: ScoreEventKind::Note, ordinal: note_ordinal },
+                ..note
+            }));
+            note_ordinal += 1;
+        };
+        let rest = |at: u64, length: u64, kind: &'static str, dot: bool, voice: usize, staff: u8| ir::Note {
+            onset: time(at),
+            duration: time(length),
+            voice: Some(voice.to_string()),
+            staff,
+            display: NoteDisplay { kind: Some(kind), dots: u8::from(dot), ..Default::default() },
+            ..Default::default()
+        };
         for (lane_index, lane) in lanes.iter().enumerate() {
             check()?;
-            if lane_index > 0 {
-                write!(xml, "<backup><duration>{}</duration></backup>", end - start).unwrap();
-            }
             let voice = lane_index + 1;
             let staff = lane.staff;
             let mut cursor = start;
             let mut written_accidentals = HashMap::new();
-            let mut written_key=(fifths,minor);
-            while offsets[lane_index] < lane.notes.len()
-                && lane.notes[offsets[lane_index]].end <= start
-            {
+            let mut written_key = (fifths, minor);
+            while offsets[lane_index] < lane.notes.len() && lane.notes[offsets[lane_index]].end <= start {
                 offsets[lane_index] += 1;
             }
             let mut at = offsets[lane_index];
@@ -480,23 +494,24 @@ fn engrave_selected(
                 }
                 let note_start = first.start.max(start);
                 let note_end = first.end.min(end);
-                rests(&mut xml, cursor, note_start, start, beat, voice, staff);
+                for (position, length, kind, dot) in pieces(cursor, note_start, start, beat) {
+                    push(&mut out, rest(position, length, kind, dot, voice, staff));
+                }
                 for (position, length, kind, dot) in pieces(note_start, note_end, start, beat) {
                     check()?;
                     for (chord_index, note) in lane.notes[at..after].iter().enumerate() {
-                        let note_key=key_at(position);if note_key!=written_key {written_accidentals.clear();written_key=note_key;}
-                        let fifths=note_key.0;
-                        let segment = segments.entry((note.track, note.index)).or_default();
-                        let id = format!(
-                            "panthesia-practice-t{}-n{}-s{}",
-                            note.track, note.index, position
-                        );
-                        *segment += 1;
+                        let note_key = key_at(position);
+                        if note_key != written_key {
+                            written_accidentals.clear();
+                            written_key = note_key;
+                        }
+                        let fifths = note_key.0;
+                        *segments.entry((note.track, note.index)).or_default() += 1;
+                        let id = format!("panthesia-practice-t{}-n{}-s{}", note.track, note.index, position);
                         let performance_tick = |display: u64| {
                             if simplified {
                                 note.source_start
-                                    + (display - note.start) * (note.source_end - note.source_start)
-                                        / (note.end - note.start)
+                                    + (display - note.start) * (note.source_end - note.source_start) / (note.end - note.start)
                             } else {
                                 display * u64::from(ppq) / DIVISIONS
                             }
@@ -510,40 +525,30 @@ fn engrave_selected(
                                 end_tick: performance_tick(position + length),
                             },
                         );
-                        write!(
-                            xml,
-                            "<note id=\"{id}\">{}{}<duration>{length}</duration>",
-                            if chord_index > 0 { "<chord/>" } else { "" },
-                            pitch(note.pitch, fifths < 0)
-                        )
-                        .unwrap();
                         let stop = position > note.start;
                         let begin = position + length < note.end;
-                        if stop {
-                            xml.push_str("<tie type=\"stop\"/>");
-                        }
-                        if begin {
-                            xml.push_str("<tie type=\"start\"/>");
-                        }
-                        write!(
-                            xml,
-                            "<voice>{voice}</voice><type>{kind}</type>{}{}<staff>{staff}</staff>",
-                            if dot { "<dot/>" } else { "" },
-                            accidental(note.pitch, fifths, &mut written_accidentals, stop)
-                        )
-                        .unwrap();
-                        if stop || begin {
-                            xml.push_str("<notations>");
-                            if stop {
-                                xml.push_str("<tied type=\"stop\"/>");
-                            }
-                            if begin {
-                                xml.push_str("<tied type=\"start\"/>");
-                            }
-                            xml.push_str("</notations>");
-                        }
-                        xml.push_str("</note>");
-                        if xml.len() > 4_000_000 || identities.len() > 100_000 {
+                        let (step, alter, octave) = pitch_parts(note.pitch, fifths < 0);
+                        push(&mut out, ir::Note {
+                            onset: time(position),
+                            duration: time(length),
+                            voice: Some(voice.to_string()),
+                            staff,
+                            pitch: Some(Pitch { step: step_of(step), alter, octave: octave as i8 }),
+                            chord: chord_index > 0,
+                            ties: [(stop, SpanType::Stop), (begin, SpanType::Start)]
+                                .into_iter()
+                                .filter_map(|(on, kind)| on.then_some(kind))
+                                .collect(),
+                            xml_id: Some(id),
+                            display: NoteDisplay {
+                                kind: Some(kind),
+                                dots: u8::from(dot),
+                                accidental: accidental(note.pitch, fifths, &mut written_accidentals, stop),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        });
+                        if identities.len() > 100_000 {
                             return Err("练习谱过大，请缩短练习范围".into());
                         }
                     }
@@ -552,25 +557,38 @@ fn engrave_selected(
                 at = after;
             }
             if cursor == start {
-                write!(xml,"<note><rest measure=\"yes\"/><duration>{}</duration><voice>{voice}</voice><staff>{staff}</staff></note>",end-start).unwrap();
+                push(&mut out, ir::Note {
+                    onset: time(start),
+                    duration: time(end - start),
+                    voice: Some(voice.to_string()),
+                    staff,
+                    display: NoteDisplay { measure_rest: true, ..Default::default() },
+                    ..Default::default()
+                });
             } else {
-                rests(&mut xml, cursor, end, start, beat, voice, staff);
+                for (position, length, kind, dot) in pieces(cursor, end, start, beat) {
+                    push(&mut out, rest(position, length, kind, dot, voice, staff));
+                }
             }
         }
-        xml.push_str("</measure>");
-        if xml.len() > 4_000_000 {
-            return Err("练习谱超过 4 MB，请缩短练习范围".into());
-        }
+        measures.push(out);
     }
-    xml.push_str("</part></score-partwise>");
     if segments.len() != source_notes {
         return Err("当前小节范围没有完整覆盖演奏音符，请核对小节设置".into());
     }
     check()?;
-    Ok(Engraving {
-        bytes: xml.into_bytes(),
-        notes: identities,
-    })
+    let score = Score {
+        version: Some("4.0".into()),
+        title: Some(title.into()),
+        composer: None,
+        parts: vec![Part { id: "P1".into(), name: "钢琴".into(), measures }],
+        warnings: vec![],
+    };
+    let xml = crate::musicxml_write::write(&score)?;
+    if xml.len() > 4_000_000 {
+        return Err("练习谱超过 4 MB，请缩短练习范围".into());
+    }
+    Ok(Engraving { bytes: xml.into_bytes(), notes: identities })
 }
 
 #[cfg(test)]
@@ -766,21 +784,21 @@ mod accidental_tests {
         let mut state = HashMap::new();
         assert_eq!(
             accidental(61, 0, &mut state, false),
-            "<accidental>sharp</accidental>"
+            Some("sharp")
         );
-        assert_eq!(accidental(61, 0, &mut state, false), "");
+        assert_eq!(accidental(61, 0, &mut state, false), None);
         assert_eq!(
             accidental(60, 0, &mut state, false),
-            "<accidental>natural</accidental>"
+            Some("natural")
         );
-        assert_eq!(accidental(60, 0, &mut state, false), "");
+        assert_eq!(accidental(60, 0, &mut state, false), None);
         state.clear();
-        assert_eq!(accidental(66, 1, &mut state, false), "");
+        assert_eq!(accidental(66, 1, &mut state, false), None);
         assert_eq!(
             accidental(65, 1, &mut state, false),
-            "<accidental>natural</accidental>"
+            Some("natural")
         );
-        assert_eq!(accidental(66, 1, &mut state, true), "");
+        assert_eq!(accidental(66, 1, &mut state, true), None);
     }
 }
 

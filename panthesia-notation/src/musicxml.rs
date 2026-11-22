@@ -66,18 +66,21 @@ pub struct Lyric {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Barline {
     pub location: BarlineLocation,
     pub repeat: Option<RepeatMark>,
     pub endings: Vec<EndingMark>,
     pub coda: bool,
+    /// MusicXML bar-style (light-heavy, light-light …), for writing only.
+    pub style: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BarlineLocation {
     Left,
     Middle,
+    #[default]
     Right,
     Other(String),
 }
@@ -102,6 +105,8 @@ pub struct EndingMark {
     pub kind: EndingType,
     pub number: Option<String>,
     pub passes: Vec<u16>,
+    /// Printed ending label ("1.", "2."), for writing only.
+    pub text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,7 +123,7 @@ pub enum ScoreEvent {
     Direction(Direction),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Note {
     pub id: ScoreEventId,
     pub onset: ScoreTime,
@@ -140,6 +145,21 @@ pub struct Note {
     pub fingering: Option<String>,
     pub articulations: Vec<String>,
     pub lyrics: Vec<Lyric>,
+    /// Identity written as the MusicXML note id (renderers use it as the element id).
+    pub xml_id: Option<String>,
+    pub display: NoteDisplay,
+}
+
+/// How a generated note is printed. Imported notes leave it empty; the writer then derives the
+/// note type and dots from the duration.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct NoteDisplay {
+    pub kind: Option<&'static str>,
+    pub dots: u8,
+    pub accidental: Option<&'static str>,
+    pub hidden: bool,
+    /// A rest that fills the whole measure in its voice.
+    pub measure_rest: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -200,7 +220,7 @@ pub struct TurnMark {
     pub unsupported: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Direction {
     pub id: ScoreEventId,
     pub onset: ScoreTime,
@@ -212,6 +232,8 @@ pub struct Direction {
     /// Printed coda sign inside a direction-type.
     pub coda: bool,
     pub tempo_bpm: Option<String>,
+    /// Printed metronome mark (quarter = value), for writing only.
+    pub metronome: Option<String>,
     pub navigation: Vec<SoundNavigation>,
     pub pedals: Vec<PedalMark>,
 }
@@ -224,7 +246,7 @@ pub struct SoundNavigation {
     pub attributes: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ScoreEventId {
     pub part_id: String,
     pub measure_ordinal: u32,
@@ -232,8 +254,9 @@ pub struct ScoreEventId {
     pub ordinal: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum ScoreEventKind {
+    #[default]
     Note,
     Direction,
 }
@@ -259,7 +282,7 @@ pub enum PedalType {
     Other(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MeasureAttributes {
     pub onset: ScoreTime,
     pub divisions: u32,
@@ -774,6 +797,7 @@ fn finish_direction(
         segno: built.segno,
         coda: built.coda,
         tempo_bpm: primary_tempo,
+        metronome: None,
         navigation,
         pedals: built.pedals,
     }));
@@ -797,6 +821,7 @@ fn finish_direction(
             segno: false,
             coda: false,
             tempo_bpm: Some(tempo),
+            metronome: None,
             navigation: vec![],
             pedals: vec![],
         }));
@@ -1655,6 +1680,8 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                                 fingering: built.fingering,
                                 articulations: built.articulations,
                                 lyrics: built.lyrics,
+                                xml_id: None,
+                                display: NoteDisplay::default(),
                             }));
                         if !built.chord {
                             previous_note_onset = onset;
@@ -1684,6 +1711,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                             repeat: built.repeat,
                             endings: built.endings,
                             coda: built.coda,
+                            style: None,
                         });
                     }
                     b"backup" => {
@@ -2022,6 +2050,7 @@ fn parse_ending(start: &BytesStart<'_>) -> Result<EndingMark, ImportError> {
             .unwrap_or_default(),
         number,
         kind,
+        text: None,
     })
 }
 
@@ -2465,6 +2494,7 @@ mod tests {
                 kind: EndingType::Start,
                 number: Some("1, 3-4".into()),
                 passes: vec![1, 3, 4],
+                text: None,
             }
         );
         assert_eq!(

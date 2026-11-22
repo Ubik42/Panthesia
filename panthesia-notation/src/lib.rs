@@ -2,6 +2,7 @@
 pub mod abc;
 pub mod hand;
 pub mod musicxml;
+pub mod musicxml_write;
 pub mod score_playback;
 pub mod score_performance;
 pub mod score_alignment;

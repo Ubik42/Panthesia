@@ -7,7 +7,11 @@
 //! [1 [2 |1 :|2; chord symbols "Am7/G"; lyrics w:; voices V:. Decorations, slurs and text
 //! annotations are read and dropped.
 use std::collections::HashMap;
-use std::fmt::Write as _;
+use crate::musicxml::{
+    self as ir, Barline, BarlineLocation, Direction, EndingMark, EndingType, GraceTiming, Lyric,
+    MeasureAttributes, NoteDisplay, Part, RepeatDirection, RepeatMark, Score, ScoreEvent, ScoreEventId,
+    ScoreEventKind, ScoreTime, SpanType, Step, TimeSignature, TupletRatio,
+};
 
 /// An exact fraction of a quarter note.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -491,7 +495,7 @@ pub fn to_musicxml(source: &str) -> Result<String, String> {
     if voices.iter().all(|v| v.measures.iter().all(|m| m.events.is_empty())) {
         return Err("ABC 曲调中没有音符".into());
     }
-    Ok(write_musicxml(title, composer, &mut voices, meter, &key))
+    write_musicxml(title, composer, &mut voices, meter, &key)
 }
 
 fn strip_comment(line: &str) -> &str {
@@ -1040,15 +1044,28 @@ fn printable(duration: Frac) -> Vec<(Frac, &'static str, u8)> {
     out
 }
 
-fn xml_escape(text: &str) -> String {
-    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
-}
-fn lcm(a: i64, b: i64) -> i64 {
-    a / gcd(a, b) * b
+
+fn write_musicxml(title: Option<String>, composer: Option<String>, voices: &mut [Voice], meter: Meter, key: &Key) -> Result<String, String> {
+    crate::musicxml_write::write(&build_score(title, composer, voices, meter, key))
 }
 
-fn write_musicxml(title: Option<String>, composer: Option<String>, voices: &mut [Voice], meter: Meter, key: &Key) -> String {
-    // Every voice gets the same number of measures (shorter ones end with measure rests).
+fn step(letter: char) -> Step {
+    match letter {
+        'C' => Step::C,
+        'D' => Step::D,
+        'E' => Step::E,
+        'F' => Step::F,
+        'G' => Step::G,
+        'A' => Step::A,
+        _ => Step::B,
+    }
+}
+fn quarters(f: Frac) -> ScoreTime {
+    ScoreTime::new(f.n, f.d as u32)
+}
+
+/// The tune as a score: one part per voice, measures padded to the same count.
+fn build_score(title: Option<String>, composer: Option<String>, voices: &mut [Voice], meter: Meter, key: &Key) -> Score {
     let count = voices.iter().map(|v| v.measures.len()).max().unwrap_or(0);
     for v in voices.iter_mut() {
         while v.measures.len() < count {
@@ -1060,148 +1077,160 @@ fn write_musicxml(title: Option<String>, composer: Option<String>, voices: &mut 
             v.measures.push(m);
         }
     }
-    let mut divisions = 1i64;
-    for v in voices.iter() {
-        for m in &v.measures {
-            for e in &m.events {
-                let base = match e.tuplet {
-                    Some((p, q)) => e.duration.mul(Frac::new(p as i64, q as i64)),
-                    None => e.duration,
-                };
-                for (value, _, _) in printable(base) {
-                    let scaled = match e.tuplet {
-                        Some((p, q)) => value.mul(Frac::new(q as i64, p as i64)),
-                        None => value,
-                    };
-                    divisions = lcm(divisions, scaled.d);
-                }
-            }
-        }
-    }
-    let divisions = divisions.min(1 << 20);
-    let mut x = String::new();
-    x.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<score-partwise version=\"4.0\">\n");
-    if let Some(t) = &title {
-        let _ = writeln!(x, "<work><work-title>{}</work-title></work>", xml_escape(t));
-    }
-    if let Some(c) = &composer {
-        let _ = writeln!(x, "<identification><creator type=\"composer\">{}</creator></identification>", xml_escape(c));
-    }
-    x.push_str("<part-list>\n");
-    for (i, v) in voices.iter().enumerate() {
-        let _ = writeln!(x, "<score-part id=\"P{}\"><part-name>{}</part-name></score-part>", i + 1, xml_escape(&v.name));
-    }
-    x.push_str("</part-list>\n");
     let pickup = meter
         .measure()
         .zip(voices.first().and_then(|v| v.measures.first()))
         .is_some_and(|(full, m)| m.duration().lt(full) && voices.first().is_some_and(|v| v.measures.len() > 1));
-    for (pi, v) in voices.iter().enumerate() {
-        let _ = writeln!(x, "<part id=\"P{}\">", pi + 1);
-        let mut measure_meter = meter;
-        for (mi, m) in v.measures.iter().enumerate() {
-            let number = if pickup { mi } else { mi + 1 };
-            let implicit = if pickup && mi == 0 { " implicit=\"yes\"" } else { "" };
-            let _ = writeln!(x, "<measure number=\"{number}\"{implicit}>");
-            if m.forward_repeat || m.ending_start.is_some() {
-                x.push_str("<barline location=\"left\">");
-                if m.forward_repeat {
-                    x.push_str("<bar-style>heavy-light</bar-style>");
-                }
-                if let Some(n) = &m.ending_start {
-                    let number = n.replace('-', ",");
-                    let _ = write!(x, "<ending number=\"{number}\" type=\"start\">{n}.</ending>");
-                }
-                if m.forward_repeat {
-                    x.push_str("<repeat direction=\"forward\"/>");
-                }
-                x.push_str("</barline>\n");
-            }
-            let first = mi == 0;
-            if first || m.key.is_some() || m.meter.is_some() || m.clef.is_some() {
-                x.push_str("<attributes>");
-                if first {
-                    let _ = write!(x, "<divisions>{divisions}</divisions>");
-                }
-                if let Some(k) = m.key.as_ref().or(first.then_some(key)) {
-                    let _ = write!(x, "<key><fifths>{}</fifths><mode>{}</mode></key>", k.fifths, k.mode);
-                }
-                if let Some(mt) = m.meter {
-                    measure_meter = mt;
-                }
-                if first || m.meter.is_some() {
-                    if let Meter::Sig(n, d) = measure_meter {
-                        let _ = write!(x, "<time><beats>{n}</beats><beat-type>{d}</beat-type></time>");
-                    }
-                }
-                let clef = m.clef.or(first.then_some(v.clef));
-                if let Some(c) = clef {
-                    let (sign, line) = match c {
-                        Clef::Treble => ("G", 2),
-                        Clef::Bass => ("F", 4),
-                        Clef::Alto => ("C", 3),
+    let parts = voices
+        .iter()
+        .enumerate()
+        .map(|(pi, v)| {
+            let part_id = format!("P{}", pi + 1);
+            let mut position = Frac::zero();
+            let mut measure_meter = meter;
+            let measures = v
+                .measures
+                .iter()
+                .enumerate()
+                .map(|(mi, m)| {
+                    let start = position;
+                    let first = mi == 0;
+                    let mut out = ir::Measure {
+                        number: (if pickup { mi } else { mi + 1 }).to_string(),
+                        implicit: pickup && first,
+                        start: quarters(start),
+                        duration: quarters(m.duration()),
+                        attributes: vec![],
+                        barlines: vec![],
+                        events: vec![],
+                        harmonies: vec![],
                     };
-                    let _ = write!(x, "<clef><sign>{sign}</sign><line>{line}</line></clef>");
-                }
-                x.push_str("</attributes>\n");
-            }
-            if let Some(bpm) = m.tempo {
-                let bpm = (bpm * 100.0).round() / 100.0;
-                let _ = writeln!(
-                    x,
-                    "<direction placement=\"above\"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>{bpm}</per-minute></metronome></direction-type><sound tempo=\"{bpm}\"/></direction>"
-                );
-            }
-            for e in &m.events {
-                if let Some(h) = &e.harmony {
-                    write_harmony(&mut x, h);
-                }
-                write_event(&mut x, e, divisions);
-            }
-            if m.backward_repeat || m.ending_stop.is_some() || m.final_bar || m.double_bar {
-                x.push_str("<barline location=\"right\">");
-                let style = if m.backward_repeat || m.final_bar { "light-heavy" } else { "light-light" };
-                let _ = write!(x, "<bar-style>{style}</bar-style>");
-                if let Some(kind) = m.ending_stop {
-                    let number = v.measures[..=mi]
-                        .iter()
-                        .rev()
-                        .find_map(|m| m.ending_start.clone())
-                        .unwrap_or_else(|| "1".into())
-                        .replace('-', ",");
-                    let _ = write!(x, "<ending number=\"{number}\" type=\"{kind}\"/>");
-                }
-                if m.backward_repeat {
-                    x.push_str("<repeat direction=\"backward\"/>");
-                }
-                x.push_str("</barline>\n");
-            }
-            x.push_str("</measure>\n");
-        }
-        x.push_str("</part>\n");
-    }
-    x.push_str("</score-partwise>\n");
-    x
+                    if let Some(mt) = m.meter {
+                        measure_meter = mt;
+                    }
+                    if first || m.key.is_some() || m.meter.is_some() || m.clef.is_some() {
+                        let k = m.key.as_ref().or(first.then_some(key));
+                        out.attributes.push(MeasureAttributes {
+                            onset: quarters(start),
+                            divisions: 1,
+                            key_fifths: k.map(|k| k.fifths),
+                            key_mode: k.map(|k| k.mode.to_string()),
+                            time_signature: match measure_meter {
+                                Meter::Sig(n, d) if first || m.meter.is_some() => {
+                                    Some(TimeSignature { beats: n.to_string(), beat_type: d.to_string() })
+                                }
+                                _ => None,
+                            },
+                            staves: None,
+                            clefs: m
+                                .clef
+                                .or(first.then_some(v.clef))
+                                .map(|c| {
+                                    let (sign, line) = match c {
+                                        Clef::Treble => ("G", 2),
+                                        Clef::Bass => ("F", 4),
+                                        Clef::Alto => ("C", 3),
+                                    };
+                                    ir::Clef { staff: 1, sign: sign.into(), line: Some(line) }
+                                })
+                                .into_iter()
+                                .collect(),
+                        });
+                    }
+                    if let Some(bpm) = m.tempo {
+                        let bpm = ((bpm * 100.0).round() / 100.0).to_string();
+                        out.events.push(ScoreEvent::Direction(Direction {
+                            id: ScoreEventId {
+                                part_id: part_id.clone(),
+                                measure_ordinal: mi as u32,
+                                kind: ScoreEventKind::Direction,
+                                ordinal: 0,
+                            },
+                            onset: quarters(start),
+                            tempo_bpm: Some(bpm.clone()),
+                            metronome: Some(bpm),
+                            ..Default::default()
+                        }));
+                    }
+                    if m.forward_repeat || m.ending_start.is_some() {
+                        out.barlines.push(Barline {
+                            location: BarlineLocation::Left,
+                            style: m.forward_repeat.then(|| "heavy-light".into()),
+                            endings: m
+                                .ending_start
+                                .iter()
+                                .map(|n| EndingMark {
+                                    kind: EndingType::Start,
+                                    number: Some(n.replace('-', ",")),
+                                    passes: vec![],
+                                    text: Some(format!("{n}.")),
+                                })
+                                .collect(),
+                            repeat: m.forward_repeat.then(|| RepeatMark {
+                                direction: RepeatDirection::Forward,
+                                times: None,
+                                winged: None,
+                                after_jump: None,
+                            }),
+                            coda: false,
+                        });
+                    }
+                    let mut ordinal = 0u32;
+                    let mut cursor = start;
+                    for e in &m.events {
+                        if let Some(h) = &e.harmony {
+                            out.harmonies.push(ir::Harmony {
+                                onset: quarters(cursor),
+                                root: Some((step(h.root.0), h.root.1)),
+                                kind: h.kind.to_string(),
+                                text: Some(h.text.clone()),
+                                bass: h.bass.map(|(letter, alter)| (step(letter), alter)),
+                            });
+                        }
+                        push_event(&mut out.events, e, &part_id, mi as u32, &mut ordinal, &mut cursor);
+                    }
+                    if m.backward_repeat || m.ending_stop.is_some() || m.final_bar || m.double_bar {
+                        let number = v.measures[..=mi]
+                            .iter()
+                            .rev()
+                            .find_map(|m| m.ending_start.clone())
+                            .unwrap_or_else(|| "1".into())
+                            .replace('-', ",");
+                        out.barlines.push(Barline {
+                            location: BarlineLocation::Right,
+                            style: Some(if m.backward_repeat || m.final_bar { "light-heavy" } else { "light-light" }.into()),
+                            endings: m
+                                .ending_stop
+                                .iter()
+                                .map(|kind| EndingMark {
+                                    kind: if *kind == "stop" { EndingType::Stop } else { EndingType::Discontinue },
+                                    number: Some(number.clone()),
+                                    passes: vec![],
+                                    text: None,
+                                })
+                                .collect(),
+                            repeat: m.backward_repeat.then(|| RepeatMark {
+                                direction: RepeatDirection::Backward,
+                                times: None,
+                                winged: None,
+                                after_jump: None,
+                            }),
+                            coda: false,
+                        });
+                    }
+                    position = position.add(m.duration());
+                    out
+                })
+                .collect();
+            Part { id: part_id, name: v.name.clone(), measures }
+        })
+        .collect();
+    Score { version: Some("4.0".into()), title, composer, parts, warnings: vec![] }
 }
 
-fn write_harmony(x: &mut String, h: &Harmony) {
-    x.push_str("<harmony><root>");
-    let _ = write!(x, "<root-step>{}</root-step>", h.root.0);
-    if h.root.1 != 0 {
-        let _ = write!(x, "<root-alter>{}</root-alter>", h.root.1);
-    }
-    let _ = write!(x, "</root><kind text=\"{}\">{}</kind>", xml_escape(&h.text), h.kind);
-    if let Some((step, alter)) = h.bass {
-        let _ = write!(x, "<bass><bass-step>{step}</bass-step>");
-        if alter != 0 {
-            let _ = write!(x, "<bass-alter>{alter}</bass-alter>");
-        }
-        x.push_str("</bass>");
-    }
-    x.push_str("</harmony>\n");
-}
-
-fn write_event(x: &mut String, e: &Event, divisions: i64) {
+/// One ABC event as notes: a value with no single printed form is split into tied pieces, and
+/// each pitch of a chord is a note of its own.
+fn push_event(events: &mut Vec<ScoreEvent>, e: &Event, part_id: &str, measure: u32, ordinal: &mut u32, cursor: &mut Frac) {
     let base = match e.tuplet {
         Some((p, q)) => e.duration.mul(Frac::new(p as i64, q as i64)),
         None => e.duration,
@@ -1213,64 +1242,63 @@ fn write_event(x: &mut String, e: &Event, divisions: i64) {
             Some((p, q)) => value.mul(Frac::new(q as i64, p as i64)),
             None => *value,
         };
-        let duration = scaled.n * (divisions / scaled.d);
         // Split pieces are tied together; the original tie marks go to the outer pieces.
         let tie_out = |i: usize| k < last || e.tie_start.get(i).copied().unwrap_or(false);
         let tie_in = |i: usize| k > 0 || e.tie_stop.get(i).copied().unwrap_or(false);
-        let notes: Vec<Option<&Pitch>> = if e.pitches.is_empty() { vec![None] } else { e.pitches.iter().map(Some).collect() };
-        for (i, pitch) in notes.iter().enumerate() {
-            x.push_str(if e.visible { "<note>" } else { "<note print-object=\"no\">" });
-            if e.grace {
-                x.push_str("<grace slash=\"yes\"/>");
-            }
-            if i > 0 {
-                x.push_str("<chord/>");
-            }
-            match pitch {
-                Some(p) => {
-                    let _ = write!(x, "<pitch><step>{}</step>", STEPS[p.step]);
-                    if p.alter != 0 {
-                        let _ = write!(x, "<alter>{}</alter>", p.alter);
-                    }
-                    let _ = write!(x, "<octave>{}</octave></pitch>", p.octave);
-                }
-                None => x.push_str("<rest/>"),
-            }
-            if !e.grace {
-                let _ = write!(x, "<duration>{duration}</duration>");
-            }
+        let pitches: Vec<Option<&Pitch>> = if e.pitches.is_empty() { vec![None] } else { e.pitches.iter().map(Some).collect() };
+        for (i, pitch) in pitches.iter().enumerate() {
+            let mut ties = vec![];
             if pitch.is_some() && !e.grace {
                 if tie_in(i) {
-                    x.push_str("<tie type=\"stop\"/>");
+                    ties.push(SpanType::Stop);
                 }
                 if tie_out(i) {
-                    x.push_str("<tie type=\"start\"/>");
+                    ties.push(SpanType::Start);
                 }
             }
-            x.push_str("<voice>1</voice>");
-            let _ = write!(x, "<type>{name}</type>");
-            for _ in 0..*dots {
-                x.push_str("<dot/>");
-            }
-            if let Some((p, q)) = e.tuplet {
-                let _ = write!(x, "<time-modification><actual-notes>{p}</actual-notes><normal-notes>{q}</normal-notes></time-modification>");
-            }
-            if pitch.is_some() && !e.grace && (tie_in(i) || tie_out(i)) {
-                x.push_str("<notations>");
-                if tie_in(i) {
-                    x.push_str("<tied type=\"stop\"/>");
-                }
-                if tie_out(i) {
-                    x.push_str("<tied type=\"start\"/>");
-                }
-                x.push_str("</notations>");
-            }
-            if i == 0 && k == 0 {
-                if let Some((syllabic, text)) = &e.lyric {
-                    let _ = write!(x, "<lyric number=\"1\"><syllabic>{syllabic}</syllabic><text>{}</text></lyric>", xml_escape(text));
-                }
-            }
-            x.push_str("</note>\n");
+            events.push(ScoreEvent::Note(ir::Note {
+                id: ScoreEventId {
+                    part_id: part_id.into(),
+                    measure_ordinal: measure,
+                    kind: ScoreEventKind::Note,
+                    ordinal: *ordinal,
+                },
+                onset: quarters(*cursor),
+                duration: if e.grace { ScoreTime::default() } else { quarters(scaled) },
+                voice: Some("1".into()),
+                staff: 1,
+                pitch: pitch.map(|p| ir::Pitch { step: step(STEPS[p.step]), alter: p.alter, octave: p.octave }),
+                chord: i > 0,
+                grace: e.grace,
+                grace_timing: e.grace.then(|| GraceTiming {
+                    slash: Some("yes".into()),
+                    steal_time_following: None,
+                    steal_time_previous: None,
+                    make_time: None,
+                    divisions: 1,
+                }),
+                ties,
+                time_modification: e.tuplet.map(|(p, q)| TupletRatio {
+                    actual_notes: p as u16,
+                    normal_notes: q as u16,
+                    normal_type: None,
+                    normal_dots: 0,
+                }),
+                lyrics: if i == 0 && k == 0 {
+                    e.lyric
+                        .iter()
+                        .map(|(syllabic, text)| Lyric { verse: "1".into(), syllabic: Some(syllabic.to_string()), text: text.clone() })
+                        .collect()
+                } else {
+                    vec![]
+                },
+                display: NoteDisplay { kind: Some(name), dots: *dots, hidden: !e.visible, ..Default::default() },
+                ..Default::default()
+            }));
+            *ordinal += 1;
+        }
+        if !e.grace {
+            *cursor = cursor.add(scaled);
         }
     }
 }
