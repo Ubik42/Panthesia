@@ -249,6 +249,32 @@ impl Chord {
         out
     }
 
+    /// A MusicXML chord symbol: root and bass pitch classes and the `kind` value. Extended
+    /// chords keep their seventh chord (a dominant ninth is a dominant seventh); `none` is no
+    /// chord; kinds without a counterpart here return an error.
+    pub fn from_musicxml(root: u8, kind: &str, bass: Option<u8>) -> Result<Option<Chord>, String> {
+        let quality = match kind {
+            "none" => return Ok(None),
+            "major" | "" => Quality::Major,
+            "minor" => Quality::Minor,
+            "dominant" | "dominant-ninth" | "dominant-11th" | "dominant-13th" => Quality::Dominant7,
+            "major-seventh" | "major-ninth" | "major-11th" | "major-13th" => Quality::Major7,
+            "minor-seventh" | "minor-ninth" | "minor-11th" | "minor-13th" => Quality::Minor7,
+            "diminished" => Quality::Diminished,
+            "half-diminished" => Quality::HalfDiminished7,
+            "diminished-seventh" => Quality::Diminished7,
+            "augmented" | "augmented-seventh" => Quality::Augmented,
+            "suspended-second" => Quality::Sus2,
+            "suspended-fourth" => Quality::Sus4,
+            "major-sixth" => Quality::Major6,
+            "minor-sixth" => Quality::Minor6,
+            "major-minor" => Quality::MinorMajor7,
+            "power" => Quality::Major,
+            other => return Err(format!("和弦符号种类无法识别：{other}")),
+        };
+        Ok(Some(Chord { root: root % 12, quality, bass: bass.map(|b| b % 12).filter(|&b| b != root % 12) }))
+    }
+
     /// `F♯7/A♯`; sharps or flats follow the key signature.
     /// Letters follow the key: IV of G♭ major is C♭, the third of F♯ is A♯. Without a key the
     /// root is spelled with sharps.

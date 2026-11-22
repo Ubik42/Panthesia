@@ -16,7 +16,7 @@ pub struct Harmony {
     pub chords: Vec<ChordItem>,
     /// `human`, `imported` or `generated`.
     pub origin: String,
-    /// What produced the chords: `manifest`, `pop909`, `analysis`.
+    /// What produced the chords: `score`, `pop909`, `analysis`, or the tool a manifest names.
     pub tool: String,
 }
 
@@ -64,7 +64,8 @@ fn manifest_chords(music: &Path, end: u64) -> Option<Source> {
         .map(|(i, &(tick, chord))| (tick, starts.get(i + 1).map_or(end, |next| next.0), chord))
         .collect();
     let origin = layer.provenance.as_ref().map(|p| format!("{:?}", p.origin).to_lowercase()).unwrap_or_else(|| "human".into());
-    Some(Source { segments, origin, tool: "manifest".into(), follows_transpose: true })
+    let tool = layer.provenance.as_ref().and_then(|p| p.tool.clone()).unwrap_or_else(|| "manifest".into());
+    Some(Source { segments, origin, tool, follows_transpose: true })
 }
 
 /// POP909 writes `start end label` in MIDI seconds beside each song.

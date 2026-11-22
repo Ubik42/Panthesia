@@ -28,6 +28,31 @@ pub struct Performance {
     pub smf: Smf<'static>,
     pub tracks: Vec<StaffTrack>,
     pub warnings: Vec<String>,
+    /// Lyric syllables at their performed ticks, in karaoke form: a leading `/` starts a line.
+    pub lyrics: Vec<(u64, String)>,
+    /// Chord symbols at their performed ticks, repeats expanded.
+    pub harmonies: Vec<(u64, crate::musicxml::Harmony)>,
+}
+
+impl Performance {
+    /// Standard MIDI bytes; lyrics go into a track of their own as lyric meta events.
+    pub fn midi_bytes(&self) -> Result<Vec<u8>, String> {
+        let mut smf = Smf { header: self.smf.header, tracks: self.smf.tracks.clone() };
+        let texts: Vec<&[u8]> = self.lyrics.iter().map(|(_, text)| text.as_bytes()).collect();
+        if !texts.is_empty() {
+            let mut track = Vec::with_capacity(texts.len() + 1);
+            let mut previous = 0;
+            for ((tick, _), text) in self.lyrics.iter().zip(&texts) {
+                track.push(TrackEvent { delta: u28::new((tick - previous) as u32), kind: TrackEventKind::Meta(MetaMessage::Lyric(text)) });
+                previous = *tick;
+            }
+            track.push(TrackEvent { delta: u28::new(0), kind: TrackEventKind::Meta(MetaMessage::EndOfTrack) });
+            smf.tracks.push(track);
+        }
+        let mut bytes = Vec::new();
+        smf.write_std(&mut bytes).map_err(|e| e.to_string())?;
+        Ok(bytes)
+    }
 }
 fn quarters(t: ScoreTime) -> f64 {
     t.numerator as f64 / f64::from(t.denominator)
@@ -1049,6 +1074,47 @@ pub fn generate_checked(
         midi_tracks.push(delta_track(events, total, check)?);
     }
     check()?;
+    // Chord symbols and lyrics of every part, on each performed visit of their measure. A verse
+    // numbered like the repeat pass is sung on that pass; otherwise the first verse.
+    let mut harmonies: Vec<(u64, crate::musicxml::Harmony)> = Vec::new();
+    let mut syllables: Vec<(u64, &crate::musicxml::Lyric)> = Vec::new();
+    for visit in &plan.visits {
+        check()?;
+        let start = tick(visit.performed_start)?;
+        for part in &score.parts {
+            let m = &part.measures[visit.source_measure_ordinal as usize];
+            let (source, source_end) = (m.start.add(visit.source_start), m.start.add(visit.source_end));
+            let inside = |onset: ScoreTime| onset >= source && onset < source_end;
+            for h in m.harmonies.iter().filter(|h| inside(h.onset)) {
+                harmonies.push((start + tick(h.onset.subtract(source))?, h.clone()));
+            }
+            for event in &m.events {
+                let ScoreEvent::Note(n) = event else { continue };
+                if n.grace || n.chord || n.pitch.is_none() || !inside(n.onset) {
+                    continue;
+                }
+                let pass = visit.repeat_pass.to_string();
+                if let Some(lyric) = n.lyrics.iter().find(|l| l.verse == pass).or(n.lyrics.first()) {
+                    syllables.push((start + tick(n.onset.subtract(source))?, lyric));
+                }
+            }
+        }
+    }
+    harmonies.sort_by_key(|(at, _)| *at);
+    harmonies.dedup_by_key(|(at, _)| *at);
+    syllables.sort_by_key(|(at, _)| *at);
+    syllables.dedup_by_key(|(at, _)| *at);
+    // Scores have no line breaks: start a line after a pause of a half note or more, or after
+    // twenty syllables. Latin words get a space after their last syllable.
+    let mut lyrics = Vec::with_capacity(syllables.len());
+    let mut line = 0;
+    for (i, (at, lyric)) in syllables.iter().enumerate() {
+        let pause = i > 0 && at - syllables[i - 1].0 >= ppq * 2;
+        line = if pause || line >= 20 { 0 } else { line } + 1;
+        let word_end = !matches!(lyric.syllabic.as_deref(), Some("begin" | "middle"));
+        let latin = lyric.text.chars().any(|c| c.is_ascii_alphabetic());
+        lyrics.push((*at, format!("{}{}{}", if line == 1 && i > 0 { "/" } else { "" }, lyric.text, if word_end && latin { " " } else { "" })));
+    }
     Ok(Performance {
         smf: Smf {
             header: Header {
@@ -1059,6 +1125,8 @@ pub fn generate_checked(
         },
         tracks,
         warnings,
+        lyrics,
+        harmonies,
     })
 }
 

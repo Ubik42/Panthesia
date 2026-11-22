@@ -33,14 +33,14 @@ impl Player {
             .unwrap_or_else(|| Path::new(name).file_stem().unwrap_or_default().to_string_lossy().to_string());
         if !midi.is_file() || !score_path.is_file() {
             let performance = panthesia_notation::score_performance::generate(&score, bpm)?;
-            let mut midi_bytes = Vec::new();
-            performance.smf.write_std(&mut midi_bytes).map_err(|e| e.to_string())?;
+            let midi_bytes = performance.midi_bytes()?;
             std::fs::create_dir_all(&dir).map_err(|e| format!("乐谱缓存目录无法创建：{e}"))?;
             atomic_file::write(&score_path, &bytes).map_err(|e| format!("乐谱缓存无法写入：{e}"))?;
             atomic_file::write(&midi, &midi_bytes).map_err(|e| format!("乐谱缓存无法写入：{e}"))?;
             let file = crate::music_file::read_midi(&midi)?;
             let sidecar = initial_sidecar(&file, &performance, &score, &title, &score_path, &hash);
             library::save_song_sidecar(&midi, &file.content_id, sidecar).map_err(|e| e.to_string())?;
+            save_score_chords(&midi, &performance)?;
         }
         let file = crate::music_file::read_midi(&midi)?;
         self.install(file, title, None)?;
@@ -89,6 +89,36 @@ impl Player {
 }
 
 /// Hands per staff and printed fingerings from the score, plus the score pairing.
+/// The score's chord symbols as the song's `chords` layer (imported from the score).
+fn save_score_chords(midi: &Path, performance: &panthesia_notation::score_performance::Performance) -> Result<(), String> {
+    use panthesia_analysis::harte::Chord;
+    use panthesia_core::manifest::{Layer, Origin, Provenance};
+    use panthesia_notation::musicxml::Step;
+    let pc = |(step, alter): (Step, i8)| {
+        let base: i16 = match step { Step::C => 0, Step::D => 2, Step::E => 4, Step::F => 5, Step::G => 7, Step::A => 9, Step::B => 11 };
+        (base + i16::from(alter)).rem_euclid(12) as u8
+    };
+    let items: Vec<Value> = performance
+        .harmonies
+        .iter()
+        .filter_map(|(tick, h)| {
+            let chord = Chord::from_musicxml(pc(h.root?), &h.kind, h.bass.map(pc)).ok()?;
+            Some(serde_json::json!({ "tick": tick, "chord": chord.map_or_else(|| "N".to_string(), |c| c.harte()) }))
+        })
+        .collect();
+    if items.is_empty() {
+        return Ok(());
+    }
+    panthesia_core::manifest_store::edit(midi, true, |manifest, performance, _| {
+        let key = manifest.layer_key("chords", performance);
+        let mut body = serde_json::Map::new();
+        body.insert("items".into(), Value::Array(items));
+        manifest.layers.insert(key, Layer { provenance: Some(Provenance::new(Origin::Imported, Some("score"))), body, ..Default::default() });
+        Ok(((), true))
+    })?;
+    Ok(())
+}
+
 fn initial_sidecar(
     file: &panthesia_music::MidiFile,
     performance: &panthesia_notation::score_performance::Performance,
