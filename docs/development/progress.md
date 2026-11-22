@@ -2,6 +2,23 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · RO Keel 插件（本条提交）
+
+- `integrations/keel-plugin/`：Keel 插件（非受限模式，按资源库建实例）。
+  - 缩略图：`.mid`、`.midi`、`.kar`、`.musicxml`、`.mxl`、`.abc` 的钢琴卷帘图（480×160）。
+  - 元数据提供器与三个可排序字段（`bpm`、`musicalKey`、`durationSeconds`）。
+  - Inspector 区块“Panthesia → 查看歌曲信息”：对话框列出时长、BPM（及来源）、拍号、调（及来源）、轨道与音符数、音域、段落。
+  - `.panthesia` 登记为伴生扩展名。
+- 解析只在 Rust 中：插件调用 `Panthesia.exe probe --json --thumbnail`。Keel 有意不向插件提供文件位置，所以插件用 `assets.readContent` 分块读取内容，按原文件名写入临时目录探测（文件名中的 BPM 仍然有效），探测后删除；结果按资产版本缓存在插件数据目录。代价：探测看不到原文件旁的清单，清单中的标题与图层不进入 Keel 字段。
+- 找到 Panthesia：Panthesia 正常启动时在 `HKCU\…\App Paths\Panthesia.exe` 写入自身位置（Windows 登记程序位置的标准做法，隔离检查时不写）；也可用 `PANTHESIA_EXE` 指定。插件读不到 Keel 中的插件设置值，所以不用设置项。
+- 打开方式：插件命令拿不到文件位置，无法启动 Panthesia 打开原文件。双击练习改用 Keel 自带的“指定程序”打开方式，使用说明与插件 README 写明步骤。
+- 检查：
+  - 插件清单通过 Keel 的 schema 与兼容性校验（Keel 0.4.0，Plugin API 1）；
+  - 隔离的 Keel（临时用户数据，链接文件夹中为语料副本）安装、授信、启用插件：缩略图显示；`.panthesia` 在网格中隐藏、列在“附件”中；歌曲信息对话框内容正确。临时验收脚本已从 Keel 删除。
+- Keel 侧的缺口（不属于本仓库）：渲染端不显示插件元数据与派生字段；插件打开方式无法取得文件位置。
+
+下一入口：计划第 4 节各阶段已完成；剩余为各阶段“未做”项与发布（需用户确认音色库）。
+
 ## 2026-11-22 · R10 发布准备（提交 4877130、38b1510 及本条）
 
 - 使用说明：新写 `docs/pages/guide.md`，覆盖打开歌曲、歌曲设置、舞台工具条与练习方式、显示设置（虚拟双手、和弦、段落、歌词）、谱面、伴奏与人声、自由演奏与录音、数据保存位置和设备。运行包附带为“使用说明.md”。`installation.md` 改写为便携运行包说明。

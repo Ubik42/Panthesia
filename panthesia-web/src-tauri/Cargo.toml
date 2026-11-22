@@ -21,3 +21,6 @@ tauri-plugin-single-instance = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"

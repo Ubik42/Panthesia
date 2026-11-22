@@ -60,3 +60,12 @@ Panthesia 是钢琴练习程序：打开一首歌就能练。歌曲文件放在�
 ## 设备
 
 “设置”中选择输入键盘（MIDI 键盘或电脑键盘）、演奏音源（内置钢琴、`.sf2` 音色库、MIDI 输出设备或 VST3 插件）和扬声器，并可以试音。
+
+## 在 Keel 中管理歌曲
+
+本仓库 `integrations/keel-plugin/` 是 Keel 插件（说明见其中的 README）。在 Keel 设置 → 插件 → 高级安装中选择该文件夹，启用后：
+
+- MIDI 与乐谱文件显示钢琴卷帘缩略图；Inspector 中的“Panthesia”按钮列出时长、BPM、拍号、调、轨道与音域；
+- 歌曲旁的 `.panthesia` 清单在浏览时隐藏，列在“附件”中，随乐曲文件一起移动、改名和进回收站。
+
+插件通过 Panthesia 读取歌曲，需要先启动一次 Panthesia。要在 Keel 中双击直接练习，在 Keel 设置 → 资产 → 打开方式中登记 `Panthesia.exe`，并设为这些扩展名的默认程序。

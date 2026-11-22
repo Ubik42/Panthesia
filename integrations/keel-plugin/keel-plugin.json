@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 1,
+  "id": "com.ubik.panthesia",
+  "version": "0.1.0",
+  "name": "Panthesia",
+  "description": "Song facts and piano-roll thumbnails for MIDI and MusicXML files, read by Panthesia; keeps .panthesia song manifests with their music files.",
+  "locales": {
+    "zh-CN": {
+      "name": "Panthesia",
+      "description": "由 Panthesia 读取 MIDI 与乐谱文件的时长、BPM、调和钢琴卷帘缩略图；.panthesia 歌曲清单随乐曲文件一起移动。"
+    }
+  },
+  "author": "Panthesia",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "keel": ">=0.4.0 <1.0.0",
+    "pluginApi": 1
+  },
+  "runtime": {
+    "mode": "unrestricted",
+    "entry": "entry/main.js",
+    "instanceScope": "library"
+  },
+  "permissions": [
+    "library.read",
+    "asset.read",
+    "content.read",
+    "data.files",
+    "ui.inspector",
+    "ui.dialogs",
+    "thumbnail.provider",
+    "metadata.extractor",
+    "derived-field.provider"
+  ],
+  "contributes": {
+    "commands": [{ "id": "show-song-facts", "title": "查看歌曲信息" }],
+    "menus": {},
+    "toolbar": [],
+    "inspector": [{ "id": "song-facts-section", "command": "show-song-facts", "title": "Panthesia", "after": "tags", "extensions": ["mid", "midi", "kar", "musicxml", "mxl", "abc"] }],
+    "viewerActions": [],
+    "shortcuts": [],
+    "views": [],
+    "settings": [],
+    "hooks": [],
+    "jobs": [],
+    "providers": [
+      { "id": "song-thumbnail", "kind": "thumbnail", "extensions": [".mid", ".midi", ".kar", ".musicxml", ".mxl", ".abc"] },
+      { "id": "song-facts", "kind": "metadata", "extensions": [".mid", ".midi", ".kar", ".musicxml", ".mxl", ".abc"] },
+      { "id": "song-bpm", "kind": "derived-field", "fieldId": "bpm", "fieldType": "number" },
+      { "id": "song-key", "kind": "derived-field", "fieldId": "musicalKey", "fieldType": "string" },
+      { "id": "song-duration", "kind": "derived-field", "fieldId": "durationSeconds", "fieldType": "number" }
+    ],
+    "themes": [],
+    "companions": [{ "id": "panthesia-manifest", "extension": ".panthesia" }]
+  }
+}

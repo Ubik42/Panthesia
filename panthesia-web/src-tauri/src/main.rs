@@ -1,5 +1,6 @@
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
 mod state_push;
+mod app_paths;
 mod diagnostics;
 mod score_batch_export;
 mod score_jobs;
@@ -683,6 +684,9 @@ fn main() {
             app.manage(score_export_bridge::Cache::default());
             app.manage(file_transfer::Sessions::default());
             app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), closing:Default::default(), close_allowed:Default::default(), allow_closing_drafts:Default::default(), desktop_close:Default::default(), engine,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), score_imports:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
+            if !startup_checks::enabled() {
+                app_paths::register();
+            }
             if !headless_check() {
                 if let Some(window) = app.get_webview_window("main") {
                     window.show()?;
