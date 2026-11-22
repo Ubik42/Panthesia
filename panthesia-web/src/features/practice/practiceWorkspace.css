@@ -255,56 +255,6 @@
   background: var(--red-78);
 }
 
-.practice-result-strip {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  padding: 11px 15px;
-  border-top: 1px solid var(--green-49);
-  background: var(--gray-30);
-  color: var(--teal-87);
-  font-size: 12px;
-}
-.practice-result-strip-copy {
-  flex: 1;
-  min-width: 190px;
-  display: grid;
-  gap: 4px;
-}
-.practice-result-strip-copy strong {
-  color: var(--green-93);
-  font-size: 14px;
-}
-.practice-result-strip-copy > span {
-  font-variant-numeric: tabular-nums;
-  line-height: 1.5;
-}
-.practice-result-strip button {
-  border-color: var(--green-57);
-  background: var(--green-39);
-  color: var(--green-93);
-}
-.practice-result-strip button:hover:not(:disabled) {
-  background: var(--green-49);
-}
-.practice-result-strip .practice-result-details {
-  background: transparent;
-  border-color: transparent;
-}
-.practice-result-save {
-  color: var(--amber-83);
-  font-size: 11px;
-}
-.practice-result-save[data-saved] {
-  color: var(--green-86);
-}
-.practice-result-note {
-  color: var(--blue-78);
-  font-size: 12px;
-  line-height: 1.65;
-}
 .practice-lock-note {
   font-size: 11px;
   color: var(--amber-83);
@@ -384,34 +334,6 @@
   font-size: 12px;
 }
 
-.practice-result-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 5px;
-  margin-bottom: 12px;
-}
-.practice-result-heading h2 {
-  margin: 0 !important;
-}
-.practice-result-heading > span {
-  font-size: 11px;
-  color: var(--green-87);
-}
-.practice-result-actions {
-  display: grid;
-  gap: 7px;
-}
-.practice-result-actions > button {
-  width: 100%;
-  min-height: 34px;
-  padding: 7px 4px;
-  font-size: 12px;
-}
-.practice-result-error {
-  color: var(--amber-83);
-}
 .practice-navigation-pages {
   display: inline-flex;
   flex-wrap: wrap;
@@ -464,12 +386,6 @@
 }
 .practice-jump-form .practice-field-error {
   color: var(--amber-77);
-}
-.practice-result-timing {
-  color: var(--gray-85);
-}
-.practice-result-timing > dd {
-  color: var(--gray-92);
 }
 [data-practice-short] .practice-transport {
   min-height: 60px;
@@ -550,9 +466,6 @@
   }
   .practice-stage-readouts .required-notes {
     margin-left: 0;
-  }
-  .practice-result-strip .practice-result-strip-copy {
-    flex-basis: 100%;
   }
 }
 

@@ -1,5 +1,4 @@
 .exercise-dialog.exercise-workbench {
-  width: min(860px, 96vw) !important;
   max-height: 94vh;
   overflow: auto;
   padding: 24px;
@@ -350,4 +349,9 @@
   .exercise-actions button {
     flex: 1 1 140px;
   }
+}
+
+/* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
+@layer overrides {
+.exercise-dialog.exercise-workbench { width: min(860px, 96vw); }
 }

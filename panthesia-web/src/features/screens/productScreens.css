@@ -840,9 +840,6 @@
   min-width: 35px;
   text-align: center;
 }
-.product-label-own {
-  justify-content: flex-start !important;
-}
 .product-track-controls {
   grid-template-columns: 1fr 1fr 1fr;
 }
@@ -870,13 +867,7 @@
   border: 2px dashed var(--gray-100);
   min-width: 200px;
 }
-.product-narrow-metronome {
-  display: none !important;
-}
 @media (max-width: 760px) {
-  .product-narrow-metronome {
-    display: block !important;
-  }
   .product-track-picker.picker-instrument {
     grid-template-columns: 140px minmax(0, 1fr);
     gap: 10px;
@@ -1145,3 +1136,12 @@
 }
 
 .song-file-status { font-size: 12px; color: var(--red-55); margin-left: auto; }
+
+/* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
+@layer overrides {
+.product-label-own { justify-content: flex-start; }
+.product-narrow-metronome { display: none; }
+@media (max-width: 760px) {
+.product-narrow-metronome { display: block; }
+}
+}

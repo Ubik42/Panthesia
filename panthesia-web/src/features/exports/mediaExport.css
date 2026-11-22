@@ -61,8 +61,8 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-.media-export-warning {
-  color: var(--orange-88) !important;
+.media-export-dialog .media-export-warning {
+  color: var(--orange-88);
   line-height: 1.8;
   overflow-wrap: anywhere;
 }

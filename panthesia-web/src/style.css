@@ -401,11 +401,6 @@ button.icon-button {
     font-size: 10px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-  }
-}
 .tempo-readout {
   font-size: 24px;
   font-variant-numeric: tabular-nums;
@@ -413,9 +408,6 @@ button.icon-button {
 .tempo-readout small {
   font-size: 11px;
   color: var(--blue-71);
-}
-.exercise-dialog {
-  width: 520px !important;
 }
 .exercise-grid {
   display: grid;
@@ -432,8 +424,6 @@ button.icon-button {
   width: 100%;
 }
 .primary {
-  background: var(--green-84) !important;
-  color: var(--green-25) !important;
   font-weight: 600;
   margin-top: 16px;
 }
@@ -481,14 +471,6 @@ button.icon-button {
 }
 .score-paper g.note {
   cursor: pointer;
-}
-.score-paper .playing-note {
-  fill: var(--blue-66) !important;
-  stroke: var(--blue-66) !important;
-}
-.score-paper .playing-note * {
-  fill: var(--blue-66) !important;
-  stroke: var(--blue-66) !important;
 }
 .score-message {
   padding: 8px 18px;
@@ -863,7 +845,7 @@ button.icon-button {
 
 .paper-manager-tabs,.paper-selector,.paper-controls,.paper-version-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.paper-manager-tabs{padding:0 0 12px;border-bottom:1px solid var(--border,var(--blue-37));margin-bottom:12px}.paper-score{position:relative;display:flex;flex-direction:column;gap:10px;min-height:0;height:100%;background:var(--gray-24)}.paper-manage{height:min(65vh,660px);background:transparent}.paper-selector{flex-shrink:0;padding:8px}.paper-selector label{display:flex;align-items:center;gap:8px}.paper-selector select{min-width:200px;max-width:420px}.paper-reader{display:flex;flex:1;min-height:180px;flex-direction:column;gap:8px}.paper-controls{flex-shrink:0;padding:8px 12px;border-top:1px solid var(--blue-37);border-bottom:1px solid var(--blue-37);background:var(--gray-29)}.paper-controls label{display:flex;align-items:center;gap:5px;white-space:nowrap}.paper-controls input{width:65px}.paper-controls select{width:110px}.paper-sheet-scroll{position:relative;overflow:auto;flex:1;min-height:160px;text-align:center;padding:16px;background:var(--gray-21);outline-offset:-3px}.paper-sheet-scroll canvas{display:block;margin:0 auto;box-shadow:0 3px 18px color-mix(in oklab, var(--gray-0) 47%, transparent);background:var(--gray-100);max-width:none}.paper-loading{position:sticky;left:0;top:12px;padding:6px 12px;background:color-mix(in oklab, var(--blue-32) 93%, transparent);color:var(--green-93)}.paper-empty{padding:40px 16px;color:var(--gray-75);text-align:center}.paper-import-results{max-height:90px;overflow:auto;padding:8px 12px;border:1px solid var(--blue-39)}.paper-import-results p{margin:3px 0}.paper-version-actions input{flex:1;min-width:140px}.paper-version-actions span{color:var(--gray-75);font-size:11px}.paper-password{display:flex;gap:8px}.paper-score .dialog-error{margin:4px 8px}.piano-stage:has(>.paper-score){display:grid;grid-template-rows:150px minmax(200px,1fr)}.piano-stage:has(>.paper-score)>.paper-score{min-height:0}@media(max-width:850px){.paper-selector select{max-width:240px}.paper-controls{gap:5px}.paper-controls button{padding:5px 8px}.paper-manage{height:60vh}}
 
-.notation-toolbar{flex-wrap:wrap}.notation-body.editing{display:grid;grid-template-columns:minmax(240px,1fr) 280px;align-items:start;gap:8px;padding-right:12px}.notation-body.editing .score-paper{width:calc(100% - 24px);margin:12px}.score-note-editor{position:sticky;top:100px;padding:14px;background:var(--gray-29);border:1px solid var(--blue-46);border-radius:5px;display:flex;flex-direction:column;gap:10px;color:var(--gray-92);font-size:12px;margin-top:12px}.score-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.score-note-editor p{margin:0;line-height:1.55}.score-note-editor label{display:flex;align-items:center;justify-content:space-between;gap:8px}.score-note-editor select{max-width:170px}.score-finger-values{display:grid;grid-template-columns:1fr auto;gap:7px;margin:0;padding:9px 0;border-top:1px solid var(--blue-39);border-bottom:1px solid var(--blue-39)}.score-finger-values dd{margin:0;font-weight:600}.score-finger-buttons{display:flex;gap:6px}.score-finger-buttons button{flex:1;font-size:15px;padding:7px}.score-editor-check{font-size:11px}.score-recommend-options,.score-editor-footer{display:flex;flex-direction:column;gap:8px}.score-note-proposal{padding:10px;background:var(--teal-34);border:1px solid var(--green-49);display:flex;flex-direction:column;gap:8px}.score-note-proposal small,.score-editor-hint{color:var(--gray-75);font-size:11px}.score-edit-success{color:var(--green-86)}.score-paper .score-practice-finger{pointer-events:none;font-family:Arial,sans-serif;stroke:none}.score-paper .selected-score-note .notehead{fill:var(--orange-62)!important;stroke:var(--orange-62)!important}.score-paper g.note:focus .notehead{fill:var(--orange-62);stroke:var(--orange-62)}.paper-sheet-scroll canvas{touch-action:pan-x pan-y}@media(max-width:1050px){.notation-body.editing{display:block;padding-right:0}.score-note-editor{position:sticky;top:auto;bottom:0;max-height:300px;overflow:auto;margin:8px 12px}.notation-body.editing .score-paper{width:calc(100% - 24px)}.score-note-editor .score-finger-buttons{max-width:260px}.score-editor-footer{flex-direction:row}}
+.notation-toolbar{flex-wrap:wrap}.notation-body.editing{display:grid;grid-template-columns:minmax(240px,1fr) 280px;align-items:start;gap:8px;padding-right:12px}.notation-body.editing .score-paper{width:calc(100% - 24px);margin:12px}.score-note-editor{position:sticky;top:100px;padding:14px;background:var(--gray-29);border:1px solid var(--blue-46);border-radius:5px;display:flex;flex-direction:column;gap:10px;color:var(--gray-92);font-size:12px;margin-top:12px}.score-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.score-note-editor p{margin:0;line-height:1.55}.score-note-editor label{display:flex;align-items:center;justify-content:space-between;gap:8px}.score-note-editor select{max-width:170px}.score-finger-values{display:grid;grid-template-columns:1fr auto;gap:7px;margin:0;padding:9px 0;border-top:1px solid var(--blue-39);border-bottom:1px solid var(--blue-39)}.score-finger-values dd{margin:0;font-weight:600}.score-finger-buttons{display:flex;gap:6px}.score-finger-buttons button{flex:1;font-size:15px;padding:7px}.score-editor-check{font-size:11px}.score-recommend-options,.score-editor-footer{display:flex;flex-direction:column;gap:8px}.score-note-proposal{padding:10px;background:var(--teal-34);border:1px solid var(--green-49);display:flex;flex-direction:column;gap:8px}.score-note-proposal small,.score-editor-hint{color:var(--gray-75);font-size:11px}.score-edit-success{color:var(--green-86)}.score-paper .score-practice-finger{pointer-events:none;font-family:Arial,sans-serif;stroke:none}.score-paper g.note:focus .notehead{fill:var(--orange-62);stroke:var(--orange-62)}.paper-sheet-scroll canvas{touch-action:pan-x pan-y}@media(max-width:1050px){.notation-body.editing{display:block;padding-right:0}.score-note-editor{position:sticky;top:auto;bottom:0;max-height:300px;overflow:auto;margin:8px 12px}.notation-body.editing .score-paper{width:calc(100% - 24px)}.score-note-editor .score-finger-buttons{max-width:260px}.score-editor-footer{flex-direction:row}}
 
 .score-note-editor{top:var(--score-editor-top,80px);max-height:var(--score-editor-height,350px);overflow:auto}@media(max-width:1050px){.score-note-editor{top:auto;max-height:min(300px,var(--score-editor-height,300px));bottom:0}}
 .score-paper g.note .notehead{pointer-events:bounding-box}
@@ -1124,9 +1106,9 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 
 :root{--ui-scale:1}.workbench{height:calc(100dvh / var(--ui-scale));min-width:0}[role=dialog]{max-width:calc(96vw / var(--ui-scale));max-height:calc(90dvh / var(--ui-scale))}
 
-.paper-highlight{position:absolute!important;min-height:0;padding:0;border:1px solid var(--amber-67);background:color-mix(in oklab, var(--amber-83) 25%, transparent)!important;color:var(--amber-49);transform:none;touch-action:none;border-radius:2px;justify-content:flex-start;align-items:flex-start;font-size:10px}.paper-highlight[data-color=blue]{background:color-mix(in oklab, var(--blue-66) 25%, transparent)!important;border-color:var(--blue-66)}.paper-highlight[data-color=green]{background:color-mix(in oklab, var(--green-66) 25%, transparent)!important;border-color:var(--green-66)}.paper-highlight[data-color=red]{background:color-mix(in oklab, var(--red-55) 25%, transparent)!important;border-color:var(--red-55)}.paper-highlight.draft{pointer-events:none;border-style:dashed}.paper-annotation-sheet.placing{touch-action:none}
+.paper-highlight{min-height:0;padding:0;border:1px solid var(--amber-67);color:var(--amber-49);transform:none;touch-action:none;border-radius:2px;justify-content:flex-start;align-items:flex-start;font-size:10px}.paper-highlight[data-color=blue]{border-color:var(--blue-66)}.paper-highlight[data-color=green]{border-color:var(--green-66)}.paper-highlight[data-color=red]{border-color:var(--red-55)}.paper-highlight.draft{pointer-events:none;border-style:dashed}.paper-annotation-sheet.placing{touch-action:none}
 
-.paper-measure-region{position:absolute!important;min-height:0;padding:0;transform:none;border:1px dashed var(--blue-66);background:color-mix(in oklab, var(--blue-66) 5%, transparent)!important;color:var(--blue-41);font-size:11px;border-radius:1px;justify-content:flex-start;align-items:flex-start}.paper-measure-region span{background:color-mix(in oklab, var(--gray-96) 87%, transparent);padding:1px 4px}.paper-measure-region.active{border:2px solid var(--blue-57);background:color-mix(in oklab, var(--blue-66) 14%, transparent)!important}.paper-measure-region.draft{pointer-events:none;border:2px dashed var(--orange-62);background:color-mix(in oklab, var(--amber-77) 13%, transparent)!important;color:var(--amber-49)}.paper-measure-region:disabled{opacity:.65}
+.paper-measure-region{min-height:0;padding:0;transform:none;border:1px dashed var(--blue-66);color:var(--blue-41);font-size:11px;border-radius:1px;justify-content:flex-start;align-items:flex-start}.paper-measure-region span{background:color-mix(in oklab, var(--gray-96) 87%, transparent);padding:1px 4px}.paper-measure-region.active{border:2px solid var(--blue-57)}.paper-measure-region.draft{pointer-events:none;border:2px dashed var(--orange-62);color:var(--amber-49)}.paper-measure-region:disabled{opacity:.65}
 
 .paper-practice-dialog{width:min(780px,96vw)}.paper-practice-fields{border:0;padding:0;display:grid;gap:14px}.paper-practice-fields label{display:grid;gap:6px}.paper-practice-fields input,.paper-practice-fields textarea{width:100%}.paper-practice-range{display:grid;grid-template-columns:repeat(4,minmax(80px,1fr));gap:12px}.paper-practice-fields p,.paper-practice-conditions{line-height:1.7}.paper-practice-tracks{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;color:var(--blue-78)}@media(max-width:600px){.paper-practice-range{grid-template-columns:repeat(2,minmax(80px,1fr))}}
 
@@ -1146,3 +1128,27 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 .finger-comparison-table small {display:block;color:var(--muted);margin-top:4px;}
 
 .finger-comparison-table td:nth-child(2) button {margin-top:5px;font-size:12px;padding:4px 6px;}
+
+/* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
+@layer overrides {
+@media (prefers-reduced-motion: reduce) {
+* { transition: none; }
+}
+.primary { background: var(--green-84); }
+.primary { color: var(--green-25); }
+.score-paper .playing-note { fill: var(--blue-66); }
+.score-paper .playing-note { stroke: var(--blue-66); }
+.score-paper .playing-note * { fill: var(--blue-66); }
+.score-paper .playing-note * { stroke: var(--blue-66); }
+.score-paper .selected-score-note .notehead { fill: var(--orange-62); }
+.score-paper .selected-score-note .notehead { stroke: var(--orange-62); }
+.paper-highlight { position: absolute; }
+.paper-highlight { background: color-mix(in oklab, var(--amber-83) 25%, transparent); }
+.paper-highlight[data-color=blue] { background: color-mix(in oklab, var(--blue-66) 25%, transparent); }
+.paper-highlight[data-color=green] { background: color-mix(in oklab, var(--green-66) 25%, transparent); }
+.paper-highlight[data-color=red] { background: color-mix(in oklab, var(--red-55) 25%, transparent); }
+.paper-measure-region { position: absolute; }
+.paper-measure-region { background: color-mix(in oklab, var(--blue-66) 5%, transparent); }
+.paper-measure-region.active { background: color-mix(in oklab, var(--blue-66) 14%, transparent); }
+.paper-measure-region.draft { background: color-mix(in oklab, var(--amber-77) 13%, transparent); }
+}

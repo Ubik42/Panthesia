@@ -4,16 +4,20 @@ import { readFileSync } from "node:fs";
 import type { Plugin } from "postcss";
 
 /** Every stylesheet goes into one cascade layer, so a later layer (state) can override any
- * component rule without !important. Order: tokens, components, state (src/layers.css). */
+ * component rule without !important. Order: tokens, components, overrides, state (src/layers.css). */
 const cascadeLayers: Plugin = {
   postcssPlugin: "panthesia-cascade-layers",
   Once(root, { AtRule }) {
     const file = root.source?.input.file ?? "";
     if (/node_modules|[\\/]layers\.css$/.test(file)) return;
+    // Top-level `@layer overrides` and `@layer state` blocks keep their own layer.
+    const own = root.nodes.filter(
+      (node) => node.type === "atrule" && node.name === "layer" && /^(overrides|state)$/.test(node.params),
+    );
     const layer = new AtRule({ name: "layer", params: /[\\/]tokens\.css$/.test(file) ? "tokens" : "components" });
-    layer.append(root.nodes);
+    layer.append(root.nodes.filter((node) => !own.includes(node)));
     root.removeAll();
-    root.append(layer);
+    root.append(layer, ...own);
   },
 };
 

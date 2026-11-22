@@ -33,7 +33,6 @@
   border-top: 1px solid var(--blue-37);
 }
 .paper-note-region {
-  position: absolute !important;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -41,7 +40,6 @@
   padding: 0;
   border: 2px solid var(--green-57);
   border-radius: 3px;
-  background: color-mix(in oklab, var(--teal-76) 27%, transparent) !important;
   color: var(--green-39);
   font-size: 11px;
 }
@@ -54,5 +52,11 @@
   pointer-events: none;
   border-style: dashed;
   border-color: var(--amber-83);
-  background: color-mix(in oklab, var(--amber-83) 20%, transparent) !important;
+}
+
+/* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
+@layer overrides {
+.paper-note-region { position: absolute; }
+.paper-note-region { background: color-mix(in oklab, var(--teal-76) 27%, transparent); }
+.paper-note-region.draft { background: color-mix(in oklab, var(--amber-83) 20%, transparent); }
 }

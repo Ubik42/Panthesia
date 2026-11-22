@@ -132,7 +132,7 @@
   display: none;
 }
 .synthesia-layout .synthesia-transport .practice-speed .bpm-number {
-  width: 70px !important;
+  width: 70px;
   min-height: 48px;
   margin: 0;
   padding: 0 2px 14px;
@@ -417,9 +417,9 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-.synthesia-hand-card.both {
+.synthesia-layout .synthesia-setup-body .synthesia-hand-card.both {
   grid-column: 1/-1;
-  min-height: 130px !important;
+  min-height: 130px;
 }
 .synthesia-hand-card.left svg {
   transform: scaleX(-1);
@@ -456,7 +456,7 @@
     padding: 6px;
   }
   .synthesia-layout .synthesia-transport .practice-speed .bpm-number {
-    width: 54px !important;
+    width: 54px;
     font-size: 22px;
   }
   .synthesia-layout .synthesia-transport .toolbar-more > summary {
