@@ -185,7 +185,7 @@ impl MidiFile {
             .ok_or("MIDI 路径缺少文件名")?
             .to_string_lossy()
             .into_owned();
-        let mut file = decode::read(name, data, &|| Ok(()))?;
+        let mut file = decode::read(name, data, &|| Ok(()), None)?;
         file.source_path = Some(path.as_ref().into());
         Ok(file)
     }
@@ -194,13 +194,23 @@ impl MidiFile {
         data: &[u8],
         check: &dyn Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
+        Self::from_path_bytes_tempo(path, data, check, None)
+    }
+    /// As [`Self::from_path_bytes_checked`], playing at `default_bpm` when the file has no
+    /// tempo events.
+    pub fn from_path_bytes_tempo(
+        path: impl AsRef<Path>,
+        data: &[u8],
+        check: &dyn Fn() -> Result<(), String>,
+        default_bpm: Option<f64>,
+    ) -> Result<Self, String> {
         let name = path
             .as_ref()
             .file_name()
             .ok_or("MIDI 路径缺少文件名")?
             .to_string_lossy()
             .into_owned();
-        let mut file = decode::read(name, data, check)?;
+        let mut file = decode::read(name, data, check, default_bpm)?;
         file.source_path = Some(path.as_ref().into());
         Ok(file)
     }
@@ -209,13 +219,13 @@ impl MidiFile {
         data: &[u8],
         check: &dyn Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
-        decode::read(name.into(), data, check)
+        decode::read(name.into(), data, check, None)
     }
     pub fn from_smf(name: impl Into<String>, smf: &Smf<'_>) -> Result<Self, String> {
         let mut writer = decode::MidiWriter(Vec::new());
         smf.write_std(&mut writer)
             .map_err(|e| format!("MIDI 编码失败：{e}"))?;
-        decode::read(name.into(), &writer.0, &|| Ok(()))
+        decode::read(name.into(), &writer.0, &|| Ok(()), None)
     }
     pub fn note_id(&self, track: usize, index: usize) -> Option<NoteId> {
         self.tracks

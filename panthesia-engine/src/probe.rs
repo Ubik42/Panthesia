@@ -118,7 +118,7 @@ fn read_music(path: &Path) -> Result<MidiFile, String> {
         let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         return MidiFile::from_smf(&name, &performance.smf);
     }
-    MidiFile::from_path_bytes(path, &bytes)
+    MidiFile::from_path_bytes_tempo(path, &bytes, &|| Ok(()), crate::music_file::stated_tempo(path))
 }
 
 fn manifest_summary(found: &manifest_store::Located) -> Value {
@@ -151,7 +151,7 @@ fn tempo(file: &MidiFile, manifest: Option<&Manifest>, performance: &str, music:
     let events = file.tempo_track.events();
     // A file without tempo events plays at the MIDI default of 120; a "BPM76" in the name wins.
     if events.len() == 1 && events[0].tempo == 500_000 {
-        if let Some(bpm) = music.file_stem().and_then(|s| s.to_str()).and_then(filename_bpm) {
+        if let Some(bpm) = music.file_stem().and_then(|s| s.to_str()).and_then(crate::music_file::filename_bpm) {
             return (Some(bpm), "filename");
         }
     }
@@ -194,14 +194,6 @@ fn key(file: &MidiFile, manifest: Option<&Manifest>, performance: &str, music: &
     (estimate_key(file), "estimated")
 }
 
-/// "yama - Oz - BPM76 - Gmajor" → 76. Also "76BPM" and "BPM 76".
-fn filename_bpm(stem: &str) -> Option<f64> {
-    let upper = stem.to_ascii_uppercase();
-    let at = upper.find("BPM")?;
-    let after: String = upper[at + 3..].trim_start_matches([' ', '_', '-', '=']).chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
-    let before: String = upper[..at].trim_end_matches([' ', '_', '-']).chars().rev().take_while(|c| c.is_ascii_digit() || *c == '.').collect::<Vec<_>>().into_iter().rev().collect();
-    [after, before].into_iter().filter_map(|v| v.parse::<f64>().ok()).find(|v| (20.0..=400.0).contains(v))
-}
 
 /// "yama - Oz - BPM76 - Gmajor" → "G:maj". Only an explicit "major"/"minor" word counts.
 fn filename_key(stem: &str) -> Option<String> {
@@ -351,8 +343,8 @@ mod tests {
         assert_eq!(filename_key("Song - F#minor").as_deref(), Some("F#:min"));
         assert_eq!(filename_key("Song - Bb major").as_deref(), Some("Bb:maj"));
         assert_eq!(filename_key("Harmonic minor study"), None);
-        assert_eq!(filename_bpm("yama - Oz - BPM76 - Gmajor"), Some(76.));
-        assert_eq!(filename_bpm("Song 132bpm"), Some(132.));
-        assert_eq!(filename_bpm("Song"), None);
+        assert_eq!(crate::music_file::filename_bpm("yama - Oz - BPM76 - Gmajor"), Some(76.));
+        assert_eq!(crate::music_file::filename_bpm("Song 132bpm"), Some(132.));
+        assert_eq!(crate::music_file::filename_bpm("Song"), None);
     }
 }

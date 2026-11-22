@@ -82,10 +82,13 @@ fn release(
         note.sounding_end_tick = tick;
     }
 }
+/// `default_bpm` is the tempo of a file that has no tempo events at all (sequencer exports
+/// that keep the real tempo only in their file name). The content id stays that of `bytes`.
 pub(crate) fn read(
     name: String,
     bytes: &[u8],
     check: &dyn Fn() -> Result<(), String>,
+    default_bpm: Option<f64>,
 ) -> Result<MidiFile, String> {
     check()?;
     if bytes.is_empty() || bytes.len() > 32_000_000 {
@@ -180,7 +183,16 @@ pub(crate) fn read(
     let canonical:BTreeMap<_,_>=keys.into_iter().map(|(tick,_,_,value)|(tick,value)).collect();
     let mut signatures=Vec::new();
     for (tick,(fifths,minor)) in canonical {if signatures.last().is_none_or(|last:&key_signature::KeySignatureEvent|last.fifths!=fifths||last.minor!=minor){signatures.push(key_signature::KeySignatureEvent{tick,fifths,minor});}}
-    let tempo = tempo_track::TempoTrack::build(&smf.tracks, ppq);
+    let has_tempo = smf.tracks.iter().flatten().any(|e| matches!(e.kind, TrackEventKind::Meta(MetaMessage::Tempo(_))));
+    let tempo = match default_bpm.filter(|bpm| !has_tempo && (10.0..=400.0).contains(bpm)) {
+        Some(bpm) => {
+            let mut tracks = smf.tracks.clone();
+            let micros = midly::num::u24::new((60_000_000.0 / bpm).round() as u32);
+            tracks[0].insert(0, midly::TrackEvent { delta: 0.into(), kind: TrackEventKind::Meta(MetaMessage::Tempo(micros)) });
+            tempo_track::TempoTrack::build(&tracks, ppq)
+        }
+        None => tempo_track::TempoTrack::build(&smf.tracks, ppq),
+    };
     let musical_time =
         musical_time::MusicalTime::build_checked(&smf.tracks, ppq, last_tick, check)?;
     let mut notes = Vec::<SourceNote>::new();
