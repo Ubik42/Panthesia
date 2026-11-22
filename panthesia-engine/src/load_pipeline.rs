@@ -354,8 +354,8 @@ mod tests {
         time::{Duration, Instant, UNIX_EPOCH},
     };
     fn root() -> PathBuf {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work/load-unit")
+        let root = std::env::temp_dir()
+            .join("panthesia-tests/load-unit")
             .join(format!(
                 "{}-{}",
                 std::process::id(),

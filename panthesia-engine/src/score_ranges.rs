@@ -34,8 +34,8 @@ mod tests {
 
     const XML: &str = r#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><time><beats>2</beats><beat-type>4</beat-type></time></attributes><direction><sound tempo="60"/></direction><note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration></note><sound segno="S"><offset>-1</offset></sound><sound fine="yes"/></measure><measure number="2"><direction><sound tempo="120"/></direction><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration></note><sound dalsegno="S"/></measure></part></score-partwise>"#;
     fn player() -> Player {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work/cycle154-unit")
+        let path = std::env::temp_dir()
+            .join("panthesia-tests/cycle154-unit")
             .join(format!(
                 "{}-{}",
                 std::process::id(),

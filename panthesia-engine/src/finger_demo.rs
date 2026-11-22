@@ -245,7 +245,7 @@ mod tests {
     }
     #[test]
     fn held_substitution_changes_fingers_without_retriggering_the_key(){
-        let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work").join(format!("held-demo-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let data=std::env::temp_dir().join("panthesia-tests").join(format!("held-demo-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         let mut p=Player::new(data,PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2"),true);
         let xml=br#"<score-partwise><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>2</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note><backup><duration>8</duration></backup><forward><duration>4</duration></forward><note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration><voice>2</voice></note><note><pitch><step>F</step><octave>4</octave></pitch><duration>2</duration><voice>2</voice></note></measure></part></score-partwise>"#;
         p.import_score(xml.to_vec(), "持音示范单元.musicxml".into(), 120).unwrap();
@@ -270,7 +270,7 @@ mod tests {
     }
     #[test]
     fn joint_demo_routes_each_event_to_its_original_track() {
-        let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work").join(format!("finger-joint-demo-{}",
+        let data=std::env::temp_dir().join("panthesia-tests").join(format!("finger-joint-demo-{}",
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
         let mut player=Player::new(data,PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../default.sf2"),true);
         let attrs="<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>";
@@ -292,8 +292,8 @@ mod tests {
     }
     #[test]
     fn demo_preserves_practice_and_fingers_with_scoped_stop_and_lease() {
-        let data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work")
+        let data = std::env::temp_dir()
+            .join("panthesia-tests")
             .join(format!(
                 "finger-demo-test-{}",
                 std::time::SystemTime::now()

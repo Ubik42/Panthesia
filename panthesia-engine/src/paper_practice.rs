@@ -188,8 +188,8 @@ mod tests {
     use std::path::PathBuf;
     #[test]
     fn paper_practice_keeps_conditions_deduplicates_and_rejects_stale() {
-        let data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work/cycle196-unit")
+        let data = std::env::temp_dir()
+            .join("panthesia-tests/cycle196-unit")
             .join(format!(
                 "{}",
                 std::time::SystemTime::now()

@@ -11,8 +11,8 @@ use std::{
 };
 
 fn root() -> PathBuf {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../work/history-load-unit")
+    let path = std::env::temp_dir()
+        .join("panthesia-tests/history-load-unit")
         .join(format!(
             "{}-{}",
             std::process::id(),

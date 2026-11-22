@@ -457,8 +457,8 @@ mod tests {
 
     #[test]
     fn confirmed_crossed_chord_still_recommends_the_unmarked_note() {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work")
+        let root = std::env::temp_dir()
+            .join("panthesia-tests")
             .join(format!(
                 "crossed-hands-test-{}-{}",
                 std::process::id(),
@@ -521,8 +521,8 @@ mod tests {
 
     #[test]
     fn hand_span_profile_changes_wide_chord_suggestion() {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work")
+        let root = std::env::temp_dir()
+            .join("panthesia-tests")
             .join(format!(
                 "hand-span-test-{}-{}",
                 std::process::id(),

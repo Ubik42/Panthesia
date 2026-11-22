@@ -411,8 +411,8 @@ mod tests {
     };
 
     fn data(name: &str) -> PathBuf {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work/runtime-unit")
+        let path = std::env::temp_dir()
+            .join("panthesia-tests/runtime-unit")
             .join(format!(
                 "{name}-{}",
                 SystemTime::now()

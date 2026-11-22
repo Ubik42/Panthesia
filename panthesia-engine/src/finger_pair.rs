@@ -121,7 +121,7 @@ impl Player {
 mod tests {
  use super::*;
  #[test]fn both_hands_review_save_undo_and_stale_guard(){
-  let data=PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/cycle186-unit").join(format!("{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let mut p=Player::new(data.clone(),PathBuf::new(),true);p.command(Command::Generate{spec:ExerciseSpec::default()}).unwrap();
+  let data=std::env::temp_dir().join("panthesia-tests/cycle186-unit").join(format!("{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));let mut p=Player::new(data.clone(),PathBuf::new(),true);p.command(Command::Generate{spec:ExerciseSpec::default()}).unwrap();
   let cid=p.file.as_ref().unwrap().content_id.clone();let file=p.file.as_ref().unwrap();let mut parts=vec![];
   for hand in [PracticePart::LeftHand,PracticePart::RightHand] {
    let note=p.notes.iter().find(|n|hands::part(&p.config,&p.note_hands,n.track_id,n.index)==hand).unwrap();

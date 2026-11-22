@@ -237,8 +237,8 @@ impl Player {
 mod tests {
     use super::*;
     fn player() -> Player {
-        let data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../work")
+        let data = std::env::temp_dir()
+            .join("panthesia-tests")
             .join(format!(
                 "cycle181-unit-{}",
                 std::time::SystemTime::now()

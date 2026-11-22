@@ -125,7 +125,7 @@ mod tests {
     use panthesia_core::manifest::{Layer, Manifest};
 
     fn temp() -> PathBuf {
-        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../work/file-open-unit").join(format!(
+        let dir = std::env::temp_dir().join("panthesia-tests/file-open-unit").join(format!(
             "{}-{}",
             std::process::id(),
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
