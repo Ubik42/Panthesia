@@ -150,6 +150,23 @@
 - 只改练习设置（模式、预备拍、节拍器等）不会创建清单；已有清单时一并写入。
 - 读写清单在同一进程内串行，避免两处保存互相覆盖。
 
+## 从文件读取的图层（不写入清单）
+
+打开歌曲时从乐曲文件本身读取，随时可以重新得到，因此不写入清单（显示时作为 `imported` 来源）：
+
+- MIDI：歌词（Lyric 事件；没有时读取卡拉 OK 的 Text 事件，`/`、`\` 与换行表示换行）、段落（Marker 与 Cue Point）、调号变化。元信息文本按文件统一识别编码：合法 UTF-8 时按 UTF-8，否则用 chardetng 判断（常见 GBK、Shift-JIS）。
+- MusicXML / ABC：音符歌词（声部号、音节位置）与和弦符号（根音、性质、记谱文字、低音）读入乐谱模型；按演奏 tick 展开到反复中的位置随 R6 的和弦与歌词图层实现。
+
+## 歌曲包识别
+
+打开歌曲后，"歌曲文件与版本"列出按文件名规则找到的相关文件，用户选择"加入"后才写入清单：
+
+- 同名音频为原音频；`<名>_人声`、`vocals.*` 为人声，`<名>_伴奏`、`accompaniment.*` 为伴奏；导出目录中的 `piano.wav` 为钢琴音轨。
+- 同名或导出的 `score.musicxml` / `.mxl` / `.abc` 为谱面（选择"配对"走谱面配对）；同名 PDF 为谱页。
+- `versions/` 中与基础名同前缀的 MIDI、文件名含 `_原调_`/`_C大调_` 的 MIDI、导出目录中的 `score.mid` 与 `piano_raw.mid` 为同一首歌的版本；`… MIDI` 与 `… AUDIO` 并列时在音频文件夹中找同名音频与人声；`source/`（本级至上两级）中的录音为原音频。
+- POP909 的 `chord_*.txt`、`key_audio.txt`、`beat_*.txt` 登记为 `annotation-source`。
+- 不按标题合并不同的编配或演奏（例如同一文件夹中的多个"七里香"）。
+
 ## 生成者
 
 其他工具可以在导出时直接写清单（例如 `D:\Music\_tools\music-transcription` 导出 B 站曲目时）。要求：遵守本格式与 Schema，`provenance.origin` 写 `generated` 并填写 `tool`、`toolVersion`；不得覆盖已有清单中 `origin` 为 `human` 的图层。
@@ -164,7 +181,7 @@
 Panthesia.exe probe <文件> [--json] [--thumbnail <png 路径>] [--size 480x160]
 ```
 
-不打开窗口、不读写资料目录、不经过单实例转交。接受 MIDI、MusicXML、`.panthesia`（分析默认演奏）。标准输出为一行 UTF-8 JSON；失败时输出 `{"error": "…"}`，退出码 1。
+不打开窗口、不读写资料目录、不经过单实例转交。接受 MIDI、MusicXML、ABC、`.panthesia`（分析默认演奏）。标准输出为一行 UTF-8 JSON；失败时输出 `{"error": "…"}`，退出码 1。
 
 | 字段 | 说明 |
 | --- | --- |
@@ -177,4 +194,5 @@ Panthesia.exe probe <文件> [--json] [--thumbnail <png 路径>] [--size 480x160
 | `key`、`keySource` | `G:maj` 形式；来源依次为 `manifest`（`keys` 图层）、`midi`（调号事件）、`filename`（如 `Gmajor`）、`estimated`（Krumhansl–Kessler 音级时值相关） |
 | `tracks`、`notes`、`pitchRange` | 有音符的轨道数、音符数、最低与最高音 |
 | `manifest` | 清单路径、标题、图层名、演奏列表、音轨类型、是否有谱面、缺失文件编号；没有清单时为 `null` |
+| `importedLayers` | 文件中的歌词事件数、段落名称（最多 64 个）、调号变化数 |
 | `thumbnail` | 写出的钢琴卷帘 PNG（横轴时间、纵轴音高；清单分配了手别时右手绿、左手蓝） |
