@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 const MIDI: &[&str] = &["mid", "midi", "kar"];
-const SCORE: &[&str] = &["musicxml", "mxl", "xml"];
+const SCORE: &[&str] = &["musicxml", "mxl", "xml", "abc"];
 const LIMIT: usize = 64_000_000;
 
 pub struct Thumbnail {
@@ -111,6 +111,7 @@ pub fn probe(path: &Path, thumbnail: Option<Thumbnail>) -> Result<Value, String>
 
 fn read_music(path: &Path) -> Result<MidiFile, String> {
     let bytes = panthesia_core::utils::atomic_file::read_limited(path, LIMIT).map_err(|e| format!("{}：{e}", path.display()))?;
+    let bytes = if extension(path) == "abc" { panthesia_notation::abc::musicxml_from_file_bytes(&bytes)? } else { bytes };
     if SCORE.contains(&extension(path).as_str()) {
         let score = panthesia_notation::musicxml::import_musicxml_document(&bytes).map_err(|e| format!("乐谱无法读取：{e}"))?;
         let performance = panthesia_notation::score_performance::generate(&score, 120)?;

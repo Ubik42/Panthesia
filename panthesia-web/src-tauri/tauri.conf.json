@@ -57,6 +57,14 @@
       },
       {
         "ext": [
+          "abc"
+        ],
+        "name": "ABC",
+        "description": "ABC 记谱",
+        "role": "Viewer"
+      },
+      {
+        "ext": [
           "panthesia"
         ],
         "name": "Panthesia",

@@ -301,7 +301,7 @@ async fn pick_song_file(state:tauri::State<'_,State>,kind:String,near:Option<Pat
     let mut dialog=file_dialog(&state.data,"music");
     if let Some(folder)=near.as_deref().and_then(std::path::Path::parent).filter(|p|p.is_dir()){dialog=dialog.set_directory(folder);}
     let dialog=match kind.as_str(){
-        "music"=>dialog.set_title("打开乐曲").add_filter("乐曲与歌曲清单", &["mid","midi","kar","musicxml","mxl","xml","panthesia"]),
+        "music"=>dialog.set_title("打开乐曲").add_filter("乐曲与歌曲清单", &["mid","midi","kar","musicxml","mxl","xml","abc","panthesia"]),
         "performance"=>dialog.set_title("选择同一首歌的另一个 MIDI 版本").add_filter("MIDI", &["mid","midi","kar"]),
         "paper"=>dialog.set_title("选择谱页原件").add_filter("谱页", &["pdf","png","jpg","jpeg","webp"]),
         _=>dialog.set_title("选择伴奏、人声或原音频").add_filter("音频与视频", &["wav","mp3","flac","ogg","m4a","aac","opus","mp4","mkv","webm"]),

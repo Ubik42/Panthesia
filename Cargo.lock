@@ -2951,6 +2951,7 @@ name = "panthesia-notation"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "encoding_rs",
  "panthesia-music",
  "quick-xml 0.41.0",
  "serde",

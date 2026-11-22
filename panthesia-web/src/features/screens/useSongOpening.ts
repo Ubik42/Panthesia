@@ -94,7 +94,7 @@ export function useSongOpening(o: {
       return false;
     const path = api.desktop
       ? await api.pickSongFile("music", o.song?.sourcePath ?? undefined)
-      : window.prompt("MIDI、MusicXML 或 .panthesia 文件的完整路径")?.trim();
+      : window.prompt("MIDI、MusicXML、ABC 或 .panthesia 文件的完整路径")?.trim();
     return path ? openPath(path) : false;
   };
 

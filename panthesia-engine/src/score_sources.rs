@@ -75,13 +75,17 @@ pub fn read_original(path: &Path) -> Result<Vec<u8>, String> {
         .unwrap_or_default()
         .to_string_lossy()
         .to_ascii_lowercase();
-    if !["xml", "musicxml", "mxl"].contains(&ext.as_str()) {
-        return Err("原谱关联支持 MusicXML/XML/MXL".into());
+    if !["xml", "musicxml", "mxl", "abc"].contains(&ext.as_str()) {
+        return Err("原谱关联支持 MusicXML/XML/MXL/ABC".into());
     }
     let bytes=panthesia_core::utils::atomic_file::read_dependency(path,panthesia_notation::source_score_window::ASSET_LIMIT)
         .map_err(|e|format!("原谱无法读取：{e}"))?;
     if bytes.is_empty() || bytes.len() > panthesia_notation::source_score_window::ASSET_LIMIT {
         return Err("原谱文件为空或超过 64 MiB".into());
+    }
+    // ABC tunes are read as the MusicXML they convert to; the conversion is deterministic.
+    if ext == "abc" {
+        return panthesia_notation::abc::musicxml_from_file_bytes(&bytes);
     }
     Ok(bytes)
 }

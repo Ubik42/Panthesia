@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 const MIDI: &[&str] = &["mid", "midi", "kar"];
-const SCORE: &[&str] = &["musicxml", "mxl", "xml"];
+const SCORE: &[&str] = &["musicxml", "mxl", "xml", "abc"];
 
 fn extension(path: &Path) -> String {
     path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_ascii_lowercase()

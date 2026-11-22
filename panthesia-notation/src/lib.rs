@@ -1,4 +1,5 @@
 //! Score model and its relation to performances (current-plan 3.2).
+pub mod abc;
 pub mod hand;
 pub mod musicxml;
 pub mod score_playback;

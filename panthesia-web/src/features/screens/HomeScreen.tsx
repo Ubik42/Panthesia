@@ -67,7 +67,7 @@ export function HomeScreen({
                 {!file.exists && <small className="song-file-status">文件不存在</small>}
               </button>
             ))}
-            {!recent.length && <p>打开 MIDI、MusicXML 或 .panthesia 文件开始练习；也可以在资源管理器或 Keel 中双击乐曲。</p>}
+            {!recent.length && <p>打开 MIDI、MusicXML、ABC 或 .panthesia 文件开始练习；也可以在资源管理器或 Keel 中双击乐曲。</p>}
           </div>
         </section>
       </div>
