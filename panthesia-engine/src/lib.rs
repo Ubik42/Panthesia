@@ -78,6 +78,7 @@ mod track_sound;
 mod track_appearance;
 mod document;
 mod harmony;
+mod sections;
 mod fingerings;
 mod fingering_protocol;
 mod finger_practice;

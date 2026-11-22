@@ -1276,7 +1276,6 @@ export interface KeyChange {
 
 export interface ImportedLayers {
   "lyrics": Array<TimedText>;
-  "sections": Array<TimedText>;
   "keys": Array<KeyChange>;
 }
 
@@ -1299,6 +1298,17 @@ export interface ChordItem {
 
 export interface ChordEdit {
   "tick": number;
+  "label": string;
+}
+
+export interface Sections {
+  "items": Array<SectionItem>;
+  "origin": string;
+}
+
+export interface SectionItem {
+  "tick": number;
+  "seconds": number;
   "label": string;
 }
 

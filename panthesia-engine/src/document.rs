@@ -177,7 +177,6 @@ pub fn imported_layers(file: &MidiFile) -> crate::session_state::ImportedLayers 
     let timed = |tick: u64, text: &str| crate::session_state::TimedText { tick, seconds: seconds(tick), text: text.into() };
     crate::session_state::ImportedLayers {
         lyrics: file.lyrics.iter().map(|l| timed(l.tick, &l.text)).collect(),
-        sections: file.markers.iter().map(|m| timed(m.tick, &m.name)).collect(),
         keys: file
             .key_signatures
             .iter()

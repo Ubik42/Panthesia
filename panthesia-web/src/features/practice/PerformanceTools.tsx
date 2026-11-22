@@ -203,6 +203,18 @@ export function PerformanceTools({
             <button disabled={busy} onClick={() => setChordsOpen(true)}>编辑…</button>
           </label>
         )}
+        {!!song?.sections?.items.length && (
+          <label>
+            <input
+              type="checkbox"
+              aria-label="显示段落"
+              checked={display.sections}
+              onChange={(event) => setDisplay((previous) => ({ ...previous, sections: event.target.checked }))}
+            />
+            段落
+            {song.sections.origin === "generated" && <small>自动分析</small>}
+          </label>
+        )}
         {!!song?.importedLayers.lyrics.length && (
           <label>
             <input

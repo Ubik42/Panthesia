@@ -17,7 +17,7 @@ import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
-import { lyricLines, paintChords, paintLyrics } from "./songLayers";
+import { lyricLines, paintChords, paintLyrics, paintSections } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
 import {
@@ -462,6 +462,8 @@ export function Piano({
       }
       paintChords(ctx, song?.harmony?.chords ?? [], display.chordLabels, tick, Math.min(span, loopEnd - tick), pixels, baseline, width);
       if (display.lyrics) paintLyrics(ctx, lyrics, tick, baseline);
+      if (display.sections && song?.sections)
+        paintSections(ctx, song.sections.items, song.sections.origin === "generated", tick, Math.min(span, loopEnd - tick), pixels, baseline);
       const colorFor = (note: LoadedSong["notes"][number]) =>
         display.palette === "accessible"
           ? handColor(note.part, display)

@@ -19,7 +19,7 @@ export const settingsGroups = {
     "fontSize",
     "palette",
     "range", "keyboardViewport", "keyboardLow", "keyboardHigh", "keyboardDeviceRanges",
-    "previewBars", "loopPreview", "chordLabels", "lyrics",
+    "previewBars", "loopPreview", "chordLabels", "lyrics", "sections",
     ...layoutKeys,
   ],
   keyboard: ["keyboardEnabled", "keyboardOctave", "keyCodes"],

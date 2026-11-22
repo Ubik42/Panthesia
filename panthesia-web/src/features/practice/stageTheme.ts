@@ -25,6 +25,8 @@ export const stageInk = {
   lyric: "#aebbd3",
   lyricSung: "#ffe7a3",
   shadow: "#000000c0",
+  sectionTag: "#ffd27a",
+  sectionText: "#2a1d05",
   fingerOnWhite: "#294432",
 };
 

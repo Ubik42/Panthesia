@@ -51,6 +51,8 @@ export type DisplayPreferences = {
   chordLabels: "off" | "degree" | "name" | "both";
   /** The current lyric line above the keys, when the song has lyrics. */
   lyrics: boolean;
+  /** Section names (前奏 / 主歌 / 副歌 …) at their starting lines. */
+  sections: boolean;
   inspector: boolean;
   keyboardEnabled: boolean;
   keyboardOctave: number;
@@ -120,6 +122,7 @@ export const displayDefaults: DisplayPreferences = {
   loopPreview:true,
   chordLabels: "off",
   lyrics: true,
+  sections: true,
   inspector: false,
   keyboardEnabled: true,
   keyboardOctave: 4,
@@ -176,6 +179,7 @@ export function normalizeDisplayPreferences(
     loopPreview: typeof raw.loopPreview === "boolean" ? raw.loopPreview : true,
     chordLabels: raw.chordLabels === "degree" || raw.chordLabels === "name" || raw.chordLabels === "both" ? raw.chordLabels : "off",
     lyrics: typeof raw.lyrics === "boolean" ? raw.lyrics : true,
+    sections: typeof raw.sections === "boolean" ? raw.sections : true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
     practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",

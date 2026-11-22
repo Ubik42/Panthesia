@@ -39,16 +39,14 @@ pub struct LoadedSong {
     pub has_score: bool,
     pub score_revision: u64,
     pub meter_correction: Option<panthesia_core::library::MeterCorrection>,
-    /// Layers read from the file itself (MIDI lyrics, markers, key signatures). They can be
-    /// derived again at any time, so they are not stored in the manifest.
+    /// Layers read from the file itself (MIDI lyrics, key signatures). They can be derived
+    /// again at any time, so they are not stored in the manifest. Markers feed the section layer.
     pub imported_layers: ImportedLayers,
 }
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportedLayers {
     pub lyrics: Vec<TimedText>,
-    /// Sections from MIDI markers and cue points.
-    pub sections: Vec<TimedText>,
     pub keys: Vec<KeyChange>,
 }
 #[derive(Clone, Serialize)]

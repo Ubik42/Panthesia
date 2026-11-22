@@ -343,3 +343,126 @@ pub fn chords(notes: &[Note], time: &MusicalTime, keys: &[KeySegment]) -> Vec<Ch
     }
     out
 }
+
+/// A section start and its name.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Section {
+    pub tick: u64,
+    pub label: String,
+}
+
+/// Coarse sections on measure boundaries (current-plan 3.3; Eldeeb & Malandro 2025 style):
+/// per-measure pitch-class and density features, a cosine self-similarity matrix, boundaries at
+/// peaks of a checkerboard novelty curve (at least four measures apart), then segments grouped
+/// by similarity. Names stay modest: a quiet first or last segment is 前奏 / 尾奏, the others
+/// are lettered by group (段落 A, B …, the same letter for alike segments). Guessing 主歌 and
+/// 副歌 from repetition alone was wrong too often to show.
+pub fn sections(notes: &[Note], time: &MusicalTime) -> Vec<Section> {
+    const KERNEL: usize = 8;
+    const MIN_LENGTH: usize = 8;
+    let bars = &time.measures;
+    if bars.len() < MIN_LENGTH * 3 {
+        return vec![];
+    }
+    let timeline = Timeline::new(notes);
+    let features: Vec<[f64; 13]> = bars
+        .iter()
+        .map(|m| {
+            let profile = timeline.profile(m.start_tick, m.end_tick, false);
+            let span = (m.end_tick - m.start_tick).max(1) as f64;
+            let onsets = timeline.around(m.start_tick).iter().take_while(|n| n.start < m.end_tick).filter(|n| n.start >= m.start_tick).count() as f64;
+            let total: f64 = profile.iter().sum();
+            let mut f = [0.0; 13];
+            for pc in 0..12 {
+                f[pc] = if total > 0.0 { profile[pc] / total } else { 0.0 };
+            }
+            f[12] = onsets / (span / f64::from(time.ppq)) / 8.0;
+            f
+        })
+        .collect();
+    let cosine = |a: &[f64; 13], b: &[f64; 13]| {
+        let dot: f64 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+        let na: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+        let nb: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if na == 0.0 || nb == 0.0 { if na == nb { 1.0 } else { 0.0 } } else { dot / (na * nb) }
+    };
+    let n = features.len();
+    let ssm: Vec<Vec<f64>> = (0..n).map(|i| (0..n).map(|j| cosine(&features[i], &features[j])).collect()).collect();
+    // Boundary before measure i: alike within the K measures on each side, unlike across.
+    let novelty: Vec<f64> = (0..n)
+        .map(|i| {
+            if i < KERNEL || i + KERNEL > n {
+                return 0.0;
+            }
+            let mut value = 0.0;
+            for a in 0..KERNEL {
+                for b in 0..KERNEL {
+                    let (before_a, before_b, after_a, after_b) = (i - 1 - a, i - 1 - b, i + a, i + b);
+                    value += ssm[before_a][before_b] + ssm[after_a][after_b] - ssm[before_a][after_b] - ssm[after_a][before_b];
+                }
+            }
+            value / (KERNEL * KERNEL) as f64
+        })
+        .collect();
+    let mean = novelty.iter().sum::<f64>() / n as f64;
+    let deviation = (novelty.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n as f64).sqrt();
+    let mut cuts = vec![0];
+    let mut candidates: Vec<usize> = (MIN_LENGTH..n.saturating_sub(MIN_LENGTH))
+        .filter(|&i| novelty[i] > mean + 0.5 * deviation && novelty[i] >= novelty[i - 1] && novelty[i] >= novelty[i + 1])
+        .collect();
+    candidates.sort_by(|a, b| novelty[*b].total_cmp(&novelty[*a]));
+    for c in candidates {
+        if cuts.iter().all(|&cut: &usize| cut.abs_diff(c) >= MIN_LENGTH) {
+            cuts.push(c);
+        }
+    }
+    cuts.sort();
+    let segments: Vec<(usize, usize)> = cuts.iter().enumerate().map(|(i, &s)| (s, cuts.get(i + 1).copied().unwrap_or(n))).collect();
+    // Group segments whose measures are alike on average.
+    let alike = |a: (usize, usize), b: (usize, usize)| {
+        let len = (a.1 - a.0).min(b.1 - b.0);
+        (0..len).map(|k| ssm[a.0 + k][b.0 + k]).sum::<f64>() / len.max(1) as f64
+    };
+    let mut group = vec![usize::MAX; segments.len()];
+    let mut groups = 0;
+    for i in 0..segments.len() {
+        if group[i] != usize::MAX {
+            continue;
+        }
+        group[i] = groups;
+        for j in i + 1..segments.len() {
+            if group[j] == usize::MAX && alike(segments[i], segments[j]) > 0.9 {
+                group[j] = groups;
+            }
+        }
+        groups += 1;
+    }
+    let density = |s: (usize, usize)| (s.0..s.1).map(|k| features[k][12]).sum::<f64>() / (s.1 - s.0).max(1) as f64;
+    let mut densities: Vec<f64> = segments.iter().map(|&s| density(s)).collect();
+    densities.sort_by(f64::total_cmp);
+    let median = densities[densities.len() / 2];
+    let count = |g: usize| group.iter().filter(|&&x| x == g).count();
+    let mut letters = 0u8;
+    let mut names: Vec<Option<String>> = vec![None; groups];
+    segments
+        .iter()
+        .zip(&group)
+        .enumerate()
+        .map(|(i, (&s, &g))| {
+            let quiet = density(s) < median * 0.6;
+            let label = if i == 0 && quiet && count(g) == 1 {
+                "前奏".to_string()
+            } else if i + 1 == segments.len() && quiet && count(g) == 1 {
+                "尾奏".to_string()
+            } else {
+                names[g]
+                    .get_or_insert_with(|| {
+                        letters += 1;
+                        format!("段落 {}", char::from(b'A' + letters - 1))
+                    })
+                    .clone()
+            };
+            Section { tick: bars[s.0].start_tick, label }
+        })
+        .collect()
+}
