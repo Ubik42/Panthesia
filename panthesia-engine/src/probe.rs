@@ -107,8 +107,8 @@ pub fn probe(path: &Path, thumbnail: Option<Thumbnail>) -> Result<Value, String>
 fn read_music(path: &Path) -> Result<MidiFile, String> {
     let bytes = panthesia_core::utils::atomic_file::read_limited(path, LIMIT).map_err(|e| format!("{}：{e}", path.display()))?;
     if SCORE.contains(&extension(path).as_str()) {
-        let score = panthesia_core::musicxml::import_musicxml_document(&bytes).map_err(|e| format!("乐谱无法读取：{e}"))?;
-        let performance = panthesia_core::score_performance::generate(&score, 120)?;
+        let score = panthesia_notation::musicxml::import_musicxml_document(&bytes).map_err(|e| format!("乐谱无法读取：{e}"))?;
+        let performance = panthesia_notation::score_performance::generate(&score, 120)?;
         let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         return MidiFile::from_smf(&name, &performance.smf);
     }

@@ -209,7 +209,7 @@ mod tests {
     fn generated_score_preparation_restores_owned_bytes_and_checks_source_changes() {
         let (mut player, cid, _) = seeded(true, false);
         let xml =
-            include_bytes!("../../panthesia-core/src/score_performance_test.musicxml").to_vec();
+            include_bytes!("../../panthesia-notation/src/score_performance_test.musicxml").to_vec();
         player
             .command(Command::PairScore {
                 expected: None,

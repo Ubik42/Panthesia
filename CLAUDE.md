@@ -19,7 +19,8 @@
 | --- | --- |
 | `panthesia-music` | MIDI 解析、tick 时间图、稳定 NoteId、Performance |
 | `panthesia-keyboard` | 琴键范围与几何 |
-| `panthesia-core` | MusicXML / Score IR、反复展开、对齐、转调量化、制谱、指法、曲库格式（纯函数，无 IO） |
+| `panthesia-notation` | 乐谱模型：MusicXML / Score IR、反复展开、乐谱→演奏、对齐、练习谱生成、转调拼写、手别枚举 |
+| `panthesia-core` | 清单格式与读写、指法、练习判定与历史、技术练习、元数据（纯函数为主） |
 | `panthesia-engine` | 有状态运行时：歌曲仓库（SQLite，R2 删除，改为 `.panthesia` 清单）、导入、播放会话、声音（oxisynth/cpal、MIDI、VST3）、记谱准备。`panthesia-service` 是浏览器调试用的 HTTP 服务 |
 | `panthesia-vst3` | VST3 宿主 |
 | `panthesia-web/src-tauri` | 桌面程序 `panthesia-desktop`，Tauri 命令桥 |

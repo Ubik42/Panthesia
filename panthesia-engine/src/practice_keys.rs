@@ -98,14 +98,14 @@ mod tests {
         <measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths><mode>major</mode></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes><barline location="left"><repeat direction="forward"/></barline><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure>
         <measure number="2"><note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><attributes><key><fifths>-2</fifths><mode>minor</mode></key></attributes><note><pitch><step>G</step><octave>4</octave></pitch><duration>2</duration><type>half</type></note><barline location="right"><repeat direction="backward"/></barline></measure>
         <measure number="3"><attributes><key><fifths>-1</fifths><mode>major</mode></key></attributes><note><pitch><step>F</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part></score-partwise>"#;
-        let score=panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let mut performance=panthesia_core::score_performance::generate(&score,120).unwrap();
+        let score=panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let mut performance=panthesia_notation::score_performance::generate(&score,120).unwrap();
         let file=MidiFile::from_smf("keys",&performance.smf).unwrap();
         let observed:Vec<_>=file.key_signatures.iter().map(|k|(k.tick/u64::from(file.musical_time.ppq),k.fifths,k.minor)).collect();
         assert_eq!(observed,vec![(0,0,false),(6,-2,true),(8,0,false),(14,-2,true),(16,-1,false)]);
         let projected=timeline(&file,&Variant{transpose:2,..Default::default()},2,false);
         assert_eq!(projected.iter().map(|k|(k.fifths,k.minor)).collect::<Vec<_>>(),vec![(2,false),(0,true),(2,false),(0,true),(1,false)]);
-        let rendered=panthesia_core::practice_engraving::engrave_range_with_keys(&file,"keys",0,false,false,panthesia_core::practice_engraving::MeasureRange{first:1,count:1},&|_,_,_|1,&engraving(&file,&Variant::default(),0,false),&||Ok(())).unwrap();
+        let rendered=panthesia_notation::practice_engraving::engrave_range_with_keys(&file,"keys",0,false,false,panthesia_notation::practice_engraving::MeasureRange{first:1,count:1},&|_,_,_|1,&engraving(&file,&Variant::default(),0,false),&||Ok(())).unwrap();
         let text=std::str::from_utf8(&rendered.bytes).unwrap();
         assert!(text.contains("<fifths>-2</fifths>")&&text.contains("<mode>minor</mode>"));
         assert_eq!(rendered.notes.values().map(|n|n.index).collect::<std::collections::BTreeSet<_>>(),[1,2].into_iter().collect());

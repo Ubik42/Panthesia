@@ -29,7 +29,7 @@ test("整谱索引逐音对照原生查询，保留反复、连线和复杂拼�
     ["三连音与速度", score('<direction><sound tempo="137"/></direction>' + note("C", "", "", 1) + note("D", "", "", 1) + note("E", "", "", 1), "<divisions>3</divisions>")],
     ["倚音与装饰", score('<note><grace/><pitch><step>D</step><octave>4</octave></pitch><type>eighth</type></note>' + '<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><notations><ornaments><trill-mark/></ornaments></notations></note>')],
     ["移调与八度线", score('<direction><direction-type><octave-shift type="down" size="8" number="1"/></direction-type></direction>' + note("C") + note("D") + '<direction><direction-type><octave-shift type="stop" size="8" number="1"/></direction-type></direction>', '<transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose>')],
-    ["弱起、双谱表、反复和延音", await readFile(join(directory, "../../panthesia-core/src/score_performance_test.musicxml"), "utf8")],
+    ["弱起、双谱表、反复和延音", await readFile(join(directory, "../../panthesia-notation/src/score_performance_test.musicxml"), "utf8")],
     ["压缩谱面", await readFile(join(directory, "fixtures/pickup-ties.mxl"))],
   ] as const;
   let cached = 0, fallback = 0;

@@ -1,5 +1,5 @@
 //! Independent, bounded read-only score sessions. No player or persistence is involved.
-use panthesia_core::source_score_window::{ASSET_LIMIT, SourceDocument};
+use panthesia_notation::source_score_window::{ASSET_LIMIT, SourceDocument};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,

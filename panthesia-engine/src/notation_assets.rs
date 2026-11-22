@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
-const LIMIT: usize = panthesia_core::source_score_window::ASSET_LIMIT;
+const LIMIT: usize = panthesia_notation::source_score_window::ASSET_LIMIT;
 pub(crate) fn display_name(path: &Path) -> String {
     path.file_name().unwrap_or_default().to_string_lossy().into_owned()
 }

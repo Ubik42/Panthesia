@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, env, ffi::OsStr, path::PathBuf, process::ExitCode};
 
-use panthesia_core::musicxml::{ScoreEvent, import_musicxml_file};
+use panthesia_notation::musicxml::{ScoreEvent, import_musicxml_file};
 
 fn main() -> ExitCode {
     let mut verbose = false;

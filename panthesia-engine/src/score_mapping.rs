@@ -6,7 +6,7 @@ use crate::*;
 pub struct Input {
     pub content_id: String,
     #[serde(default)]
-    pub measure_range: Option<panthesia_core::practice_engraving::MeasureRange>,
+    pub measure_range: Option<panthesia_notation::practice_engraving::MeasureRange>,
     #[serde(default)]
     pub display_fingerprint: Option<String>,
     #[serde(default)]
@@ -64,7 +64,7 @@ impl Context {
         &self,
         notes: Vec<notation::RenderNote>,
         page_count: usize,
-        range: Option<panthesia_core::practice_engraving::MeasureRange>,
+        range: Option<panthesia_notation::practice_engraving::MeasureRange>,
         display_fingerprint: Option<&str>,
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<notation::MappingResult, String> {
@@ -92,7 +92,7 @@ impl Context {
             let (fifths, minor) =
                 crate::practice_notation::key_for(&key_source, &self.variant);
             let keys=crate::practice_keys::engraving(&key_source,&self.variant,fifths,minor);
-            panthesia_core::practice_engraving::engrave_range_with_keys(
+            panthesia_notation::practice_engraving::engrave_range_with_keys(
                 &self.file,
                 &self.title,
                 fifths,
@@ -104,9 +104,9 @@ impl Context {
                 check,
             )
         } else if self.quantize == 0 {
-            panthesia_core::practice_engraving::engrave_simplified(&self.file, "", 0, false, check)
+            panthesia_notation::practice_engraving::engrave_simplified(&self.file, "", 0, false, check)
         } else {
-            panthesia_core::practice_engraving::engrave(&self.file, "", 0, false, check)
+            panthesia_notation::practice_engraving::engrave(&self.file, "", 0, false, check)
         }?;
         if range.is_some()
             && display_fingerprint != Some(blake3::hash(&engraving.bytes).to_hex().as_str())
@@ -403,7 +403,7 @@ mod paged_tests {
             .unwrap();
         let view = player.score_view_payload(Some(0), None, false).unwrap();
         let file = player.file.as_ref().unwrap();
-        let range = panthesia_core::practice_engraving::MeasureRange {
+        let range = panthesia_notation::practice_engraving::MeasureRange {
             first: 0,
             count: view["window"]["count"].as_u64().unwrap() as usize,
         };
@@ -424,7 +424,7 @@ mod paged_tests {
                 }
             }
         };
-        let engraving = panthesia_core::practice_engraving::engrave_range(
+        let engraving = panthesia_notation::practice_engraving::engrave_range(
             file,
             "Own window",
             fifths,
@@ -497,7 +497,7 @@ mod paged_tests {
         .unwrap();
         let file = p.file.as_ref().unwrap();
         let engraving =
-            panthesia_core::practice_engraving::engrave_simplified(file, "", 0, false, &|| Ok(()))
+            panthesia_notation::practice_engraving::engrave_simplified(file, "", 0, false, &|| Ok(()))
                 .unwrap();
         let (id, note) = engraving.notes.iter().next().unwrap();
         let pitch = file

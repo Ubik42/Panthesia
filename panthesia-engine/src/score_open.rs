@@ -18,21 +18,21 @@ impl Player {
     /// Open `bytes` (MusicXML or MXL named `name`) as a song played at `bpm` where the score
     /// has no tempo. Returns the current song.
     pub(crate) fn open_score_bytes(&mut self, bytes: Vec<u8>, name: &str, bpm: u16) -> Result<Value, String> {
-        if bytes.is_empty() || bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+        if bytes.is_empty() || bytes.len() > panthesia_notation::source_score_window::ASSET_LIMIT {
             return Err("乐谱文件为空或超过 64 MiB".into());
         }
         let hash = blake3::hash(&bytes).to_hex().to_string();
         let dir = self.data.join("cache").join("scores").join(&hash[..32]);
         let midi = dir.join(PERFORMANCE);
         let score_path = dir.join(score_name(name));
-        let score = panthesia_core::musicxml::import_musicxml_document(&bytes)
+        let score = panthesia_notation::musicxml::import_musicxml_document(&bytes)
             .map_err(|e| format!("乐谱无法读取，请检查 MusicXML 或 MXL 文件：{e}"))?;
         let title = score
             .title
             .clone()
             .unwrap_or_else(|| Path::new(name).file_stem().unwrap_or_default().to_string_lossy().to_string());
         if !midi.is_file() || !score_path.is_file() {
-            let performance = panthesia_core::score_performance::generate(&score, bpm)?;
+            let performance = panthesia_notation::score_performance::generate(&score, bpm)?;
             let mut midi_bytes = Vec::new();
             performance.smf.write_std(&mut midi_bytes).map_err(|e| e.to_string())?;
             std::fs::create_dir_all(&dir).map_err(|e| format!("乐谱缓存目录无法创建：{e}"))?;
@@ -91,8 +91,8 @@ impl Player {
 /// Hands per staff and printed fingerings from the score, plus the score pairing.
 fn initial_sidecar(
     file: &panthesia_music::MidiFile,
-    performance: &panthesia_core::score_performance::Performance,
-    score: &panthesia_core::musicxml::Score,
+    performance: &panthesia_notation::score_performance::Performance,
+    score: &panthesia_notation::musicxml::Score,
     title: &str,
     score_path: &PathBuf,
     hash: &str,

@@ -35,7 +35,7 @@ pub(crate) fn seeded(generated: bool, legacy: bool) -> (Player, String, String) 
     } else {
         player
             .import_score(include_bytes!(
-                    "../../panthesia-core/src/score_performance_test.musicxml"
+                    "../../panthesia-notation/src/score_performance_test.musicxml"
                 )
                 .to_vec(), "历史课堂.musicxml".into(), 120)
             .unwrap();

@@ -19,15 +19,7 @@ pub enum PracticeHands {
     Unspecified,
 }
 
-#[derive(
-    Debug, Clone, Copy, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
-)]
-pub enum PracticePart {
-    LeftHand,
-    RightHand,
-    #[default]
-    Other,
-}
+pub use panthesia_notation::hand::PracticePart;
 
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

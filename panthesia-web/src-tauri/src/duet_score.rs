@@ -162,7 +162,7 @@ fn prepare(
     }
     let bytes = atomic_file::read_limited(&output.join("score.musicxml"), 4_000_000)
         .map_err(|e| e.to_string())?;
-    panthesia_core::musicxml::import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
+    panthesia_notation::musicxml::import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
     let relative = |path: &Path| {
         path.strip_prefix(data)
             .map(|p| p.to_string_lossy().replace('\\', "/"))

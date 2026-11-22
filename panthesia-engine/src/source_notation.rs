@@ -1,12 +1,6 @@
 //! Authored score windows follow the complete performed route and native alignment.
 use crate::notation::{MappingResult, MappingRow, RenderNote, ScoreAsset};
-use panthesia_core::{
-    musicxml::{Score, ScoreEvent, ScoreEventId, ScoreTime},
-    practice_engraving::MeasureRange,
-    score_alignment::{MidiNoteId, ScoreMidiAlignment},
-    score_playback::{self, PlaybackLimits},
-    source_score_window::{SourceDocument, Window},
-};
+use panthesia_notation::{musicxml::{Score, ScoreEvent, ScoreEventId, ScoreTime}, practice_engraving::MeasureRange, score_alignment::{MidiNoteId, ScoreMidiAlignment}, score_playback::{self, PlaybackLimits}, source_score_window::{SourceDocument, Window}};
 use std::collections::{HashMap, HashSet};
 
 struct Link {
@@ -34,8 +28,8 @@ pub(crate) struct SourceView {
     key_changes: Vec<(ScoreTime, i8, bool)>,
     keys_trusted: bool,
 }
-fn pitch(p: &panthesia_core::musicxml::Pitch) -> Option<u8> {
-    use panthesia_core::musicxml::Step::*;
+fn pitch(p: &panthesia_notation::musicxml::Pitch) -> Option<u8> {
+    use panthesia_notation::musicxml::Step::*;
     let value = (i16::from(p.octave) + 1) * 12
         + match p.step {
             C => 0,
@@ -116,8 +110,8 @@ impl SourceView {
         let key_changes = score_playback::performed_key_signatures(part, &plan, check)?;
         let keys_trusted = plan.complete
             && alignment.navigation_complete
-            && panthesia_core::score_alignment::summarize_alignment(alignment).readiness
-                == panthesia_core::score_alignment::AlignmentReadiness::Ready;
+            && panthesia_notation::score_alignment::summarize_alignment(alignment).readiness
+                == panthesia_notation::score_alignment::AlignmentReadiness::Ready;
         let mut beat_type = 4f64;
         let mut beats = vec![];
         for m in &part.measures {
@@ -202,7 +196,7 @@ impl SourceView {
     ) -> Result<Window, String> {
         let mut window = self.document.window(range, check)?;
         if transpose != 0 {
-            window.bytes = panthesia_core::practice_score::transpose(&window.bytes, transpose)?;
+            window.bytes = panthesia_notation::practice_score::transpose(&window.bytes, transpose)?;
         }
         check()?;
         Ok(window)
@@ -357,8 +351,8 @@ mod tests {
                 xml.push_str("</measure>");
             }
             xml.push_str("</part></score-partwise>");
-            let score = panthesia_core::musicxml::import_musicxml_document(xml.as_bytes()).unwrap();
-            let generated = panthesia_core::score_performance::generate(&score, 120).unwrap();
+            let score = panthesia_notation::musicxml::import_musicxml_document(xml.as_bytes()).unwrap();
+            let generated = panthesia_notation::score_performance::generate(&score, 120).unwrap();
             let file = panthesia_music::MidiFile::from_smf("owned-route", &generated.smf).unwrap();
             let asset = ScoreAsset::new(xml.into_bytes(), "Owned route".into(), &file).unwrap();
             let view = &asset.source_view;

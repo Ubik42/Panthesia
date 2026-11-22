@@ -7,6 +7,7 @@ edition.workspace = true
 panthesia-core.workspace = true
 panthesia-vst3.workspace = true
 panthesia-music.workspace = true
+panthesia-notation.workspace = true
 midir.workspace = true
 cpal.workspace = true
 oxisynth.workspace = true

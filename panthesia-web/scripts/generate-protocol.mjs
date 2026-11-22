@@ -10,7 +10,7 @@ const target = new URL("../src/engine/commands.generated.ts", import.meta.url);
 const domains = [
   ["../../panthesia-core/src/practice_transform.rs", ["Variant"]],
   ["../../panthesia-core/src/song_project.rs", ["NotationGeneration", "PracticeEdition"], "output"],
-  ["../../panthesia-core/src/score_document.rs", ["NotationCapabilities"], "output"],
+  ["../../panthesia-notation/src/score_document.rs", ["NotationCapabilities"], "output"],
   ["../../panthesia-engine/src/startup.rs", ["StartupStatus", "StartupWarning", "StartupWarningKind"], "output"],
   ["../../panthesia-engine/src/startup.rs", ["SongSource"], "output"],
   ["../../panthesia-engine/src/storage_status.rs", ["StorageOperation", "StorageStatus"], "output"],
@@ -52,7 +52,7 @@ const domains = [
   ["../../panthesia-core/src/fingering/review.rs", ["FingeringReviewKind", "CrossHandReviewKind"], "output"],
   ["../../panthesia-engine/src/fingering_protocol.rs", ["ScoreArticulations", "MotionReview", "CrossHandPlanReview", "FingeringPlan", "PlanResult", "HeldSubstitution", "HeldPlan", "HeldPlanResult", "MarkedNeighbor", "CoverageNote", "AcceptanceConflict", "AcceptanceMotionReview", "ExpressionReview", "TrackAcceptance", "AcceptanceReview", "SharedKey", "PairReview", "PairSaved"], "output"],
   ["../../panthesia-core/src/exercise.rs", ["ExercisePattern", "ExerciseTonality", "ExerciseMinorForm", "ExerciseDirection", "ExerciseHands", "ExerciseSpec"]],
-  ["../../panthesia-core/src/practice.rs", ["PracticePart"]],
+  ["../../panthesia-notation/src/hand.rs", ["PracticePart"]],
   ["../../panthesia-core/src/fingering.rs", ["HandSpanProfile"]],
   ["../../panthesia-core/src/metadata_layers.rs", ["MetadataLayers"]],
   ["../../panthesia-engine/src/metadata_defaults.rs", ["MetadataDefaultsView"], "output"],
@@ -78,12 +78,14 @@ const domains = [
 const domainNames = new Map();
 for (const [path, names] of domains) {
   const module = path.split("/src/")[1].replace(/\.rs$/, "").replaceAll("/", "::");
-  const prefixes = ["", `${module}::`, `crate::${module}::`, ...(path.includes("panthesia-core") ? [`panthesia_core::${module}::`] : [])];
+  const prefixes = ["", `${module}::`, `crate::${module}::`, ...(path.includes("panthesia-core") ? [`panthesia_core::${module}::`] : []), ...(path.includes("panthesia-notation") ? [`panthesia_notation::${module}::`] : [])];
   for (const name of names) for (const prefix of prefixes) domainNames.set(prefix + name, name);
 }
 function typeOf(rust, strict = false) {
   rust = rust.trim();
   if (["crate::practice_variant::Variant", "practice_variant::Variant"].includes(rust)) return "Variant";
+  // core::practice re-exports the hand enum of panthesia-notation.
+  if (["crate::practice::PracticePart", "practice::PracticePart", "panthesia_core::practice::PracticePart"].includes(rust)) return "PracticePart";
   if (["HistoryOperationPhase", "crate::history_operations::HistoryOperationPhase", "history_operations::HistoryOperationPhase"].includes(rust)) return "PreparationPhase";
   if (["HistoryOperationOrigin", "crate::history_operations::HistoryOperationOrigin", "history_operations::HistoryOperationOrigin"].includes(rust)) return "PreparationOrigin";
   if (["String", "PathBuf", "&'static str"].includes(rust)) return "string";

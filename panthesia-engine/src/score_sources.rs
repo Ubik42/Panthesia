@@ -39,7 +39,7 @@ pub struct SourceEntry {
 #[derive(Serialize)]
 pub struct SourceList {entries:Vec<SourceEntry>}
 #[derive(Serialize)]
-pub struct Pairing {coverage:u8,readiness:panthesia_core::score_alignment::AlignmentReadiness,diagnostics:Vec<String>}
+pub struct Pairing {coverage:u8,readiness:panthesia_notation::score_alignment::AlignmentReadiness,diagnostics:Vec<String>}
 #[derive(Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct SourcePreview {
@@ -78,9 +78,9 @@ pub fn read_original(path: &Path) -> Result<Vec<u8>, String> {
     if !["xml", "musicxml", "mxl"].contains(&ext.as_str()) {
         return Err("原谱关联支持 MusicXML/XML/MXL".into());
     }
-    let bytes=panthesia_core::utils::atomic_file::read_dependency(path,panthesia_core::source_score_window::ASSET_LIMIT)
+    let bytes=panthesia_core::utils::atomic_file::read_dependency(path,panthesia_notation::source_score_window::ASSET_LIMIT)
         .map_err(|e|format!("原谱无法读取：{e}"))?;
-    if bytes.is_empty() || bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+    if bytes.is_empty() || bytes.len() > panthesia_notation::source_score_window::ASSET_LIMIT {
         return Err("原谱文件为空或超过 64 MiB".into());
     }
     Ok(bytes)
@@ -240,14 +240,14 @@ pub fn original_for_edit(data: &Path, cid: &str, version_id: &str) -> Result<Pat
 pub fn preview(data: &Path, id: &str, expected: &str) -> Result<Value, String> {
     let (source, bytes) = checked(data, id, expected)?;
     let score =
-        panthesia_core::musicxml::import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
+        panthesia_notation::musicxml::import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
     let name = source
         .path
         .file_name()
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    let generated = panthesia_core::score_performance::generate(&score, source.default_bpm)
+    let generated = panthesia_notation::score_performance::generate(&score, source.default_bpm)
         .and_then(|performance| {
             let file = MidiFile::from_smf(&name, &performance.smf)?;
             let notes = file.tracks.iter().map(|t| t.notes.len()).sum::<usize>();
@@ -259,7 +259,7 @@ pub fn preview(data: &Path, id: &str, expected: &str) -> Result<Value, String> {
     let (_, old_file) = library_scores::location(data, &source.midi_path, &source.content_id)?;
     let pairing = old_file
         .as_ref()
-        .map(|f| ScoreAsset::new(bytes.clone(), name.clone(), f).map(|a|{let summary=panthesia_core::score_alignment::summarize_alignment(&a.alignment);Pairing {coverage:summary.coverage_percent,readiness:summary.readiness,diagnostics:summary.navigation_diagnostics}}))
+        .map(|f| ScoreAsset::new(bytes.clone(), name.clone(), f).map(|a|{let summary=panthesia_notation::score_alignment::summarize_alignment(&a.alignment);Pairing {coverage:summary.coverage_percent,readiness:summary.readiness,diagnostics:summary.navigation_diagnostics}}))
         .transpose()?;
     let (new_cid, notes, duration, same, warnings, error, route_preview) = match generated {
         Ok((file, notes, warnings)) => {
@@ -282,7 +282,7 @@ pub fn preview(data: &Path, id: &str, expected: &str) -> Result<Value, String> {
         .iter()
         .flat_map(|p| &p.measures)
         .flat_map(|m| &m.events)
-        .filter(|e| matches!(e,panthesia_core::musicxml::ScoreEvent::Note(n) if n.pitch.is_some()))
+        .filter(|e| matches!(e,panthesia_notation::musicxml::ScoreEvent::Note(n) if n.pitch.is_some()))
         .count();
     serde_json::to_value(SourcePreview {id:id.into(),fingerprint:expected.into(),name,title:score.title,new_content_id:new_cid,performance_ready:error.is_none(),performance_error:error,written_notes:written,same_performance:same,notes,duration,old_available:old_file.is_some(),pairing,warnings,route_preview}).map_err(|e|e.to_string())
 }
@@ -428,9 +428,9 @@ impl Player {
                 .clone();
             (cid, midi, v, Some(result))
         } else {
-            let score = panthesia_core::musicxml::import_musicxml_document(&bytes)
+            let score = panthesia_notation::musicxml::import_musicxml_document(&bytes)
                 .map_err(|e| e.to_string())?;
-            panthesia_core::score_performance::normalized(&score)?;
+            panthesia_notation::score_performance::normalized(&score)?;
             let result = self.add_library_notation(
                 source.midi_path.clone(),
                 source.content_id.clone(),

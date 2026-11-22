@@ -103,7 +103,7 @@ pub struct ScoreAssociation {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ScoreAnalysisSnapshot {
     pub score_content_id: String,
-    pub readiness: crate::score_alignment::AlignmentReadiness,
+    pub readiness: panthesia_notation::score_alignment::AlignmentReadiness,
     pub matched_notes: usize,
     pub unmatched_score_notes: usize,
     pub unmatched_midi_notes: usize,
@@ -180,7 +180,7 @@ pub enum MetadataError {
         finger: u8,
     },
     #[error("paired score is not usable MusicXML: {0}")]
-    InvalidScore(#[source] crate::musicxml::ImportError),
+    InvalidScore(#[source] panthesia_notation::musicxml::ImportError),
     #[error("invalid finger action schedule: {0}")]
     InvalidFingerActions(String),
     #[error("invalid note playback rules: {0}")]
@@ -544,9 +544,9 @@ pub fn save_score_association(
     content_id: &str,
     score_path: &Path,
 ) -> Result<PathBuf, MetadataError> {
-    let source = crate::utils::atomic_file::read_limited(score_path,crate::source_score_window::ASSET_LIMIT)
-        .map_err(|error| MetadataError::InvalidScore(crate::musicxml::ImportError::Io(error)))?;
-    crate::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
+    let source = crate::utils::atomic_file::read_limited(score_path,panthesia_notation::source_score_window::ASSET_LIMIT)
+        .map_err(|error| MetadataError::InvalidScore(panthesia_notation::musicxml::ImportError::Io(error)))?;
+    panthesia_notation::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
     let mut sidecar = existing_sidecar_or_default(midi_path, content_id)?;
     sidecar.score = Some(ScoreAssociation {
         path: portable_score_path(midi_path, score_path),
@@ -591,9 +591,9 @@ pub fn verify_score_association(
     midi_path: &Path,
     association: &ScoreAssociation,
 ) -> Result<bool, MetadataError> {
-    let source = crate::utils::atomic_file::read_dependency(&resolve_score_path(midi_path, association),crate::source_score_window::ASSET_LIMIT)
-        .map_err(|error| MetadataError::InvalidScore(crate::musicxml::ImportError::Io(error)))?;
-    crate::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
+    let source = crate::utils::atomic_file::read_dependency(&resolve_score_path(midi_path, association),panthesia_notation::source_score_window::ASSET_LIMIT)
+        .map_err(|error| MetadataError::InvalidScore(panthesia_notation::musicxml::ImportError::Io(error)))?;
+    panthesia_notation::musicxml::import_musicxml_document(&source).map_err(MetadataError::InvalidScore)?;
     Ok(blake3::hash(&source).to_hex().as_str() == association.content_id)
 }
 
@@ -1423,7 +1423,7 @@ mod tests {
             &content_id,
             ScoreAnalysisSnapshot {
                 score_content_id: association.content_id.clone(),
-                readiness: crate::score_alignment::AlignmentReadiness::Poor,
+                readiness: panthesia_notation::score_alignment::AlignmentReadiness::Poor,
                 matched_notes: 0,
                 unmatched_score_notes: 1,
                 unmatched_midi_notes: 1,

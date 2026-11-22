@@ -1,10 +1,8 @@
 //! Export saved personal note annotations into a copy of the original score.
 use crate::notation::ScoreAsset;
 use panthesia_music::MidiFile;
-use panthesia_core::{
-    musicxml::{ScoreEventId, ScoreEventKind, partwise_musicxml_source},
-    practice::PracticePart,
-};
+use panthesia_core::{practice::PracticePart};
+use panthesia_notation::{musicxml::{ScoreEventId, ScoreEventKind, partwise_musicxml_source}};
 use quick_xml::{
     Reader, Writer,
     events::{BytesEnd, BytesStart, BytesText, Event},
@@ -443,9 +441,9 @@ pub(crate) fn prepare(
         return Err("展开后的原谱超过 16 MB，暂不支持改写导出".into());
     }
     let bytes = rewrite_checked(&source, &edits, file.tempo_track.ppq(), check)?;
-    let original = panthesia_core::musicxml::import_musicxml_document(&source).map_err(|e|e.to_string())?;
-    let reopened = panthesia_core::musicxml::import_musicxml_document(&bytes).map_err(|e|format!("导出谱无法重开，原谱保留：{e}"))?;
-    if panthesia_core::score_document::musical_semantics(original) != panthesia_core::score_document::musical_semantics(reopened) {
+    let original = panthesia_notation::musicxml::import_musicxml_document(&source).map_err(|e|e.to_string())?;
+    let reopened = panthesia_notation::musicxml::import_musicxml_document(&bytes).map_err(|e|format!("导出谱无法重开，原谱保留：{e}"))?;
+    if panthesia_notation::score_document::musical_semantics(original) != panthesia_notation::score_document::musical_semantics(reopened) {
         return Err("个人标记导出改变了原有音乐信息，保存已停止；原谱和个人修改保留".into());
     }
     check()?;
@@ -831,7 +829,7 @@ fn rewrite_checked(
     }
     let bytes = writer.into_inner();
     check()?;
-    panthesia_core::musicxml::import_musicxml(&bytes)
+    panthesia_notation::musicxml::import_musicxml(&bytes)
         .map_err(|e| format!("导出谱校验失败：{e}"))?;
     Ok(bytes)
 }
@@ -849,14 +847,14 @@ mod tests {
                 if !path.extension().is_some_and(|e|e=="musicxml" || e=="mxl") { continue; }
                 let original = std::fs::read(&path).unwrap();
                 let source = partwise_musicxml_source(&original).unwrap();
-                let before = panthesia_core::musicxml::import_musicxml_document(&original).unwrap();
+                let before = panthesia_notation::musicxml::import_musicxml_document(&original).unwrap();
                 let id = before.parts.iter().flat_map(|p|&p.measures).flat_map(|m|&m.events).find_map(|event|match event {
-                    panthesia_core::musicxml::ScoreEvent::Note(note) if note.pitch.is_some() && !note.grace => Some(note.id.clone()),
+                    panthesia_notation::musicxml::ScoreEvent::Note(note) if note.pitch.is_some() && !note.grace => Some(note.id.clone()),
                     _ => None,
                 }).expect("fixture must contain a principal pitched note");
                 let output = rewrite(&source, &BTreeMap::from([(id, Mark { finger: Some(2), hand: None, changes: None })]),480).unwrap();
-                let after = panthesia_core::musicxml::import_musicxml_document(&output).unwrap();
-                assert_eq!(panthesia_core::score_document::musical_semantics(before),panthesia_core::score_document::musical_semantics(after),"{}",path.display());
+                let after = panthesia_notation::musicxml::import_musicxml_document(&output).unwrap();
+                assert_eq!(panthesia_notation::score_document::musical_semantics(before),panthesia_notation::score_document::musical_semantics(after),"{}",path.display());
                 let reopened = rewrite(&output,&BTreeMap::new(),480).unwrap();
                 assert!(String::from_utf8(reopened).unwrap().contains(">2</fingering>"),"{}",path.display());
                 assert_eq!(std::fs::read(&path).unwrap(),original);
@@ -894,7 +892,7 @@ mod tests {
             },
         )]);
         let output = rewrite(&source, &edits, 480).unwrap();
-        let score = panthesia_core::musicxml::import_musicxml(&output).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml(&output).unwrap();
         assert_eq!(score.parts.len(), 2);
         let text = String::from_utf8(output).unwrap();
         assert!(text.contains("<score-partwise"));
@@ -907,8 +905,8 @@ mod tests {
     #[test]
     fn trill_auxiliary_finger_does_not_conflict_with_written_note_export() {
         let xml = br#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>4</divisions></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><notations><ornaments><trill-mark beats="3"/></ornaments></notations></note></measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let generated = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let generated = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("trill-export", &generated.smf).unwrap();
         let asset = ScoreAsset::new(xml.to_vec(), "trill.musicxml".into(), &file).unwrap();
         let track = file
@@ -1031,8 +1029,8 @@ mod tests {
         assert!(text.contains("1.750"));
         assert!(text.contains("2.500"));
         assert!(text.contains(">keep<"));
-        let score = panthesia_core::musicxml::import_musicxml(&twice).unwrap();
-        let panthesia_core::musicxml::ScoreEvent::Note(note) =
+        let score = panthesia_notation::musicxml::import_musicxml(&twice).unwrap();
+        let panthesia_notation::musicxml::ScoreEvent::Note(note) =
             &score.parts[0].measures[0].events[0]
         else {
             panic!("note")

@@ -1,12 +1,8 @@
 use panthesia_music::MidiFile;
-use panthesia_core::{
-    musicxml::{Score, import_musicxml_document},
-    score_alignment::{ScoreMidiAlignment, summarize_alignment},
-    score_view::{
+use panthesia_notation::{musicxml::{Score, import_musicxml_document}, score_alignment::{ScoreMidiAlignment, summarize_alignment}, score_view::{
         RendererScoreNoteEvidence, ScoreNoteSemanticKey, correlate_score_notes_checked,
         native_score_note_evidence,
-    },
-};
+    }};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
@@ -26,7 +22,7 @@ pub struct ScoreAsset {
     pub source_fingerprint: String,
     pub uses_source_identity:bool,
     pub(crate) source_view:std::sync::Arc<crate::source_notation::SourceView>,
-    source_render_ids:HashMap<String,panthesia_core::musicxml::ScoreEventId>,
+    source_render_ids:HashMap<String,panthesia_notation::musicxml::ScoreEventId>,
 }
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,7 +57,7 @@ impl ScoreAsset {
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
         check()?;
-        if bytes.len() > panthesia_core::source_score_window::ASSET_LIMIT {
+        if bytes.len() > panthesia_notation::source_score_window::ASSET_LIMIT {
             return Err("原谱资产超过 64 MiB".into());
         }
         let score = import_musicxml_document(&bytes).map_err(|e| e.to_string())?;
@@ -78,11 +74,11 @@ impl ScoreAsset {
         check: &impl Fn() -> Result<(), String>,
     ) -> Result<Self, String> {
         check()?;
-        let score = panthesia_core::score_performance::normalized_checked(&score, check)?;
+        let score = panthesia_notation::score_performance::normalized_checked(&score, check)?;
         check()?;
         let direct=crate::duet_alignment::align(&bytes,&score,file,check)?;
         let uses_source_identity=direct.is_some();
-        let (alignment,source_render_ids)=match direct {Some(value)=>(value.alignment,value.render_ids),None=>(panthesia_core::score_alignment::align_score_to_midi_checked(&score,file,check)?,HashMap::new())};
+        let (alignment,source_render_ids)=match direct {Some(value)=>(value.alignment,value.render_ids),None=>(panthesia_notation::score_alignment::align_score_to_midi_checked(&score,file,check)?,HashMap::new())};
         let source_view=std::sync::Arc::new(crate::source_notation::SourceView::new(&bytes,&score,&alignment,check)?);
         Ok(Self {
             source_view,
@@ -99,11 +95,7 @@ impl ScoreAsset {
     /// Only exact, individually trusted occurrence matches may influence a MIDI fingering.
     /// Unmapped notes break a slur chain, so repeats and overlapping voices cannot invent links.
     pub fn fingering_marks(&self, file: &MidiFile) -> HashMap<(usize, usize), FingeringMark> {
-        use panthesia_core::{
-            musicxml::{ScoreEvent, SpanType},
-            score_alignment::{AlignmentReadiness, summarize_alignment},
-            score_playback::{PlaybackLimits, build_playback_plan, expand_event_occurrences},
-        };
+        use panthesia_notation::{musicxml::{ScoreEvent, SpanType}, score_alignment::{AlignmentReadiness, summarize_alignment}, score_playback::{PlaybackLimits, build_playback_plan, expand_event_occurrences}};
         if self.content_id != file.content_id
             || summarize_alignment(&self.alignment).readiness != AlignmentReadiness::Ready
         {
@@ -195,24 +187,24 @@ impl ScoreAsset {
         let a = summarize_alignment(&self.alignment);
         let trill_count = self.score.parts.iter().flat_map(|part| &part.measures)
             .flat_map(|measure| &measure.events)
-            .filter(|event| matches!(event, panthesia_core::musicxml::ScoreEvent::Note(note) if note.trill.is_some()))
+            .filter(|event| matches!(event, panthesia_notation::musicxml::ScoreEvent::Note(note) if note.trill.is_some()))
             .count();
         let mordent_count = self.score.parts.iter().flat_map(|part| &part.measures)
             .flat_map(|measure| &measure.events)
-            .filter(|event| matches!(event, panthesia_core::musicxml::ScoreEvent::Note(note) if note.mordent.is_some()))
+            .filter(|event| matches!(event, panthesia_notation::musicxml::ScoreEvent::Note(note) if note.mordent.is_some()))
             .count();
         let turn_count = self.score.parts.iter().flat_map(|part| &part.measures)
             .flat_map(|measure| &measure.events)
-            .filter(|event| matches!(event, panthesia_core::musicxml::ScoreEvent::Note(note) if note.turn.as_ref().is_some_and(|mark| !mark.inverted)))
+            .filter(|event| matches!(event, panthesia_notation::musicxml::ScoreEvent::Note(note) if note.turn.as_ref().is_some_and(|mark| !mark.inverted)))
             .count();
         let inverted_turn_count = self.score.parts.iter().flat_map(|part| &part.measures)
             .flat_map(|measure| &measure.events)
-            .filter(|event| matches!(event, panthesia_core::musicxml::ScoreEvent::Note(note) if note.turn.as_ref().is_some_and(|mark| mark.inverted)))
+            .filter(|event| matches!(event, panthesia_notation::musicxml::ScoreEvent::Note(note) if note.turn.as_ref().is_some_and(|mark| mark.inverted)))
             .count();
         let route = file.and_then(|file| self.score.parts.first().map(|part| {
-            use panthesia_core::score_playback::{build_playback_plan, PlaybackLimits};
+            use panthesia_notation::score_playback::{build_playback_plan, PlaybackLimits};
             let plan = build_playback_plan(part, PlaybackLimits::default());
-            let seconds = |t: panthesia_core::musicxml::ScoreTime| file.tempo_track.pulses_to_duration(
+            let seconds = |t: panthesia_notation::musicxml::ScoreTime| file.tempo_track.pulses_to_duration(
                 (t.numerator.max(0) as u128 * u128::from(file.musical_time.ppq) / u128::from(t.denominator)) as u64).as_secs_f64();
             let mut beat_types = vec![];
             let mut beat_type = 4f64;
@@ -227,15 +219,15 @@ impl ScoreAsset {
             let visits: Vec<_> = plan.visits.iter().map(|v| {
                 let index = v.source_measure_ordinal as usize;
                 let m = &part.measures[index];
-                let beat = |t: panthesia_core::musicxml::ScoreTime| t.numerator as f64 / f64::from(t.denominator) * beat_types[index] / 4. + 1.;
+                let beat = |t: panthesia_notation::musicxml::ScoreTime| t.numerator as f64 / f64::from(t.denominator) * beat_types[index] / 4. + 1.;
                 serde_json::json!({"ordinal":v.occurrence_ordinal,"measure":index,"number":m.number,
                     "pass":v.repeat_pass,"start":seconds(v.performed_start),
                     "end":seconds(v.performed_end()),
                     "startBeat":beat(v.source_start),"endBeat":beat(v.source_end),
-                    "partialStart":v.source_start > panthesia_core::musicxml::ScoreTime::default(),
+                    "partialStart":v.source_start > panthesia_notation::musicxml::ScoreTime::default(),
                     "partialEnd":v.source_end < m.duration})
             }).collect();
-            serde_json::json!({"complete":plan.complete && a.readiness == panthesia_core::score_alignment::AlignmentReadiness::Ready,"visits":visits})
+            serde_json::json!({"complete":plan.complete && a.readiness == panthesia_notation::score_alignment::AlignmentReadiness::Ready,"visits":visits})
         }));
         serde_json::json!({"alignmentSource":if self.uses_source_identity{"duetIdentity"}else{"matching"},"route":route,"name":self.name,"sourceFingerprint":self.source_fingerprint,"compressed":self.bytes.starts_with(b"PK"),"title":self.score.title,"coverage":a.coverage_percent,"confidence":a.mean_confidence_percent,"readiness":a.readiness,"diagnostics":a.navigation_diagnostics,"warnings":self.score.warnings.iter().map(score_warning_label).collect::<Vec<_>>(),"trillCount":trill_count,"mordentCount":mordent_count,"turnCount":turn_count,"invertedTurnCount":inverted_turn_count})
     }
@@ -272,7 +264,7 @@ impl ScoreAsset {
         if self.uses_source_identity && notes.iter().any(|note|self.source_render_ids.contains_key(&note.renderer_id)) {
             let mut by_source:HashMap<_,Vec<_>>=HashMap::new();
             for matched in &self.alignment.matches {by_source.entry(&matched.score_id.source_id).or_default().push(matched);}
-            let semantic:HashMap<_,_>=self.score.parts.iter().flat_map(|part|part.measures.iter().flat_map(|measure|measure.events.iter().filter_map(|event|match event {panthesia_core::musicxml::ScoreEvent::Note(note)=>Some((&note.id,note)),_=>None}))).collect();
+            let semantic:HashMap<_,_>=self.score.parts.iter().flat_map(|part|part.measures.iter().flat_map(|measure|measure.events.iter().filter_map(|event|match event {panthesia_notation::musicxml::ScoreEvent::Note(note)=>Some((&note.id,note)),_=>None}))).collect();
             let performed:HashMap<_,_>=file.tracks.iter().flat_map(|track|track.notes.iter().enumerate().map(move |(index,note)|((track.track_id,index),note))).collect();
             let mut mapping=Vec::new();let mut seen=HashSet::new();let mut ambiguities=0;
             for rendered in notes {
@@ -281,7 +273,7 @@ impl ScoreAsset {
                 if !seen.insert(rendered.renderer_id.clone()){ambiguities+=1;continue;}
                 let Some(written)=semantic.get(id) else {continue;};
                 let Some(pitch)=written.pitch.as_ref() else {continue;};
-                let natural=match pitch.step {panthesia_core::musicxml::Step::C=>0,panthesia_core::musicxml::Step::D=>2,panthesia_core::musicxml::Step::E=>4,panthesia_core::musicxml::Step::F=>5,panthesia_core::musicxml::Step::G=>7,panthesia_core::musicxml::Step::A=>9,panthesia_core::musicxml::Step::B=>11};
+                let natural=match pitch.step {panthesia_notation::musicxml::Step::C=>0,panthesia_notation::musicxml::Step::D=>2,panthesia_notation::musicxml::Step::E=>4,panthesia_notation::musicxml::Step::F=>5,panthesia_notation::musicxml::Step::G=>7,panthesia_notation::musicxml::Step::A=>9,panthesia_notation::musicxml::Step::B=>11};
                 let expected=(i16::from(pitch.octave)+1)*12+natural+i16::from(pitch.alter);
                 if i16::from(rendered.pitch)!=expected||rendered.page_index>=page_count {continue;}
                 if let Some(matches)=by_source.get(id) {for matched in matches {
@@ -350,7 +342,7 @@ impl ScoreAsset {
             .flat_map(|p| &p.measures)
             .flat_map(|m| &m.events)
             .filter_map(|event| match event {
-                panthesia_core::musicxml::ScoreEvent::Note(note) => {
+                panthesia_notation::musicxml::ScoreEvent::Note(note) => {
                     Some((note.id.clone(), note.fingering.as_deref()))
                 }
                 _ => None,
@@ -392,7 +384,7 @@ impl ScoreAsset {
     }
 }
 
-fn score_warning_label(warning: &panthesia_core::musicxml::ImportWarning) -> String {
+fn score_warning_label(warning: &panthesia_notation::musicxml::ImportWarning) -> String {
     let location = if let Some((part, measure)) = warning.location.split_once(" measure ") {
         format!("{part} 第 {measure} 小节")
     } else if warning.location == "score" {
@@ -429,8 +421,8 @@ mod fingering_expression_tests {
     #[test]
     fn trill_uses_only_its_written_pitch_attack_for_score_fingering_links() {
         let xml = br#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type></time></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><notations><slur type="start" number="1"/><ornaments><trill-mark beats="3" start-note="upper" trill-step="whole"/></ornaments></notations></note><note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><notations><slur type="stop" number="1"/></notations></note></measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let generated = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let generated = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("trill", &generated.smf).unwrap();
         let asset = ScoreAsset::new(xml.to_vec(), "trill.xml".into(), &file).unwrap();
         let notes: Vec<_> = file.tracks.iter().flat_map(|track| track.notes.iter().enumerate()
@@ -458,8 +450,8 @@ mod fingering_expression_tests {
           <notations><articulations><staccato/></articulations></notations></note>
           <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><voice>1</voice></note>
           </measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let generated = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let generated = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("expression", &generated.smf).unwrap();
         let mut asset = ScoreAsset::new(xml.to_vec(), "expression.xml".into(), &file).unwrap();
         let marks = asset.fingering_marks(&file);
@@ -518,8 +510,8 @@ mod fingering_expression_tests {
           <notations><slur type="stop" number="1"/></notations></note>
           <barline location="right"><repeat direction="backward" times="2"/></barline>
           </measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let performance = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let performance = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("repeat", &performance.smf).unwrap();
         let asset = ScoreAsset::new(xml.to_vec(), "repeat.xml".into(), &file).unwrap();
         let marks = asset.fingering_marks(&file);
@@ -544,8 +536,8 @@ mod fingering_expression_tests {
           <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><voice>1</voice>
           <notations><slur type="stop" number="1"/></notations></note>
           </measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let performance = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let performance = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("rest", &performance.smf).unwrap();
         let asset = ScoreAsset::new(xml.to_vec(), "rest.xml".into(), &file).unwrap();
         let marks = asset.fingering_marks(&file);
@@ -566,8 +558,8 @@ mod fingering_expression_tests {
           <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><voice>2</voice>
           <notations><slur type="stop" number="1"/></notations></note>
           </measure></part></score-partwise>"#;
-        let score = panthesia_core::musicxml::import_musicxml_document(xml).unwrap();
-        let performance = panthesia_core::score_performance::generate(&score, 120).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml).unwrap();
+        let performance = panthesia_notation::score_performance::generate(&score, 120).unwrap();
         let file = MidiFile::from_smf("voices", &performance.smf).unwrap();
         let asset = ScoreAsset::new(xml.to_vec(), "voices.xml".into(), &file).unwrap();
         let marks = asset.fingering_marks(&file);

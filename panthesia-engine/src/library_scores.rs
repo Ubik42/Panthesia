@@ -88,7 +88,7 @@ impl Player {
     pub(super) fn add_library_notation(&mut self,path:PathBuf,cid:String,name:String,bytes:Vec<u8>,repair:Option<String>)->Result<Value,String>{
        let (path,_)=location(&self.data,&path,&cid)?;
        let name=name.trim();if name.is_empty()||name.chars().count()>120{return Err("谱面名称需为 1 至 120 字".into());}
-       if bytes.len()>panthesia_core::source_score_window::ASSET_LIMIT{return Err("演奏乐谱超过 64 MiB".into());}
+       if bytes.len()>panthesia_notation::source_score_window::ASSET_LIMIT{return Err("演奏乐谱超过 64 MiB".into());}
        let hash=blake3::hash(&bytes).to_hex().to_string();let (mut rows,active)=versions(&self.preferences,&path,&cid)?;
        let mut old_path=None;
        let (name,existing)=if let Some(id)=repair {let v=rows.iter().find(|v|v.id==id).ok_or("待修复版本不存在")?;if v.content_id!=hash{return Err("文件内容与原版本不符；请选择原文件修复，或添加为新版本".into());}old_path=Some(v.path.clone());(v.name.clone(),Some(v.id.clone()))}else{(name.to_owned(),rows.iter().find(|v|v.name==name&&v.content_id==hash).map(|v|v.id.clone()))};

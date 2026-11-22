@@ -44,7 +44,7 @@ pub async fn retain_notation_file(
     let data = state.data.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
-        panthesia_core::musicxml::import_musicxml_document(&request.bytes).map_err(|error| format!("谱面内容无法读取：{error}"))?;
+        panthesia_notation::musicxml::import_musicxml_document(&request.bytes).map_err(|error| format!("谱面内容无法读取：{error}"))?;
         let record = notation_drafts::DraftRecord {
             id: id.clone(), content_id: request.content_id, name: request.name.clone(), kind: "importedNotation".into(),
             source: std::path::PathBuf::from(&request.name), source_warning: None, book_id: None, pages: vec![],

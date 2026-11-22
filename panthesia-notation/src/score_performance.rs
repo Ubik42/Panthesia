@@ -1,7 +1,7 @@
 //! Convert written notation to an owned, meter-aware practice performance.
 use crate::{
     musicxml::*,
-    practice::PracticePart,
+    hand::PracticePart,
     score_ornament::{TrillStrike, expand_mordent, expand_trill, expand_turn},
     score_playback::{PlaybackLimits, build_playback_plan, grace_note_timing},
 };

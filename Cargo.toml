@@ -4,6 +4,7 @@ members = [
   "panthesia-engine",
   "panthesia-keyboard",
   "panthesia-music",
+  "panthesia-notation",
   "panthesia-vst3",
   "panthesia-web/src-tauri",
 ]
@@ -19,6 +20,7 @@ panthesia-core = { path = "./panthesia-core" }
 panthesia-engine = { path = "./panthesia-engine" }
 panthesia-keyboard = { path = "./panthesia-keyboard" }
 panthesia-music = { path = "./panthesia-music" }
+panthesia-notation = { path = "./panthesia-notation" }
 panthesia-vst3 = { path = "./panthesia-vst3" }
 
 anyhow = "1"

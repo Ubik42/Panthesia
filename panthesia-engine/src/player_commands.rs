@@ -351,8 +351,8 @@ impl Player {
                 self.score_range_context(&content_id,score_revision)?;
                 let asset=self.notation.as_deref().ok_or("当前曲目没有原谱")?;
                 if asset.source_fingerprint!=source_fingerprint{return Err("原谱内容已改变，请重新生成纸谱".into());}
-                let summary=panthesia_core::score_alignment::summarize_alignment(&asset.alignment);
-                if summary.readiness!=panthesia_core::score_alignment::AlignmentReadiness::Ready||!asset.alignment.navigation_complete{return Err("原谱与 MIDI 尚未可靠对应，不能自动定位音符".into());}
+                let summary=panthesia_notation::score_alignment::summarize_alignment(&asset.alignment);
+                if summary.readiness!=panthesia_notation::score_alignment::AlignmentReadiness::Ready||!asset.alignment.navigation_complete{return Err("原谱与 MIDI 尚未可靠对应，不能自动定位音符".into());}
                 let file=self.file.as_ref().ok_or("请先打开曲目")?;
                 let grid=self.grid_signature();
                 let trusted=self.located_score_map.as_ref().filter(|m|m.content_id==content_id&&m.score_revision==score_revision&&m.source_fingerprint==source_fingerprint&&m.token==mapping_token&&m.grid==grid).ok_or("原谱逐音映射已改变，请重新打开原谱")?;
@@ -436,7 +436,7 @@ impl Player {
                 if !panthesia_core::library::verify_score_association(&midi,&assoc).map_err(|e|e.to_string())?{
                     return Err("谱面文件已经改变，请重新导入并检查顺序".into());
                 }
-                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read_dependency(&version.path,panthesia_core::source_score_window::ASSET_LIMIT).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
+                let asset=notation::ScoreAsset::new(panthesia_core::utils::atomic_file::read_dependency(&version.path,panthesia_notation::source_score_window::ASSET_LIMIT).map_err(|e|e.to_string())?,version.name.clone(),self.source_file.as_deref().unwrap_or(file))?;
                 if asset.source_fingerprint != version.content_id { return Err("谱面文件在读取期间已改变，请重新预览".into()); }
                 let mut result=asset.route_payload(Some(file));
                 result["review"]=serde_json::to_value(self.score_review(&asset)).map_err(|error|error.to_string())?;

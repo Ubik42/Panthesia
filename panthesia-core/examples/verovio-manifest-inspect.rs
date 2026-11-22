@@ -1,6 +1,6 @@
 use std::{env, fs, process::ExitCode};
 
-use panthesia_core::score_view::VerovioManifest;
+use panthesia_notation::score_view::VerovioManifest;
 
 fn main() -> ExitCode {
     let arguments: Vec<_> = env::args().skip(1).collect();

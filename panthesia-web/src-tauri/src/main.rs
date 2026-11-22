@@ -848,7 +848,7 @@ mod musescore_tests {
     #[test]
     fn installed_musescore_converts_real_musicxml_to_pdf(){
         let Some(program)=installed_musescore() else{return};
-        let input=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../panthesia-core/src/score_performance_test.musicxml");
+        let input=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../panthesia-notation/src/score_performance_test.musicxml");
         let output=std::env::temp_dir().join(format!("neothesia-musescore-test-{}.pdf",std::process::id()));
         let bytes=convert_musescore_pdf(&program,&input,&output).unwrap();
         assert!(bytes.starts_with(b"%PDF-"));

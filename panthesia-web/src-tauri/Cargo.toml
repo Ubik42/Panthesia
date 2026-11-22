@@ -9,6 +9,7 @@ serde_json.workspace = true
 
 [dependencies]
 panthesia-music.workspace = true
+panthesia-notation.workspace = true
 tauri = { version = "2", features = [] }
 panthesia-engine.workspace = true
 panthesia-core.workspace = true

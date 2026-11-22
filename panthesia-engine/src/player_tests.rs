@@ -589,7 +589,7 @@
     fn direct_musicxml_import_persists_performance_score_hands_and_original_fingers() {
         let mut p = player();
         let imported = p
-            .import_score(include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
+            .import_score(include_bytes!("../../panthesia-notation/src/score_performance_test.musicxml")
                     .to_vec(), "lesson.musicxml".into(), 100)
             .unwrap();
         assert_eq!(imported["title"], "弱起与连音练习");
@@ -623,7 +623,7 @@
     #[test]
     fn beat_navigation_uses_pickup_and_real_tempo_and_rejects_invalid_beats() {
         let mut p = player();
-        p.import_score(include_bytes!("../../panthesia-core/src/score_performance_test.musicxml")
+        p.import_score(include_bytes!("../../panthesia-notation/src/score_performance_test.musicxml")
                 .to_vec(), "乐谱.musicxml".into(), 120)
         .unwrap();
         assert!(

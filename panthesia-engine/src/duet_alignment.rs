@@ -1,10 +1,6 @@
 //! Verified generator provenance takes priority over temporal similarity.
 use panthesia_music::MidiFile;
-use panthesia_core::{
-    musicxml::{Score, ScoreEvent},
-    score_alignment::{self, AlignedNote, MidiNoteId, ScoreMidiAlignment},
-    score_playback::{self, PlaybackLimits},
-};
+use panthesia_notation::{musicxml::{Score, ScoreEvent}, score_alignment::{self, AlignedNote, MidiNoteId, ScoreMidiAlignment}, score_playback::{self, PlaybackLimits}};
 use quick_xml::{Reader, events::Event};
 use std::collections::{HashMap, HashSet};
 
@@ -34,7 +30,7 @@ fn link(value: &str) -> Option<Link> {
 }
 pub(crate) struct SourceAlignment {
     pub alignment: ScoreMidiAlignment,
-    pub render_ids: HashMap<String, panthesia_core::musicxml::ScoreEventId>,
+    pub render_ids: HashMap<String, panthesia_notation::musicxml::ScoreEventId>,
 }
 pub(crate) fn align(
     bytes: &[u8],
@@ -42,7 +38,7 @@ pub(crate) fn align(
     file: &MidiFile,
     check: &impl Fn() -> Result<(), String>,
 ) -> Result<Option<SourceAlignment>, String> {
-    let xml = panthesia_core::musicxml::musicxml_source(bytes).map_err(|e| e.to_string())?;
+    let xml = panthesia_notation::musicxml::musicxml_source(bytes).map_err(|e| e.to_string())?;
     let mut reader = Reader::from_reader(xml.as_slice());
     let mut sources = Vec::new();
     loop {
@@ -113,13 +109,13 @@ pub(crate) fn align(
         };
         let pitch = note.pitch.as_ref().unwrap();
         let natural = match pitch.step {
-            panthesia_core::musicxml::Step::C => 0,
-            panthesia_core::musicxml::Step::D => 2,
-            panthesia_core::musicxml::Step::E => 4,
-            panthesia_core::musicxml::Step::F => 5,
-            panthesia_core::musicxml::Step::G => 7,
-            panthesia_core::musicxml::Step::A => 9,
-            panthesia_core::musicxml::Step::B => 11,
+            panthesia_notation::musicxml::Step::C => 0,
+            panthesia_notation::musicxml::Step::D => 2,
+            panthesia_notation::musicxml::Step::E => 4,
+            panthesia_notation::musicxml::Step::F => 5,
+            panthesia_notation::musicxml::Step::G => 7,
+            panthesia_notation::musicxml::Step::A => 9,
+            panthesia_notation::musicxml::Step::B => 11,
         };
         let written = (i16::from(pitch.octave) + 1) * 12 + natural + i16::from(pitch.alter);
         if source.content != file.content_id
@@ -221,7 +217,7 @@ mod tests {
             note.start.as_micros(),
             note.end.as_micros()
         );
-        let score = panthesia_core::musicxml::import_musicxml_document(xml.as_bytes()).unwrap();
+        let score = panthesia_notation::musicxml::import_musicxml_document(xml.as_bytes()).unwrap();
         let mapped = super::align(xml.as_bytes(), &score, &file, &|| Ok(()))
             .unwrap()
             .unwrap();

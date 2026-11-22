@@ -40,7 +40,7 @@ impl Player {
                 / 32
                 * 32
         };
-        let range = panthesia_core::practice_engraving::MeasureRange {
+        let range = panthesia_notation::practice_engraving::MeasureRange {
             first: requested,
             count: (total - requested).min(32),
         };
@@ -63,7 +63,7 @@ impl Player {
         };
         let key_source=crate::practice_keys::source(self.source_file.as_ref().unwrap_or(file),self.notation.as_deref());
         let keys=crate::practice_keys::engraving(&key_source,&variant,fifths,minor);
-        let engraving = panthesia_core::practice_engraving::engrave_range_with_keys(
+        let engraving = panthesia_notation::practice_engraving::engrave_range_with_keys(
             file,
             &self.title,
             fifths,
@@ -116,7 +116,7 @@ impl Player {
                 .unwrap_or(0);
             let simplified = variant.quantize == 0;
             let engraving = if simplified {
-                panthesia_core::practice_engraving::engrave_simplified(
+                panthesia_notation::practice_engraving::engrave_simplified(
                     file,
                     &self.title,
                     fifths,
@@ -124,7 +124,7 @@ impl Player {
                     &|| Ok(()),
                 )
             } else {
-                panthesia_core::practice_engraving::engrave(
+                panthesia_notation::practice_engraving::engrave(
                     file,
                     &self.title,
                     fifths,
@@ -139,7 +139,7 @@ impl Player {
             payload["displayEditionId"] = serde_json::json!(format!(
                 "{}:{}:{}",
                 edition.id,
-                panthesia_core::practice_engraving::GENERATOR,
+                panthesia_notation::practice_engraving::GENERATOR,
                 if simplified {
                     "simplified-16"
                 } else {
@@ -183,7 +183,7 @@ impl Player {
             }).collect();
             payload["route"] = serde_json::json!({"complete":true,"visits":visits});
         } else if variant.transpose != 0 {
-            payload["bytes"] = serde_json::json!(panthesia_core::practice_score::transpose(
+            payload["bytes"] = serde_json::json!(panthesia_notation::practice_score::transpose(
                 &self.notation.as_ref().ok_or("尚未配对乐谱")?.bytes,
                 variant.transpose
             )?);
