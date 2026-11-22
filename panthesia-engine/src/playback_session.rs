@@ -11,6 +11,9 @@ pub(crate) struct PlaybackSession {
     pub(crate) guidance: Guidance,
     pub(crate) note_cursor: usize,
     pub(crate) event_cursor: usize,
+    /// Human-part onsets that came due in this step while not waiting (flow mode), for the
+    /// timing matcher that feeds latency calibration.
+    pub(crate) due_onsets: Vec<u8>,
 }
 #[derive(Clone, Copy)]
 pub(crate) struct Frame {
@@ -54,6 +57,19 @@ impl PlaybackSession {
             return None;
         }
         let mut position = (frame.position + delta.as_secs_f64() * frame.speed).min(frame.end);
+        self.due_onsets.clear();
+        if !frame.waiting {
+            while let Some(note) = notes.get(self.note_cursor) {
+                let (at, pitch, human) = describe(note);
+                if at > position + 0.000001 || (frame.looping && at >= frame.end) {
+                    break;
+                }
+                if human {
+                    self.due_onsets.push(pitch);
+                }
+                self.note_cursor += 1;
+            }
+        }
         if frame.waiting {
             while self.note_cursor < notes.len() && !describe(&notes[self.note_cursor]).2 {
                 self.note_cursor += 1;

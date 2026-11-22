@@ -94,6 +94,14 @@ impl Player {
             return;
         };
         self.state.position = position;
+        // Flow mode: pair due human-part onsets with key presses for latency calibration.
+        if crate::is_timed_mode(&self.state.mode) {
+            let now = self.playback.clock;
+            for pitch in self.playback.due_onsets.drain(..) {
+                self.matcher.score_note(now, pitch, true);
+            }
+            self.matcher.tick(now);
+        }
         if self.state.metronome {
             if let Some(file) = &self.file {
                 let at = musical_position(file, position, self.state.duration, self.state.speed);

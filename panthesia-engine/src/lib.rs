@@ -189,9 +189,10 @@ pub fn is_control_command(command: &Command) -> bool {
         | Command::SkipStartupSong | Command::RetryStartup | Command::DismissStartupWarning { .. })
 }
 
-/// The human part plays against the clock (continuous accompaniment), not note by note.
+/// Playback runs on the clock (continuous), not note by note: the player's presses can be
+/// compared with the score onsets, e.g. for latency calibration.
 pub fn is_timed_mode(mode: &str) -> bool {
-    mode == "flow"
+    matches!(mode, "listen" | "flow")
 }
 /// Mainline exposes two modes; any older stored or internal mode reads as listen.
 pub(crate) fn public_mode(value: &str) -> &'static str {

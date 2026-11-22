@@ -930,6 +930,9 @@ impl Player {
             if active && self.state.status == "playing" && self.state.wait {
                 self.playback.guidance.press(note, self.playback.clock);
             }
+            if active && self.state.status == "playing" && is_timed_mode(&self.state.mode) {
+                self.matcher.user_note(self.playback.clock, note, true);
+            }
         }
         if kind == 176 && note == 64 { self.state.pedal = velocity; }
         let mut routed=bytes.to_vec();
