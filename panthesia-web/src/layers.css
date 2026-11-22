@@ -1,8 +1,8 @@
 /* Cascade layer order. Every other stylesheet is wrapped in a layer at build time
-   (vite.config.ts): tokens.css in `tokens`, the rest in `components`. A stylesheet may add a
-   top-level `@layer overrides` block for rules it cannot outrank by specificity; `state`
-   wins over both regardless of specificity. */
-@layer tokens, components, overrides, state;
+   (vite.config.ts): tokens.css in `tokens`, `src/screens` and `src/ui` in `screens`, the rest in
+   `components`. A stylesheet may add a top-level `@layer overrides` block for rules it cannot
+   outrank by specificity; `state` wins over all of them regardless of specificity. */
+@layer tokens, components, screens, overrides, state;
 
 @layer state {
   [hidden] {

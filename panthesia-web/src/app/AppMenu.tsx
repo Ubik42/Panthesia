@@ -40,7 +40,6 @@ export function AppMenu() {
     run,
     action,
     workspaceUnavailable,
-    setSongFilesOpen,
     chooseFile,
     scorePairing,
     exportMidi,
@@ -99,14 +98,6 @@ export function AppMenu() {
                   >
                     当前曲目信息…
                   </button>
-                  {song && (
-                    <button
-                      disabled={busy}
-                      onClick={() => setSongFilesOpen(true)}
-                    >
-                      歌曲文件与版本…
-                    </button>
-                  )}
                   <MediaExportButton
                     source={song}
                     kind="practiceMidi"

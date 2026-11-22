@@ -12,7 +12,7 @@ import {
   type Snapshot,
 } from "../../api";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
-import type { RecentFile } from "./HomeScreen";
+import type { RecentFile } from "../../screens/home/HomeScreen";
 
 /** Opening a song from its own location (current-plan 3.7): the file picker, recent files,
  * and files handed over by Explorer, Keel, the command line, a second launch or a drop. */

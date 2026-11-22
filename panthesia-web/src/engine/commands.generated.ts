@@ -1558,6 +1558,12 @@ export type EngineCommand =
   | { type: "setMetadata"; "value": SongMetadata }
   | { type: "openFile"; "path": string }
   | { type: "songFiles" }
+  | { type: "songSummary"; "path"?: string | null }
+  | { type: "songSummaries"; "paths": Array<string> }
+  | { type: "generateMaterial"; "kind": string; "path"?: string | null }
+  | { type: "transcriptionTool" }
+  | { type: "setTranscriptionTool"; "path"?: string | null }
+  | { type: "reloadStems" }
   | { type: "recentFiles" }
   | { type: "forgetRecentFile"; "path": string }
   | { type: "editSongFile"; "action": string; "path"?: string | null; "id"?: string | null; "role"?: string | null; "stem"?: string | null; "label"?: string | null }

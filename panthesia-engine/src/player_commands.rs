@@ -923,6 +923,11 @@ impl Player {
             Command::OpenFile { .. } => return Err("打开文件应由引擎调用线程处理".into()),
             Command::RecentFiles | Command::ForgetRecentFile { .. } => return Err("最近打开列表应由引擎调用线程处理".into()),
             Command::SongFiles => return self.song_files(),
+            Command::ReloadStems => {
+                self.load_stems();
+                return Ok(serde_json::json!(self.stems_state()));
+            }
+            Command::SongSummary { .. } | Command::SongSummaries { .. } | Command::GenerateMaterial { .. } | Command::TranscriptionTool | Command::SetTranscriptionTool { .. } => return Err("歌曲资料应由引擎调用线程处理".into()),
             Command::EditSongFile { action, path, id, role, stem, label } => {
                 let edit = song_files::SongFileEdit::parse(&action, path, id, role, stem, label)?;
                 return self.edit_song_file(edit);

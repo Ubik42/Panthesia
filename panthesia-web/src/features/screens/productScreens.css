@@ -19,123 +19,9 @@
   font-weight: 400;
   margin: 0;
 }
-.synthesia-layout .product-page button:focus-visible,
-.synthesia-layout .product-home button:focus-visible {
+.synthesia-layout .product-page button:focus-visible {
   outline: 3px solid var(--amber-83);
   outline-offset: -4px;
-}
-.product-home {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  background: var(--gray-85);
-  color: var(--gray-33);
-  color-scheme: light;
-  overflow: auto;
-}
-.product-home-brand {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: var(--synth-blue);
-  padding: 28px 4%;
-  min-height: 145px;
-  color: var(--gray-100);
-}
-.product-home-brand img {
-  width: 78px;
-  height: 78px;
-}
-.product-home-brand h1 {
-  font:
-    clamp(58px, 7.5vw, 100px)/1.1 Georgia,
-    "Times New Roman",
-    serif;
-  margin: 0;
-  letter-spacing: -2px;
-  color: var(--gray-100);
-}
-.product-home-body {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 5%;
-  padding: 25px 2% 35px;
-  flex: 1;
-  min-height: 0;
-}
-.product-home-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  justify-content: flex-start;
-  padding-top: 40px;
-}
-.synthesia-layout .product-home-actions button {
-  background: var(--green-62);
-  border: 1px solid var(--green-66);
-  border-radius: 7px;
-  box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 33%, transparent);
-  color: var(--gray-100);
-  min-height: 104px;
-  font-size: 36px;
-  font-weight: 400;
-  padding: 16px;
-}
-.synthesia-layout .product-home-actions button:hover:not(:disabled) {
-  background: var(--green-62);
-}
-.synthesia-layout .product-home-actions .product-home-settings {
-  margin-top: 30px;
-  background: var(--synth-blue);
-  border-color: var(--blue-75);
-}
-.product-home-recent {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.product-home-recent h2 {
-  font-size: 28px;
-  font-weight: 400;
-  margin: 0 20px 14px;
-}
-.product-recent-list {
-  border: 1px solid var(--gray-75);
-  border-radius: 14px;
-  background: var(--gray-96);
-  overflow: auto;
-  min-height: 180px;
-}
-.synthesia-layout .product-recent-list button {
-  display: block;
-  width: 100%;
-  padding: 21px;
-  text-align: left;
-  border: 0;
-  border-bottom: 1px solid var(--gray-75);
-  border-radius: 0;
-  background: var(--gray-96);
-  color: var(--gray-31);
-  font-size: 25px;
-  font-weight: 400;
-  line-height: 1.35;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-height: 76px;
-}
-.synthesia-layout .product-recent-list button:hover:not(:disabled) {
-  background: var(--gray-92);
-}
-.product-recent-list button:last-child {
-  border-bottom: 0;
-}
-.product-recent-list p {
-  padding: 24px;
-  font-size: 19px;
-  color: var(--blue-50);
 }
 .product-settings-body {
   display: grid;
@@ -507,30 +393,6 @@
   color: var(--orange-41);
 }
 @media (max-width: 900px) {
-  .product-home-brand {
-    min-height: 120px;
-    padding: 22px 4%;
-  }
-  .product-home-brand img {
-    width: 60px;
-    height: 60px;
-  }
-  .product-home-actions {
-    gap: 18px;
-    padding-top: 36px;
-  }
-  .synthesia-layout .product-home-actions button {
-    font-size: 29px;
-    min-height: 90px;
-  }
-  .synthesia-layout .product-recent-list button {
-    font-size: 21px;
-    padding: 18px;
-    min-height: 70px;
-  }
-  .product-home-recent h2 {
-    font-size: 24px;
-  }
   .product-track-grid {
     padding: 25px;
     gap: 20px;
@@ -553,27 +415,6 @@
   }
 }
 @media (max-height: 700px) {
-  .product-home-brand {
-    min-height: 110px;
-    padding: 15px 4%;
-  }
-  .product-home-brand h1 {
-    font-size: 64px;
-  }
-  .product-home-brand img {
-    width: 60px;
-    height: 60px;
-  }
-  .product-home-actions {
-    padding-top: 22px;
-    gap: 18px;
-  }
-  .synthesia-layout .product-home-actions button {
-    min-height: 85px;
-  }
-  .synthesia-layout .product-home-actions .product-home-settings {
-    margin-top: 15px;
-  }
   .product-track-grid {
     padding-top: 25px;
   }
@@ -711,45 +552,6 @@
   color: var(--blue-41);
   background: var(--gray-100);
   border: 1px solid var(--gray-75);
-}
-
-.product-setup-start {
-  display: flex;
-  justify-content: flex-end;
-  min-height: 70px;
-  background: var(--synth-blue);
-  padding: 8px 25px;
-}
-.synthesia-layout .product-setup-start button {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  color: var(--gray-100);
-  font-size: 26px;
-  min-height: 50px;
-  padding: 8px 15px;
-}
-.synthesia-layout .synthesia-setup-body button[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 3px var(--blue-63);
-  border-color: var(--blue-63);
-  background: linear-gradient(var(--gray-92), var(--gray-89));
-}
-.synthesia-layout
-  .synthesia-song-setup
-  > .synthesia-library-header
-  > .toolbar-more {
-  margin-left: auto;
-}
-.synthesia-song-setup > .synthesia-library-header > .toolbar-more > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--gray-100);
-  padding: 10px;
-  cursor: pointer;
 }
 
 .product-settings-host {
@@ -1134,8 +936,6 @@
 .synthesia-layout .product-settings-leaf .interface-save-status {
   color: var(--blue-46);
 }
-
-.song-file-status { font-size: 12px; color: var(--red-55); margin-left: auto; }
 
 /* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
 @layer overrides {

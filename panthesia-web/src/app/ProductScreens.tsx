@@ -1,10 +1,9 @@
 import { useApp } from "./AppContext";
 import { topInputScope, topPopup } from "./inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
-import { SongSetupScreen } from "../features/practice/SongSetupScreen";
-import { SongFilesDialog } from "../features/screens/SongFilesDialog";
+import { SongScreen } from "../screens/song/SongScreen";
 import { HandSplitScreen } from "../features/screens/HandSplitScreen";
-import { HomeScreen } from "../features/screens/HomeScreen";
+import { HomeScreen } from "../screens/home/HomeScreen";
 import { ScreenHeader } from "../features/screens/ScreenHeader";
 import { SettingsScreen } from "../features/screens/SettingsScreen";
 import { TrackSetupScreen } from "../features/screens/TrackSetupScreen";
@@ -47,8 +46,7 @@ export function ProductScreens() {
     pianoRange,
     run,
     workspaceUnavailable,
-    songFilesOpen,
-    setSongFilesOpen,
+    setFingeringDialog,
     recentFiles,
     forgetRecent,
     openPath,
@@ -104,19 +102,24 @@ export function ProductScreens() {
       )}
 
       {workspace === "practice" && songSetup && song && (
-        <SongSetupScreen
+        <SongScreen
           song={song}
           store={playback}
+          engineId={progressEngineId}
           disabled={busy || openingActive || !connected}
           back={() => {
             void goHome();
           }}
           menu={() => setAppMenuOpen((v) => !v)}
-          hands={() => productScreens.show("parts")}
-          sound={() => openSoundSettings()}
+          parts={() => productScreens.show("parts")}
+          options={() => setSongOptions(true)}
           scores={() => setScoresDialog(true)}
-          settings={() => setSongOptions(true)}
-          files={() => setSongFilesOpen(true)}
+          sound={() => openSoundSettings()}
+          editLayer={(name) => {
+            if (name === "hands") productScreens.show("parts");
+            else if (name === "fingering") setFingeringDialog(true);
+          }}
+          openVersion={(path) => run({ type: "openFile", path }, true)}
           start={async (mode, hands) => {
             if (
               (await run({ type: "hands", value: hands })) &&
@@ -128,13 +131,6 @@ export function ProductScreens() {
             }
             return false;
           }}
-        />
-      )}
-      {songFilesOpen && song && (
-        <SongFilesDialog
-          contentId={song.contentId}
-          close={() => setSongFilesOpen(false)}
-          openVersion={(path) => run({ type: "openFile", path }, true)}
         />
       )}
       {workspace === "practice" &&

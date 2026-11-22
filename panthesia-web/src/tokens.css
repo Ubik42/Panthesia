@@ -82,3 +82,40 @@
   --violet-61: oklch(60.7% 0.109 298);
   --violet-77: oklch(77.0% 0.105 297);
 }
+
+/* Semantic tokens (interface-design.md section 2). New components use only these. */
+:root {
+  --surface-base: oklch(16.5% 0.014 262);
+  --surface-panel: oklch(19.8% 0.016 262);
+  --surface-raised: oklch(23.4% 0.018 262);
+  --surface-hover: oklch(27.5% 0.02 262);
+  --surface-sunken: oklch(14% 0.012 262);
+  --text-primary: oklch(94.5% 0.006 262);
+  --text-secondary: oklch(75% 0.018 262);
+  --text-muted: oklch(58% 0.02 262);
+  --line-subtle: oklch(100% 0 0 / 0.07);
+  --line-strong: oklch(100% 0 0 / 0.14);
+  --accent: oklch(70% 0.135 274);
+  --accent-strong: oklch(76% 0.13 274);
+  --accent-soft: oklch(70% 0.135 274 / 0.16);
+  --on-accent: oklch(17% 0.03 274);
+  --state-ok: oklch(78% 0.12 162);
+  --state-warn: oklch(82% 0.13 82);
+  --state-missing: oklch(70% 0.15 25);
+  --state-generated: oklch(78% 0.1 305);
+  --hand-left: oklch(74% 0.11 242);
+  --hand-right: oklch(84% 0.14 130);
+  --shadow-raised: 0 1px 0 oklch(100% 0 0 / 0.04) inset, 0 12px 32px oklch(0% 0 0 / 0.32);
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-numeric: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

@@ -313,7 +313,7 @@ pub struct Pitch {
     pub octave: i8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Step {
     C,
     D,

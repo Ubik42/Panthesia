@@ -1,0 +1,210 @@
+/* Shared controls for the redesigned screens (interface-design.md section 2). Semantic tokens only. */
+.ui-screen {
+  color-scheme: dark;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  background:
+    radial-gradient(120% 80% at 85% -10%, var(--accent-soft), transparent 60%),
+    var(--surface-base);
+}
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.ui-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.ui-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-button:focus-visible,
+.ui-icon-button:focus-visible,
+.ui-segmented button:focus-visible,
+.ui-link-row:focus-visible,
+.ui-chip:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.ui-button svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.ui-button--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.ui-button--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+.ui-button--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.ui-button--ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+.ui-button--large {
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-m);
+  font-size: 16px;
+}
+.ui-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.ui-icon-button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.ui-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ui-icon-button svg {
+  width: 15px;
+  height: 15px;
+}
+.ui-section-title {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font: 600 12px/1.2 var(--font-ui);
+  letter-spacing: 0.08em;
+}
+.ui-card {
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-panel);
+}
+.ui-segmented {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
+}
+.ui-segmented button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.ui-segmented button:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+.ui-segmented button[aria-pressed="true"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px oklch(0% 0 0 / 0.35);
+}
+.ui-segmented button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  font: 500 12px/1 var(--font-ui);
+}
+button.ui-chip {
+  cursor: pointer;
+}
+button.ui-chip:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  color: var(--text-primary);
+}
+.ui-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.ui-dot[data-tone="ok"] {
+  background: var(--state-ok);
+}
+.ui-dot[data-tone="warn"] {
+  background: var(--state-warn);
+}
+.ui-dot[data-tone="missing"] {
+  background: var(--state-missing);
+}
+.ui-dot[data-tone="generated"] {
+  background: var(--state-generated);
+}
+.ui-dot[data-tone="none"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--text-muted);
+}
+.ui-link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 13px/1 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ui-link-row:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.ui-link-row > span {
+  flex: 1;
+}
+.ui-link-row svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-button,
+  .ui-segmented button {
+    transition: none;
+  }
+}

@@ -32,6 +32,7 @@ impl Engine {
         let data_lock = Arc::new(data_lock);
         let tasks = background_tasks::TaskPool::new(2, 8)?;
         let storage_tasks = tasks.storage_lane(32)?;
+        let tool_tasks = tasks.serial_lane("tools", 4)?;
         let devices = device_catalog::Catalog::start()?;
         let player_devices = devices.clone();
         let sound = sound_runtime::Host::start(silent,data.clone())?;
@@ -113,6 +114,8 @@ impl Engine {
             control_tx,
             tasks,
             storage_tasks,
+            tool_tasks,
+            opened: Arc::new(std::sync::Mutex::new(None)),
             state,
             data: engine_data,
             _data_lock: data_lock,

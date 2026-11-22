@@ -194,6 +194,11 @@ impl Engine {
             }
             Command::OpenFile { path } => return self.open_file(path),
             Command::RecentFiles => return Ok(self.recent_files()),
+            Command::SongSummary { path } => return self.song_summary(path),
+            Command::SongSummaries { paths } => return self.song_summaries(paths),
+            Command::GenerateMaterial { kind, path } => return self.generate_material(kind, path),
+            Command::TranscriptionTool => return Ok(crate::song_generate::tool_status(&self.data)),
+            Command::SetTranscriptionTool { path } => return crate::song_generate::set_tool(&self.data, path),
             Command::ForgetRecentFile { path } => return self.forget_recent(&path),
             Command::Tasks => {
                 return serde_json::to_value(self.tasks.list()?).map_err(|error| error.to_string());

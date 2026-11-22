@@ -60,6 +60,8 @@ mod song_audition;
 mod data_locks;
 mod music_file;
 pub mod probe;
+pub mod song_summary;
+mod song_generate;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;
@@ -176,6 +178,10 @@ pub struct Engine {
     control_tx: mpsc::Sender<runtime_request::Request>,
     tasks: background_tasks::TaskPool,
     storage_tasks: background_tasks::TaskPool,
+    /// One lane for external tools (transcription, separation): long runs never block other work.
+    tool_tasks: background_tasks::TaskPool,
+    /// The song file the user opened, keyed by the content it loaded (`song_generate`).
+    opened: Arc<std::sync::Mutex<Option<(String, PathBuf)>>>,
     state: Arc<state_projection::StateFeed>,
     data: PathBuf,
     _data_lock: Arc<data_root_lock::DataRootLock>,

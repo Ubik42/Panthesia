@@ -23,7 +23,6 @@ export function useAppDialogs() {
   const [passageDialog, setPassageDialog] = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [songFilesOpen, setSongFilesOpen] = useState(false);
   const [mediaExport, setMediaExport] = useState<(MediaExportSource & { kind?: MediaExportKind }) | null>(null);
 
   // The application menu closes on Escape and on any click outside it or on one of its buttons.
@@ -66,7 +65,6 @@ export function useAppDialogs() {
     passageDialog, setPassageDialog,
     progressOpen, setProgressOpen,
     recoveryOpen, setRecoveryOpen,
-    songFilesOpen, setSongFilesOpen,
     mediaExport, setMediaExport,
   };
 }

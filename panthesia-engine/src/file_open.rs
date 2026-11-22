@@ -98,6 +98,7 @@ impl Engine {
         }
         let shown = result["title"].as_str().map(str::to_owned).unwrap_or_else(|| title(located.as_ref().map(|l| &l.manifest), &target));
         self.remember_recent(&path, &shown);
+        self.remember_opened(target.clone());
         result["opened"] = json!({
             "path": path,
             "performancePath": target,

@@ -53,7 +53,7 @@ export function useAppModel() {
     metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
     settings, setSettings, settingsTab, setSettingsTab, settingsDevice, setSettingsReturnToScores, settingsReturnToScores,
     openSoundSettings, exerciseDialog, setExerciseDialog, passageDialog, setPassageDialog,
-    progressOpen, setProgressOpen, recoveryOpen, setRecoveryOpen, songFilesOpen, setSongFilesOpen, mediaExport, setMediaExport,
+    progressOpen, setProgressOpen, recoveryOpen, setRecoveryOpen, mediaExport, setMediaExport,
   } = dialogs;
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
@@ -531,8 +531,6 @@ export function useAppModel() {
     changeWorkspace,
     workspaceUnavailable,
     resumeEditingSong,
-    songFilesOpen,
-    setSongFilesOpen,
     recentFiles,
     forgetRecent,
     openPath,

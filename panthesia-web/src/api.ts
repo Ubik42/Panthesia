@@ -123,8 +123,10 @@ async function savePaperFile(format: "png" | "pdf", name: string, bytes: Uint8Ar
 export const api = {
   /** Files handed over by the command line, a second launch or a native drop. Empty outside the desktop. */
   takeOpenRequests: async (): Promise<string[]> => isTauri() ? invoke<string[]>("take_open_requests") : [],
-  pickSongFile: async (kind: "music" | "performance" | "audio" | "paper", near?: string): Promise<string | null> =>
+  pickSongFile: async (kind: "music" | "performance" | "audio" | "paper" | "score" | "tool", near?: string): Promise<string | null> =>
     isTauri() ? invoke<string | null>("pick_song_file", { kind, near: near ?? null }) : null,
+  /** Show a file in the system file manager (desktop only). */
+  revealFile: async (path: string): Promise<void> => { if (isTauri()) await invoke<void>("reveal_library_file", { path }); },
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,
   prepareMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, input: import("./engine/commands.generated").MediaExportInput): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("prepare_media_export", {request, input}),
   listMediaExports: (engineId: string): Promise<import("./engine/commands.generated").MediaExportListing> => invoke("list_media_exports", {engineId}),

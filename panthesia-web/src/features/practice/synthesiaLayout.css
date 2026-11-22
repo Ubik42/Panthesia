@@ -336,98 +336,6 @@
   background: color-mix(in oklab, var(--gray-100) 21%, transparent);
 }
 /* Song setup follows the official two-column listen / hands layout. */
-.synthesia-song-setup {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  background: var(--gray-96);
-  color: var(--gray-33);
-}
-.synthesia-song-setup .synthesia-library-header h1 {
-  flex: 1;
-  margin: 0;
-  font-size: 20px;
-  font-weight: 400;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-}
-.synthesia-setup-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
-  align-content: center;
-  gap: 9%;
-  padding: 35px max(6%, 20px);
-  max-width: 1400px;
-  width: 100%;
-  margin: auto;
-}
-.synthesia-listen-options {
-  display: grid;
-  gap: 18px;
-  align-content: center;
-}
-.synthesia-layout .synthesia-setup-body button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  min-height: 150px;
-  border: 1px solid var(--gray-75);
-  border-radius: 7px;
-  background: linear-gradient(var(--gray-89), var(--gray-82));
-  box-shadow: inset 0 1px var(--gray-100);
-  color: var(--blue-39);
-}
-.synthesia-layout .synthesia-setup-body button:hover:not(:disabled) {
-  background: linear-gradient(var(--gray-92), var(--gray-85));
-  border-color: var(--blue-63);
-}
-.synthesia-layout .synthesia-setup-body button strong {
-  font-size: 23px;
-  font-weight: 400;
-}
-.synthesia-layout .synthesia-setup-body button span {
-  font-size: 14px;
-  color: var(--blue-60);
-}
-.synthesia-layout .synthesia-setup-body .synthesia-listen-card {
-  min-height: 180px;
-  border: 2px dotted var(--blue-67);
-}
-.synthesia-wait-options h2 {
-  font-size: 29px;
-  font-weight: 400;
-  text-align: center;
-  margin: 0 0 5px;
-}
-.synthesia-wait-options > p {
-  color: var(--blue-67);
-  font-size: 19px;
-  text-align: center;
-  margin: 0 0 20px;
-}
-.synthesia-hand-choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.synthesia-layout .synthesia-setup-body .synthesia-hand-card.both {
-  grid-column: 1/-1;
-  min-height: 130px;
-}
-.synthesia-hand-card.left svg {
-  transform: scaleX(-1);
-}
-.synthesia-setup-error {
-  padding: 10px;
-  text-align: center;
-}
 @media (max-width: 1000px) {
   .synthesia-layout .synthesia-transport .synthesia-back {
     margin-right: 8px;
@@ -437,10 +345,6 @@
   }
   .synthesia-layout .synthesia-transport .toolbar-more > summary {
     width: 38px;
-  }
-  .synthesia-setup-body {
-    gap: 5%;
-    padding: 25px 5%;
   }
 }
 @media (max-width: 760px) {
@@ -464,20 +368,6 @@
   }
   .synthesia-play-tools > .synthesia-metronome {
     display: none;
-  }
-  .synthesia-setup-body {
-    gap: 25px;
-    grid-template-columns: 1fr 1fr;
-    padding: 20px;
-  }
-  .synthesia-layout .synthesia-setup-body button strong {
-    font-size: 18px;
-  }
-  .synthesia-wait-options h2 {
-    font-size: 23px;
-  }
-  .synthesia-wait-options > p {
-    font-size: 14px;
   }
 }
 .synthesia-layout .practice-stage .practice-stage-readouts {
