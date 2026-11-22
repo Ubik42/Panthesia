@@ -20,6 +20,11 @@ export const stageInk = {
   measureLabel: "#aab8cc",
   required: "#efd484",
   fingerOnBlack: "#f2d694",
+  chord: "#c9d7ff",
+  currentChord: "#f4f7ff",
+  lyric: "#aebbd3",
+  lyricSung: "#ffe7a3",
+  shadow: "#000000c0",
   fingerOnWhite: "#294432",
 };
 

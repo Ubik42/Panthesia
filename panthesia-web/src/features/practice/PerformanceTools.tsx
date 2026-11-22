@@ -181,6 +181,35 @@ export function PerformanceTools({
           </button>
         </div>
         <label><input type="checkbox" aria-label="虚拟双手演示" checked={display.virtualHands} onChange={event=>{setDisplay(previous=>({...previous,virtualHands:event.target.checked}));if(event.target.checked&&view!=="keyboard"&&view!=="combined")setView("keyboard");}}/>虚拟双手演示</label>
+        {!!song?.harmony?.chords.length && (
+          <label>
+            和弦
+            <select
+              aria-label="和弦显示"
+              value={display.chordLabels}
+              onChange={(event) =>
+                setDisplay((previous) => ({ ...previous, chordLabels: event.target.value as typeof previous.chordLabels }))
+              }
+            >
+              <option value="off">不显示</option>
+              <option value="degree">级数</option>
+              <option value="name">和弦名</option>
+              <option value="both">级数与和弦名</option>
+            </select>
+            <small>{song.harmony.origin === "generated" ? "自动分析" : song.harmony.origin === "imported" ? "来自标注" : "已编辑"}</small>
+          </label>
+        )}
+        {!!song?.importedLayers.lyrics.length && (
+          <label>
+            <input
+              type="checkbox"
+              aria-label="显示歌词"
+              checked={display.lyrics}
+              onChange={(event) => setDisplay((previous) => ({ ...previous, lyrics: event.target.checked }))}
+            />
+            歌词
+          </label>
+        )}
         <PracticeLegend song={song} display={display} />
         <button aria-label="界面与按键设置" onClick={() => open.display()}>
           界面与按键

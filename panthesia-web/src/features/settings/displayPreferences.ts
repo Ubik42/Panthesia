@@ -47,6 +47,10 @@ export type DisplayPreferences = {
   keyboardDeviceRanges: Record<string, KeyboardRange>;
   previewBars: number;
   loopPreview:boolean;
+  /** Chord layer on the stage: off, degrees, chord names or both. */
+  chordLabels: "off" | "degree" | "name" | "both";
+  /** The current lyric line above the keys, when the song has lyrics. */
+  lyrics: boolean;
   inspector: boolean;
   keyboardEnabled: boolean;
   keyboardOctave: number;
@@ -114,6 +118,8 @@ export const displayDefaults: DisplayPreferences = {
   keyboardViewport: null, keyboardLow: 36, keyboardHigh: 84, keyboardDeviceRanges: {},
   previewBars: 4,
   loopPreview:true,
+  chordLabels: "off",
+  lyrics: true,
   inspector: false,
   keyboardEnabled: true,
   keyboardOctave: 4,
@@ -168,6 +174,8 @@ export function normalizeDisplayPreferences(
     effectsPalette: raw.effectsPalette === "ember" || raw.effectsPalette === "violet" ? raw.effectsPalette : "aurora",
     effectsIntensity: size(raw.effectsIntensity, 0, 100, 70),
     loopPreview: typeof raw.loopPreview === "boolean" ? raw.loopPreview : true,
+    chordLabels: raw.chordLabels === "degree" || raw.chordLabels === "name" || raw.chordLabels === "both" ? raw.chordLabels : "off",
+    lyrics: typeof raw.lyrics === "boolean" ? raw.lyrics : true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
     practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",

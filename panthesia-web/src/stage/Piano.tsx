@@ -17,6 +17,7 @@ import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
+import { lyricLines, paintChords, paintLyrics } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
 import {
@@ -143,6 +144,7 @@ export function Piano({
     }
     return pitches;
   }, [song?.notes]);
+  const lyrics = useMemo(() => lyricLines(song?.importedLayers.lyrics ?? []), [song?.importedLayers.lyrics]);
   const canvas = useRef<HTMLCanvasElement>(null);
   const waterfallCanvas = useRef<HTMLCanvasElement>(null);
   const effectsCanvas = useRef<HTMLCanvasElement>(null);
@@ -159,6 +161,7 @@ export function Piano({
     labelSources,
     selectable: !!onSelect,
     practiceRange,
+    lyrics,
   });
   const requestPaint = useRef<() => void>(() => {});
   const hitSource = useRef<LoadedSong | null>(null);
@@ -211,6 +214,7 @@ export function Piano({
         labelSources,
         selectable: !!onSelect,
         practiceRange,
+        lyrics,
       };
       clock.current.update(
         live,
@@ -233,6 +237,7 @@ export function Piano({
     labelSources,
     onSelect,
     practiceRange,
+    lyrics,
   ]);
   useEffect(() => {
     const element = canvas.current!;
@@ -303,6 +308,7 @@ export function Piano({
         labelSources,
         selectable,
         practiceRange,
+        lyrics,
       } = latest.current;
       hitSource.current = song;
       const visualNotes = new Map<number, string>();
@@ -454,6 +460,8 @@ export function Piano({
           );
         }
       }
+      paintChords(ctx, song?.harmony?.chords ?? [], display.chordLabels, tick, Math.min(span, loopEnd - tick), pixels, baseline, width);
+      if (display.lyrics) paintLyrics(ctx, lyrics, tick, baseline);
       const colorFor = (note: LoadedSong["notes"][number]) =>
         display.palette === "accessible"
           ? handColor(note.part, display)

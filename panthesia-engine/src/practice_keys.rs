@@ -77,6 +77,18 @@ pub(super) fn engraving(
 /// do not regenerate or rewrite the user's MIDI to recover its labels.
 pub(super) fn source(file: &MidiFile, asset: Option<&crate::notation::ScoreAsset>) -> MidiFile {
     let mut source = file.clone();
+    let score = asset.filter(|asset| asset.content_id == file.content_id);
+    // Sequencers write one C major signature at tick 0 by default. When the notes clearly use
+    // another signature, it says nothing about the key: drop it and let the estimate decide.
+    // A score's signature is authored and stays.
+    if score.is_none()
+        && matches!(source.key_signatures.as_ref(), [only] if only.tick == 0 && only.fifths == 0 && !only.minor)
+        && panthesia_analysis::main_key(&panthesia_analysis::notes(&source.source), &source.musical_time)
+            .is_some_and(|key| key.fifths() != 0)
+    {
+        source.key_signatures = Vec::new().into();
+        source.key_signature = None;
+    }
     if source.key_signatures.is_empty() {
         if let Some(asset) = asset.filter(|asset| asset.content_id == file.content_id) {
             let keys = asset.source_view.key_signatures(file);

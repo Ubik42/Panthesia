@@ -89,8 +89,8 @@ impl Quality {
             _ => None,
         })
     }
-    /// The suffix after a chord name or a degree. Degrees write a dominant seventh as a
-    /// superscript (`5⁷`), names as a plain `7` (`G7`).
+    /// The suffix after a chord name or a degree. After a degree a leading digit is written as
+    /// a superscript (`5⁷`, `4⁶`, `1⁷sus4`) so it cannot read as another degree.
     fn suffix(self, degree: bool) -> &'static str {
         match self {
             Quality::Major => "",
@@ -107,6 +107,7 @@ impl Quality {
             Quality::Sus4 => "sus4",
             Quality::Sus4Flat7 if degree => "⁷sus4",
             Quality::Sus4Flat7 => "7sus4",
+            Quality::Major6 if degree => "⁶",
             Quality::Major6 => "6",
             Quality::Minor6 => "m6",
             Quality::MinorMajor7 => "m(maj7)",
