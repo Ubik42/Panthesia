@@ -5,6 +5,7 @@ import { rangeTime } from "./PracticeRangeControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 import type { PracticeRangeController } from "./usePracticeRange";
+import { measureCaption } from "../../stage/songLayers";
 const fields = [
   "practiceMs",
   "beat",
@@ -98,7 +99,7 @@ export function PracticeTimeline({
     <div className="practice-timeline time-ruler">
       <div className="time-ruler-labels">
         <span>
-          第 {state.measure} 小节{" "}
+          {song ? measureCaption(song, state.measure) : `第 ${state.measure} 小节`}{" "}
           <small>第 {Math.floor(state.beat ?? 1)} 拍</small>
         </span>
         <strong>

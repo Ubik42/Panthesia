@@ -152,12 +152,14 @@ fn lanes(score: &Score) -> Vec<Lane> {
             }
         }
         seen.sort_by(|a, b| a.0.cmp(&b.0));
-        for (staff, voice) in seen {
-            let name = match (staves, staff) {
+        for (i, (staff, voice)) in seen.iter().cloned().enumerate() {
+            let base = match (staves, staff) {
                 (2, 1) => "右手".to_string(),
                 (2, 2) => "左手".to_string(),
                 _ => part.name.clone(),
             };
+            let order = seen[..i].iter().filter(|(s, _)| *s == staff).count();
+            let name = if order == 0 { base } else { format!("{base} {}", order + 1) };
             lanes.push(Lane { part: p, staff, voice, clef: clef_of(staff), name });
         }
     }
@@ -199,6 +201,21 @@ fn measure_body(measure: &crate::musicxml::Measure, lane: &Lane, fifths: i8, cho
     let mut accidentals: HashMap<(Step, i8), i8> = HashMap::new();
     let mut chords: Vec<&Harmony> = chords.map(|c| c.iter().collect()).unwrap_or_default();
     let mut out = String::new();
+    // Rests next to each other are written as one.
+    let mut rest_run: Option<(ScoreTime, bool)> = None;
+    let flush = |out: &mut String, run: &mut Option<(ScoreTime, bool)>| {
+        if let Some((duration, hidden)) = run.take() {
+            out.push_str(&rest(duration, hidden));
+            out.push(' ');
+        }
+    };
+    let add_rest = |out: &mut String, run: &mut Option<(ScoreTime, bool)>, duration: ScoreTime, hidden: bool| match run {
+        Some((total, same)) if *same == hidden => *total = total.add(duration),
+        _ => {
+            flush(out, run);
+            *run = Some((duration, hidden));
+        }
+    };
     let mut cursor = measure.start;
     let end = measure.start.add(measure.duration);
     let mut graces = String::new();
@@ -209,9 +226,16 @@ fn measure_body(measure: &crate::musicxml::Measure, lane: &Lane, fifths: i8, cho
             continue;
         }
         if head.onset > cursor {
-            out.push_str(&rest(head.onset.subtract(cursor), !primary));
+            add_rest(&mut out, &mut rest_run, head.onset.subtract(cursor), !primary);
         }
         let onset_in_bar = head.onset.subtract(measure.start);
+        let symbol = chords.first().is_some_and(|h| h.onset <= onset_in_bar || h.onset <= head.onset);
+        if head.pitch.is_none() && !symbol {
+            add_rest(&mut out, &mut rest_run, head.duration, head.display.hidden);
+            cursor = head.onset.add(head.duration);
+            continue;
+        }
+        flush(&mut out, &mut rest_run);
         while chords.first().is_some_and(|h| h.onset <= onset_in_bar || h.onset <= head.onset) {
             let _ = write!(out, "\"{}\"", chord_symbol(chords.remove(0)));
         }
@@ -222,9 +246,8 @@ fn measure_body(measure: &crate::musicxml::Measure, lane: &Lane, fifths: i8, cho
         if head.pitch.is_none() {
             out.push_str(&rest(head.duration, head.display.hidden));
         } else {
-            let tie_all = group.len() > 1;
             let body = pitches(&group, fifths, &mut accidentals, true);
-            if tie_all {
+            if group.len() > 1 {
                 let _ = write!(out, "[{body}]{}", length(head.duration));
             } else {
                 // A single note: the tie mark follows the length (`C4-`).
@@ -236,13 +259,10 @@ fn measure_body(measure: &crate::musicxml::Measure, lane: &Lane, fifths: i8, cho
         cursor = head.onset.add(head.duration);
     }
     if cursor < end {
-        let filler = end.subtract(cursor);
-        if out.trim().is_empty() {
-            out.push_str(&rest(filler, !primary));
-        } else {
-            out.push_str(&rest(filler, true));
-        }
+        // Missing time is a rest on the staff's first voice and invisible space on the others.
+        add_rest(&mut out, &mut rest_run, end.subtract(cursor), !primary);
     }
+    flush(&mut out, &mut rest_run);
     let mut out = out.trim_end().to_string();
     out.push('|');
     out

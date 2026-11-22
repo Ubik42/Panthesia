@@ -17,7 +17,7 @@ import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
-import { lyricLines, paintChords, paintLyrics, paintSections } from "./songLayers";
+import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
 import {
@@ -438,8 +438,11 @@ export function Piano({
           }
         }
       }
-      ctx.fillStyle = stageInk.measureLabel;
-      ctx.font = "11px sans-serif";
+      // Bar labels: numbers inside each section (or the song), section names, the meter only
+      // where it changes and only when asked for.
+      const sectionItems = song?.sections?.items.length ? song.sections.items : null;
+      const barLabels = measureLabels(measures, sectionItems);
+      const rows: Parameters<typeof paintMeasureLabels>[1][number][] = [];
       for (const window of windows) {
         const first = Math.max(
           0,
@@ -453,17 +456,19 @@ export function Piano({
             (window.next && Math.abs(m.startTick - loopStart) < 0.01)
           )
             continue;
-          ctx.fillText(
-            `${window.next ? "下一轮 · " : ""}第 ${m.number} 小节${m.displayNumber != null && m.displayNumber !== m.number ? ` · 谱面 ${m.displayNumber}` : ""}${m.partial ? " · 不完整" : ""}  ${m.numerator}/${m.denominator}${m.explicit ? "" : "*"}`,
-            8,
-            baseline - (m.startTick + window.offset - tick) * pixels - 6,
-          );
+          const previous = measures[mi - 1];
+          const meterChanged = !previous || previous.numerator !== m.numerator || previous.denominator !== m.denominator;
+          rows.push({
+            y: baseline - (m.startTick + window.offset - tick) * pixels - 6,
+            label: barLabels[mi],
+            prefix: window.next ? "下一轮 · " : "",
+            meter: display.meterLabels && meterChanged ? `${m.numerator}/${m.denominator}` : null,
+          });
         }
       }
+      paintMeasureLabels(ctx, rows, display.sections && !!sectionItems, song?.sections?.origin === "generated", width);
       paintChords(ctx, song?.harmony?.chords ?? [], display.chordLabels, tick, Math.min(span, loopEnd - tick), pixels, baseline, width);
       if (display.lyrics) paintLyrics(ctx, lyrics, tick, baseline);
-      if (display.sections && song?.sections)
-        paintSections(ctx, song.sections.items, song.sections.origin === "generated", tick, Math.min(span, loopEnd - tick), pixels, baseline);
       const colorFor = (note: LoadedSong["notes"][number]) =>
         display.palette === "accessible"
           ? handColor(note.part, display)

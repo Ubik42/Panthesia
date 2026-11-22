@@ -5,6 +5,7 @@ import {
 } from "../settings/displayPreferences";
 import { usePlaybackFields } from "./usePlaybackFields";
 import type { PlaybackStore } from "./playbackStore";
+import { measureCaption } from "../../stage/songLayers";
 import {
   activeMeasures,
   handLabel,
@@ -60,7 +61,7 @@ export function PracticeStageReadout({
         )}
         {song && (
           <span className="stage-position">
-            第 {state.measure} 小节 · 第 {Math.floor(state.beat)} 拍
+            {measureCaption(song, state.measure)} · 第 {Math.floor(state.beat)} 拍
           </span>
         )}
         {state.passage && (

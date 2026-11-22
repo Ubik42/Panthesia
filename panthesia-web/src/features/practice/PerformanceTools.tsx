@@ -215,6 +215,15 @@ export function PerformanceTools({
             {song.sections.origin === "generated" && <small>自动分析</small>}
           </label>
         )}
+        <label>
+          <input
+            type="checkbox"
+            aria-label="显示拍号"
+            checked={display.meterLabels}
+            onChange={(event) => setDisplay((previous) => ({ ...previous, meterLabels: event.target.checked }))}
+          />
+          拍号
+        </label>
         {!!song?.importedLayers.lyrics.length && (
           <label>
             <input

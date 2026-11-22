@@ -1,9 +1,8 @@
-/* Layout copied from Synthesia's official song-list and playing screenshots.
-   Panthesia keeps its own name and the user's practice and data rules. */
+/* Stage chrome (interface-design.md 4.3): one toolbar, the timeline, then score, falling notes
+   and keys. Dark surfaces from the semantic tokens; the accent marks the current state only. */
 .synthesia-layout {
-  --synth-blue: var(--blue-57);
-  --synth-blue-deep: var(--blue-50-c10);
-  --synth-line: var(--blue-71);
+  --stage-bar: var(--surface-base);
+  --stage-button-hover: var(--surface-hover);
 }
 .synthesia-layout .workspace-topbar:not([hidden]) {
   position: fixed;
@@ -11,11 +10,11 @@
   left: 8px;
   right: 8px;
   top: 62px;
-  border: 1px solid var(--blue-71);
-  border-radius: 5px;
-  box-shadow: 0 10px 25px color-mix(in oklab, var(--gray-0) 33%, transparent);
-  background: var(--gray-96);
-  color: var(--blue-32);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-raised);
+  background: var(--surface-raised);
+  color: var(--text-primary);
 }
 .synthesia-layout .workspace-topbar .engine-indicator {
   display: none;
@@ -26,9 +25,9 @@
   min-height: 58px;
   gap: 8px;
   padding: 0 14px;
-  background: var(--synth-blue);
-  color: var(--gray-100);
-  border-bottom: 1px solid var(--blue-50-c10);
+  background: var(--stage-bar);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--line-subtle);
 }
 .synthesia-layout .synthesia-library-header button,
 .synthesia-layout .synthesia-back {
@@ -36,17 +35,18 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: var(--gray-100);
-  background: var(--blue-50-c10);
-  border: 1px solid var(--blue-66);
-  border-radius: 5px;
-  box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 9%, transparent);
-  min-height: 38px;
-  padding: 5px 15px;
-  font-size: 17px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  min-height: 36px;
+  padding: 5px 12px;
+  font-size: 14px;
 }
 .synthesia-layout .synthesia-library-header button:hover {
-  background: var(--blue-57);
+  background: var(--stage-button-hover);
+  color: var(--text-primary);
 }
 /* One control bar, then the timeline, then score / falling notes / keyboard. */
 .synthesia-layout > .workspace {
@@ -61,15 +61,17 @@
   display: flex;
   flex-wrap: nowrap;
   flex: none;
-  min-height: 58px;
-  height: 58px;
-  gap: 0;
+  align-items: center;
+  min-height: 52px;
+  height: 52px;
+  gap: 2px;
   padding: 0 10px;
-  background: var(--synth-blue);
+  background: var(--stage-bar);
   border: 0;
-  border-bottom: 1px solid var(--blue-50-c10);
+  border-bottom: 1px solid var(--line-subtle);
   border-radius: 0;
-  color: var(--gray-100);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
   overflow: visible;
 }
 .synthesia-layout .synthesia-transport .practice-transport-main {
@@ -78,39 +80,39 @@
   flex: none;
 }
 .synthesia-layout .synthesia-transport button {
-  color: var(--gray-100);
+  color: var(--text-secondary);
   background: transparent;
   border: 0;
   box-shadow: none;
-  min-height: 44px;
-  padding: 8px 12px;
-  border-radius: 0;
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: var(--radius-s);
 }
 .synthesia-layout .synthesia-transport button:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--gray-100) 13%, transparent);
+  background: var(--stage-button-hover);
+  color: var(--text-primary);
 }
 .synthesia-layout .synthesia-transport button:disabled {
   opacity: 0.35;
 }
 .synthesia-layout .synthesia-transport .synthesia-back {
-  margin-right: 20px;
-  padding: 5px 12px;
+  white-space: nowrap;
+  margin-right: 12px;
+  padding: 5px 10px;
   min-height: 36px;
-  border: 1px solid var(--blue-66);
-  border-radius: 5px;
-  font-size: 17px;
+  border: 0;
+  font-size: 14px;
 }
 .synthesia-layout .synthesia-transport .play-button {
   order: -1;
-  min-width: 46px;
-  padding: 8px 13px;
-  border-left: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
-  border-right: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
+  min-width: 40px;
+  padding: 6px;
+  color: var(--accent-strong);
 }
 .synthesia-transport .play-button svg,
 .synthesia-transport .practice-transport-main > button svg {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
 }
 .synthesia-play-label,
 .synthesia-transport .play-button kbd {
@@ -121,26 +123,25 @@
   gap: 2px;
   align-items: center;
   flex: none;
-  margin: 0;
+  margin: 0 8px;
   position: relative;
   padding: 0 4px;
-  border-left: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
-  border-right: 1px solid color-mix(in oklab, var(--gray-100) 13%, transparent);
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
 }
 .synthesia-layout .synthesia-transport .practice-speed > label,
 .synthesia-layout .synthesia-transport .practice-speed-reset {
   display: none;
 }
 .synthesia-layout .synthesia-transport .practice-speed .bpm-number {
-  width: 70px;
-  min-height: 48px;
+  width: 64px;
+  min-height: 42px;
   margin: 0;
-  padding: 0 2px 14px;
+  padding: 0 2px 13px;
   text-align: center;
-  font-size: 25px;
-  font-weight: 400;
-  line-height: 1;
-  color: var(--gray-100);
+  font: 600 21px/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -156,7 +157,9 @@
   left: 50%;
   bottom: 4px;
   transform: translateX(-50%);
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
   pointer-events: none;
 }
 .synthesia-tool-cluster {
@@ -178,13 +181,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 48px;
+  width: 38px;
+  height: 36px;
   padding: 5px;
   background: none;
-  color: var(--gray-100);
+  color: var(--text-secondary);
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-s);
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary:hover,
+.synthesia-layout .synthesia-transport .toolbar-more[open] > summary {
+  background: var(--stage-button-hover);
+  color: var(--text-primary);
 }
 .synthesia-layout .synthesia-transport .toolbar-more > summary > span,
 .synthesia-layout
@@ -200,35 +208,68 @@
   > summary
   > svg:first-child {
   display: block;
-  width: 27px;
-  height: 27px;
+  width: 21px;
+  height: 21px;
 }
+/* One kind of popover panel for every stage menu: rows of the same height, one scroll. */
 .synthesia-layout .synthesia-transport .toolbar-more-actions {
-  color: var(--blue-39);
-  background: var(--gray-96);
-  border: 6px solid var(--blue-57);
-  border-radius: 8px;
-  box-shadow: 0 8px 25px color-mix(in oklab, var(--gray-0) 33%, transparent);
-  padding: 9px;
+  gap: 2px;
+  min-width: 240px;
+  max-height: 80vh;
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-raised);
+  padding: 8px;
+  font: 13px/1.4 var(--font-ui);
+  color-scheme: dark;
 }
 .synthesia-layout .synthesia-transport .toolbar-more-actions button {
-  color: var(--blue-39);
-  background: var(--gray-96);
-  border: 1px solid var(--blue-78);
-  border-radius: 5px;
-  min-height: 38px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  min-height: 34px;
   text-align: left;
-  padding: 8px 12px;
+  padding: 7px 10px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions button:hover:not(:disabled) {
+  background: var(--surface-hover);
 }
 .synthesia-layout
   .synthesia-transport
   .toolbar-more-actions
   button[aria-pressed="true"] {
-  background: var(--gray-89);
-  color: var(--blue-41);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label {
+  min-height: 34px;
+  padding: 4px 10px;
+  border-radius: var(--radius-s);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label:hover {
+  background: var(--surface-hover);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="checkbox"],
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="range"],
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="radio"] {
+  accent-color: var(--accent);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions select {
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions small {
+  color: var(--text-muted);
 }
 .synthesia-layout .synthesia-transport .practice-volume {
-  color: var(--blue-39);
+  color: var(--text-primary);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -249,9 +290,10 @@
   position: relative;
   overflow: hidden;
   border: 0;
+  border-bottom: 1px solid var(--line-subtle);
   border-radius: 0;
-  background: linear-gradient(var(--blue-43), var(--gray-33));
-  color: var(--gray-100);
+  background: var(--surface-panel);
+  color: var(--text-primary);
 }
 .synthesia-layout .practice-timeline .time-ruler-labels {
   position: absolute;
@@ -271,10 +313,11 @@
 }
 .synthesia-layout .practice-timeline .time-ruler-labels strong {
   font-size: 13px;
-  color: var(--gray-100);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 .synthesia-layout .practice-timeline .time-ruler-labels small {
-  color: var(--gray-92);
+  color: var(--text-muted);
 }
 .synthesia-layout .practice-timeline .time-ruler-track {
   position: absolute;
@@ -287,10 +330,10 @@
   opacity: 1;
 }
 .synthesia-layout .practice-timeline .time-ruler-track line {
-  stroke: var(--blue-82);
+  stroke: var(--line-strong);
 }
 .synthesia-layout .practice-timeline .time-ruler-track text {
-  fill: var(--gray-100);
+  fill: var(--text-muted);
   font-size: 10px;
 }
 .synthesia-layout .practice-timeline .time-ruler-track input {
@@ -301,7 +344,7 @@
   margin: 0;
   opacity: 0.65;
   cursor: pointer;
-  accent-color: var(--green-75);
+  accent-color: var(--accent);
 }
 .synthesia-layout .practice-timeline .time-ruler-seconds {
   position: absolute;
@@ -310,7 +353,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--gray-96);
+  color: var(--text-muted);
   font-size: 10px;
   pointer-events: none;
 }
@@ -333,9 +376,9 @@
 .synthesia-layout
   .synthesia-transport
   .synthesia-metronome[aria-pressed="true"] {
-  background: color-mix(in oklab, var(--gray-100) 21%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
-/* Song setup follows the official two-column listen / hands layout. */
 @media (max-width: 1000px) {
   .synthesia-layout .synthesia-transport .synthesia-back {
     margin-right: 8px;
@@ -377,4 +420,82 @@
   background: transparent;
   border-radius: 0;
 }
-.synthesia-layout .practice-timeline .time-ruler-labels>span:first-child {color:var(--gray-100);}
+.synthesia-layout .practice-timeline .time-ruler-labels > span:first-child {
+  color: var(--text-secondary);
+}
+/* The score strip: a quiet bar above white paper. */
+.synthesia-layout .notation-pane > .notation-toolbar {
+  gap: 4px 10px;
+  padding: 5px 10px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--line-subtle);
+  font: 12px/1.3 var(--font-ui);
+}
+.synthesia-layout .notation-pane > .notation-toolbar :is(button, select, .toolbar-more > summary) {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.synthesia-layout .notation-pane > .notation-toolbar :is(button, .toolbar-more > summary):hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.synthesia-layout .notation-pane > .notation-toolbar select {
+  background: var(--surface-sunken);
+}
+.synthesia-layout .notation-pane > .notation-toolbar input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.synthesia-layout .notation-pane > .notation-toolbar .toolbar-more-actions {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-raised);
+}
+/* Rows in stage popovers: the name on the left, the control on the right; checkboxes are switches. */
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label:has(> input[type="checkbox"]) {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"] {
+  order: 3;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  appearance: none;
+  cursor: pointer;
+  transition: background 140ms var(--ease-out);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]::before {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  content: "";
+  transition: transform 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:checked {
+  background: var(--accent);
+  box-shadow: none;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:checked::before {
+  background: var(--on-accent);
+  transform: translateX(12px);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}

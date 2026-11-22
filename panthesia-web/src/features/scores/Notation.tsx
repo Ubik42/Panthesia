@@ -179,6 +179,18 @@ export function Notation({
   useEffect(() => setSystemUnits(0), [song.contentId, song.scoreRevision]);
   const layoutWidth = zoom ? undefined : Math.min(9600, Math.max(1200, Math.round(paperWidth / staffScale / 400) * 400));
   const scroll = useRef<HTMLDivElement>(null);
+  // "Fit width" shows one system (line) at a time with no scrollbar; following moves whole lines.
+  const singleLine = zoom === 0;
+  const [line, setLine] = useState(0),
+    [lineCount, setLineCount] = useState(0);
+  const lineRef = useRef(0);
+  lineRef.current = line;
+  const lineAfterPage = useRef<"first" | "last">("first");
+  const systems = useCallback(() => Array.from(root.current?.querySelectorAll("g.system") ?? []), []);
+  useEffect(() => {
+    setLine(lineAfterPage.current === "last" ? Number.MAX_SAFE_INTEGER : 0);
+    lineAfterPage.current = "first";
+  }, [page, pages]);
   useEffect(() => {
     try {
       const v = JSON.parse(
@@ -421,12 +433,33 @@ export function Notation({
       if (follow && next?.page === page && scroll.current && next.id !== revealed) {
         revealed = next.id;
         const note = element(next.id);
-        if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note, [note.closest("g.system"), note.closest("g.staff")]);
+        if (note && singleLine) {
+          const index = systems().indexOf(note.closest("g.system") as Element);
+          if (index >= 0 && index !== lineRef.current) setLine(index);
+        } else if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note, [note.closest("g.system"), note.closest("g.staff")]);
       }
     };
     update();
     return store.subscribe(update);
-  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth, viewportHeight]);
+  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth, viewportHeight, singleLine, systems]);
+  // Single-line view: place the current system at the top of the pane.
+  useEffect(() => {
+    const view = scroll.current;
+    const all = systems();
+    setLineCount(all.length);
+    if (!singleLine || !view || !all.length) return;
+    const index = Math.min(line, all.length - 1);
+    if (index !== line) {
+      setLine(index);
+      return;
+    }
+    const box = all[index].getBoundingClientRect();
+    const top = box.top - view.getBoundingClientRect().top + view.scrollTop;
+    // Centre the line in the pane; a line taller than the pane starts at its top.
+    view.scrollTop = Math.max(0, top - Math.max(4, (view.clientHeight - box.height) / 2));
+    view.scrollLeft = 0;
+  }, [singleLine, line, page, pageView.markup, paperWidth, viewportHeight, systems]);
+  const wheelAt = useRef(0);
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -600,6 +633,23 @@ export function Notation({
       } else seek(choice.start);
     } else activate(element?.closest("g.note") ?? null);
   };
+  /** Previous or next line; past the first or last line of a page, the neighbouring page. */
+  const stepLine = (direction: 1 | -1) => {
+    desiredFollow.current = false;
+    setFollow(false);
+    const next = line + direction;
+    if (next >= 0 && next < lineCount) {
+      setLine(next);
+      return;
+    }
+    if (direction > 0) {
+      if (page < pages.length - 1) setPage(page + 1);
+      else if (asset?.window && asset.window.first + asset.window.count < asset.window.total) setRangeAnchor({ first: asset.window.first + asset.window.count });
+    } else if (page > 0) {
+      lineAfterPage.current = "last";
+      setPage(page - 1);
+    } else if (asset?.window?.first) setRangeAnchor({ first: asset.window.previous ?? Math.max(0, asset.window.first - 32), last: true });
+  };
   const locate = (track: number, index: number) => {
     const next = mapping.find((m) => m.track === track && m.index === index);
     if (!next) return false;
@@ -620,27 +670,47 @@ export function Notation({
   return (
     <div className="notation-pane">
       <div className="notation-toolbar">
-        <button
-          disabled={loading || (page === 0 && !asset?.window?.first)}
-          onClick={() => {
-            desiredFollow.current=false;setFollow(false);
-            if(page>0)setPage(page-1);
-            else if(asset?.window)setRangeAnchor({first:asset.window.previous??Math.max(0,asset.window.first-32),last:true});
-          }}
-        >
-          上一页
-        </button>
-        <span>{asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}{pages.length ? `${page + 1} / ${pages.length}` : "乐谱"}</span>
-        <button
-          disabled={loading || (page >= pages.length - 1 && (!asset?.window || asset.window.first+asset.window.count>=asset.window.total))}
-          onClick={() => {
-            desiredFollow.current=false;setFollow(false);
-            if(page<pages.length-1)setPage(page+1);
-            else if(asset?.window)setRangeAnchor({first:asset.window.first+asset.window.count});
-          }}
-        >
-          下一页
-        </button>
+        {singleLine ? (
+          <>
+            <button disabled={loading || (page === 0 && line === 0 && !asset?.window?.first)} onClick={() => stepLine(-1)}>
+              上一行
+            </button>
+            <span>
+              {asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}
+              {pages.length ? `${page + 1} / ${pages.length} 页 · 第 ${Math.min(line, Math.max(0, lineCount - 1)) + 1} / ${lineCount || 1} 行` : "乐谱"}
+            </span>
+            <button
+              disabled={loading || (page >= pages.length - 1 && line >= lineCount - 1 && (!asset?.window || asset.window.first + asset.window.count >= asset.window.total))}
+              onClick={() => stepLine(1)}
+            >
+              下一行
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              disabled={loading || (page === 0 && !asset?.window?.first)}
+              onClick={() => {
+                desiredFollow.current=false;setFollow(false);
+                if(page>0)setPage(page-1);
+                else if(asset?.window)setRangeAnchor({first:asset.window.previous??Math.max(0,asset.window.first-32),last:true});
+              }}
+            >
+              上一页
+            </button>
+            <span>{asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}{pages.length ? `${page + 1} / ${pages.length}` : "乐谱"}</span>
+            <button
+              disabled={loading || (page >= pages.length - 1 && (!asset?.window || asset.window.first+asset.window.count>=asset.window.total))}
+              onClick={() => {
+                desiredFollow.current=false;setFollow(false);
+                if(page<pages.length-1)setPage(page+1);
+                else if(asset?.window)setRangeAnchor({first:asset.window.first+asset.window.count});
+              }}
+            >
+              下一页
+            </button>
+          </>
+        )}
         <label>
           <input
             type="checkbox"
@@ -801,8 +871,19 @@ export function Notation({
       )}
       <div className={`notation-body ${edit && selected ? "editing" : ""}`}>
         <div
-          className="notation-scroll"
+          className={`notation-scroll${singleLine ? " single-line" : ""}`}
           ref={scroll}
+          onWheel={
+            singleLine
+              ? (event) => {
+                  if (Math.abs(event.deltaY) < 4) return;
+                  const now = performance.now();
+                  if (now - wheelAt.current < 220) return;
+                  wheelAt.current = now;
+                  stepLine(event.deltaY > 0 ? 1 : -1);
+                }
+              : undefined
+          }
         >
           <div
             className="score-paper"

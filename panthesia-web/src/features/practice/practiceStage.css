@@ -125,3 +125,7 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* "Fit width" notation shows one line; the component moves between lines (no scrollbar). */
+.notation-body > .notation-scroll.single-line {
+  overflow: hidden;
+}

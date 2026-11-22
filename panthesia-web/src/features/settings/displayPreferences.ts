@@ -53,6 +53,8 @@ export type DisplayPreferences = {
   lyrics: boolean;
   /** Section names (前奏 / 主歌 / 副歌 …) at their starting lines. */
   sections: boolean;
+  /** Time signatures on the waterfall's bar lines, where the meter starts or changes. */
+  meterLabels: boolean;
   /** Free-play takes: tempo they are written at, and whether a metronome clicks its beats. */
   recordBpm: number;
   recordClick: boolean;
@@ -126,6 +128,7 @@ export const displayDefaults: DisplayPreferences = {
   chordLabels: "off",
   lyrics: true,
   sections: true,
+  meterLabels: false,
   recordBpm: 100,
   recordClick: false,
   inspector: false,
@@ -185,6 +188,7 @@ export function normalizeDisplayPreferences(
     chordLabels: raw.chordLabels === "degree" || raw.chordLabels === "name" || raw.chordLabels === "both" ? raw.chordLabels : "off",
     lyrics: typeof raw.lyrics === "boolean" ? raw.lyrics : true,
     sections: typeof raw.sections === "boolean" ? raw.sections : true,
+    meterLabels: raw.meterLabels === true,
     recordBpm: size(raw.recordBpm, 30, 300, 100),
     recordClick: raw.recordClick === true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
