@@ -1,7 +1,16 @@
 .song-files {
   display: grid;
   gap: 14px;
-  min-width: min(560px, 86vw);
+  min-width: 0;
+}
+/* Long file names must not widen the dialog: grid children may shrink, names truncate. */
+.song-files > section {
+  min-width: 0;
+}
+.song-files-actions {
+  flex: none;
+  display: flex;
+  gap: 6px;
 }
 .song-files h3 {
   margin: 0 0 6px;

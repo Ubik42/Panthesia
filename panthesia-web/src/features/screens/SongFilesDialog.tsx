@@ -5,7 +5,10 @@ import "./songFiles.css";
 
 type Version = { id: string; label: string | null; path: string | null; missing?: boolean; current: boolean; default: boolean };
 type SongFile = { id: string; role: string; stem?: string | null; label?: string | null; path: string; relative: string; missing: boolean };
+/** A file next to the song that belongs to it by a naming rule (engine song_package). */
+type Suggestion = { path: string; role: string; stem: string | null; label: string | null; reason: string };
 type SongFiles = {
+  suggestions: Suggestion[];
   manifest: string | null;
   readOnly: boolean;
   current: string;
@@ -35,9 +38,11 @@ const fileName = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 
 /** Versions and companion files of the current song, as listed in its `.panthesia` manifest. */
 export function SongFilesDialog({
+  contentId,
   close,
   openVersion,
 }: {
+  contentId: string;
   close: () => void;
   openVersion: (path: string) => Promise<boolean>;
 }) {
@@ -88,6 +93,23 @@ export function SongFilesDialog({
   const rename = (version: Version) => {
     const label = window.prompt("版本名称", version.label ?? "");
     if (label !== null) void edit({ action: "label", id: version.id, label });
+  };
+  // Scores are paired (aligned with the performance); other files are registered as they are.
+  const accept = async (suggestion: Suggestion) => {
+    if (suggestion.role !== "score") {
+      await edit({ action: "add", path: suggestion.path, role: suggestion.role, stem: suggestion.stem ?? undefined, label: suggestion.label });
+      return;
+    }
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.command({ type: "pairScoreFile", path: suggestion.path, content_id: contentId });
+      await load();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      setBusy(false);
+    }
   };
   const companions = files?.files.filter((f) => f.role !== "performance") ?? [];
   const locked = busy || !!files?.readOnly;
@@ -164,6 +186,26 @@ export function SongFilesDialog({
               </div>
               <p className="song-files-note">登记的音频随歌曲清单保存，播放与对齐在后续版本提供。</p>
             </section>
+            {files.suggestions.length > 0 && (
+              <section>
+                <h3>可加入的相关文件</h3>
+                <p className="song-files-note">按文件名规则在乐曲所在位置找到；加入后写入歌曲清单。</p>
+                <ul className="song-files-list">
+                  {files.suggestions.map((suggestion) => (
+                    <li key={suggestion.path}>
+                      <span className="song-files-name">
+                        <small>{suggestion.role === "stem" ? STEMS.find(([id]) => id === suggestion.stem)?.[1] ?? "音轨" : ROLE_NAMES[suggestion.role] ?? suggestion.role}</small>
+                        <span title={suggestion.path}>{suggestion.label && suggestion.role === "performance" ? `${suggestion.label} · ` : ""}{fileName(suggestion.path)}</span>
+                        <small>{suggestion.reason}</small>
+                      </span>
+                      <span className="song-files-actions">
+                        <button disabled={locked} onClick={() => void accept(suggestion)}>{suggestion.role === "score" ? "配对" : "加入"}</button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </div>

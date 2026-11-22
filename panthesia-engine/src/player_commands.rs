@@ -406,6 +406,7 @@ impl Player {
             Command::Metadata => return serde_json::to_value(self.current_metadata()?).map_err(|error|error.to_string()),
             Command::SetMetadata { value } => return self.save_current_metadata(value, None),
             Command::EditMetadata { value, expected } => return self.save_current_metadata(value, Some(expected)),
+            Command::PairScoreFile { .. } => return Err("乐谱文件配对由引擎入口读取文件后处理".into()),
             Command::VstEditor => {
                 self.vst
                     .as_ref()

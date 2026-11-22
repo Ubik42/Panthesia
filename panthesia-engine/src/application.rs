@@ -97,6 +97,17 @@ impl Engine {
         if matches!(&command, Command::VstEditor) {
             return self.open_sound_editor();
         }
+        if let Command::PairScoreFile { path, content_id } = command {
+            let bytes = crate::score_sources::read_original(&path)?;
+            // ABC is read as MusicXML; the paired copy is named for what it contains.
+            let stem = path.file_stem().unwrap_or_default().to_string_lossy();
+            let name = if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("abc")) {
+                format!("{stem}.musicxml")
+            } else {
+                path.file_name().unwrap_or_default().to_string_lossy().to_string()
+            };
+            return self.command(Command::PairScore { expected: None, bytes, name, content_id });
+        }
         if matches!(command, Command::CurrentSong | Command::Session) {
             return self.song_document(matches!(command, Command::Session));
         }

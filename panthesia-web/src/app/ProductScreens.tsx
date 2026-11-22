@@ -131,6 +131,7 @@ export function ProductScreens() {
       )}
       {songFilesOpen && song && (
         <SongFilesDialog
+          contentId={song.contentId}
           close={() => setSongFilesOpen(false)}
           openVersion={(path) => run({ type: "openFile", path }, true)}
         />

@@ -49,6 +49,7 @@ pub use panthesia_core::manifest_store;
 mod file_open;
 mod manifest_settings;
 mod song_files;
+mod song_package;
 mod recent_files;
 mod score_open;
 mod player;

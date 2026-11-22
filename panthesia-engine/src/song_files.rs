@@ -73,6 +73,7 @@ impl Player {
                 "performances": [{"id": "main", "label": null, "path": music, "current": true, "default": true}],
                 "files": [{"id": "perf", "role": "performance", "path": music, "relative": music.file_name().map(|n| n.to_string_lossy().to_string()), "missing": false}],
                 "unmatched": 0,
+                "suggestions": crate::song_package::related_files(&music, &[]),
             }));
         };
         let dir = found.path.parent().ok_or("清单所在目录无法读取")?;
@@ -102,9 +103,11 @@ impl Player {
             })
             .collect();
         let unmatched: usize = m.layers.values().map(|l| l.unmatched.len()).sum();
+        let known: Vec<PathBuf> = m.files.iter().map(|f| manifest_store::resolve(dir, &f.path)).collect();
         Ok(json!({
             "manifest": found.path, "readOnly": found.read_only, "title": m.title, "current": current,
             "performances": performances, "files": files, "unmatched": unmatched,
+            "suggestions": crate::song_package::related_files(&music, &known),
         }))
     }
 

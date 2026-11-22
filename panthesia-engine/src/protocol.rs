@@ -140,6 +140,10 @@ pub enum Command {
         name: String,
         content_id: String,
     },
+    PairScoreFile {
+        path: PathBuf,
+        content_id: String,
+    },
     ExportAnnotatedScore {
         content_id: String,
         score_revision: u64,
