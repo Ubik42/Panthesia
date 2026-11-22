@@ -106,8 +106,8 @@
 | `playback` | 逐音演奏者：`notes`：`[{ "note": [t,o,p], "player": "auto" \| "human" \| "mute" }]` |
 | `meter` | 拍号与弱起修正：`pickupTicks`、`segments`：`[{ "measure", "numerator", "denominator", "displayStart" }]`、`measureLengths`：`[{ "measure", "ticks" }]`；旧式整体修正写在 `correction`：`{ "numerator", "denominator", "pickupTicks" }` |
 | `keys` | `items`：`[{ "tick", "key": "G:maj" }]` |
-| `chords` | `items`：`[{ "tick", "endTick", "chord": "C:maj7/E" }]`（Harte 语法） |
-| `sections` | `items`：`[{ "tick", "endTick", "label": "主歌" }]` |
+| `chords` | `items`：`[{ "tick", "chord": "C:maj7/3" }]`，Harte 语法（`根音:性质/低音级`，无和弦为 `N`），按 `tick` 排序，每项持续到下一项。Panthesia 写入三种：编辑保存（`human`）、采用自动分析（`generated`，`status: "accepted"`）、打开乐谱时的和弦符号（`imported`，`tool: "score"`）。练习转调时按转调量移动显示 |
+| `sections` | `items`：`[{ "tick", "label": "副歌" }]`，每项持续到下一项 |
 | `beats` | `items`：`[{ "tick", "downbeat": true }]` |
 | `lyrics` | `lines`：`[{ "tick", "endTick", "text" }]` |
 | `tempo` | `items`：`[{ "tick", "bpm" }]`（如来自文件名的 BPM） |
@@ -155,7 +155,10 @@
 打开歌曲时从乐曲文件本身读取，随时可以重新得到，因此不写入清单（显示时作为 `imported` 来源）：
 
 - MIDI：歌词（Lyric 事件；没有时读取卡拉 OK 的 Text 事件，`/`、`\` 与换行表示换行）、段落（Marker 与 Cue Point）、调号变化。元信息文本按文件统一识别编码：合法 UTF-8 时按 UTF-8，否则用 chardetng 判断（常见 GBK、Shift-JIS）。
-- MusicXML / ABC：音符歌词（声部号、音节位置）与和弦符号（根音、性质、记谱文字、低音）读入乐谱模型；按演奏 tick 展开到反复中的位置随 R6 的和弦与歌词图层实现。
+- MusicXML / ABC：打开乐谱生成演奏时，歌词与和弦符号按反复展开到演奏 tick（反复的第 n 遍唱编号为 n 的歌词段，没有时唱第一段；停顿半音符以上或满 20 个音节换行）。歌词写成生成 MIDI 中单独一轨的 Lyric 事件；和弦符号写入该歌曲清单的 `chords` 图层（`imported`，`tool: "score"`）。
+- 数据集标注：MIDI 旁的 POP909 `chord_midi.txt`（秒，按该 MIDI 的速度换算 tick）作为导入的和弦。
+
+**舞台上的和声与结构图层的来源顺序**：和弦为清单 `chords` 图层 → POP909 标注 → 自动分析（平均同时发声不足 1.3 个音的单旋律不分析）；段落为清单 `sections` 图层 → MIDI 标记 → 自动分析（只给 前奏 / 尾奏 与按相似归组的 段落 A、B …）。和弦的名称与级数按音符标签使用的同一条调性时间线拼写。文件开头只有一个 C 大调调号、而音符明显属于其他调时，该调号视为音序器默认值，不作为歌曲的调。
 
 ## 歌曲包识别
 
@@ -191,8 +194,8 @@ Panthesia.exe probe <文件> [--json] [--thumbnail <png 路径>] [--size 480x160
 | `durationSeconds` | 按文件中的拍速播放的时长 |
 | `bpm`、`bpmSource` | 主拍速（持续最久的拍速）；来源 `manifest`（`tempo` 图层）、`midi`、`filename`（文件没有拍速事件且文件名含 `BPM76` 之类） |
 | `tempoChanges`、`timeSignature` | 拍速变化次数、第一小节拍号 |
-| `key`、`keySource` | `G:maj` 形式；来源依次为 `manifest`（`keys` 图层）、`midi`（调号事件）、`filename`（如 `Gmajor`）、`estimated`（Krumhansl–Kessler 音级时值相关） |
+| `key`、`keySource` | `G:maj` 形式；来源依次为 `manifest`（`keys` 图层）、`midi`（调号事件）、`filename`（如 `Gmajor`）、`estimated`（`panthesia-analysis` 的调性估计：五小节窗口音级分布与 Albrecht–Shanahan 调性轮廓相关，Viterbi 平滑，取持续最长的调） |
 | `tracks`、`notes`、`pitchRange` | 有音符的轨道数、音符数、最低与最高音 |
 | `manifest` | 清单路径、标题、图层名、演奏列表、音轨类型、是否有谱面、缺失文件编号；没有清单时为 `null` |
-| `importedLayers` | 文件中的歌词事件数、段落名称（最多 64 个）、调号变化数 |
+| `importedLayers` | 文件中的歌词事件数、标记名称（最多 64 个）、调号变化数 |
 | `thumbnail` | 写出的钢琴卷帘 PNG（横轴时间、纵轴音高；清单分配了手别时右手绿、左手蓝） |
