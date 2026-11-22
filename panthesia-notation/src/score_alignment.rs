@@ -6,7 +6,7 @@ use std::{
 use panthesia_music::{MidiFile, tempo_track::TempoTrack};
 use serde::{Deserialize, Serialize};
 
-use crate::musicxml::{Pitch, Score, ScoreEvent, ScoreEventId, ScoreTime, Step};
+use crate::musicxml::{Pitch, Score, ScoreEvent, ScoreEventId, ScoreTime, SpanType, Step};
 use crate::score_ornament::{expand_mordent, expand_trill, expand_turn};
 use crate::score_playback::{
     PlaybackLimits, PlaybackPlan, ScoreEventOccurrenceId, build_playback_plan,
@@ -439,6 +439,11 @@ pub fn align_score_occurrences_checked(
                 push_unmatched_score(&mut result, id, 0);
             }
         }
+        // A tied continuation is not struck again: it lengthens the strike that started the tie,
+        // under the rule the performance generator uses (same pitch and voice, adjoining in
+        // performed time, no jump in the written order). The head is kept as the index in that
+        // pitch's candidates and the written measure of the last tied note.
+        let mut open_ties: HashMap<(u8, Option<String>, u8), (usize, u32)> = HashMap::new();
         for (event_index, event) in projection.events.into_iter().enumerate() {
             if event_index % 1024 == 0 {
                 check()?;
@@ -541,17 +546,41 @@ pub fn align_score_occurrences_checked(
                 }
                 continue;
             }
-            score_by_pitch
-                .entry(pitch)
-                .or_default()
-                .push(ScoreCandidate {
-                    id: event.id,
-                    strike_ordinal: 0,
-                    principal: true,
-                    timestamp: event.timestamp,
-                    duration: event.duration.unwrap_or_default(),
-                    exact: event.exact_to_midi_pulse,
-                });
+            let duration = event.duration.unwrap_or_default();
+            let starts = note.ties.contains(&SpanType::Start);
+            let key = (pitch, note.voice.clone(), note.staff);
+            let measure = note.id.measure_ordinal;
+            let candidates = score_by_pitch.entry(pitch).or_default();
+            if note.ties.contains(&SpanType::Stop) {
+                if let Some(&(index, from)) = open_ties.get(&key) {
+                    let head = &mut candidates[index];
+                    let adjoining = (head.timestamp + head.duration).abs_diff(event.timestamp)
+                        <= Duration::from_millis(1);
+                    if adjoining && (measure == from || measure == from + 1) {
+                        head.duration = event.timestamp + duration - head.timestamp;
+                        head.exact &= event.exact_to_midi_pulse;
+                        if starts {
+                            open_ties.insert(key, (index, measure));
+                        } else {
+                            open_ties.remove(&key);
+                        }
+                        continue;
+                    }
+                }
+            }
+            if starts {
+                open_ties.insert(key, (candidates.len(), measure));
+            } else {
+                open_ties.remove(&key);
+            }
+            candidates.push(ScoreCandidate {
+                id: event.id,
+                strike_ordinal: 0,
+                principal: true,
+                timestamp: event.timestamp,
+                duration,
+                exact: event.exact_to_midi_pulse,
+            });
         }
     }
     finish_alignment_checked(score_by_pitch, performance, result, check)
