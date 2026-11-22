@@ -43,6 +43,27 @@ pub struct Measure {
     pub attributes: Vec<MeasureAttributes>,
     pub barlines: Vec<Barline>,
     pub events: Vec<ScoreEvent>,
+    /// Chord symbols (`<harmony>`) in onset order.
+    pub harmonies: Vec<Harmony>,
+}
+
+/// A chord symbol. `kind` is the MusicXML kind value (major, minor-seventh …); `text` is the
+/// spelling the score prints, when given.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Harmony {
+    pub onset: ScoreTime,
+    pub root: Option<(Step, i8)>,
+    pub kind: String,
+    pub text: Option<String>,
+    pub bass: Option<(Step, i8)>,
+}
+
+/// One syllable of a verse; `syllabic` is single, begin, middle or end.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Lyric {
+    pub verse: String,
+    pub syllabic: Option<String>,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +139,7 @@ pub struct Note {
     pub tuplets: Vec<TupletSpan>,
     pub fingering: Option<String>,
     pub articulations: Vec<String>,
+    pub lyrics: Vec<Lyric>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -658,6 +680,18 @@ struct NoteBuilder {
     tuplets: Vec<TupletSpan>,
     fingering: Option<String>,
     articulations: Vec<String>,
+    lyrics: Vec<Lyric>,
+}
+
+#[derive(Default)]
+struct HarmonyBuilder {
+    offset: i64,
+    root: Option<Step>,
+    root_alter: i8,
+    bass: Option<Step>,
+    bass_alter: i8,
+    kind: String,
+    text: Option<String>,
 }
 
 #[derive(Default)]
@@ -996,6 +1030,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
     let mut standalone_sound = false;
     let mut attributes: Option<AttributesBuilder> = None;
     let mut barline: Option<BarlineBuilder> = None;
+    let mut harmony: Option<HarmonyBuilder> = None;
     let mut divisions = 1_u32;
     let mut cursor = ScoreTime::default();
     let mut measure_max = ScoreTime::default();
@@ -1060,6 +1095,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                             attributes: Vec::new(),
                             barlines: Vec::new(),
                             events: Vec::new(),
+                            harmonies: Vec::new(),
                         });
                         cursor = ScoreTime::default();
                         measure_max = ScoreTime::default();
@@ -1067,6 +1103,13 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                     }
                     b"backup" => backup_duration = Some(0),
                     b"forward" => forward_duration = Some(0),
+                    b"lyric" if note.is_some() => note.as_mut().unwrap().lyrics.push(Lyric {
+                        verse: attribute(&start, b"number")?.unwrap_or_else(|| "1".into()),
+                        syllabic: None,
+                        text: String::new(),
+                    }),
+                    b"harmony" if current_measure.is_some() => harmony = Some(HarmonyBuilder::default()),
+                    b"kind" if harmony.is_some() => harmony.as_mut().unwrap().text = attribute(&start, b"text")?.and_then(nonempty),
                     b"note" => {
                         note = Some(NoteBuilder {
                             staff: 1,
@@ -1350,6 +1393,45 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                         part_names.insert(score_part_id.clone().unwrap(), value);
                     }
                     b"score-part" => score_part_id = None,
+                    b"syllabic" if note.is_some() && parent_is(&path, 2, b"lyric") => {
+                        if let Some(lyric) = note.as_mut().unwrap().lyrics.last_mut() {
+                            lyric.syllabic = nonempty(value);
+                        }
+                    }
+                    b"text" if note.is_some() && parent_is(&path, 2, b"lyric") => {
+                        if let Some(lyric) = note.as_mut().unwrap().lyrics.last_mut() {
+                            lyric.text.push_str(&text_value);
+                        }
+                    }
+                    b"elision" if note.is_some() && parent_is(&path, 2, b"lyric") => {
+                        if let Some(lyric) = note.as_mut().unwrap().lyrics.last_mut() {
+                            lyric.text.push('‿');
+                        }
+                    }
+                    b"root-step" if harmony.is_some() => harmony.as_mut().unwrap().root = Some(parse_step(&value)?),
+                    b"root-alter" if harmony.is_some() => {
+                        harmony.as_mut().unwrap().root_alter = value.parse::<f32>().map_or(0, |v| v.round() as i8);
+                    }
+                    b"bass-step" if harmony.is_some() => harmony.as_mut().unwrap().bass = Some(parse_step(&value)?),
+                    b"bass-alter" if harmony.is_some() => {
+                        harmony.as_mut().unwrap().bass_alter = value.parse::<f32>().map_or(0, |v| v.round() as i8);
+                    }
+                    b"kind" if harmony.is_some() => harmony.as_mut().unwrap().kind = value,
+                    b"offset" if harmony.is_some() && parent_is(&path, 2, b"harmony") => {
+                        harmony.as_mut().unwrap().offset = value.parse::<f64>().map_or(0, |v| v.round() as i64);
+                    }
+                    b"harmony" if harmony.is_some() => {
+                        let built = harmony.take().unwrap();
+                        if built.root.is_some() || !built.kind.is_empty() {
+                            current_measure.as_mut().unwrap().harmonies.push(Harmony {
+                                onset: part_position.add(cursor).add(ScoreTime::new(built.offset, divisions)),
+                                root: built.root.map(|step| (step, built.root_alter)),
+                                kind: built.kind,
+                                text: built.text,
+                                bass: built.bass.map(|step| (step, built.bass_alter)),
+                            });
+                        }
+                    }
                     b"divisions" if attributes.is_some() => {
                         let parsed = parse_u32("divisions", &value)?;
                         if parsed == 0 {
@@ -1572,6 +1654,7 @@ pub fn import_musicxml(source: &[u8]) -> Result<Score, ImportError> {
                                 tuplets: built.tuplets,
                                 fingering: built.fingering,
                                 articulations: built.articulations,
+                                lyrics: built.lyrics,
                             }));
                         if !built.chord {
                             previous_note_onset = onset;
