@@ -2,6 +2,19 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · R4 分层歌曲模型与统一导入（提交 cc06368、407a3a5、e6818ed、58a33ac、89a1fb3、eb28436、c08e08b）
+
+- `panthesia-notation`：乐谱模型（MusicXML / Score IR、反复展开、乐谱→演奏、对齐、装饰音、谱面视图与窗口、练习谱生成、转调拼写、手别枚举）从 core 拆出；core 去掉只有乐谱代码用的依赖。测试数不变。
+- MIDI meta 图层：元信息文本按文件识别编码（合法 UTF-8 用 UTF-8，否则 chardetng + encoding_rs；GBK 轨道名与歌词实验解码正确）；读取歌词（无 Lyric 时读卡拉 OK 文字事件）、段落（Marker / Cue Point）、调号变化，作为 `importedLayers` 随歌曲提供（不写清单）；`probe` 报告数量。
+- MusicXML 歌词与和弦符号读入 Score IR。按演奏 tick 展开到反复位置放到 R6：生成的演奏 MIDI 用借用字节的 `'static` 事件，写入歌词需要改 `Performance` 的所有权，与 R6 的和弦/歌词图层对齐一起做。
+- ABC 导入：考察了 `abc-parser` 0.4（MIT、PEG），时值与标注字段私有且时值为 f32，无法用于语义转换，因此自写。`panthesia-notation::abc` 把 ABC 2.1 常用子集转成 MusicXML（头字段与行内字段、八度、小节内按八度的临时记号、时值、休止、和弦、延音、附点节奏、连音、倚音、小节线与反复、反房号、和弦符号、`w:` 歌词、声部），时值用精确分数，不可直接书写的时值拆成连音的多个音符；读取 `.abc` 原件即得到 MusicXML，打开、缓存、谱面版本、原件变化检查与制谱与 MusicXML 共用一条路径。文件选择、文件关联、`probe` 支持 ABC。实验：临时记号、三连音、声部、弱起、反复与反房、渲染出的谱面（和弦、歌词）正确；转调与量化对 ABC 与 MIDI 都生效。
+- 歌曲包识别：`song_package` 按固定命名规则找出同一首歌的文件（同名音频、`_人声`、导出目录的人声与钢琴分轨、`score.mid` 与 `piano_raw.mid`、`score.musicxml` 或同名谱、`versions/` 与 `_原调_`/`_C大调_` 版本、`… MIDI` 旁的 `… AUDIO`、`source/` 录音、POP909 标注），不按标题合并不同编配（七里香 14 个文件互不归并）；"歌曲文件与版本"列出建议，加入即写清单，谱面经新命令 `PairScoreFile` 配对（引擎读文件，ABC 亦可）。在 `work/` 中 5 个语料目录的镜像上核对；修正对话框被长文件名撑宽。
+- 元数据收敛：删除只服务于已删 Synthesia 导入的"来源默认值"层（core `metadata_layers`、引擎 `metadata_defaults`、两条协议命令、前端面板；子代理完成）。元数据只剩一套 `SongMetadata`。旧数据仍可读：标注文档接受并丢弃 `metadataLayers` 键，RON 附注忽略该字段，清单的 `extensions.panthesia` 重写时原样保留。
+- 语料回归（3.6 节样本，每组最多 60 个文件，经 `probe` 只读）：发现 DuET 导出的谱面因装饰音没有计时属性（MuseScore 等也这样写）且主音带延音而被拒绝。改为：无计时属性时，带斜线的倚音占主音 12.5%，不带斜线的占 50%（同组平分）；主音可以开始延音，不能是延音的延续。另外跳过 macOS `._` 隐藏文件。之后所有 MIDI、MusicXML、ABC 样本都能导入，唯一失败是 YouTube 章节 `.xml`（不是乐谱）。
+- 阶段检查：notation 118、core 110、engine 97 通过（engine 少的 1 个随来源默认值删除）；桌面 Debug 构建从命令行打开 ABC 文件，最近打开记录正确，日志无错误，正常关闭。
+
+下一入口：R3 演奏舞台渲染器（WebGL2 瀑布 + 琴键 + 光效；时钟；标签、小节线、循环区）。
+
 ## 2026-11-22 · RF 收尾：浏览器关键流程、清理匹配器、恢复延迟校准（提交 d0f66ed、405f1f2、755cb20、f6ad1d3）
 
 - 浏览器用例：新增 `open-and-practice`（打开文件 → 跟随双手练习出现所需琴键 → 暂停 → 歌曲文件与版本 → 回到主页从最近打开重开；设置页打开设备设置），2 个用例通过。旧用例全量运行 91 个中 82 个失败、10 个因无脚本提供的环境变量而跳过，原因都是旧曲库界面或已删的 `importScore`/`load` 命令，删除 62 个文件；保留并通过的有 `verovio-index`、`paper-ink-merge`。共 5 个用例全部通过。
