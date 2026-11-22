@@ -984,20 +984,6 @@ export type PracticePart = typeof PracticePartValues[number];
 export const HandSpanProfileValues = ["Compact", "Standard", "Large"] as const;
 export type HandSpanProfile = typeof HandSpanProfileValues[number];
 
-export interface MetadataLayers {
-  "sourceFormat": string;
-  "sourceId": string;
-  "defaults": SongMetadata;
-  "overridden": Array<string>;
-}
-
-export interface MetadataDefaultsView {
-  "contentId": string;
-  "value": SongMetadata;
-  "layers": MetadataLayers | null;
-  "proof": string;
-}
-
 export const PlayerConfigValues = ["Mute", "Auto", "Human"] as const;
 export type PlayerConfig = typeof PlayerConfigValues[number];
 
@@ -1375,8 +1361,6 @@ export type EngineCommand =
   | { type: "startInstrumentPreview"; "id": string; "content_id": string; "track": number; "program"?: number | null }
   | { type: "stopSongAudition"; "id": string }
   | { type: "songAuditionState"; "id": string }
-  | { type: "readMetadataDefaults" }
-  | { type: "resetMetadataDefaults"; "fields": Array<string>; "expected": SongMetadata; "proof": string }
   | { type: "fileLocations" }
   | { type: "fileLocationsFor"; "kind": string }
   | { type: "updateFileLocation"; "kind": string; "path"?: string | null; "clear": boolean; "expected"?: string | null }

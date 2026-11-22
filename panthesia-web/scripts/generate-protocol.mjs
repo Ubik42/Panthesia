@@ -54,8 +54,6 @@ const domains = [
   ["../../panthesia-core/src/exercise.rs", ["ExercisePattern", "ExerciseTonality", "ExerciseMinorForm", "ExerciseDirection", "ExerciseHands", "ExerciseSpec"]],
   ["../../panthesia-notation/src/hand.rs", ["PracticePart"]],
   ["../../panthesia-core/src/fingering.rs", ["HandSpanProfile"]],
-  ["../../panthesia-core/src/metadata_layers.rs", ["MetadataLayers"]],
-  ["../../panthesia-engine/src/metadata_defaults.rs", ["MetadataDefaultsView"], "output"],
   ["../../panthesia-core/src/song_config.rs", ["PlayerConfig", "NotePlaybackRule"]],
   ["../../panthesia-engine/src/note_playback.rs", ["PlaybackNote", "PlaybackPage"], "output"],
   ["../../panthesia-core/src/library.rs", ["SongMetadata", "FingerHint", "NoteHandHint", "FingerAction", "MeterCorrection", "MeterSegment", "MeasureLength", "MeterMap"]],

@@ -11,12 +11,12 @@ export type PracticeEditCommand = Extract<EngineCommand, { type:
   | "saveBookmark" | "removeBookmark"
   | "savePassage" | "removePassage" | "updatePassageDetails" | "saveScorePassage" | "saveTickPassage"
   | "saveExercisePreset" | "removeExercisePreset" | "editExercisePreset" | "deleteExercisePreset"
-  | "resetMetadataDefaults" | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "trackAppearance" | "setMetadata" | "editMetadata"
+  | "saveFingerPractice" | "savePairFingerPractice" | "trackSound" | "trackAppearance" | "setMetadata" | "editMetadata"
 }> | (Extract<EngineCommand, { type: "fingerPair" }> & { proof: string });
 export type PracticeDemoCommand = Extract<EngineCommand, { type: "startFingerDemo" | "startHeldFingerDemo" | "startPairFingerDemo" }>;
 export type PracticeReadCommand = Extract<EngineCommand, { type:
   | "bookmarks" | "passages" | "exercisePresets" | "previewTickRange" | "previewScoreRange" | "previewScoreRangeTrim"
-  | "readMetadataDefaults" | "metadata" | "suggestHands" | "previewMeterMap" | "fingerPlanContext" | "reviewFingerAcceptance"
+  | "metadata" | "suggestHands" | "previewMeterMap" | "fingerPlanContext" | "reviewFingerAcceptance"
   | "reviewHeldActionEdit" | "fingerProfiles" | "handUndoState"
   | "readHandAssignments" | "readNotePlayback"
   | "readMeterEditorState"

@@ -391,18 +391,6 @@ impl Player {
             | Command::AddScoreAttachment{..}
             | Command::UpdateScoreAttachment{..}
  => unreachable!(),
-            Command::ReadMetadataDefaults => {
-                let file = self.file.as_ref().ok_or("请先选择曲目")?;
-                return serde_json::to_value(metadata_defaults::view(&self.annotation_path(file)?, &file.content_id)?).map_err(|e|e.to_string());
-            }
-            Command::ResetMetadataDefaults { fields, expected, proof } => {
-                let file = self.file.as_ref().ok_or("请先选择曲目")?;
-                let result = metadata_defaults::reset(&self.data, &self.annotation_path(file)?, &file.content_id, fields, expected, &proof)?;
-                if result["status"] == "saved" {
-                    self.title = result["value"]["title"].as_str().unwrap_or(&file.name).to_owned();
-                }
-                return Ok(result);
-            }
             Command::Metadata => return serde_json::to_value(self.current_metadata()?).map_err(|error|error.to_string()),
             Command::SetMetadata { value } => return self.save_current_metadata(value, None),
             Command::EditMetadata { value, expected } => return self.save_current_metadata(value, Some(expected)),

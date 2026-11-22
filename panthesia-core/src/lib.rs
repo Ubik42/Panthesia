@@ -13,7 +13,6 @@ pub mod exercise;
 pub mod fingering;
 pub mod library;
 pub mod song_annotations;
-pub mod metadata_layers;
 pub mod practice;
 pub mod practice_history;
 pub mod song_config;

@@ -142,7 +142,7 @@
 ## 谱面配对与程序数据
 
 - 配对的谱面写为 `files[]` 中 `role: "score"` 的引用和 `scores[]` 中编号为 `score` 的项，`default.score` 指向它；对齐分析快照写在该项的 `analysis` 字段。
-- 格式尚未规定的 Panthesia 自身数据写在 `extensions.panthesia`（目前为元数据来源层 `metadataLayers`）。
+- 格式尚未规定的 Panthesia 自身数据写在 `extensions.panthesia`；不认识的扩展内容在重写时原样保留。
 
 ## 写入时机（Panthesia）
 

@@ -18,8 +18,6 @@ pub enum Command {
     StartInstrumentPreview { id:String, content_id:String, track:usize, program:Option<u8> },
     StopSongAudition { id: String },
     SongAuditionState { id: String },
-    ReadMetadataDefaults,
-    ResetMetadataDefaults { fields: Vec<String>, expected: panthesia_core::library::SongMetadata, proof: String },
     FileLocations,
     FileLocationsFor { kind: String },
     UpdateFileLocation {kind:String,path:Option<PathBuf>,clear:bool,#[serde(default)] expected:Option<String>},

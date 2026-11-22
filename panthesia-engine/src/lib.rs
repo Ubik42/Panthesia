@@ -12,7 +12,6 @@ mod device_catalog;
 pub use device_catalog::Snapshot as DeviceSnapshot;
 mod load_pipeline;
 mod song_metadata;
-mod metadata_defaults;
 mod exercise_assets;
 mod finger_annotations;
 mod exercise_loading;

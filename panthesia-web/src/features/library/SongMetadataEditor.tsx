@@ -1,6 +1,5 @@
 import { metadataFields, completeMetadata } from "./metadataFields";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MetadataDefaultsPanel } from "./MetadataDefaultsPanel";
 import {
   openEditDraft,
   busyEditDraft,
@@ -14,7 +13,6 @@ import type {
   Metadata,
   MetadataDraft,
   MetadataService,
-  MetadataDefaults,
   MetadataField,
 } from "./metadataTypes";
 type MetadataEdit = { path: string; contentId: string; value: Metadata };
@@ -91,7 +89,6 @@ export function SongMetadataEditor({
       cachedDraft.current?.tagsText ??
       (cachedDraft.current?.draft ?? edit.value).tags.join("，"),
   );
-  const [defaultsRevision, setDefaultsRevision] = useState(0);
   const dirty = !equal(base, draft) || tagsText !== base.tags.join("，");
   const tagsError =
     draft.tags.length > 100
@@ -201,26 +198,7 @@ export function SongMetadataEditor({
     setSavedWarnings(warnings);
     setRefreshPending(true);
     setUnconfirmed(false);
-    setDefaultsRevision(value => value + 1);
   };
-  const resetDefaults = (view: MetadataDefaults, selected: MetadataField[]) => job(async () => {
-    setUnconfirmed(true);
-    const reply = await service.resetDefaults(selected, base, view.proof);
-    setDefaultsRevision(value => value + 1);
-    if (reply.status === "conflict") {
-      present(requireValue(reply.current, "最新曲目信息"));
-      setNotice("资料来源或个人修改已变化，请审阅最新资料后重新选择恢复字段。");
-      return;
-    }
-    rememberSaved(requireValue(reply.value, "已恢复的曲目信息"), reply.warnings, "已恢复所选来源默认值。下次打开时，这些字段随来源资料更新。");
-    try {
-      await saved(reply.warnings);
-      draftMemory.delete(memoryKey);
-      setRefreshPending(false);
-    } catch (failure) {
-      throw new Error(`资料已恢复，界面刷新失败：${failure instanceof Error ? failure.message : String(failure)}`);
-    }
-  });
   const save = () =>
     void job(async () => {
       setUnconfirmed(true);
@@ -275,7 +253,6 @@ export function SongMetadataEditor({
   const review = () =>
     void job(async () => {
       const value = await service.read();
-      setDefaultsRevision(previous => previous + 1);
       if (
         dirty &&
         equal(value, draft) &&
@@ -359,9 +336,6 @@ export function SongMetadataEditor({
         {tagsError ||
           "标签用中文或英文逗号分隔，最多 100 个，每个最多 128 字。"}
       </p>
-      <MetadataDefaultsPanel read={service.readDefaults} revision={defaultsRevision} base={base}
-        disabled={busy || dirty || !!conflict || refreshPending || unconfirmed}
-        reset={resetDefaults} />
       {error && (
         <p role="alert" className="dialog-error">
           {error}

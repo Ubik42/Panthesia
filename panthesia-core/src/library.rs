@@ -9,6 +9,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Highest RON sidecar version still read. Version 4 only added the retired
+/// `metadata_layers` field, which serde now skips as an unknown field; writes stop at 3.
 const METADATA_VERSION: u16 = 4;
 const SIDECAR_EXTENSION: &str = "neothesia.ron";
 
@@ -117,7 +119,10 @@ pub struct ScoreAnalysisSnapshot {
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct SongSidecar {
     pub metadata: SongMetadata,
-    pub metadata_layers: Option<crate::metadata_layers::MetadataLayers>,
+    /// Retired "metadata source defaults" layer. Older annotation documents carry the key
+    /// (often as `null`); it is accepted and dropped so those documents still load.
+    #[serde(rename = "metadataLayers", skip_serializing, deserialize_with = "ignore_retired_field")]
+    pub retired_metadata_layers: (),
     pub fingerings: Vec<FingerHint>,
     pub finger_actions:Vec<FingerAction>,
     pub hands: Vec<NoteHandHint>,
@@ -134,8 +139,6 @@ struct MetadataSidecar {
     version: u16,
     content_id: String,
     metadata: SongMetadata,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    metadata_layers: Option<crate::metadata_layers::MetadataLayers>,
     #[serde(default)]
     fingerings: Vec<FingerHint>,
     #[serde(default)]
@@ -185,8 +188,6 @@ pub enum MetadataError {
     InvalidFingerActions(String),
     #[error("invalid note playback rules: {0}")]
     InvalidNotePlayback(String),
-    #[error("invalid metadata layers: {0}")]
-    InvalidMetadataLayers(String),
     #[error("could not serialize metadata sidecar: {0}")]
     Serialize(#[source] ron::Error),
     #[error("could not save metadata sidecar: {0}")]
@@ -467,8 +468,6 @@ pub fn load_legacy_song_sidecar(midi_path:&Path,expected_content_id:&str)->Resul
     if !(1..=METADATA_VERSION).contains(&sidecar.version) {
         return Err(MetadataError::UnsupportedVersion(sidecar.version));
     }
-    validate_metadata_layers(sidecar.metadata_layers.as_ref(), &sidecar.metadata)?;
-    if sidecar.version < 4 && sidecar.metadata_layers.is_some() { return Err(MetadataError::UnsupportedVersion(sidecar.version)); }
     if sidecar.version < 3 && !sidecar.note_playback.is_empty() {
         return Err(MetadataError::UnsupportedVersion(sidecar.version));
     }
@@ -480,7 +479,7 @@ pub fn load_legacy_song_sidecar(midi_path:&Path,expected_content_id:&str)->Resul
     }
     Ok(SongSidecar {
         metadata: sidecar.metadata.normalized(),
-        metadata_layers: sidecar.metadata_layers,
+        retired_metadata_layers: (),
         fingerings: normalize_fingerings(sidecar.fingerings)?,
         finger_actions:normalize_finger_actions(sidecar.finger_actions)?,
         hands: normalize_hands(sidecar.hands),
@@ -499,7 +498,7 @@ pub fn save_song_metadata(
     metadata: SongMetadata,
 ) -> Result<PathBuf, MetadataError> {
     let mut sidecar = existing_sidecar_or_default(midi_path, content_id)?;
-    sidecar.set_personal_metadata(metadata);
+    sidecar.metadata = metadata.normalized();
     save_song_sidecar(midi_path, content_id, sidecar)
 }
 
@@ -627,13 +626,11 @@ pub fn save_song_sidecar(
 ) -> Result<PathBuf, MetadataError> {
     if let Some(path)=crate::song_annotations::document_path(midi_path){return crate::song_annotations::write(&path,content_id,sidecar,midi_path);}
     if is_music_file(midi_path){return save_manifest_sidecar(midi_path,content_id,sidecar);}
-    validate_metadata_layers(sidecar.metadata_layers.as_ref(), &sidecar.metadata)?;
     let path = metadata_sidecar_path(midi_path);
     let sidecar = MetadataSidecar {
-        version: if sidecar.metadata_layers.is_some() { 4 } else if !sidecar.note_playback.is_empty() { 3 } else if sidecar.metadata.has_extended_fields() { 2 } else { 1 },
+        version: if !sidecar.note_playback.is_empty() { 3 } else if sidecar.metadata.has_extended_fields() { 2 } else { 1 },
         content_id: content_id.to_owned(),
         metadata: sidecar.metadata.normalized(),
-        metadata_layers: sidecar.metadata_layers,
         fingerings: normalize_fingerings(sidecar.fingerings)?,
         finger_actions:normalize_finger_actions(sidecar.finger_actions)?,
         hands: normalize_hands(sidecar.hands),
@@ -654,7 +651,6 @@ pub fn save_song_sidecar(
 }
 
 pub(crate) fn normalize_song_sidecar(mut value:SongSidecar)->Result<SongSidecar,MetadataError>{
-    validate_metadata_layers(value.metadata_layers.as_ref(),&value.metadata)?;
     value.metadata=value.metadata.normalized();
     value.fingerings=normalize_fingerings(value.fingerings)?;
     value.finger_actions=normalize_finger_actions(value.finger_actions)?;
@@ -663,21 +659,8 @@ pub(crate) fn normalize_song_sidecar(mut value:SongSidecar)->Result<SongSidecar,
     Ok(value)
 }
 
-impl SongSidecar {
-    pub fn set_personal_metadata(&mut self, value: SongMetadata) {
-        let value = value.normalized();
-        if let Some(layers) = &mut self.metadata_layers { layers.personal_edit(&self.metadata, &value); }
-        self.metadata = value;
-    }
-}
-fn validate_metadata_layers(layers: Option<&crate::metadata_layers::MetadataLayers>, value: &SongMetadata) -> Result<(), MetadataError> {
-    if let Some(layers) = layers {
-        layers.validate().map_err(MetadataError::InvalidMetadataLayers)?;
-        if layers.resolve(value) != value.clone().normalized() {
-            return Err(MetadataError::InvalidMetadataLayers("来源默认值与有效资料不一致".into()));
-        }
-    }
-    Ok(())
+fn ignore_retired_field<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<(), D::Error> {
+    serde::de::IgnoredAny::deserialize(deserializer).map(|_| ())
 }
 
 fn normalize_note_playback(mut rules: Vec<crate::song_config::NotePlaybackRule>) -> Result<Vec<crate::song_config::NotePlaybackRule>, MetadataError> {

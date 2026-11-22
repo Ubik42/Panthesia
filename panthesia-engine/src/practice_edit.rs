@@ -61,7 +61,7 @@ pub(crate) fn classify(command: &Command) -> Option<Kind> {
         Command::Meter { .. } | Command::SaveMeterMap { .. } => Kind::Meter,
         Command::TrackSound { .. } => Kind::Sound,
         Command::ApplyScoreRange { .. } | Command::ApplyTickRange { .. } => Kind::Range,
-        Command::ResetMetadataDefaults { .. } | Command::SetMetadata { .. } | Command::EditMetadata { .. } => Kind::Metadata,
+        Command::SetMetadata { .. } | Command::EditMetadata { .. } => Kind::Metadata,
         Command::TrackAppearance { .. } | Command::SaveFingerPractice { .. } | Command::SavePairFingerPractice { .. } => {
             Kind::Preferences
         }
@@ -71,7 +71,7 @@ pub(crate) fn classify(command: &Command) -> Option<Kind> {
 pub(crate) fn reads(command: &Command) -> bool {
     matches!(
         command,
-        Command::ReadMetadataDefaults | Command::Metadata | Command::HeldFingerDemoContext { .. }
+        Command::Metadata | Command::HeldFingerDemoContext { .. }
             | Command::SuggestHands { .. }
             | Command::PreviewMeterMap { .. }
             | Command::FingerPlanContext { .. }

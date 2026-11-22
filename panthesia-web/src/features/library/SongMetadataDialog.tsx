@@ -4,7 +4,6 @@ import { api, type LoadedSong } from "../../api";
 import { SongMetadataEditor } from "./SongMetadataEditor";
 import { TaskActivity } from "../../engine/TaskActivity";
 import type { Metadata, MetadataDraft, MetadataService } from "./metadataTypes";
-import { metadataDefaultsReply } from "./metadataClient";
 
 type Source = Pick<
   LoadedSong,
@@ -66,17 +65,6 @@ export function MetadataDialog({
           value: draft,
           expected,
         });
-      },
-      readDefaults: async () => {
-        check();
-        const result = metadataDefaultsReply(await api.readPractice<unknown>(source,
-          { type: "readMetadataDefaults" }), source.contentId);
-        check();
-        return result;
-      },
-      resetDefaults: async (fields, expected, proof) => {
-        check();
-        return api.editPractice(source, { type: "resetMetadataDefaults", fields, expected, proof });
       },
     };
   }, []);

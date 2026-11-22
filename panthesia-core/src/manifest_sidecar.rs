@@ -17,7 +17,6 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Program state that the format does not describe yet lives under `extensions.panthesia`.
-const EXTENSION: &str = "panthesia";
 const SCORE_ID: &str = "score";
 
 struct Notes<'a> {
@@ -166,11 +165,6 @@ pub fn read(manifest: &Manifest, performance: &str, source: &Performance, manife
             }
         }
     }
-    sidecar.metadata_layers = manifest
-        .extensions
-        .get(EXTENSION)
-        .and_then(|e| e.get("metadataLayers"))
-        .and_then(|v| serde_json::from_value(v.clone()).ok());
     sidecar
 }
 
@@ -455,21 +449,6 @@ pub fn write(
 
     set_metadata(manifest, &sidecar.metadata);
     write_score(manifest, performance, sidecar, music, manifest_dir)?;
-
-    let extension = manifest.extensions.entry(EXTENSION).or_insert_with(|| json!({}));
-    if let Some(ext) = extension.as_object_mut() {
-        match &sidecar.metadata_layers {
-            Some(layers) => {
-                ext.insert("metadataLayers".into(), serde_json::to_value(layers).map_err(|e| e.to_string())?);
-            }
-            None => {
-                ext.remove("metadataLayers");
-            }
-        }
-        if ext.is_empty() {
-            manifest.extensions.remove(EXTENSION);
-        }
-    }
     Ok(())
 }
 
