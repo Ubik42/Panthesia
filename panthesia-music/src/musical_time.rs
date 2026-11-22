@@ -77,12 +77,8 @@ impl MusicalTime {
                 {
                     let d = 1u16.checked_shl(power.into()).ok_or("拍号分母超出范围")?;
                     length(ppq, n, d)?;
-                    if changes
-                        .get(&tick)
-                        .is_some_and(|&(a, b, explicit)| explicit && (a, b) != (n, d))
-                    {
-                        return Err("同一 MIDI 时刻包含互相冲突的拍号".into());
-                    }
+                    // Several signatures at one tick take effect in file order: the last wins
+                    // (POP909 writes 4/4 and then the real 2/4 at tick 0).
                     changes.insert(tick, (n, d, true));
                 }
             }

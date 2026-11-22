@@ -2872,6 +2872,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "panthesia-analysis"
+version = "0.1.0"
+dependencies = [
+ "panthesia-music",
+]
+
+[[package]]
 name = "panthesia-core"
 version = "0.1.0"
 dependencies = [

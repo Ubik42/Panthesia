@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "panthesia-analysis",
   "panthesia-core",
   "panthesia-engine",
   "panthesia-keyboard",
@@ -16,6 +17,7 @@ resolver = "2"
 edition = "2024"
 
 [workspace.dependencies]
+panthesia-analysis = { path = "./panthesia-analysis" }
 panthesia-core = { path = "./panthesia-core" }
 panthesia-engine = { path = "./panthesia-engine" }
 panthesia-keyboard = { path = "./panthesia-keyboard" }
