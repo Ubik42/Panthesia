@@ -2,6 +2,23 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · RD–RP：文档整理、歌曲页、Keel 同步、演奏舞台排版（提交 49936a8、fb8eba0、eba051a、73ba593 及本条）
+
+- RD：开发文档从 17 份合并为 10 份，每份一个职责（`interface-design.md` 取代 Synthesia 复刻规范；`music-model.md`、`stage-rendering.md`、`sources-and-licences.md`、`notation-benchmarks.md` 为合并结果）；删除旧批次证据 JSON、未用字体、引用已删模块的前端脚本与 `useBrowsePane`；计划改写为“已完成 / 进行中 / 待办”三部分。
+- RS：
+  - 引擎 `song_summary`：事实、七类资料（含已登记与按命名规则发现的文件）、图层与来源；`probe` 输出同一结构，新增 `--detached`。
+  - 引擎 `song_generate`：在歌曲旁生成 MusicXML、ABC（新写 `abc_write`，与导入器往返一致，合并连续休止符）、由乐谱导出 MIDI；转录与分离调用 `music-transcription`（独立任务通道，四条分轨相加得伴奏），结果登记到清单并带 `provenance`。
+  - 前端：新歌曲页（概览、资料卡片、图层、练习栏）与启动页（最近歌曲带资料标记与时长、调）；语义 token 与 `src/ui/controls.css`；新界面单独一层 CSS（`screens`）。删除旧歌曲设置页与“歌曲文件与版本”对话框。
+- RK：插件读取伴生清单（Keel 把同名清单挂在同名文件之一上，插件在同名文件上查找）、文件夹清单与同文件夹文件名，`probe --detached` 得到与歌曲页一致的资料；新增 `songMaterials` 字段、资料与图层元数据；歌曲信息改为资料 / 概览 / 图层三个标签页的原生对话框；缩略图配色与界面一致。在隔离的 Keel 中验收：三份同名文件都读到清单，资料为 MIDI 当前、五线谱与 ABC 生成、人声与伴奏已登记。
+- RP：瀑布小节号移到右侧，有段落时按段内序号编号并在段首显示段落名；拍号默认不显示（显示设置“拍号”开关）；时间线读数为“段落 A · 第 2 小节”。五线谱“适合宽度”时一次一行、无滚动条，跟随按整行切换，滚轮与上一行 / 下一行逐行翻动。工具条、时间线、谱面条与所有弹出面板改用语义 token，面板行统一为“名称在左、开关在右”。
+- 检查：notation 119、engine 97 通过；桌面 Debug 构建在隔离资料目录下启动正常。
+- 未做：
+  - Keel 缺陷：插件 HTML 对话框（`contributes.dialogs`）在对话框中宽度为 0（`.plugin-ui-dialog .plugin-view-host` 缺少宽度），内容不可见；Keel 的 `plugins.css` 正有其他未提交改动，未修改。本次验收中网格缩略图也未显示（插件已生成缩略图并缓存），需在 Keel 侧确认。
+  - 转录与分离未用真实模型跑通。
+  - 二级页面（声部与乐器、分手、全局设置、编辑对话框）仍是旧浅色样式。
+
+下一入口：二级页面改用新视觉语言；真实模型跑通一次转录与分离。
+
 ## 2026-11-22 · RO Keel 插件（本条提交）
 
 - `integrations/keel-plugin/`：Keel 插件（非受限模式，按资源库建实例）。

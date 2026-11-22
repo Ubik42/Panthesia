@@ -64,6 +64,7 @@
 | `stem` | `role` 为 `stem` 时必需：`vocals`、`accompaniment`、`piano`、`drums`、`bass`、`other` 或其他名称 |
 | `range` | 可选 `[起, 止]` 秒，引用长音视频中的一段 |
 | `label` | 可选显示名 |
+| `provenance` | 可选；由程序生成的文件为 `{ "origin": "generated", "tool", "createdAt" }` |
 
 **一致性**（打开时）：
 
@@ -168,7 +169,7 @@ MIDI 中没有任何速度事件时，按清单 `tempo` 图层或文件名中的
 
 ## 歌曲包识别
 
-打开歌曲后，"歌曲文件与版本"列出按文件名规则找到的相关文件，用户选择"加入"后才写入清单：
+歌曲页的资料卡片列出按文件名规则找到的相关文件（状态“发现”），用户选择“登记”后才写入清单：
 
 - 同名音频为原音频；`<名>_人声`、`vocals.*` 为人声，`<名>_伴奏`、`accompaniment.*` 为伴奏；导出目录中的 `piano.wav` 为钢琴音轨。
 - 同名或导出的 `score.musicxml` / `.mxl` / `.abc` 为谱面（选择"配对"走谱面配对）；同名 PDF 为谱页。
@@ -187,21 +188,26 @@ MIDI 中没有任何速度事件时，按清单 `tempo` 图层或文件名中的
 ## 命令行 `probe`（供 Keel 插件）
 
 ```powershell
-Panthesia.exe probe <文件> [--json] [--thumbnail <png 路径>] [--size 480x160]
+Panthesia.exe probe <文件> [--json] [--detached] [--thumbnail <png 路径>] [--size 480x160]
 ```
 
-不打开窗口、不读写资料目录、不经过单实例转交。接受 MIDI、MusicXML、ABC、`.panthesia`（分析默认演奏）。标准输出为一行 UTF-8 JSON；失败时输出 `{"error": "…"}`，退出码 1。
+不打开窗口、不读写资料目录、不经过单实例转交。接受 MIDI、MusicXML、ABC、`.panthesia`（分析默认演奏）。标准输出为一行 UTF-8 JSON，与歌曲页使用的歌曲汇总（引擎 `song_summary`）相同；失败时输出 `{"error": "…"}`，退出码 1。`--detached` 表示文件是副本（Keel 插件把歌曲、清单与同文件夹的空占位文件放在临时目录中），此时清单引用的文件不在磁盘上查找，状态记为 `registered`。
 
 | 字段 | 说明 |
 | --- | --- |
-| `kind` | `midi` / `musicxml` / `manifest` |
+| `kind` | `midi` / `musicxml` / `abc` / `manifest` |
 | `performancePath` | 实际分析的演奏文件 |
-| `title`、`artist` | 清单中的值；没有清单时标题取文件名 |
-| `durationSeconds` | 按文件中的拍速播放的时长 |
-| `bpm`、`bpmSource` | 主拍速（持续最久的拍速）；来源 `manifest`（`tempo` 图层）、`midi`、`filename`（文件没有拍速事件且文件名含 `BPM76` 之类） |
-| `tempoChanges`、`timeSignature` | 拍速变化次数、第一小节拍号 |
-| `key`、`keySource` | `G:maj` 形式；来源依次为 `manifest`（`keys` 图层）、`midi`（调号事件）、`filename`（如 `Gmajor`）、`estimated`（`panthesia-analysis` 的调性估计：五小节窗口音级分布与 Albrecht–Shanahan 调性轮廓相关，Viterbi 平滑，取持续最长的调） |
-| `tracks`、`notes`、`pitchRange` | 有音符的轨道数、音符数、最低与最高音 |
-| `manifest` | 清单路径、标题、图层名、演奏列表、音轨类型、是否有谱面、缺失文件编号；没有清单时为 `null` |
-| `importedLayers` | 文件中的歌词事件数、标记名称（最多 64 个）、调号变化数 |
-| `thumbnail` | 写出的钢琴卷帘 PNG（横轴时间、纵轴音高；清单分配了手别时右手绿、左手蓝） |
+| `facts` | `title`、`artist`（清单中的值，没有时标题取文件名）；`durationSeconds`；`bpm`、`bpmSource`（主拍速，来源 `manifest`、`midi`、`filename`）；`tempoChanges`；`timeSignature`（第一小节）；`key`、`keySource`（`G:maj` 形式，来源依次为 `manifest`、`midi`、`filename`、`estimated`）；`measures`；`tracks`、`notes`、`pitchRange` |
+| `materials` | 按固定顺序的资料：`performance`、`musicxml`、`abc`、`paper`、`source`、`vocals`、`accompaniment`，以及有内容时的 `stems`（其他分轨）。每项 `{ kind, label, items }`；`items` 中每个文件 `{ id, path, relative, label, state, origin }`，`state` 为 `current`（正在打开的演奏）、`present`、`missing`、`found`（按命名规则发现、尚未登记）或 `registered`（`--detached` 时） |
+| `layers` | `hands`、`fingering`、`chords`、`keys`、`sections`、`lyrics`、`tempo`（有内容时还有 `beats`）：`{ name, label, origin, count }`；`origin` 为清单中的来源，或文件本身带有时为 `imported`，没有时为 `null` |
+| `manifest` | `{ path, readOnly }`；没有清单时为 `null` |
+| `thumbnail` | 写出的钢琴卷帘 PNG（横轴时间、纵轴音高；颜色与歌曲页一致：右手绿、左手蓝、未分手为强调色） |
+
+## 生成的资料
+
+歌曲页可以生成缺少的资料（引擎 `song_generate`），文件写在演奏文件旁边，同名已存在时加序号，不覆盖任何文件：
+
+- `<名>.musicxml`：由演奏生成五线谱（ABC 歌曲直接转换）；`<名>.abc`：由演奏或五线谱生成 ABC；`<名>.mid`：由乐谱导出演奏。登记为 `score` 或 `performance`。
+- 转录与分离调用外部工具 `music-transcription`（位置在设置中指定，或环境变量 `PANTHESIA_TRANSCRIPTION_TOOL`）。工作目录为歌曲旁的 `<名>_转录/`（歌曲所在文件夹本身已是该工具的项目时用它）。结果中的 `vocals.wav` 登记为人声，`piano.wav` 为钢琴分轨，`piano_raw.mid` 为转录版本；`bass`、`drums`、`guitar`、`other` 四条分轨相加写成 `accompaniment.wav`，登记为伴奏。
+
+生成的文件在 `files[]` 中带 `provenance`：`{ "origin": "generated", "tool": "panthesia" | "music-transcription", "createdAt": 毫秒 }`。

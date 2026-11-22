@@ -28,14 +28,15 @@ pub fn probe(path: &Path, thumbnail: Option<Thumbnail>, detached: bool) -> Resul
 /// assigns tracks to hands, otherwise by track.
 fn write_thumbnail(file: &MidiFile, manifest: Option<&Manifest>, performance: &str, t: &Thumbnail) -> Result<(), String> {
     let (w, h) = (t.width.clamp(16, 4096) as usize, t.height.clamp(16, 4096) as usize);
-    const BACKGROUND: [u8; 3] = [0x17, 0x19, 0x1e];
-    const OCTAVE: [u8; 3] = [0x22, 0x25, 0x2c];
-    const PALETTE: [[u8; 3]; 6] = [[0x7f, 0xc8, 0x5a], [0x4f, 0x9c, 0xf0], [0xf0, 0xa3, 0x3c], [0xc9, 0x6d, 0xe8], [0xe8, 0x5d, 0x75], [0x46, 0xc8, 0xc0]];
+    // The song page colours (tokens.css): surface, hands, accent.
+    const BACKGROUND: [u8; 3] = [0x14, 0x17, 0x1e];
+    const OCTAVE: [u8; 3] = [0x23, 0x27, 0x30];
+    const PALETTE: [[u8; 3]; 6] = [[0xa9, 0xdf, 0x74], [0x6c, 0xb7, 0xf3], [0x8b, 0x93, 0xf8], [0xf1, 0xad, 0x67], [0xde, 0x94, 0xdc], [0x8d, 0xd6, 0xca]];
     let hands = manifest.and_then(|m| m.layer_for("hands", performance)).and_then(|l| l.body.get("tracks")).and_then(Value::as_object);
     let colour = |track: usize, order: usize| match hands.and_then(|h| h.get(&track.to_string())).and_then(Value::as_str) {
         Some("right") => PALETTE[0],
         Some("left") => PALETTE[1],
-        _ => PALETTE[order % PALETTE.len()],
+        _ => PALETTE[(order + 2) % PALETTE.len()],
     };
     let mut pixels = vec![0u8; w * h * 3];
     for px in pixels.chunks_exact_mut(3) {

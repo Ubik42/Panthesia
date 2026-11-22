@@ -1,13 +1,13 @@
 {
   "manifestVersion": 1,
   "id": "com.ubik.panthesia",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "name": "Panthesia",
-  "description": "Song facts and piano-roll thumbnails for MIDI and MusicXML files, read by Panthesia; keeps .panthesia song manifests with their music files.",
+  "description": "Song facts, materials and piano-roll thumbnails for MIDI and score files, read by Panthesia; keeps .panthesia song manifests with their music files.",
   "locales": {
     "zh-CN": {
       "name": "Panthesia",
-      "description": "由 Panthesia 读取 MIDI 与乐谱文件的时长、BPM、调和钢琴卷帘缩略图；.panthesia 歌曲清单随乐曲文件一起移动。"
+      "description": "由 Panthesia 读取 MIDI 与乐谱文件的时长、BPM、调、资料（五线谱、原曲、人声、伴奏）和钢琴卷帘缩略图；.panthesia 歌曲清单随乐曲文件一起移动。"
     }
   },
   "author": "Panthesia",
@@ -24,6 +24,7 @@
   "permissions": [
     "library.read",
     "asset.read",
+    "metadata.read",
     "content.read",
     "data.files",
     "ui.inspector",
@@ -33,10 +34,30 @@
     "derived-field.provider"
   ],
   "contributes": {
-    "commands": [{ "id": "show-song-facts", "title": "查看歌曲信息" }],
+    "commands": [
+      {
+        "id": "show-song-facts",
+        "title": "查看歌曲信息"
+      }
+    ],
     "menus": {},
     "toolbar": [],
-    "inspector": [{ "id": "song-facts-section", "command": "show-song-facts", "title": "Panthesia", "after": "tags", "extensions": ["mid", "midi", "kar", "musicxml", "mxl", "abc"] }],
+    "inspector": [
+      {
+        "id": "song-facts-section",
+        "command": "show-song-facts",
+        "title": "Panthesia",
+        "after": "tags",
+        "extensions": [
+          "mid",
+          "midi",
+          "kar",
+          "musicxml",
+          "mxl",
+          "abc"
+        ]
+      }
+    ],
     "viewerActions": [],
     "shortcuts": [],
     "views": [],
@@ -44,13 +65,61 @@
     "hooks": [],
     "jobs": [],
     "providers": [
-      { "id": "song-thumbnail", "kind": "thumbnail", "extensions": [".mid", ".midi", ".kar", ".musicxml", ".mxl", ".abc"] },
-      { "id": "song-facts", "kind": "metadata", "extensions": [".mid", ".midi", ".kar", ".musicxml", ".mxl", ".abc"] },
-      { "id": "song-bpm", "kind": "derived-field", "fieldId": "bpm", "fieldType": "number" },
-      { "id": "song-key", "kind": "derived-field", "fieldId": "musicalKey", "fieldType": "string" },
-      { "id": "song-duration", "kind": "derived-field", "fieldId": "durationSeconds", "fieldType": "number" }
+      {
+        "id": "song-thumbnail",
+        "kind": "thumbnail",
+        "extensions": [
+          ".mid",
+          ".midi",
+          ".kar",
+          ".musicxml",
+          ".mxl",
+          ".abc"
+        ]
+      },
+      {
+        "id": "song-facts",
+        "kind": "metadata",
+        "extensions": [
+          ".mid",
+          ".midi",
+          ".kar",
+          ".musicxml",
+          ".mxl",
+          ".abc"
+        ]
+      },
+      {
+        "id": "song-bpm",
+        "kind": "derived-field",
+        "fieldId": "bpm",
+        "fieldType": "number"
+      },
+      {
+        "id": "song-key",
+        "kind": "derived-field",
+        "fieldId": "musicalKey",
+        "fieldType": "string"
+      },
+      {
+        "id": "song-duration",
+        "kind": "derived-field",
+        "fieldId": "durationSeconds",
+        "fieldType": "number"
+      },
+      {
+        "id": "song-materials",
+        "kind": "derived-field",
+        "fieldId": "songMaterials",
+        "fieldType": "string"
+      }
     ],
     "themes": [],
-    "companions": [{ "id": "panthesia-manifest", "extension": ".panthesia" }]
+    "companions": [
+      {
+        "id": "panthesia-manifest",
+        "extension": ".panthesia"
+      }
+    ]
   }
 }
