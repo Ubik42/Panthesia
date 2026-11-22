@@ -140,12 +140,20 @@ pub struct MidiMarker {
     pub tick: u64,
     pub name: String,
 }
+/// One lyric event: a syllable or word as stored. `/`, `\\` and newlines mark line breaks
+/// (karaoke convention); the text is kept as it is.
+#[derive(Debug, Clone)]
+pub struct MidiLyric {
+    pub tick: u64,
+    pub text: String,
+}
 #[derive(Debug, Clone)]
 pub struct MidiFile {
     pub name: String,
     pub content_id: String,
     pub source_path: Option<PathBuf>,
     pub markers: Arc<[MidiMarker]>,
+    pub lyrics: Arc<[MidiLyric]>,
     pub format: Format,
     pub key_signature: Option<(i8, bool)>,
     pub key_signatures:Arc<[key_signature::KeySignatureEvent]>,

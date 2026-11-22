@@ -1275,6 +1275,25 @@ export interface Snapshot {
   "rounds": number;
 }
 
+export interface TimedText {
+  "tick": number;
+  "seconds": number;
+  "text": string;
+}
+
+export interface KeyChange {
+  "tick": number;
+  "seconds": number;
+  "fifths": number;
+  "minor": boolean;
+}
+
+export interface ImportedLayers {
+  "lyrics": Array<TimedText>;
+  "sections": Array<TimedText>;
+  "keys": Array<KeyChange>;
+}
+
 export interface PassageCatalog {
   "contentId": string;
   "grid": string;

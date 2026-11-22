@@ -98,6 +98,11 @@ pub fn probe(path: &Path, thumbnail: Option<Thumbnail>) -> Result<Value, String>
         "tracks": tracks,
         "notes": notes.len(),
         "pitchRange": (!notes.is_empty()).then_some([low, high]),
+        "importedLayers": {
+            "lyrics": file.lyrics.len(),
+            "sections": file.markers.iter().map(|m| m.name.as_str()).take(64).collect::<Vec<_>>(),
+            "keyChanges": file.key_signatures.len(),
+        },
         "manifest": located.as_ref().map(|found| manifest_summary(found)),
         "thumbnail": thumbnail,
         "warnings": warnings,

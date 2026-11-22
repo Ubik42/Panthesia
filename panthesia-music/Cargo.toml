@@ -8,5 +8,7 @@ description = "Panthesia musical events, time maps and stable source-note identi
 [dependencies]
 midly.workspace = true
 blake3.workspace = true
+encoding_rs = "0.8"
+chardetng = "0.1"
 serde = { workspace = true, features = ["derive"] }
 

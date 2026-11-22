@@ -169,5 +169,19 @@ pub fn build(
         has_score,
         score_revision,
         meter_correction,
+        imported_layers: imported_layers(file),
+    }
+}
+pub fn imported_layers(file: &MidiFile) -> crate::session_state::ImportedLayers {
+    let seconds = |tick: u64| file.tempo_track.pulses_to_duration(tick).as_secs_f64();
+    let timed = |tick: u64, text: &str| crate::session_state::TimedText { tick, seconds: seconds(tick), text: text.into() };
+    crate::session_state::ImportedLayers {
+        lyrics: file.lyrics.iter().map(|l| timed(l.tick, &l.text)).collect(),
+        sections: file.markers.iter().map(|m| timed(m.tick, &m.name)).collect(),
+        keys: file
+            .key_signatures
+            .iter()
+            .map(|k| crate::session_state::KeyChange { tick: k.tick, seconds: seconds(k.tick), fifths: k.fifths, minor: k.minor })
+            .collect(),
     }
 }

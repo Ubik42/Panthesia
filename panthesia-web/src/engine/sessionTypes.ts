@@ -70,6 +70,7 @@ export interface MeterMapPreview {
   measures: LoadedSong["measures"];
 }
 export interface LoadedSong {
+  importedLayers: import("./commands.generated").ImportedLayers;
   practiceVariant?: {editionId?:string|null; settings: import("./commands.generated").Variant; tonic: number; effectiveTonic?:number; effectiveFifths?:number; keyChanges?:{tick:number;at:number;tonic:number;fifths:number;minor:boolean}[]; minor: boolean; keySource: "manual" | "midi" | "score" | "estimate"; sourceHasScore: boolean; minPitch: number | null; maxPitch: number | null; active: boolean};
   engineId?: string | null;
   grid?: string;

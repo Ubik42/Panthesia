@@ -24,8 +24,40 @@ impl Write for MidiWriter {
         Ok(())
     }
 }
-fn text(bytes: &[u8], limit: usize) -> Option<String> {
-    let value = String::from_utf8_lossy(bytes)
+/// The encoding of a file's meta texts (names, markers, lyrics). MIDI does not declare one;
+/// files from Chinese and Japanese tools commonly use GBK or Shift-JIS, so the texts are
+/// detected together (chardetng) when they are not valid UTF-8.
+fn text_encoding(smf: &Smf) -> &'static encoding_rs::Encoding {
+    let texts = smf.tracks.iter().flatten().filter_map(|event| match event.kind {
+        TrackEventKind::Meta(
+            MetaMessage::TrackName(value)
+            | MetaMessage::InstrumentName(value)
+            | MetaMessage::Marker(value)
+            | MetaMessage::CuePoint(value)
+            | MetaMessage::Lyric(value)
+            | MetaMessage::Text(value),
+        ) => Some(value),
+        _ => None,
+    });
+    let mut detector = chardetng::EncodingDetector::new();
+    let mut foreign = false;
+    for value in texts {
+        if std::str::from_utf8(value).is_err() {
+            foreign = true;
+        }
+        detector.feed(value, false);
+    }
+    if !foreign {
+        return encoding_rs::UTF_8;
+    }
+    detector.feed(&[], true);
+    detector.guess(None, true)
+}
+fn decode(bytes: &[u8], encoding: &'static encoding_rs::Encoding) -> String {
+    encoding.decode_without_bom_handling(bytes).0.into_owned()
+}
+fn text(bytes: &[u8], limit: usize, encoding: &'static encoding_rs::Encoding) -> Option<String> {
+    let value = decode(bytes, encoding)
         .chars()
         .filter(|c| !c.is_control())
         .take(limit)
@@ -81,6 +113,8 @@ pub(crate) fn read(
     let mut fallback_names = names.clone();
     let mut last_tick = 0u64;
     let mut marker_set = BTreeSet::new();
+    let encoding = text_encoding(&smf);
+    let (mut lyrics, mut kar_text) = (Vec::new(), Vec::new());
     let mut keys = Vec::new();
     for (track_id, track) in smf.tracks.iter().enumerate() {
         let mut tick = 0u64;
@@ -110,18 +144,23 @@ pub(crate) fn read(
                 }
                 TrackEventKind::Meta(MetaMessage::TrackName(value)) => {
                     if names[track_id].is_none() {
-                        names[track_id] = text(value, 120);
+                        names[track_id] = text(value, 120, encoding);
                     }
                 }
                 TrackEventKind::Meta(MetaMessage::InstrumentName(value)) => {
                     if fallback_names[track_id].is_none() {
-                        fallback_names[track_id] = text(value, 120);
+                        fallback_names[track_id] = text(value, 120, encoding);
                     }
                 }
                 TrackEventKind::Meta(MetaMessage::Marker(value) | MetaMessage::CuePoint(value)) => {
-                    if let Some(value) = text(value, 80) {
+                    if let Some(value) = text(value, 80, encoding) {
                         marker_set.insert((tick, value));
                     }
+                }
+                TrackEventKind::Meta(MetaMessage::Lyric(value)) => lyrics.push((tick, track_id, ordinal, value)),
+                // Karaoke (.kar) files carry lyrics as text events; `@` lines are headers.
+                TrackEventKind::Meta(MetaMessage::Text(value)) if !value.starts_with(b"@") => {
+                    kar_text.push((tick, track_id, ordinal, value))
                 }
                 TrackEventKind::Meta(MetaMessage::KeySignature(key, minor)) => {
                     if (-7..=7).contains(&key) {
@@ -384,10 +423,26 @@ pub(crate) fn read(
         original_bytes: Arc::from(bytes),
     });
     check()?;
+    let mut lyrics = if lyrics.is_empty() { kar_text } else { lyrics };
+    lyrics.sort_by_key(|e| (e.0, e.1, e.2));
+    let lyrics: Vec<MidiLyric> = lyrics
+        .into_iter()
+        .filter_map(|(tick, _, _, value)| {
+            let text: String = decode(value, encoding)
+                .chars()
+                .map(|c| if c == '\r' { '\n' } else { c })
+                .filter(|c| *c == '\n' || !c.is_control())
+                .take(200)
+                .collect();
+            (!text.is_empty()).then_some(MidiLyric { tick, text })
+        })
+        .take(100_000)
+        .collect();
     Ok(MidiFile {
         name,
         content_id,
         source_path: None,
+        lyrics: lyrics.into(),
         markers: marker_set
             .into_iter()
             .map(|(tick, name)| MidiMarker { tick, name })
