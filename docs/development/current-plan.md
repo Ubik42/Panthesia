@@ -211,7 +211,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R1 主线瘦身 | 删除评分时代代码与历史回放（engine、core、前端 review/routines/history）、对应协议变体与 spec；删除一次性迁移代码；DuET 独立 venv 与可配置路径（存储改造与 `lib.rs` 拆分移到 R2） | `practice_policy.rs` 删除；engine < 5 万行；构建通过；真实资料可读 | 已完成（2026-11-21；`library_repairs` 移到 R2） |
 | R2 清单存储与打开文件 | `.panthesia` 格式（3.7）的读写、校验、哈希修复与格式文档；打开方式（命令行、文件关联、单实例、拖入）；`probe` 命令行子命令（供 Keel 插件）；删除集中曲库（歌曲仓库、副本存储、目录缓存、导入复制）与五套存储机制，本地只留练习数据、最近打开与缓存；删除曲库、选曲、导入收件箱界面与对应协议命令；迁移真实资料；拆分 `lib.rs`（见下方 R2 任务分解） | 双击任意 MIDI / MusicXML / `.panthesia` 直接进入演奏；修改后在文件旁生成清单，移动文件夹后仍能打开；`songs.sqlite3` 与 `library/assets` 不再存在；真实资料迁移完成并核对；每个职责只有一条实现路径，模块边界清楚（`lib.rs` 只声明模块与引擎入口，播放状态、命令分派、存储、谱面各自成模块），没有只为旧机制保留的代码；`cargo test --workspace` 能跑完且全部通过 | 已完成（2026-11-21） |
 | RF 前端基础 | **先删后改**：列出 `src/` 根目录约 120 个对话框与 86 个全局 CSS 文件，删除随曲库、选曲、导入、评分、历史一起失去用途的部分，再动剩下的；然后建立 tokens、基础组件、zustand store（song、playback、settings）、单一 `send()`、状态推送替代 80 ms 轮询；启动页与歌曲设置按新结构重写；留下的对话框归入 `src/screens` | 不再使用的对话框与 CSS 已删除（删除清单记入 progress.md）；`App.tsx` 只组合各屏与全局状态，不承载业务逻辑；CSS 全部基于 token，无硬编码颜色与 `!important`；不再轮询；Playwright 关键流程通过 | 基本完成（2026-11-22）：余 24 处 `!important`，随各屏视觉重做（R3）处理 |
-| RO Keel 插件 | `integrations/keel-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Keel 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Keel 中移动 MIDI 时清单一起移动 | 待开始（依赖 Keel PF 阶段） |
+| RO Keel 插件 | `integrations/keel-plugin/`：薄插件，调用 Panthesia 的 `probe` 子命令取得字段与钢琴卷帘缩略图（解析只在 Rust 中实现一次）；`.panthesia` 伴生登记；"用 Panthesia 练习"打开方式 | 在 Keel 中浏览 `D:\Music\MIDI` 副本能看到时长、BPM、调与缩略图；双击进入 Panthesia；在 Keel 中移动 MIDI 时清单一起移动 | 进行中（Keel PF 已完成） |
 | R3 演奏舞台渲染器 | WebGL2 瀑布 + 琴键 + 光效；时钟；标签模式（含首调级数）、小节线、循环区 | 性能目标达标；视觉对照 Synthesia 与 MIDIVisualizer | 已完成（2026-11-22）：WebGL2 瀑布层，慢机器模拟下绘制 p99 3.9 ms |
 | R4 分层歌曲模型与统一导入 | `panthesia-notation`；Song 图层与来源信息；ABC 导入；MIDI meta（歌词、标记、调号）读入；歌曲包识别；元数据收敛；语料回归 | 第 3.6 节样本全部可导入；同一首歌从 MIDI / MusicXML / ABC 进入后都能播放、显示谱面、转调、量化 | 已完成（2026-11-22）：MusicXML 歌词与和弦按演奏位置展开留到 R6 |
 | R5 谱面显示 | 谱面窗口化、跟随、只读阅读器；从 Score IR 生成 | 长谱流畅翻页与跟随；转调后谱面与演奏一致 | 已完成（2026-11-22）：跟随不重渲染、适合宽度重排、延音对齐、统一 Score IR 写出器 |
@@ -219,7 +219,7 @@ depends_on: [layer ids]   例：chords 依赖 beats；级数显示依赖 chords 
 | R7 伴奏音轨 | stems 识别与导入；chroma DTW 对齐；signalsmith-stretch 变速；人声 / 伴奏开关 | KAIRCI 与 B 站样本可同步播放；改 BPM 时音高不变、不漂移 | 已完成（2026-11-22）：起音直方图对齐，Signalsmith Stretch 变速；0.75–1.25 倍速漂移 ≤ 21 ms |
 | R8 虚拟双手 | 自行实现（参考公开思路，不移植无许可证代码）：骨架 + IK、穿指、换指、交叉；舞台图层 | 实际运动对照参考视频 BV1gasF6UERM | 基本完成（2026-11-22）：任意歌曲可显示（规划手别与指法）；逐段对照参考视频未做 |
 | R9 自由演奏与录音 | UI08：录音、量化保存、重开 | 录音保存为歌曲后可正常练习 | 已完成（2026-11-22）：录音速度与节拍器、保存到文档目录、量化用练习变体 |
-| R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 下一步 |
+| R10 发布 | 打包、使用文档、来源审计、Release | 独立安装包完成一次完整练琴流程 | 运行包与文档完成；公开发布待用户确认，受内置音色库许可阻塞（`release-audit.md`） |
 
 顺序：R1 → R2 → RF → R3 为前端主干；R4 → R6 → R7 为数据主干，与前端主干并行。R5 依赖 R4；R8 依赖 R3；RO 依赖 R2 的 `probe` 子命令与 Keel 的 PF 阶段。单会话连续执行时按 R1 → R2 → RF → R4 → R3 → RO → R5 → R6 → R7 → R8 → R9 → R10 推进；RO 在 Keel PF 完成前跳过，完成后插入。
 
