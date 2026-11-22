@@ -99,6 +99,8 @@ pub(crate) struct Player {
     pub(crate) finger_undo: practice_edit::FingerUndo,
     /// Last manifest projection of per-song preferences: (content id, values).
     pub(crate) manifest_settings: Option<(String, manifest_settings::Projection)>,
+    /// Chord layer of the current song: (song, variant and score revision, value).
+    pub(crate) harmony_cache: Option<(String, crate::harmony::Harmony)>,
 }
 impl Player {
     #[cfg(test)]
@@ -180,6 +182,7 @@ impl Player {
             previous_mode: None,
             finger_undo: Default::default(),
             manifest_settings: None,
+            harmony_cache: None,
             config: SongConfig::default(),
             fingers: FingerAssignments::default(),
             exercise: None,
@@ -247,6 +250,7 @@ impl Player {
             None => (None, load_pipeline::Timeline::new(&file)?),
         };
         self.manifest_settings = None;
+        self.harmony_cache = None;
         if plan.is_none() {
             if let Some(path) = file.source_path.clone() {
                 if panthesia_core::song_annotations::document_path(&path).is_none() {

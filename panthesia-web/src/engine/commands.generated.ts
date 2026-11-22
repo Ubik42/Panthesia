@@ -1280,6 +1280,22 @@ export interface ImportedLayers {
   "keys": Array<KeyChange>;
 }
 
+export interface Harmony {
+  "chords": Array<ChordItem>;
+  "origin": string;
+  "tool": string;
+}
+
+export interface ChordItem {
+  "tick": number;
+  "endTick": number;
+  "seconds": number;
+  "endSeconds": number;
+  "harte": string | null;
+  "name": string;
+  "degree": string;
+}
+
 export interface PassageCatalog {
   "contentId": string;
   "grid": string;

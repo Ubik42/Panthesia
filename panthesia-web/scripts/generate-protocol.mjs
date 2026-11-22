@@ -68,6 +68,7 @@ const domains = [
   ["../../panthesia-engine/src/sound_runtime.rs", ["SoundStatus"], "output"],
   ["../../panthesia-engine/src/audio.rs", ["AudioPerformance"], "output"],
   ["../../panthesia-engine/src/session_state.rs", ["PlaybackPerformance", "LiveKey", "Snapshot", "TimedText", "KeyChange", "ImportedLayers"], "output"],
+  ["../../panthesia-engine/src/harmony.rs", ["Harmony", "ChordItem"], "output"],
   ["../../panthesia-engine/src/practice_catalog.rs", ["PassageCatalog", "ExerciseCatalog", "FingerProfileCatalog"], "output"],
   ["../../panthesia-engine/src/hands.rs", ["HandProposal"], "output"],
   ["../../panthesia-engine/src/meter_map.rs", ["MeterEditorState"], "output"],

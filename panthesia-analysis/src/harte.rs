@@ -105,6 +105,7 @@ impl Quality {
             Quality::Augmented => "+",
             Quality::Sus2 => "sus2",
             Quality::Sus4 => "sus4",
+            Quality::Sus4Flat7 if degree => "⁷sus4",
             Quality::Sus4Flat7 => "7sus4",
             Quality::Major6 => "6",
             Quality::Minor6 => "m6",
@@ -135,6 +136,38 @@ pub struct Chord {
 pub struct Key {
     pub tonic: u8,
     pub minor: bool,
+}
+
+const LETTERS: [&str; 7] = ["C", "D", "E", "F", "G", "A", "B"];
+const LETTER_PC: [i32; 7] = [0, 2, 4, 5, 7, 9, 11];
+/// Scale step of a chromatic degree above the tonic (♭2 and 2 are step 1, ♯4 is step 3 …).
+const ROOT_STEPS: [usize; 12] = [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6];
+
+/// Letters from a chord's root to one of its tones: thirds two, fifths four, sevenths six.
+fn tone_letters(root: u8, tone: u8) -> usize {
+    match (tone + 12 - root) % 12 {
+        1 | 2 => 1,
+        3 | 4 => 2,
+        5 => 3,
+        6 | 7 | 8 => 4,
+        9 => 5,
+        10 | 11 => 6,
+        _ => 0,
+    }
+}
+fn accidental(shift: i32) -> &'static str {
+    match shift {
+        -2 => "𝄫",
+        -1 => "♭",
+        1 => "♯",
+        2 => "𝄪",
+        _ => "",
+    }
+}
+/// The note `pc` written on `letter`.
+fn spell(letter: usize, pc: u8) -> String {
+    let shift = (i32::from(pc) - LETTER_PC[letter] + 18).rem_euclid(12) - 6;
+    format!("{}{}", LETTERS[letter], accidental(shift))
 }
 
 const SHARP_NAMES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -216,16 +249,17 @@ impl Chord {
     }
 
     /// `F♯7/A♯`; sharps or flats follow the key signature.
+    /// Letters follow the key: IV of G♭ major is C♭, the third of F♯ is A♯. Without a key the
+    /// root is spelled with sharps.
     pub fn name(self, key: Option<Key>) -> String {
-        let flats = key.is_some_and(Key::prefers_flats);
-        let spell = |pc: u8| {
-            let names = if flats { FLAT_NAMES } else { SHARP_NAMES };
-            names[usize::from(pc)].replace('#', "♯").replace('b', "♭")
+        let root_letter = match key {
+            Some(key) => (key.tonic_letter() + ROOT_STEPS[usize::from((self.root + 12 - key.major_tonic()) % 12)]) % 7,
+            None => LETTERS.iter().position(|l| SHARP_NAMES[usize::from(self.root)].starts_with(*l)).unwrap_or(0),
         };
-        let mut out = spell(self.root) + self.quality.suffix(false);
+        let mut out = spell(root_letter, self.root) + self.quality.suffix(false);
         if let Some(bass) = self.bass {
             out.push('/');
-            out.push_str(&spell(bass));
+            out.push_str(&spell((root_letter + tone_letters(self.root, bass)) % 7, bass));
         }
         out
     }
@@ -277,28 +311,15 @@ impl Key {
     /// not ♭6.
     fn chord_tone_degree(self, root: u8, tone: u8) -> String {
         const SCALE: [i32; 7] = [0, 2, 4, 5, 7, 9, 11];
-        const ROOT_STEPS: [usize; 12] = [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6];
         let tonic = self.major_tonic();
-        let root_step = ROOT_STEPS[usize::from((root + 12 - tonic) % 12)];
-        let letters = match (tone + 12 - root) % 12 {
-            1 | 2 => 1,
-            3 | 4 => 2,
-            5 => 3,
-            6 | 7 | 8 => 4,
-            9 => 5,
-            10 | 11 => 6,
-            _ => 0,
-        };
-        let step = (root_step + letters) % 7;
+        let step = (ROOT_STEPS[usize::from((root + 12 - tonic) % 12)] + tone_letters(root, tone)) % 7;
         let shift = (i32::from((tone + 12 - tonic) % 12) - SCALE[step] + 18).rem_euclid(12) - 6;
-        let accidental = match shift {
-            -2 => "𝄫",
-            -1 => "♭",
-            1 => "♯",
-            2 => "𝄪",
-            _ => "",
-        };
-        format!("{accidental}{}", step + 1)
+        format!("{}{}", accidental(shift), step + 1)
+    }
+    /// Letter of the major tonic with the key's signature (G♭ for six flats).
+    fn tonic_letter(self) -> usize {
+        const LETTER_BY_FIFTHS: [usize; 13] = [4, 1, 5, 2, 6, 3, 0, 4, 1, 5, 2, 6, 3];
+        LETTER_BY_FIFTHS[(i32::from(self.fifths()) + 6) as usize]
     }
     fn degree(self, pc: u8) -> String {
         const DEGREES: [&str; 12] = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "5", "♭6", "6", "♭7", "7"];
@@ -324,5 +345,9 @@ mod tests {
         assert_eq!(chord("Bb:min").name(Key::parse("Gb:maj")), "B♭m");
         assert_eq!(chord("Bb:min/b3").harte(), "A#:min/b3");
         assert_eq!(chord("A:min").degree(Key::parse("A:min").unwrap()), "6m");
+        let gb = Key::parse("Gb:maj").unwrap();
+        assert_eq!(chord("B:maj").name(Some(gb)), "C♭");
+        assert_eq!(chord("Gb:maj7/5").name(Some(gb)), "G♭maj7/D♭");
+        assert_eq!(chord("Ab:sus4(b7)").degree(Key::parse("Ab:maj").unwrap()), "1⁷sus4");
     }
 }
