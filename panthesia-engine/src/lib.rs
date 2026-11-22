@@ -80,6 +80,7 @@ mod document;
 mod harmony;
 mod sections;
 mod stems;
+mod virtual_fingers;
 mod fingerings;
 mod fingering_protocol;
 mod finger_practice;

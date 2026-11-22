@@ -72,6 +72,7 @@ const domains = [
   ["../../panthesia-engine/src/harmony.rs", ["ChordEdit"]],
   ["../../panthesia-engine/src/sections.rs", ["Sections", "SectionItem"], "output"],
   ["../../panthesia-engine/src/stems.rs", ["StemsState", "StemState"], "output"],
+  ["../../panthesia-engine/src/virtual_fingers.rs", ["PlannedFinger"], "output"],
   ["../../panthesia-engine/src/practice_catalog.rs", ["PassageCatalog", "ExerciseCatalog", "FingerProfileCatalog"], "output"],
   ["../../panthesia-engine/src/hands.rs", ["HandProposal"], "output"],
   ["../../panthesia-engine/src/meter_map.rs", ["MeterEditorState"], "output"],

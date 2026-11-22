@@ -3,6 +3,18 @@ import type { HandPlan } from "./virtualHandPlan";
 import { handPose, arrangeHands, type HandPose } from "./virtualHandPose";
 import { HandDrawing } from "./virtualHandDrawing";
 import { reportDiagnostic } from "../../app/diagnostics";
+import { api } from "../../api";
+import type { PlannedFinger } from "../../engine/commands.generated";
+
+type Note = LoadedSong["notes"][number];
+/** Notes as the hands play them: the song's hands and fingers, planned ones where it has none. */
+function withPlanned(notes: readonly Note[], planned: readonly PlannedFinger[]): Note[] {
+    const byNote = new Map(planned.map((p) => [`${p.track}:${p.index}`, p]));
+    return notes.map((note) => {
+        const p = byNote.get(`${note.track}:${note.index}`);
+        return p ? { ...note, part: p.part === "left" ? "left" : "right", finger: note.finger ?? p.finger } : note;
+    });
+}
 /** Read-only overlay. The Rust playback clock owns all musical state. */
 export class VirtualHands {
     private song: LoadedSong | null = null;
@@ -34,6 +46,22 @@ export class VirtualHands {
         this.song = song;
         this.rate = rate;
         const generation = this.generation;
+        const complete = song.notes.every((n) => n.finger && (n.part === "left" || n.part === "right"));
+        // Songs without full fingering get planned hands and fingers for the animation only.
+        const notes = complete
+            ? Promise.resolve(song.notes)
+            : api
+                  .command<PlannedFinger[]>({ type: "planVirtualFingers", content_id: song.contentId })
+                  .then((planned) => withPlanned(song.notes, planned))
+                  .catch((error) => {
+                      reportDiagnostic("双手指法规划", error);
+                      return song.notes;
+                  });
+        void notes.then((notes) => {
+            if (generation === this.generation) this.start(notes, song, rate, generation);
+        });
+    }
+    private start(notes: readonly Note[], song: LoadedSong, rate: number, generation: number) {
         try {
             const worker = new Worker(new URL("./virtualHands.worker.ts", import.meta.url), { type: "module" });
             this.worker = worker;
@@ -54,7 +82,7 @@ export class VirtualHands {
                     this.worker = null;
             };
             worker.postMessage({
-                notes: song.notes,
+                notes,
                 actions: song.fingerActions,
                 rate,
             });

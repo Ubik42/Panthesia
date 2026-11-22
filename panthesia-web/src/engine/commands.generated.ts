@@ -1329,6 +1329,13 @@ export interface StemState {
   "gain": number;
 }
 
+export interface PlannedFinger {
+  "track": number;
+  "index": number;
+  "part": string;
+  "finger": number;
+}
+
 export interface PassageCatalog {
   "contentId": string;
   "grid": string;
@@ -1482,6 +1489,7 @@ export type EngineCommand =
   | { type: "saveChords"; "content_id": string; "chords": Array<ChordEdit> }
   | { type: "adoptChords"; "content_id": string }
   | { type: "stemGain"; "kind": string; "gain": number }
+  | { type: "planVirtualFingers"; "content_id": string }
   | { type: "exportAnnotatedScore"; "content_id": string; "score_revision": number; "options": ScoreExportOptions; "download"?: boolean; "fingerprint"?: string | null }
   | { type: "scoreMap"; "score_revision"?: number | null; "midi": Array<number>; "notes": Array<unknown>; "content_id": string }
   | { type: "finger"; "track": number; "index": number; "finger"?: number | null }

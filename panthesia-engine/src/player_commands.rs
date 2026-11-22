@@ -399,6 +399,7 @@ impl Player {
             Command::PairScoreFile { .. } => return Err("乐谱文件配对由引擎入口读取文件后处理".into()),
             Command::SaveChords { content_id, chords } => return self.save_chords(&content_id, chords),
             Command::AdoptChords { content_id } => return self.adopt_chords(&content_id),
+            Command::PlanVirtualFingers { content_id } => return Ok(serde_json::json!(self.planned_fingers(&content_id)?)),
             Command::StemGain { kind, gain } => {
                 self.set_stem_gain(&kind, gain)?;
                 return Ok(serde_json::json!(self.stems_state()));

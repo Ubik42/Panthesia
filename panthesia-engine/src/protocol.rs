@@ -153,6 +153,9 @@ pub enum Command {
         kind: String,
         gain: f64,
     },
+    PlanVirtualFingers {
+        content_id: String,
+    },
     ExportAnnotatedScore {
         content_id: String,
         score_revision: u64,

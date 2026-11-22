@@ -789,6 +789,7 @@ export function Piano({
     <canvas ref={waterfallCanvas} className="piano-waterfall" aria-hidden="true" />
     <canvas
       ref={canvas}
+      className="piano-stage-canvas"
       data-key-low={keyboardRange.low}
       data-key-high={keyboardRange.high}
       data-viewport-start={viewport.start}
