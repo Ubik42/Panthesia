@@ -17,6 +17,8 @@ self.onmessage = async ({ data }) => {
         // A fitted layout (page width given) reflows to the pane: pages are as tall as their systems.
         pageWidth: data.pageWidth ?? 2100,
         adjustPageHeight: data.pageWidth != null,
+        // The stage shows the title already; a header would make the first system too tall.
+        ...(data.pageWidth != null ? { header: "none", footer: "none" } : {}),
         pageHeight: 2970,
         scale: 40,
         svgHtml5: true,
