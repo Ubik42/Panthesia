@@ -193,11 +193,13 @@ pub(crate) fn grace_note_timing(part: &Part) -> Result<BTreeMap<ScoreEventId, No
                 return Err(problem("须有同一声部的唯一主音，且最多 16 个连续装饰音"));
             }
             let (principal_position, principal) = *principals[0];
+            // A principal may start a tie (the grace takes time from its start); it may not
+            // continue one, since then it is not where the grace leads.
             if regular.iter().any(|(position, note)| {
                 *position < principal_position
                     || note.duration != principal.duration
                     || note.pitch.is_none()
-                    || !note.ties.is_empty()
+                    || note.ties.iter().any(|tie| matches!(tie, crate::musicxml::SpanType::Stop))
             }) || graces.iter().any(|(position, note)| {
                 *position >= principal_position
                     || note.pitch.is_none()
@@ -223,9 +225,18 @@ pub(crate) fn grace_note_timing(part: &Part) -> Result<BTreeMap<ScoreEventId, No
             if modes.iter().any(|mode| mode.is_none()) {
                 return Err(problem("缺少 grace 记号的时间信息"));
             }
-            let mode = modes[0].unwrap();
-            if mode.0 as u8 + mode.1 as u8 + mode.2 as u8 != 1
-                || modes.iter().any(|candidate| *candidate != Some(mode))
+            // Without steal-time or make-time the timing is up to the player (MusicXML leaves it
+            // open; MuseScore and most exporters write none): take time from the principal, a
+            // short share for slashed graces (acciaccatura), half for others (appoggiatura).
+            let implicit = modes.iter().all(|mode| *mode == Some((false, false, false)));
+            let slashed = graces.iter().all(|(_, note)| {
+                note.grace_timing.as_ref().is_some_and(|mark| mark.slash.as_deref() == Some("yes"))
+            });
+            let implicit_share = format!("{:.3}", if slashed { 12.5 } else { 50.0 } / graces.len() as f64);
+            let mode = if implicit { (true, false, false) } else { modes[0].unwrap() };
+            if !implicit
+                && (mode.0 as u8 + mode.1 as u8 + mode.2 as u8 != 1
+                    || modes.iter().any(|candidate| *candidate != Some(mode)))
             {
                 return Err(problem("同一组装饰音必须明确且一致地选择一种计时方式"));
             }
@@ -299,7 +310,9 @@ pub(crate) fn grace_note_timing(part: &Part) -> Result<BTreeMap<ScoreEventId, No
                             problem("make-time 须为正数，最多三位小数，且当前 divisions 有效")
                         })?
                 } else {
-                    let value = if mode.0 {
+                    let value = if implicit {
+                        Some(implicit_share.as_str())
+                    } else if mode.0 {
                         mark.steal_time_following.as_deref()
                     } else {
                         mark.steal_time_previous.as_deref()

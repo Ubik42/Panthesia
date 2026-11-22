@@ -1531,8 +1531,9 @@ mod tests {
     fn ambiguous_or_unquantized_grace_notes_report_the_written_measure() {
         let normal =
             r#"<note><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration></note>"#;
+        // A grace without timing hints takes a default share of its principal (see
+        // grace_note_timing); the hints below are explicit but cannot be honoured.
         for grace in [
-            r#"<grace slash="yes"/>"#,
             r#"<grace slash="yes" steal-time-previous="10"/>"#,
             r#"<grace slash="no" make-time="1"/>"#,
             r#"<grace slash="no" steal-time-following="100"/>"#,

@@ -41,7 +41,13 @@ fn dir_name(path: &Path) -> String {
 }
 fn list(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
-    let mut out: Vec<PathBuf> = entries.flatten().take(DIR_LIMIT).map(|e| e.path()).filter(|p| p.is_file()).collect();
+    // Hidden files (`._name` AppleDouble forks, `.DS_Store`) are not part of a song.
+    let mut out: Vec<PathBuf> = entries
+        .flatten()
+        .take(DIR_LIMIT)
+        .map(|e| e.path())
+        .filter(|p| p.is_file() && !p.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')))
+        .collect();
     out.sort();
     out
 }
