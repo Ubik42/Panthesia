@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Dialog } from "../../app/Dialog";
+import { Dialog } from "../../ui/Dialog";
 import type { LoadedSong } from "../../engine/sessionTypes";
 import type { EngineCommand } from "../../api";
 import "./chordsDialog.css";

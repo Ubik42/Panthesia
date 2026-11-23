@@ -6,7 +6,7 @@ import { HandSplitScreen } from "../features/screens/HandSplitScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { ScreenHeader } from "../features/screens/ScreenHeader";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
-import { TrackSetupScreen } from "../features/screens/TrackSetupScreen";
+import { PartsScreen } from "../screens/song/PartsScreen";
 
 import { api } from "../api";
 import { Piano } from "../stage/Piano";
@@ -101,7 +101,7 @@ export function ProductScreens() {
       {workspace === "practice" &&
         productScreens.screen === "parts" &&
         song && (
-          <TrackSetupScreen
+          <PartsScreen
             song={song}
             disabled={busy || openingActive || !connected}
             builtin={!state.outputId}
