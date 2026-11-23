@@ -429,6 +429,7 @@ impl Player {
         self.source_file = Some(file.clone().into());
         self.file = Some(file.into());
         self.load_stems();
+        self.prepare_song();
         let variant=self.variant();
         if variant.active() {let passage=self.state.passage.clone();self.apply_variant_memory(&variant)?;self.state.passage=passage.filter(|p|p.end<=self.state.duration);}
         self.reset(self.state.passage.as_ref().map_or(0., |p| p.start));

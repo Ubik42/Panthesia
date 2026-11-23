@@ -108,6 +108,20 @@ fn analysed_chords(file: &MidiFile) -> Source {
     Source { segments, origin: "generated".into(), tool: "analysis".into(), saved: false, follows_transpose: false }
 }
 
+/// The analysis of `file` as manifest `chords` rows; repeated chords merge into one.
+pub(crate) fn analysed_rows(file: &MidiFile) -> Vec<Value> {
+    let mut rows = Vec::new();
+    let mut previous = None;
+    for (tick, _, chord) in analysed_chords(file).segments {
+        if previous == Some(chord) {
+            continue;
+        }
+        previous = Some(chord);
+        rows.push(serde_json::json!({ "tick": tick, "chord": chord.map_or_else(|| "N".to_string(), Chord::harte) }));
+    }
+    rows
+}
+
 fn shifted(chord: Chord, semitones: i16) -> Chord {
     let shift = |pc: u8| ((i16::from(pc) + semitones).rem_euclid(12)) as u8;
     Chord { root: shift(chord.root), quality: chord.quality, bass: chord.bass.map(shift) }

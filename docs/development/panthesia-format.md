@@ -92,13 +92,15 @@
 | 字段 | 说明 |
 | --- | --- |
 | `performance` | 时基与音符所属的演奏 id；缺省为 `default.performance` |
-| `provenance` | `{ origin: "human" \| "imported" \| "generated", tool, toolVersion, paramsHash, createdAt }`；`createdAt` 为 Unix 毫秒 |
+| `provenance` | `{ origin: "human" \| "imported" \| "generated", tool, toolVersion, paramsHash, createdAt, review }`；`createdAt` 为 Unix 毫秒；`review` 只用于 `generated`：`"pending"` 表示尚未经 AI 或用户检查润色，检查后写检查者（如 `"ai"`） |
 | `confidence` | 0–1，只用于 `generated` |
 | `status` | `draft` 或 `accepted`，缺省 `accepted` |
 | `dependsOn` | 依赖的图层名数组 |
 | `unmatched` | 无法核对的条目，原样保留 |
 
 人工结果（`human`）不被自动重算覆盖；`generated` 结果在工具版本变化时可重算。时间一律用所属演奏的 tick。
+
+首次打开没有清单图层的 MIDI 时，Panthesia 自动生成分手（`hands`，只写没有轨道手别的音符）、指法（`fingering`）、段落（`sections`，文件自带标记时不生成）与和弦（`chords`，有 POP909 和弦文件时不生成），写为 `{ "origin": "generated", "tool": "panthesia-analysis", "review": "pending" }`、`status: "draft"`。已有的图层不动；用户编辑后该图层变为 `human`。同时，没有 `settings.variant` 的 MIDI 歌曲写入 1/16 量化（失败时 1/32）的练习版本；原始时值需要用户选择，选择后保存为 `quantize: 0`。由乐谱生成的歌曲不量化。
 
 | 图层 | 内容 |
 | --- | --- |

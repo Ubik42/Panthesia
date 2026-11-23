@@ -481,14 +481,15 @@ function LayerChip({ layer, edit, disabled }: { layer: Layer; edit?: () => void;
       <span className="ui-dot" data-tone={tone} />
       {layer.label}
       <small>{layer.origin ? ORIGIN_NAMES[layer.origin] : "—"}</small>
+      {layer.review === "pending" && <small className="song-layer-review">待检查</small>}
     </>
   );
   return edit ? (
-    <button className="ui-chip" data-origin={layer.origin ?? "none"} disabled={disabled} onClick={edit} title={`编辑${layer.label}`}>
+    <button className="ui-chip" data-origin={layer.origin ?? "none"} disabled={disabled} onClick={edit} title={layer.review === "pending" ? `编辑${layer.label}（算法生成，尚未经 AI 检查润色）` : `编辑${layer.label}`}>
       {body}
     </button>
   ) : (
-    <span className="ui-chip" data-origin={layer.origin ?? "none"}>
+    <span className="ui-chip" data-origin={layer.origin ?? "none"} title={layer.review === "pending" ? "算法生成，尚未经 AI 检查润色" : undefined}>
       {body}
     </span>
   );

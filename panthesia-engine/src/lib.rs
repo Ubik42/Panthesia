@@ -63,6 +63,7 @@ pub mod probe;
 pub mod song_summary;
 mod song_generate;
 pub mod song_index;
+mod song_prepare;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;

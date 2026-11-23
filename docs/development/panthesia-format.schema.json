@@ -116,7 +116,8 @@
         "tool": { "type": "string" },
         "toolVersion": { "type": "string" },
         "paramsHash": { "type": "string" },
-        "createdAt": { "type": "integer", "minimum": 0 }
+        "createdAt": { "type": "integer", "minimum": 0 },
+        "review": { "type": "string" }
       }
     },
     "layer": {

@@ -339,3 +339,9 @@
     animation: none;
   }
 }
+.song-layers .ui-chip small.song-layer-review {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--state-warn) 16%, transparent);
+  color: var(--state-warn);
+}

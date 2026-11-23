@@ -267,8 +267,10 @@ fn layers(file: &MidiFile, manifest: Option<&Manifest>, performance: &str) -> Va
                     None if imported(name) > 0 => (Some("imported"), imported(name)),
                     None => (None, 0),
                 };
+                // `pending`: generated and not yet checked by AI or the player.
+                let review = layer.and_then(|l| l.provenance.as_ref()).and_then(|p| p.rest.get("review")).and_then(Value::as_str);
                 // Beats only appear when the song has them.
-                (*name != "beats" || origin.is_some()).then(|| json!({"name": name, "label": label, "origin": origin, "count": count}))
+                (*name != "beats" || origin.is_some()).then(|| json!({"name": name, "label": label, "origin": origin, "count": count, "review": review}))
             })
             .collect(),
     )
