@@ -12,7 +12,11 @@ export function ToolbarMore({
   attention = false,
   children,
   icon,
+  panel = false,
 }: {
+  /** A settings panel (interface-design.md §4.4): titled, drawn with the shared form styles,
+   * and it stays open while its controls are used. */
+  panel?: boolean;
   label?: string;
   disabled: boolean;
   scale?: number;
@@ -48,13 +52,13 @@ export function ToolbarMore({
     const top = rect.top / zoom,
       bottom = rect.bottom / zoom,
       right = rect.right / zoom;
-    const width = Math.min(340, viewportWidth - 24);
+    const width = Math.min(panel ? 360 : 340, viewportWidth - 24);
     const above = viewportHeight - bottom < 230 && top > viewportHeight / 2;
     setPosition({
       width,
       left: Math.max(12, Math.min(right - width, viewportWidth - width - 12)),
       ...(above ? { bottom: viewportHeight - top + 8 } : { top: bottom + 8 }),
-      maxHeight: Math.max(100, (above ? top : viewportHeight - bottom) - 20),
+      maxHeight: Math.max(100, Math.min(panel ? viewportHeight * 0.8 : Infinity, (above ? top : viewportHeight - bottom) - 20)),
     });
   };
   useEffect(() => {
@@ -187,17 +191,19 @@ export function ToolbarMore({
       </summary>
       <div
         id={id}
-        className="toolbar-more-actions"
+        className={panel ? "toolbar-more-actions stage-panel ui-form" : "toolbar-more-actions"}
         role="group"
         aria-label={label}
         style={position}
         onClick={(event) => {
+          if (panel) return;
           const button = (event.target as Element).closest<HTMLButtonElement>(
             "button",
           );
           if (button && !button.disabled) close(true);
         }}
       >
+        {panel && <h2 className="stage-panel-title">{label}</h2>}
         {children}
       </div>
     </details>

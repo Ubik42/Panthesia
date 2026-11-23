@@ -137,17 +137,7 @@ export function PracticeWorkspace() {
                 adjustRealtime={adjustRealtime}
                 setView={setView}
                 open={{
-                  songOptions: () => setSongOptions(true),
-                  scores: () => setScoresDialog(true),
-                  devices: () => openSoundSettings(),
-                  display: () => openSettings("notes"),
-                  fingeringWorkbench: () => setFingeringWorkbenchOpen(true),
-                  parts: () => {
-                    void run({ type: "pause" }).then((ok) => {
-                      if (ok) productScreens.show("parts");
-                    });
-                  },
-                  pairScore: scorePairing.request,
+                  settings: () => openSettings("notes"),
                   fingering: () =>
                     launchPracticeTool(() => {
                       setSelectedNote(null);

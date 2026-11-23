@@ -327,60 +327,11 @@ export function PracticeTransport({
       <div className="synthesia-tool-cluster">
         {tools}
         <ToolbarMore
-          label="练习方式"
-          icon={<Hand size={27} />}
-          disabled={!connected || !available}
-        >
-          <button
-            aria-pressed={state.mode === "wait"}
-            title={nextDisabledReason}
-            disabled={
-              !available ||
-              !connected ||
-              !!openingTitle ||
-              state.recording ||
-              !!nextDisabledReason
-            }
-            onClick={() => command({ type: "mode", value: "wait" })}
-          >
-            弹对后继续
-          </button>
-          <button
-            aria-pressed={state.mode === "listen"}
-            title={nextDisabledReason}
-            disabled={
-              !available ||
-              !connected ||
-              !!openingTitle ||
-              state.recording ||
-              !!nextDisabledReason
-            }
-            onClick={() => command({ type: "mode", value: "listen" })}
-          >
-            连续播放
-          </button>
-          <hr />
-          {[
-            ["left", "左手"],
-            ["both", "双手"],
-            ["right", "右手"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              aria-pressed={state.hands === value}
-              disabled={busy || state.recording}
-              onClick={() => command({ type: "hands", value })}
-            >
-              {label}
-            </button>
-          ))}
-        </ToolbarMore>
-        <ToolbarMore
+          panel
           label="音量"
-          icon={<Volume2 size={27} />}
+          icon={<Volume2 size={24} />}
           disabled={!connected}
         >
-          {" "}
           <div
             className="practice-volume"
             role="group"
