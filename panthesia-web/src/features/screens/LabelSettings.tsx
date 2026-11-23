@@ -1,9 +1,9 @@
-import { useState } from "react";
 import {
   productLabel,
   type LabelMode,
   type DisplayPreferences,
 } from "../settings/displayPreferences";
+
 const modes: [LabelMode, string][] = [
   ["none", "不显示"],
   ["octaves", "八度编号"],
@@ -16,6 +16,9 @@ const modes: [LabelMode, string][] = [
   ["simple", "简单音名（白键）"],
   ["legacy", "沿用已有标签设置"],
 ];
+
+/** What the keys and the falling notes are labelled with: one row per place, an example of each
+ * choice for middle C in the list. Used on the settings page and in the stage's label panel. */
 export function LabelSettings({
   value,
   change,
@@ -29,95 +32,61 @@ export function LabelSettings({
   minor?: boolean;
   fifths?: number;
 }) {
-  const [target, setTarget] = useState<"key" | "note">("key");
-  const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
-  const ownOnly =
-    target === "key" ? value.keyLabelsOwnOnly : value.noteLabelsOwnOnly;
-  return (
-    <div
-      className="product-label-settings"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="product-label-tabs" role="tablist" aria-label="标签位置">
-        {(["key", "note"] as const).map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={target === t}
-            onClick={() => setTarget(t)}
-          >
-            {t === "key" ? "琴键标签" : "音符标签"}
-          </button>
-        ))}
-      </div>
-      <label className="product-label-own">
-        <input
-          type="checkbox"
-          checked={ownOnly}
-          onChange={(e) =>
-            change(
-              target === "key"
-                ? { keyLabelsOwnOnly: e.target.checked }
-                : { noteLabelsOwnOnly: e.target.checked },
-            )
-          }
-        />
-        仅显示自己声部的标签
+  const choice = (target: "key" | "note") => {
+    const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
+    return (
+      <label>
+        <span>{target === "key" ? "琴键标签" : "音符标签"}</span>
+        <select
+          aria-label={target === "key" ? "琴键标签内容" : "音符标签内容"}
+          value={mode}
+          onChange={(e) => {
+            const id = e.target.value as LabelMode;
+            change(target === "key" ? { keyLabelMode: id } : { noteLabelMode: id });
+          }}
+        >
+          {modes
+            .filter(([id]) => id !== "legacy" || mode === "legacy")
+            .map(([id, name]) => {
+              const example = productLabel(
+                60,
+                target,
+                { ...value, ...(target === "key" ? { keyLabelMode: id, keyLabelsOwnOnly: false } : { noteLabelMode: id, noteLabelsOwnOnly: false }) },
+                { own: true, tonic, minor, fifths, finger: 1 },
+              );
+              return (
+                <option key={id} value={id}>
+                  {example && id !== "none" ? `${name} · ${example}` : name}
+                </option>
+              );
+            })}
+        </select>
       </label>
-      <div
-        className="product-label-modes"
-        role="radiogroup"
-        aria-label={target === "key" ? "琴键标签内容" : "音符标签内容"}
-      >
-        {modes
-          .filter(([id]) => id !== "legacy" || mode === "legacy")
-          .map(([id, name]) => (
-            <button
-              key={id}
-              role="radio"
-              aria-checked={mode === id}
-              onClick={() =>
-                change(
-                  target === "key"
-                    ? { keyLabelMode: id }
-                    : { noteLabelMode: id },
-                )
-              }
-            >
-              <span>{name}</span>
-              <small>
-                {productLabel(
-                  60,
-                  target,
-                  {
-                    ...value,
-                    ...(target === "key"
-                      ? { keyLabelMode: id, keyLabelsOwnOnly: false }
-                      : { noteLabelMode: id, noteLabelsOwnOnly: false }),
-                  },
-                  { own: true, tonic, minor, fifths, finger: 1 },
-                )}
-              </small>
-            </button>
-          ))}
-      </div>
+    );
+  };
+  return (
+    <div className="label-settings" onClick={(e) => e.stopPropagation()}>
+      {choice("key")}
+      {choice("note")}
       <label>
         <input
           type="checkbox"
-          checked={value.octave}
-          onChange={(e) => change({ octave: e.target.checked })}
+          checked={value.keyLabelsOwnOnly && value.noteLabelsOwnOnly}
+          onChange={(e) => change({ keyLabelsOwnOnly: e.target.checked, noteLabelsOwnOnly: e.target.checked })}
         />
+        只给自己弹的声部显示标签
+      </label>
+      <label>
+        <input type="checkbox" checked={value.octave} onChange={(e) => change({ octave: e.target.checked })} />
         音名附带八度编号
       </label>
       <label>
-        字号
-        <select
-          aria-label="标签字号"
-          value={value.fontSize}
-          onChange={(e) => change({ fontSize: Number(e.target.value) })}
-        >
+        <span>字号</span>
+        <select aria-label="标签字号" value={value.fontSize} onChange={(e) => change({ fontSize: Number(e.target.value) })}>
           {[10, 12, 14, 16].map((n) => (
-            <option key={n}>{n}</option>
+            <option key={n} value={n}>
+              {n}
+            </option>
           ))}
         </select>
       </label>

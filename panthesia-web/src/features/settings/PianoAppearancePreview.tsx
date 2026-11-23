@@ -77,10 +77,9 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
     return () => { stopped = true; cancelAnimationFrame(frame); effects.dispose(); observer.disconnect(); document.removeEventListener("visibilitychange", hide); };
   }, [value, demo]);
   return <figure className="piano-appearance-preview">
-    <figcaption><div><strong>你的练习室</strong><span>琴键材质、落键光效与练习网格</span></div>
+    <figcaption>
       <button type="button" onClick={() => setDemo(n => n + 1)}><Play size={13} />{running ? "重新演示" : "演示落键"}</button>
     </figcaption>
     <div className="piano-preview-surface"><canvas ref={canvas} aria-label="钢琴外观与落键光效预览" role="img" /><canvas ref={effectsCanvas} className="piano-gpu-effects" aria-hidden="true" /></div>
-    <p>设置立即生效并自动保存。演示只展示画面。</p>
   </figure>;
 }

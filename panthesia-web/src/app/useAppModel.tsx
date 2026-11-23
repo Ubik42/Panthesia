@@ -23,7 +23,8 @@ import { usePerformanceSize } from "../features/practice/usePerformanceSize";
 import { usePracticeSession } from "../features/practice/usePracticeSession";
 import type { ScoreToolRequest } from "../features/scores/scoreToolRequest";
 import { useSongOpening } from "../features/screens/useSongOpening";
-import { useProductScreens } from "../features/screens/useProductScreens";
+import type { DeviceObject } from "../features/screens/MusicDeviceList";
+import { useProductScreens, type SettingsSection } from "../features/screens/useProductScreens";
 import { getInterfaceSettings } from "../features/settings/interfaceSettingsStore";
 import { getInterfaceWorkbench } from "../features/settings/interfaceWorkbenchStore";
 
@@ -48,11 +49,9 @@ export function useAppModel() {
   useEffect(installDiagnostics, []);
   const dialogs = useAppDialogs();
   const {
- displayDialog, setDisplayDialog, displaySection, setDisplaySection,
     commandsOpen, setCommandsOpen, aboutOpen, setAboutOpen, editDraftsOpen, setEditDraftsOpen,
     metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
-    settings, setSettings, settingsTab, setSettingsTab, settingsDevice, setSettingsReturnToScores, settingsReturnToScores,
-    openSoundSettings, exerciseDialog, setExerciseDialog, passageDialog, setPassageDialog,
+    settingsDevice, setSettingsDevice, exerciseDialog, setExerciseDialog, passageDialog, setPassageDialog,
     progressOpen, setProgressOpen, recoveryOpen, setRecoveryOpen, mediaExport, setMediaExport,
   } = dialogs;
   const releaseInput = useRef<() => void>(() => {});
@@ -61,6 +60,15 @@ export function useAppModel() {
   const navigation = useWorkspaceNavigation();
   const { workspace } = navigation;
   const productScreens=useProductScreens(workspace);
+  /** Every global setting lives on the settings page; other places link to its sections. The
+   * stage pauses while the page is open. */
+  const openSettings = (section: SettingsSection, device?: DeviceObject) => {
+    if (productScreens.screen === "performance" && ["playing", "countIn"].includes(playback.getSnapshot().status)) void action({ type: "pause" });
+    setSettingsDevice(section === "devices" ? device : undefined);
+    productScreens.settings(section);
+    return true;
+  };
+  const openSoundSettings = (device?: DeviceObject) => openSettings("devices", device);
   const songSetup=productScreens.screen==="setup";
   const setSongSetup=productScreens.setSongSetup;
   const bookmarkNavigation = useRef<BookmarkNavigation>(null);
@@ -233,7 +241,7 @@ export function useAppModel() {
     }
     return playback.getSnapshot().contentId === contentId;
   };
-  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, settings, displayDialog, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
+  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, !!mediaExport]);
   const { recentFiles, forgetRecent, opening, openPath, chooseFile } = useSongOpening({
@@ -256,7 +264,7 @@ export function useAppModel() {
   const {keyboardContext,invalidateKeyboardActions}=usePerformanceKeyboard({
     display,setDisplay,song,playback,getBoundSong,keyboardPaused,shortcutScope,ownershipRevision:inputOwnership.revision,songOpeningActive,
     run,action,setState,setError,onNote,clearLiveNotes,loopStart,loopEnd,bookmarkNavigation,
-    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>setDisplayDialog(true),passages:()=>launchPracticeTool(()=>setPassageDialog(true)),fullscreen:()=>fullscreen()},
+    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>openSettings("notes"),passages:()=>launchPracticeTool(()=>setPassageDialog(true)),fullscreen:()=>fullscreen()},
   });
   releaseInput.current=()=>{invalidateKeyboardActions();clearLiveNotes();};
   useEffect(() => {
@@ -320,8 +328,7 @@ export function useAppModel() {
     },
     openInterface:()=>{
       const draft=getInterfaceWorkbench(),input=draft.getSnapshot(),settings=interfaceSettings.getSnapshot();
-      if(settings.protected||settings.error||input.storageError||input.preview||input.error||input.preparedExport&&!["saved","requested"].includes(input.preparedExport.phase))draft.update({section:"backup"});
-      setDisplayDialog(true);
+      openSettings(settings.protected||settings.error||input.storageError||input.preview||input.error||input.preparedExport&&!["saved","requested"].includes(input.preparedExport.phase)?"backup":"notes");
     },
     openMedia:entry=>setMediaExport({contentId:entry.source.contentId,title:entry.source.title||entry.subject,path:entry.source.path,engineId:playback.getEngineId(),kind:entry.mediaKind}),
     done:()=>setProgressOpen(false),
@@ -407,7 +414,7 @@ export function useAppModel() {
     score: (signal) => openPracticeTool(signal, () => setView("score"), false),
     inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
-    display: () => setDisplayDialog(true),
+    display: () => openSettings("notes"),
     silence: () => action({ type: "panic" }),
     fullscreen: () => { fullscreen(); return true; },
     exportPracticeMidi: () => {
@@ -450,10 +457,6 @@ export function useAppModel() {
     bookmarkNavigation,
     display,
     setDisplay,
-    displayDialog,
-    setDisplayDialog,
-    displaySection,
-    setDisplaySection,
     performanceSize,
     view,
     setView,
@@ -502,14 +505,10 @@ export function useAppModel() {
     setMetadataDraftPath,
     recentCommands,
     setRecentCommands,
-    settingsTab,
-    setSettingsTab,
     settingsDevice,
+    setSettingsDevice,
     openSoundSettings,
-    settingsReturnToScores,
-    setSettingsReturnToScores,
-    settings,
-    setSettings,
+    openSettings,
     editFingers,
     setEditFingers,
     selectedNote,

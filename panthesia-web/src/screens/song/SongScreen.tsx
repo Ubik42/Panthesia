@@ -83,6 +83,7 @@ export function SongScreen({
   options,
   scores,
   sound,
+  tools,
   editLayer,
   openVersion,
   start,
@@ -97,6 +98,8 @@ export function SongScreen({
   options: () => void;
   scores: () => void;
   sound: () => void;
+  /** Open the settings page where the transcription tool is chosen. */
+  tools: () => void;
   editLayer: (name: string) => void;
   openVersion: (path: string) => Promise<boolean>;
   start: (mode: Mode, hands: HandChoice) => Promise<boolean>;
@@ -168,11 +171,6 @@ export function SongScreen({
     act(`open:${item.path}`, async () => {
       if (item.path) await openVersion(item.path);
     });
-  const chooseTool = () =>
-    act("tool", async () => {
-      const path = api.desktop ? await api.pickSongFile("tool") : window.prompt("转录工具 Run.cmd 的完整路径")?.trim();
-      if (path) await api.command({ type: "setTranscriptionTool", path });
-    });
   const launch = async () => {
     if (locked) return;
     setPending("start");
@@ -226,7 +224,7 @@ export function SongScreen({
             <div className="song-section-head">
               <h2 id="song-materials-title" className="ui-section-title">资料</h2>
               {summary && !summary.tool.available && (
-                <button className="ui-button ui-button--ghost" disabled={locked} onClick={() => void chooseTool()}>
+                <button className="ui-button ui-button--ghost" disabled={locked} onClick={tools}>
                   <Settings2 />
                   指定转录工具…
                 </button>

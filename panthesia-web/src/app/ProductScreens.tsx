@@ -5,7 +5,7 @@ import { SongScreen } from "../screens/song/SongScreen";
 import { HandSplitScreen } from "../features/screens/HandSplitScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { ScreenHeader } from "../features/screens/ScreenHeader";
-import { SettingsScreen } from "../features/screens/SettingsScreen";
+import { SettingsScreen } from "../screens/settings/SettingsScreen";
 import { TrackSetupScreen } from "../features/screens/TrackSetupScreen";
 
 import { api } from "../api";
@@ -22,9 +22,6 @@ export function ProductScreens() {
     songSetup,
     display,
     setDisplay,
-    displayDialog,
-    setDisplayDialog,
-    setDisplaySection,
     playback,
     state,
     song,
@@ -37,12 +34,8 @@ export function ProductScreens() {
     startupReady,
     progressEngineId,
     busy,
-    setAboutOpen,
-    setSettingsTab,
     openSoundSettings,
-    setSettingsReturnToScores,
-    settings,
-    setSettings,
+    openSettings,
     pianoViewport,
     pianoRange,
     run,
@@ -70,37 +63,7 @@ export function ProductScreens() {
           settings={() => productScreens.settings()}
         />
       )}
-      {startupReady && (
-        <div
-          className="product-settings-host"
-          hidden={productScreens.screen !== "settings"}
-          inert={productScreens.screen !== "settings"}
-        >
-          <SettingsScreen
-            state={state}
-            engineId={progressEngineId}
-            visible={
-              productScreens.screen === "settings" &&
-              !settings &&
-              !displayDialog
-            }
-            back={() => productScreens.home()}
-            devices={(device) => openSoundSettings(device)}
-            duet={() => {
-              setSettingsTab("duet");
-              setSettingsReturnToScores(false);
-              setSettings(true);
-            }}
-            display={(section) => {
-              setDisplaySection(section);
-              setDisplayDialog(true);
-            }}
-            logs={() => void api.openLogs().catch((e) => setError(String(e)))}
-            about={() => setAboutOpen(true)}
-            disabled={busy || !connected}
-          />
-        </div>
-      )}
+      {startupReady && productScreens.screen === "settings" && <SettingsScreen />}
 
       {workspace === "practice" && songSetup && song && (
         <SongScreen
@@ -116,6 +79,7 @@ export function ProductScreens() {
           options={() => setSongOptions(true)}
           scores={() => setScoresDialog(true)}
           sound={() => openSoundSettings()}
+          tools={() => openSettings("tools")}
           editLayer={(name) => {
             if (name === "hands") productScreens.show("parts");
             else if (name === "fingering") setFingeringDialog(true);

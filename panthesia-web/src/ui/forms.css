@@ -1,0 +1,222 @@
+/* `.ui-form`: plain form markup (label + select/input rows, buttons, sections with h3, help
+   text) drawn in the new visual language (interface-design.md §2, §4.4). Used where settings
+   and editors are composed of ordinary elements, so they need no per-control classes.
+   Semantic tokens only. */
+.ui-form {
+  display: grid;
+  gap: var(--space-4);
+  color: var(--text-primary);
+  font: 14px/1.5 var(--font-ui);
+}
+.ui-form :is(section, fieldset) {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-panel);
+  color: inherit;
+  box-shadow: none;
+}
+.ui-form :is(section, fieldset) :is(section, fieldset) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ui-form :is(h2, h3, h4, legend) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font: 600 12px/1.3 var(--font-ui);
+  letter-spacing: 0.06em;
+}
+.ui-form :is(h2, h3, h4) svg {
+  width: 15px;
+  height: 15px;
+}
+.ui-form p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.ui-form :is(small, .parameter-help, .device-help, .interface-footer-note) {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.ui-form [role="alert"],
+.ui-form .dialog-error {
+  color: var(--state-missing);
+}
+/* A setting row: name on the left, control on the right (a label, or `.ui-row` when the
+   control is a group of buttons). */
+.ui-form :is(label, .ui-row) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 36px;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+}
+.ui-form label:has(> input[type="checkbox"]),
+.ui-form label:has(> input[type="radio"]) {
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+.ui-form :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea) {
+  min-height: 32px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: 13px/1 var(--font-ui);
+  box-sizing: border-box;
+}
+.ui-form textarea {
+  padding: var(--space-2) var(--space-3);
+  line-height: 1.5;
+}
+.ui-form select {
+  min-width: 160px;
+}
+.ui-form :is(select, input, textarea):focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 1px;
+}
+.ui-form input[type="checkbox"],
+.ui-form input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.ui-form input[type="range"] {
+  flex: 1;
+  max-width: 260px;
+  accent-color: var(--accent);
+}
+.ui-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: 500 13px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.ui-form button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.ui-form button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ui-form button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.ui-form button[aria-pressed="true"],
+.ui-form button.selected,
+.ui-form button.primary-button {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.ui-form button svg {
+  width: 14px;
+  height: 14px;
+}
+/* Groups of buttons or controls on one line. */
+.ui-form :is(.dialog-actions, .settings-row-actions, .settings-reset) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-form .settings-reset {
+  justify-content: flex-end;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-form button {
+    transition: none;
+  }
+}
+.ui-form .settings-range {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  justify-content: flex-end;
+}
+.ui-form .settings-range output {
+  min-width: 40px;
+  color: var(--text-secondary);
+  font: 13px/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+/* A file picker drawn as a button. */
+.ui-form .settings-file {
+  display: inline-flex;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ui-form .settings-file:hover {
+  background: var(--surface-hover);
+}
+.ui-form .ui-segmented {
+  display: inline-grid;
+  min-width: 180px;
+}
+.ui-form .ui-segmented button {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+}
+.ui-form .ui-segmented button[aria-pressed="true"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+/* Collapsible groups. */
+.ui-form details {
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-panel);
+}
+.ui-form details > summary {
+  padding: var(--space-3) var(--space-5);
+  color: var(--text-secondary);
+  font: 600 13px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.ui-form details[open] > summary {
+  border-bottom: 1px solid var(--line-subtle);
+}
+.ui-form details > :not(summary) {
+  margin: var(--space-3) var(--space-5);
+}
+/* In a row the name keeps its width; the control takes up to a fixed share. */
+.ui-form :is(label, .ui-row) > :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"])) {
+  flex: 0 1 320px;
+  width: auto;
+}

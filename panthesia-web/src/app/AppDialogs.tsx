@@ -8,8 +8,6 @@ import { WorkProgressDialog } from "../features/activity/WorkProgress";
 import { EditDraftCenter } from "../features/editing/EditDraftCenter";
 
 import { api } from "../api";
-import { DisplaySettingsDialog } from "../features/settings/DisplaySettingsDialog";
-import { DeviceSettingsDialog } from "../features/devices/DeviceSettingsDialog";
 import { MediaExportDialog } from "../features/exports/MediaExportDialog";
 import { FingeringWorkbench } from "../features/fingering/FingeringWorkbench";
 import { fingeringDraftId } from "../features/fingering/fingeringWorkbenchStore";
@@ -25,12 +23,9 @@ export function AppDialogs() {
     workspaceSessions,
     workspace,
     productScreens,
+    openSettings,
     display,
     setDisplay,
-    displayDialog,
-    setDisplayDialog,
-    displaySection,
-    setDisplaySection,
     setView,
     playback,
     getBoundSong,
@@ -68,13 +63,6 @@ export function AppDialogs() {
     setMetadataDraftPath,
     recentCommands,
     setRecentCommands,
-    settingsTab,
-    setSettingsTab,
-    settingsDevice,
-    settingsReturnToScores,
-    setSettingsReturnToScores,
-    settings,
-    setSettings,
     selectedNote,
     setSelectedNote,
     exerciseDialog,
@@ -125,9 +113,7 @@ export function AppDialogs() {
         scoreWorkspace={workspaceSessions.scores}
         configureDuet={() => {
           setScoresDialog(false);
-          setSettingsTab("duet");
-          setSettingsReturnToScores(true);
-          setSettings(true);
+          openSettings("tools");
         }}
         openScorePractice={async () => {
           if (!song) return;
@@ -265,19 +251,6 @@ export function AppDialogs() {
           }}
         />
       )}
-      {displayDialog && (
-        <DisplaySettingsDialog
-          page={productScreens.screen === "settings"}
-          initialSection={displaySection}
-          input={state.input}
-          value={display}
-          change={setDisplay}
-          close={() => {
-            setDisplayDialog(false);
-            setDisplaySection(undefined);
-          }}
-        />
-      )}
       {commandsOpen && (
         <ActionSearch
           actions={commandActions}
@@ -294,38 +267,6 @@ export function AppDialogs() {
             clearLiveNotes();
             await api.command({ type: "panic" });
             setState(await api.state());
-          }}
-        />
-      )}
-      {settings && (
-        <DeviceSettingsDialog
-          selectedDevice={settingsTab === "sound" ? settingsDevice : undefined}
-          page={productScreens.screen === "settings"}
-          initialTab={settingsTab}
-          store={playback}
-          state={state}
-          engineId={progressEngineId}
-          unavailable={
-            !connected
-              ? "练习室连接中断，当前显示上次读取的设备设置。重新连接后可更改。"
-              : !startupReady
-                ? "启动恢复尚未完成，当前可以查看设备与原选择。返回恢复入口继续处理资料。"
-                : binding
-                  ? "曲目与设备状态仍在交接，完成后可以更改设置。"
-                  : operationBusy
-                    ? "当前操作尚未结束，可以查看设备与连接进度。完成后可更改设置。"
-                    : undefined
-          }
-          busy={busy}
-          error={health.getMessages().action}
-          command={run}
-          synchronize={refreshSession}
-          reportError={setError}
-          close={() => {
-            setSettings(false);
-            setSettingsTab("sound");
-            if (settingsReturnToScores) setScoresDialog(true);
-            setSettingsReturnToScores(false);
           }}
         />
       )}

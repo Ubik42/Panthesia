@@ -1,5 +1,4 @@
 import type { DeviceObject } from "../screens/MusicDeviceList";
-import { ScreenHeader } from "../screens/ScreenHeader";
 import {
 Cable,
 KeyboardMusic,
@@ -18,7 +17,6 @@ type SoundFontStatus,
 import { TaskActivity } from "../../engine/TaskActivity";
 import type { PlaybackStore } from "../practice/playbackStore";
 import { usePlaybackFields } from "../practice/usePlaybackFields";
-import { DuetRuntimePanel } from "../settings/DuetRuntimePanel";
 import { DeviceScanNotice } from "./DeviceScanNotice";
 import "./deviceSettings.css";
 import { useDeviceCatalog } from "./useDeviceCatalog";
@@ -30,7 +28,8 @@ const pluginName = (path: string) =>
     .pop()
     ?.replace(/\.vst3$/i, "") ?? path;
 
-export function DeviceSettingsDialog({
+/** Keyboard, sound source and output settings, shown in the settings page. */
+export function DeviceSettingsPanel({
   store,
   state,
   busy,
@@ -40,9 +39,6 @@ export function DeviceSettingsDialog({
   command,
   synchronize,
   reportError,
-  close,
-  initialTab = "sound",
-  page = false,
   selectedDevice,
 }: {
   store: PlaybackStore;
@@ -63,12 +59,8 @@ export function DeviceSettingsDialog({
   command: (value: EngineCommand) => Promise<boolean>;
   synchronize: () => Promise<void>;
   reportError: (message: string) => void;
-  close: () => void;
-  initialTab?: "sound"|"duet";
-  page?:boolean;
   selectedDevice?:DeviceObject;
 }) {
-  const tab=initialTab;
   const inputActivity = usePlaybackFields(store, [
     "pressed",
     "midiEvents",
@@ -142,7 +134,6 @@ export function DeviceSettingsDialog({
   ]);
   const latestContext = useRef(context);
   latestContext.current = context;
-  const dismissLocked = operation !== null && closeBlocked;
   const locked =
     busy ||
     testing ||
@@ -345,42 +336,8 @@ export function DeviceSettingsDialog({
     );
 
   return (
-    <div
-      className={page?"modal-backdrop product-settings-leaf":"modal-backdrop"}
-      onClick={() => {
-        if (!dismissLocked) close();
-      }}
-    >
-      <section
-        className="settings-dialog device-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="device-title"
-        aria-busy={locked}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {page&&<ScreenHeader title={tab==="sound"?"音乐设备":"后台制谱设置"} back={close} backLabel="设置" backDisabled={dismissLocked}/>}
-        <div className="dialog-heading" hidden={page}>
-          <div>
-            <h2 id="device-title">{tab==="sound"?"键盘与音源":"后台制谱设置"}</h2>
-            <p className="device-subtitle">
-              {tab==="sound"?"选择输入键盘、演奏音源和发声设备，然后试音。":"配置本机 Python、DuET 模型和计算设备。"}
-            </p>
-          </div>
-          <button
-            autoFocus
-            data-dialog-close
-            className="icon-button"
-            aria-label="关闭设备设置"
-            disabled={dismissLocked}
-            onClick={close}
-          >
-            <X size={19} />
-          </button>
-        </div>
-
-        {tab==="duet"&&<div className="device-settings-body"><DuetRuntimePanel disabled={!!unavailable}/></div>}
-        <div className="device-settings-body" hidden={tab!=="sound"}>
+    <div className="device-settings-panel" aria-busy={locked}>
+        <div className="device-settings-body">
           {selectedDevice&&<section className="product-device-object"><h2>{selectedDevice.label}</h2><button disabled={locked} aria-pressed={selectedDevice.kind==="input"?(state.input??"")===selectedDevice.name:selectedOutput===selectedDevice.name} onClick={()=>changeDevice(selectedDevice.kind,selectedDevice.name)}>{(selectedDevice.kind==="input"?(state.input??"")===selectedDevice.name:selectedOutput===selectedDevice.name)?"正在使用":"使用此设备"}</button>{selectedDevice.kind==="input"&&<><p>{state.inputConnected?"输入键盘已连接":"可以使用电脑键盘或屏幕键盘。"}</p><p>当前按键：{inputActivity.pressed.length?inputActivity.pressed.join("、"):"—"}</p><DeviceScanNotice label="输入设备" count={devices.inputs.length} empty="连接 MIDI 键盘后会自动显示。" status={devices.scans?.input} requesting={scanRequested("input")} legacyReady={devices.ready} legacyRefreshing={devices.refreshing} refresh={()=>void refreshDevices(true,"input")}/></>}</section>}
           <section
             hidden={!!selectedDevice&&(selectedDevice.kind==="input"||selectedOutput!==selectedDevice.name)}
@@ -878,7 +835,7 @@ export function DeviceSettingsDialog({
           )}
         </div>
         <div className="dialog-actions device-settings-footer">
-          {tab==="sound"&&<button
+          {<button
             disabled={allRefreshing}
             onClick={() => void refreshDevices(true)}
           >
@@ -892,16 +849,7 @@ export function DeviceSettingsDialog({
                 ? "刷新其他清单"
                 : "刷新全部清单"}
           </button>}
-          <button
-            data-dialog-close
-            className="device-done"
-            disabled={dismissLocked}
-            onClick={close}
-          >
-            {operation || state.sound?.changing || busy ? "返回主界面" : "完成"}
-          </button>
         </div>
-      </section>
     </div>
   );
 }

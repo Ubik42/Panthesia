@@ -29,7 +29,7 @@ export function PracticeWorkspace() {
     bookmarkNavigation,
     display,
     setDisplay,
-    setDisplayDialog,
+    openSettings,
     performanceSize,
     view,
     setView,
@@ -140,7 +140,7 @@ export function PracticeWorkspace() {
                   songOptions: () => setSongOptions(true),
                   scores: () => setScoresDialog(true),
                   devices: () => openSoundSettings(),
-                  display: () => setDisplayDialog(true),
+                  display: () => openSettings("notes"),
                   fingeringWorkbench: () => setFingeringWorkbenchOpen(true),
                   parts: () => {
                     void run({ type: "pause" }).then((ok) => {
