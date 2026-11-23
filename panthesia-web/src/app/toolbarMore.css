@@ -129,9 +129,6 @@
 [data-practice-compact] .practice-view-toolbar > .view-legend {
   display: none;
 }
-.workbench:has(> .workspace-topbar) {
-  min-height: min(480px, calc(100dvh / var(--ui-scale, 1)));
-}
 .practice-panel > .piano-stage {
   min-height: 0;
 }

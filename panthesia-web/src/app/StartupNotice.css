@@ -9,9 +9,9 @@
   width: min(680px, calc(100% - 48px));
   margin: auto;
   padding: 36px;
-  border: 1px solid var(--green-39);
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--gray-30), var(--gray-24));
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  background: var(--surface-raised);
   box-shadow: 0 20px 70px color-mix(in oklab, var(--gray-0) 20%, transparent);
 }
 .startup-symbol {

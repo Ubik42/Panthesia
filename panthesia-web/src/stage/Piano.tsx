@@ -16,7 +16,7 @@ import type { PracticeRange } from "../features/practice/usePracticeRange";
 import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
-import { pitchColors, stageAtmospheres, stageBackdrops, stageInk } from "../features/practice/stageTheme";
+import { pitchColors, stageAtmospheres, stageBackdrop, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -337,7 +337,7 @@ export function Piano({
         baseline = height - keyboardHeight - bay;
       const position = clock.current.sample(now);
       layer.begin(width, height, baseline, dpr, {
-        ...stageBackdrops[display.skin],
+        ...stageBackdrop,
         atmosphere: stageAtmospheres[display.effectsPalette],
         opacity: display.backgroundOpacity / 100,
       });

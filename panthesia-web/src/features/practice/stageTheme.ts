@@ -1,11 +1,7 @@
 import type { DisplayPreferences } from "../settings/displayPreferences";
 
 /** Colors of the waterfall area. Canvas and WebGL read them from here, not from inline literals. */
-export const stageBackdrops = {
-  studio: { top: "#0a111e", middle: "#101d2a", bottom: "#162d36" },
-  midnight: { top: "#100e20", middle: "#1e1839", bottom: "#31264d" },
-  rosewood: { top: "#211811", middle: "#30261d", bottom: "#413328" },
-} as const satisfies Record<DisplayPreferences["skin"], unknown>;
+export const stageBackdrop = { top: "#0a111e", middle: "#101d2a", bottom: "#162d36" } as const;
 
 /** One colour per pitch class (C, C#, … B) for the "按音高" note palette: a colour wheel around
  * the circle of fifths, so neighbouring keys of a scale stay distinct. */
@@ -46,12 +42,8 @@ export const stageInk = {
   fingerOnWhite: "#294432",
 };
 
-/** Fallboard and rail above the keys, keyed by skin. */
-export const keyboardFrames = {
-  studio: { fallboard: "#303544", edge: "#777b91" },
-  midnight: { fallboard: "#303544", edge: "#777b91" },
-  rosewood: { fallboard: "#70523a", edge: "#b78458" },
-} as const satisfies Record<DisplayPreferences["skin"], unknown>;
+/** Fallboard and rail above the keys. */
+export const keyboardFrame = { fallboard: "#303544", edge: "#777b91" } as const;
 
 /** White key surface from the front edge (top) to the key bottom, keyed by material. */
 export const keyMaterials = {

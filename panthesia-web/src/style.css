@@ -104,26 +104,6 @@ button.icon-button {
   flex-direction: column;
   overflow: hidden;
 }
-.app-name svg {
-  color: var(--accent);
-}
-.engine-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--muted);
-  margin-right: 10px;
-}
-.engine-indicator i {
-  width: 6px;
-  height: 6px;
-  background: var(--orange-71);
-  border-radius: 50%;
-}
-.engine-indicator.connected i {
-  background: var(--accent);
-}
 .session-save-status {
   padding: 6px 14px;
   color: var(--muted);
@@ -301,23 +281,6 @@ button.icon-button {
   font-size: 17px;
   font-weight: 600;
 }
-.device-dialog > label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 12px;
-  margin: 20px 0;
-}
-.device-dialog select {
-  width: 100%;
-  padding: 9px;
-  font-size: 12px;
-}
-.device-dialog > p {
-  font-size: 12px;
-  color: var(--gray-75);
-  line-height: 1.8;
-}
 .device-soundfont {
   border-top: 1px solid var(--blue-39);
   border-bottom: 1px solid var(--blue-39);
@@ -377,13 +340,6 @@ button.icon-button {
 @media (max-width: 1150px) {
   .view-legend {
     display: none;
-  }
-}
-@media (max-width: 900px) {
-  .engine-indicator {
-    font-size: 0;
-    gap: 0;
-    margin-right: 7px;
   }
 }
 @media (max-width: 760px) {
@@ -934,17 +890,13 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 
 .fingering-table .finger-preview-row {background:var(--teal-34);}
 .fingering-table .finger-preview-row td:first-child {box-shadow:inset 3px 0 var(--teal-76);}
-
-.display-settings-dialog {width:min(760px,94vw);max-height:90vh;overflow:auto;}
-.display-settings-fields {display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
-.display-settings-fields label {display:flex;flex-direction:column;gap:7px;}
 .computer-key-settings {border-top:1px solid var(--blue-39);margin-top:18px;padding-top:12px;}
 .computer-key-settings .dialog-actions {flex-wrap:wrap;gap:8px;}
 .computer-key-grid {display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;margin:14px 0;}
 .computer-key-grid button {display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 3px;}
 .computer-key-grid button[aria-pressed=true] {border-color:var(--green-86);background:var(--teal-34);}
 .computer-key-grid small {font-size:10px;color:var(--gray-75);}
-@media(max-width:650px){.display-settings-fields{grid-template-columns:1fr;}.computer-key-grid{grid-template-columns:repeat(7,minmax(0,1fr));}}
+@media(max-width:650px){.computer-key-grid{grid-template-columns:repeat(7,minmax(0,1fr));}}
 
 .practice-time-panel {border:1px solid var(--blue-37);padding:12px;margin:14px 0;border-radius:4px;}
 .practice-time-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -1063,10 +1015,6 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 .held-action-editor>div {display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
 .held-action-editor>small {display:block;}
 .held-action-editor p {margin-top:8px;}
-
-@media(max-width:1150px){
- .engine-indicator{flex-shrink:0;white-space:nowrap;}
-}
 
 .held-finger-demo{padding:10px 0;border-top:1px solid var(--blue-46);display:flex;flex-direction:column;gap:8px;}
 .held-demo-controls,.held-demo-steps,.held-demo-active{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}

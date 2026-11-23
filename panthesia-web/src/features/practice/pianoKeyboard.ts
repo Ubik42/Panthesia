@@ -1,4 +1,4 @@
-import { keyboardFrames, keyInk, keyMaterials } from "./stageTheme";
+import { keyboardFrame, keyInk, keyMaterials } from "./stageTheme";
 import {
   type DisplayPreferences,
 } from "../settings/displayPreferences";
@@ -71,7 +71,7 @@ export class PianoKeyboard {
     const paintKeys = (ctx: CanvasRenderingContext2D, base: boolean) => {
       // A raised fallboard and felt rail give the keyboard a physical edge.
       if (base) {
-        const frame = keyboardFrames[display.skin];
+        const frame = keyboardFrame;
         ctx.fillStyle = frame.fallboard;
         ctx.fillRect(0, baseline - 7, width, 5);
         ctx.fillStyle = frame.edge;

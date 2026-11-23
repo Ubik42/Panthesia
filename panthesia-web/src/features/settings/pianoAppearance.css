@@ -1,24 +1,3 @@
-.daily-workbench[data-skin] .display-settings-dialog.settings-dialog {
-  background: var(--instrument-panel);
-  color: var(--instrument-text);
-  border-color: var(--instrument-line);
-  color-scheme: light;
-}
-.daily-workbench[data-skin=midnight] .display-settings-dialog.settings-dialog { color-scheme: dark; }
-.daily-workbench[data-skin] .display-settings-dialog :is(.browse-detail-masthead,.interface-settings-footer) {
-  background: var(--instrument-panel); border-color: var(--instrument-line);
-}
-.daily-workbench[data-skin] .display-settings-dialog :is(h2,h3,h4,label,strong,.effects-heading,.effects-colors,.effects-intensity,.effects-motion) { color: var(--instrument-text); }
-.daily-workbench[data-skin] .display-settings-dialog :is(.dialog-heading p,.parameter-help,.interface-footer-note,.interface-display-preview figcaption span,.interface-display-preview>p) { color: var(--instrument-muted); }
-.daily-workbench[data-skin] .display-settings-dialog.settings-dialog :is(button,select,input:not([type=range]),textarea) {
-  background: var(--instrument-surface); color: var(--instrument-text); border-color: var(--instrument-line);
-}
-.daily-workbench[data-skin] .display-settings-dialog.settings-dialog :is(.browse-detail-tabs>button[aria-selected=true],.effects-presets>button[aria-pressed=true]) {
-  background: var(--instrument-selected); color: var(--instrument-text); border-color: var(--instrument-accent);
-}
-.daily-workbench[data-skin] .display-settings-dialog .browse-detail-tabs>button { background: transparent; border-color: transparent; color: var(--instrument-muted); }
-.daily-workbench[data-skin] .display-settings-dialog.settings-dialog .skin-option { background: var(--instrument-panel); color: var(--instrument-text); }
-.daily-workbench[data-skin] .display-settings-dialog.settings-dialog .interface-settings-footer .primary-button { background: var(--instrument-accent); border-color: var(--instrument-accent); color: var(--gray-100); }
 .appearance-workspace {
   --appearance-text: var(--instrument-text, var(--blue-32));
   --appearance-muted: var(--instrument-muted, var(--blue-60));
@@ -35,48 +14,9 @@
 .piano-appearance-preview figcaption button { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
 .piano-appearance-preview canvas { display: block; width: 100%; height: 220px; border: 1px solid var(--appearance-line); border-radius: 8px; box-sizing: border-box; }
 .piano-appearance-preview p { margin: 9px 0 0; }
-.appearance-workspace .piano-effects-settings { margin: 0; padding: 0; border: 0; background: transparent; color: inherit; }
-.appearance-section-heading { display: flex; align-items: baseline; gap: 14px; margin: 22px 0 12px; }
-.appearance-section-heading h3 { margin: 0; font-size: 14px; color: inherit; }
-.appearance-section-heading span { color: var(--appearance-muted); font-size: 12px; }
-.skin-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.appearance-workspace .skin-option { display: grid; gap: 6px; min-width: 0; padding: 8px 8px 12px; border: 1px solid var(--appearance-line); border-radius: 7px; background: var(--appearance-panel); color: inherit; text-align: left; }
-.appearance-workspace .skin-option[aria-pressed=true] { outline: 2px solid var(--instrument-accent, var(--indigo-60)); outline-offset: 1px; }
-.skin-option strong,.skin-option small { padding: 0 3px; }
-.skin-option strong { font-weight: 600; font-size: 13px; }
-.skin-option small { color: var(--appearance-muted); font-size: 11px; }
-.skin-swatch { display: flex; align-items: flex-end; gap: 4px; height: 48px; padding: 10px; border-radius: 4px; background: var(--gray-96); overflow: hidden; }
-.skin-swatch i { display: block; flex: 1; height: 70%; background: var(--teal-76); border-radius: 3px 3px 0 0; }
-.skin-swatch i:nth-child(2) { height: 100%; background: var(--indigo-67); }
-.skin-swatch i:nth-child(3) { height: 50%; }
-[data-preview-skin=midnight] .skin-swatch { background: var(--indigo-26); }
-[data-preview-skin=midnight] .skin-swatch i { background: var(--violet-77); }
-[data-preview-skin=midnight] .skin-swatch i:nth-child(2) { background: var(--cyan-84); }
-[data-preview-skin=rosewood] .skin-swatch { background: var(--amber-90); }
-[data-preview-skin=rosewood] .skin-swatch i { background: var(--orange-62); }
-[data-preview-skin=rosewood] .skin-swatch i:nth-child(2) { background: var(--amber-77); }
-.appearance-workspace :is(.effects-heading,.effects-colors,.effects-intensity,.effects-motion) { color: inherit; }
-.appearance-workspace .effects-heading { margin-bottom: 12px; }
-.appearance-workspace .effects-heading>span { letter-spacing: 0; }
-.appearance-workspace .effects-heading>svg { color: var(--instrument-accent); }
-.appearance-workspace .effects-presets { border-color: var(--appearance-line); background: var(--appearance-surface); }
-.appearance-workspace .effects-presets>button { color: var(--appearance-muted); }
-.appearance-workspace .effects-presets>button[aria-pressed=true] { background: var(--instrument-selected); color: var(--appearance-text); border-color: var(--appearance-line); box-shadow: none; }
-.appearance-workspace .effects-colors { justify-content: flex-start; margin: 14px 0; }
-.appearance-workspace .effects-colors select { flex: 1; }
-.appearance-workspace .appearance-fields { grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 14px; }
 .appearance-workspace :is(select,button) { background: var(--appearance-panel); color: inherit; border-color: var(--appearance-line); }
 .appearance-workspace .parameter-help { color: var(--appearance-muted); }
-.appearance-workspace .effects-intensity output { color: var(--instrument-accent); }
 .appearance-workspace input[type=range] { accent-color: var(--instrument-accent); }
-.appearance-workspace .effects-motion { font-size: 12px; }
-.compact .open-appearance { font-size: 11px; padding: 4px 8px; color: var(--gray-89); border-color: var(--blue-41); background: transparent; }
 @media(max-width:600px) {
-  .skin-options { gap: 8px; }
-  .skin-swatch { padding: 6px; height: 40px; }
-  .appearance-section-heading { flex-wrap: wrap; gap: 5px 14px; }
-  .appearance-workspace .appearance-fields { grid-template-columns: 1fr; }
   .piano-appearance-preview canvas { height: 190px; }
 }
-.stage-backdrop-pick { display: inline-flex; align-items: center; cursor: pointer; }
-.effects-presets .stage-backdrop-pick { padding: 6px 12px; border: 1px solid var(--blue-46); border-radius: 6px; }

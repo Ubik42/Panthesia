@@ -10,7 +10,6 @@ export function AppShell() {
     useApp();
   return (
     <div
-      data-skin={display.skin}
       className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""}`}
       data-product-screen={productScreens.screen}
       data-engine-connected={connected}

@@ -52,7 +52,7 @@ export function InterfaceDisplayPreview({
         role="img"
         aria-label={`音符名称与配色预览，示例音符为 ${[60, 64, 67].map((pitch) => displayPitch(pitch, value)).join("、")}`}
       >
-        <rect width="508" height="102" rx="7" fill={value.skin === "rosewood" ? "#30251d" : value.skin === "midnight" ? "#221c39" : "#18212b"} />
+        <rect width="508" height="102" rx="7" fill="#18212b" />
         {[1, 2, 3, 4, 5, 6, 7].map((index) => (
           <path
             key={index}

@@ -311,11 +311,6 @@
     padding: 12px 16px;
   }
 }
-@media (max-width: 1050px) {
-  .workspace-topbar .work-progress-button > span {
-    display: none;
-  }
-}
 
 .work-progress-result-count {
   margin: 13px 26px 0;

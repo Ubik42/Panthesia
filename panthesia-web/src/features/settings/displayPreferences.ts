@@ -17,7 +17,6 @@ export type DisplayPreferences = {
   practiceView: "keyboard" | "score" | "paper" | "combined";
   practiceSplitAxis: "auto" | "rows" | "columns";
   practiceSplitRatio: number;
-  skin: "studio" | "midnight" | "rosewood";
   pianoMaterial: "ivory" | "porcelain" | "glass";
   effectStyle: "bloom" | "ripple" | "comet";
   barOpacity: number;
@@ -106,7 +105,7 @@ export const displayDefaults: DisplayPreferences = {
   practiceLayoutVersion: 3,
   practiceFocus: false,
   practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55,
-  skin: "studio", pianoMaterial: "ivory", effectStyle: "bloom",
+  pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
   effectsEnabled: true,
@@ -178,7 +177,6 @@ export function normalizeDisplayPreferences(
     noteLabelMode: labelModes.includes(raw.noteLabelMode!) ? raw.noteLabelMode! : raw.noteLabels===undefined?displayDefaults.noteLabelMode:"legacy",
     keyLabelsOwnOnly: raw.keyLabelsOwnOnly === true,
     noteLabelsOwnOnly: raw.noteLabelsOwnOnly === true,
-    skin: raw.skin === "midnight" || raw.skin === "rosewood" ? raw.skin : "studio",
     pianoMaterial: raw.pianoMaterial === "porcelain" || raw.pianoMaterial === "glass" ? raw.pianoMaterial : "ivory",
     effectStyle: raw.effectStyle === "ripple" || raw.effectStyle === "comet" ? raw.effectStyle : "bloom",
     barOpacity: size(raw.barOpacity, 0, 100, 45),

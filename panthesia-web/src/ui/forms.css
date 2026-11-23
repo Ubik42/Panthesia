@@ -43,7 +43,7 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
-.ui-form :is(small, .parameter-help, .device-help, .interface-footer-note) {
+.ui-form :is(small, .parameter-help, .device-help) {
   color: var(--text-muted);
   font-size: 12px;
 }

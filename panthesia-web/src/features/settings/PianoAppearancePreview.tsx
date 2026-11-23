@@ -40,7 +40,7 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
         el.width = Math.ceil(width * ratio); el.height = Math.ceil(height * ratio);
       }
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      const background = value.skin === "rosewood" ? "#30251d" : value.skin === "midnight" ? "#1c192b" : "#131e2a";
+      const background = "#131e2a";
       ctx.fillStyle = background; ctx.fillRect(0, 0, width, height);
       const baseline = height - 78;
       for (let index = 0; index < value.gridSubdivision; index++) {

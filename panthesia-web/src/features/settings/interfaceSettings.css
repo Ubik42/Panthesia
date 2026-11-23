@@ -1,27 +1,3 @@
-.display-settings-dialog.settings-dialog {
-  width: min(850px, 95vw);
-  padding-top: 16px;
-  scrollbar-gutter: stable;
-}
-.display-settings-dialog .browse-detail-masthead {
-  margin-top: -16px;
-  padding-top: 16px;
-}
-.display-settings-dialog .dialog-heading {
-  gap: 16px;
-  align-items: flex-start;
-}
-.display-settings-dialog .dialog-heading p {
-  max-width: 560px;
-  margin: 7px 0 12px;
-  line-height: 1.65;
-}
-.display-settings-dialog .browse-detail-section > .shortcut-settings,
-.display-settings-dialog .browse-detail-section > .interface-backup-settings {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
 .interface-storage-notice {
   color: var(--blue-82);
   font-size: 12px;
@@ -58,37 +34,11 @@
     11px/1.5 Consolas,
     monospace;
 }
-.display-settings-dialog .interface-settings-footer {
-  position: sticky;
-  bottom: -20px;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 12px -4px -4px;
-  padding: 13px 4px 8px;
-  border-top: 1px solid var(--blue-43);
-  background: var(--gray-29);
-  z-index: 5;
-}
-.display-settings-dialog .computer-key-settings {
-  margin-top: 0;
-  border-top: 0;
-  padding-top: 0;
-}
 .keyboard-enabled {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 12px 0 16px;
-}
-.display-settings-dialog .computer-key-grid {
-  margin: 17px 0;
-}
-.display-settings-dialog .computer-key-grid > button {
-  min-height: 72px;
-}
-.display-settings-dialog .interface-backup-preview {
-  border-radius: 9px;
 }
 .interface-display-preview {
   margin: 0 0 18px;
@@ -170,28 +120,11 @@
   font-size: 12px;
   font-weight: 600;
 }
-.display-settings-dialog .shortcut-list {
-  grid-template-columns: 1fr;
-  margin: 7px 0;
-  gap: 0;
-}
-.display-settings-dialog .shortcut-list > div {
-  padding: 9px 0;
-}
-.display-settings-dialog .shortcut-list > div > span {
-  min-width: 105px;
-}
 .shortcut-list span small {
   display: block;
   margin-top: 4px;
   font-size: 10px;
   color: var(--blue-71);
-}
-.display-settings-dialog .shortcut-list > div[data-custom="true"] > span {
-  color: var(--green-93);
-}
-.display-settings-dialog .shortcut-list > div > button {
-  min-height: 34px;
 }
 .interface-difference-filter {
   display: flex;
@@ -199,12 +132,6 @@
   align-items: center;
   margin: 14px 0 10px;
   font-size: 12px;
-}
-.interface-footer-note {
-  flex: 1;
-  color: var(--blue-78);
-  font-size: 11px;
-  line-height: 1.6;
 }
 .interface-save-status {
   display: flex;
@@ -227,22 +154,4 @@
   flex-shrink: 0;
   padding: 5px 9px;
   font-size: 11px;
-}
-.display-settings-dialog .computer-key-grid > button[data-accidental="true"] {
-  background: var(--gray-24);
-  border-color: var(--blue-50);
-}
-.display-settings-dialog .computer-key-grid > button[aria-pressed="true"] {
-  border-color: var(--green-86);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--green-84) 20%, transparent);
-}
-@media (max-width: 580px) {
-  .display-settings-dialog .interface-layout-row {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .display-settings-dialog .interface-settings-footer {
-    bottom: -12px;
-  }
 }

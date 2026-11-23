@@ -5,7 +5,6 @@
   --muted: var(--gray-75);
 }
 .workbench { background: var(--gray-18); color: var(--gray-92); }
-.workbench .app-name { color: var(--gray-96); letter-spacing: .2px; }
 .workbench button, .workbench summary {
   border-radius: 7px;
   transition: background-color .16s, border-color .16s, box-shadow .16s;
@@ -36,33 +35,6 @@
   border-color: var(--blue-46); background-color: color-mix(in oklab, var(--gray-24) 85%, transparent); color: var(--gray-92);
 }
 .workbench .piano-stage { background: var(--gray-18); box-shadow: inset 0 0 45px color-mix(in oklab, var(--gray-0) 20%, transparent); }
-.piano-effects-settings { border: 1px solid var(--blue-43); border-radius: 10px; padding: 14px; background: linear-gradient(120deg, var(--gray-29), var(--indigo-26)); margin: 12px 0; }
-.piano-effects-settings.compact { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; flex: none; margin: 0; border: 0; border-bottom: 1px solid var(--blue-39); border-radius: 0; padding: 7px 13px; min-height: 43px; background: linear-gradient(90deg, var(--gray-27), var(--indigo-26)); }
-.effects-heading { display: flex; gap: 8px; align-items: center; color: var(--teal-87); font-size: 12px; }
-.effects-heading > span { letter-spacing: .5px; }
-.effects-heading > svg { color: var(--teal-84); }
-.effects-heading .effects-switch { margin-left: auto; padding: 3px 8px; min-height: 25px; font-size: 11px; color: var(--blue-78); background: var(--gray-26); }
-.effects-heading .effects-switch.enabled { color: var(--teal-91); border-color: var(--green-57); background: var(--teal-34); }
-.effects-presets { display: flex; gap: 3px; padding: 3px; background: var(--gray-21); border-radius: 8px; border: 1px solid var(--blue-37); margin: 12px 0; }
-.effects-presets > button { flex: 1; padding: 4px 13px; min-height: 27px; border: 1px solid transparent; background: transparent; color: var(--gray-75); font-size: 12px; }
-.effects-presets > button[aria-pressed="true"] { color: var(--teal-96); background: linear-gradient(110deg, var(--green-39), var(--blue-37)); border-color: var(--green-57); box-shadow: inset 0 1px color-mix(in oklab, var(--gray-100) 7%, transparent); }
-.compact .effects-presets { margin: 0; }
-.effects-colors { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--gray-85); font-size: 12px; }
-.effects-colors select { border-color: var(--blue-41); background: var(--indigo-26); min-height: 28px; border-radius: 6px; color: var(--gray-89); font-size: 12px; padding: 3px 8px; }
-.compact .effects-colors { margin-left: auto; }
-.effects-intensity { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--gray-92); margin: 15px 0; }
-.effects-intensity output { margin-left: auto; color: var(--teal-91); }
-.effects-intensity input { flex-basis: 100%; accent-color: var(--teal-84); width: 100%; }
-.effects-motion { display: flex; gap: 8px; align-items: center; line-height: 1.5; }
-.effects-motion input { accent-color: var(--teal-84); }
-.effects-colors .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-@media (max-width: 850px) {
-  .piano-effects-settings.compact { gap: 6px 8px; padding: 6px 10px; }
-  .compact .effects-heading > span { display: none; }
-  .compact .effects-colors { margin-left: 0; flex: 1; }
-  .compact .effects-colors select { max-width: 170px; width: 100%; }
-  .compact .effects-presets > button { padding: 4px 8px; }
-}
 @media (prefers-reduced-motion: reduce) { .workbench button, .workbench summary { transition: none; } }
 
 .piano-surface { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; flex: 1; isolation: isolate; }

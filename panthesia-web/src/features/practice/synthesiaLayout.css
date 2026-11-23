@@ -4,32 +4,6 @@
   --stage-bar: var(--surface-base);
   --stage-button-hover: var(--surface-hover);
 }
-.synthesia-layout .workspace-topbar:not([hidden]) {
-  position: fixed;
-  z-index: 1900;
-  left: 8px;
-  right: 8px;
-  top: 62px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-raised);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-}
-.synthesia-layout .workspace-topbar .engine-indicator {
-  display: none;
-}
-.synthesia-layout .synthesia-library-header {
-  display: flex;
-  align-items: center;
-  min-height: 58px;
-  gap: 8px;
-  padding: 0 14px;
-  background: var(--stage-bar);
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--line-subtle);
-}
-.synthesia-layout .synthesia-library-header button,
 .synthesia-layout .synthesia-back {
   display: flex;
   align-items: center;
@@ -43,10 +17,6 @@
   min-height: 36px;
   padding: 5px 12px;
   font-size: 14px;
-}
-.synthesia-layout .synthesia-library-header button:hover {
-  background: var(--stage-button-hover);
-  color: var(--text-primary);
 }
 /* One control bar, then the timeline, then score / falling notes / keyboard. */
 .synthesia-layout > .workspace {
@@ -168,11 +138,6 @@
   gap: 2px;
   margin-left: auto;
   min-width: 0;
-}
-.synthesia-play-tools {
-  display: flex;
-  align-items: center;
-  gap: 2px;
 }
 .synthesia-layout .synthesia-transport .toolbar-more {
   flex: none;
@@ -373,12 +338,6 @@
 .synthesia-layout .practice-stage .practice-status-readout {
   display: none;
 }
-.synthesia-layout
-  .synthesia-transport
-  .synthesia-metronome[aria-pressed="true"] {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
 @media (max-width: 1000px) {
   .synthesia-layout .synthesia-transport .synthesia-back {
     margin-right: 8px;
@@ -408,9 +367,6 @@
   }
   .synthesia-layout .synthesia-transport .toolbar-more > summary {
     width: 32px;
-  }
-  .synthesia-play-tools > .synthesia-metronome {
-    display: none;
   }
 }
 .synthesia-layout .practice-stage .practice-stage-readouts {

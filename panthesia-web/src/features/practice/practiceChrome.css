@@ -1,64 +1,4 @@
 /* Music first: one application menu, a folder tree, one transport. */
-.workspace-topbar {
-  min-height: 44px;
-  padding: 4px 12px;
-  gap: 14px;
-  background: var(--gray-27);
-  border-bottom: 1px solid var(--gray-18);
-  flex-wrap: wrap;
-}
-.workspace-topbar .app-name {
-  min-width: 108px;
-  font-size: 14px;
-  gap: 7px;
-}
-.application-menubar {
-  display: flex;
-  align-items: center;
-  gap: 1px;
-}
-.application-menubar .toolbar-more > summary {
-  padding: 7px 10px;
-  min-height: 32px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  font-size: 13px;
-  color: var(--gray-89);
-}
-.application-menubar .toolbar-more > summary > svg {
-  display: none;
-}
-.application-menubar .toolbar-more[open] > summary,
-.application-menubar .toolbar-more > summary:hover {
-  background: var(--blue-37);
-  border-color: var(--blue-46);
-}
-.application-menubar .toolbar-more-actions {
-  min-width: 230px;
-  padding: 5px;
-  background: var(--gray-29);
-  border: 1px solid var(--blue-50);
-  border-radius: 3px;
-  box-shadow: 0 6px 16px color-mix(in oklab, var(--gray-0) 33%, transparent);
-}
-.application-menubar .toolbar-more-actions > button {
-  min-height: 34px;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  text-align: left;
-  justify-content: flex-start;
-}
-.application-menubar .toolbar-more-actions > button:hover {
-  background: var(--blue-39);
-}
-.workspace-topbar > .engine-indicator {
-  font-size: 0;
-  gap: 0;
-  min-width: 8px;
-  margin-left: 0;
-}
 .practice-panel > .practice-setup-summary {
   display: none;
 }
@@ -154,23 +94,11 @@
   background: transparent;
 }
 @media (max-width: 1100px) {
-  .workspace-topbar {
-    gap: 6px;
-  }
-  .application-menubar .toolbar-more > summary {
-    padding: 7px;
-  }
   .practice-transport-main {
     flex-wrap: wrap;
   }
 }
 @media (max-width: 800px) {
-  .workspace-topbar .app-name {
-    min-width: 96px;
-  }
-  .workspace-topbar > .menu-spacer {
-    display: none;
-  }
   .practice-transport {
     padding: 8px;
   }

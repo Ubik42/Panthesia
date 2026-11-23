@@ -24,7 +24,7 @@
   color: var(--text-secondary);
 }
 .settings-dialog .dialog-heading p,
-.settings-dialog :is(.parameter-help, .dialog-help) {
+.settings-dialog .parameter-help {
   color: var(--text-muted);
 }
 .settings-dialog :is(select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), textarea) {
