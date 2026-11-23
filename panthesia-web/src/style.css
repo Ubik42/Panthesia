@@ -1134,8 +1134,8 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 @media (prefers-reduced-motion: reduce) {
 * { transition: none; }
 }
-.primary { background: var(--green-84); }
-.primary { color: var(--green-25); }
+.primary { background: var(--accent); }
+.primary { color: var(--on-accent); }
 .score-paper .playing-note { fill: var(--blue-66); }
 .score-paper .playing-note { stroke: var(--blue-66); }
 .score-paper .playing-note * { fill: var(--blue-66); }
