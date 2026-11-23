@@ -6,6 +6,7 @@
 
 - 用户指出手部“鬼畜”、骨骼变形，与参考视频（BV1gasF6UERM，参考仓库 V9011N/pygame-piano-animator：19 块骨头的解剖手、白手套皮肤）差距大。原因：指骨在够不到目标时被按比例拉伸；横竖比例不同（横按键宽、纵按键盘高度，并把键盘拉到 360 像素）；手掌是画出的形状而非骨架。参考仓库没有许可证，不能移植代码，按相同原理独立重写 `virtualHandPose.ts` 与 `virtualHandDrawing.ts`：刚性骨架、关节驱动、同一毫米比例尺；舞台开启双手时琴键按真实比例画，键盘下方留出手掌区域。对照用户给的参考帧放大单帧检查，手型与参考一致。
 - 合并 `Never See Me Again - Kanye West`：与 Look at the Sky 相同（四个版本起音一致，C 大调为整体移调 -6），在根目录 MIDI 旁写清单（手别与练习设置取自原调清单），`versions/` 移入回收站，副本在 `work/user-data-backup/never-see-me-again-20261122/`。
+- 运行包：`outputs/releases/Panthesia-20261122-hands`（Release，自检通过，App Paths 已指向它）。原 `Panthesia-20261122` 正被一个运行中的 Panthesia 占用，未删除；`索引库` 快捷方式在下次启动新版时更新。
 
 ## 2026-11-22 · 新运行包、清理旧程序、曲目文件夹索引与搜索（本条提交）
 
