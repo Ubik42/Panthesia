@@ -220,3 +220,6 @@
   flex: 0 1 320px;
   width: auto;
 }
+.ui-form :is(label, .ui-row) > span:first-child {
+  flex-shrink: 0;
+}

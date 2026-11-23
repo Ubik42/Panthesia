@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Hand, Eraser } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api, pitchName, type LoadedSong, type EngineCommand } from "../../api";
 import type {
   HandUndoState,
@@ -9,8 +9,10 @@ import {
   keyboardLayout,
   viewportFromRange,
   normalizeKeyboardRange,
-} from "../practice/keyboardViewport";
-import { ScreenHeader } from "./ScreenHeader";
+} from "../../features/practice/keyboardViewport";
+import { PageHeader } from "../../ui/PageHeader";
+import "../../ui/forms.css";
+import "./handSplitScreen.css";
 type Paint = PracticePart | "inherit";
 const sourceKey = (s: LoadedSong) =>
   JSON.stringify([
@@ -20,6 +22,13 @@ const sourceKey = (s: LoadedSong) =>
     s.annotationRevision,
     s.grid,
   ]);
+const PAINTS: [Paint, string][] = [
+  ["LeftHand", "左手"],
+  ["RightHand", "右手"],
+  ["Other", "不分手"],
+  ["inherit", "沿用音轨"],
+];
+
 export function HandSplitScreen({
   song,
   trackId,
@@ -277,87 +286,100 @@ export function HandSplitScreen({
     setDraft((d) => ({ ...d, ...Object.fromEntries(changes) }));
   };
   return (
-    <main className="product-hand-screen product-page">
-      <ScreenHeader
-        title={`${track?.name ?? "音轨"} · 自定义分手`}
+    <main className="ui-screen ui-page hand-split-screen">
+      <PageHeader
+        title={`${track?.name ?? "音轨"} · 逐音分手`}
+        subtitle={stale ? "曲目标注已变化，请重新打开分手编辑。" : dirty ? `${wholeSplit ? "整首按音高 · " : ""}${Object.keys(draft).length} 个音符待保存` : "左键点击或拖过音符分配手别；右键拖出分界线，调整一段音符"}
         back={leave}
-        backLabel="音轨"
+        backLabel="声部"
         backDisabled={saving}
-        backSide="right"
-      />
-      <div className="product-hand-body">
-        <aside className="product-hand-tools" aria-label="分手工具">
-          <h2>分配音符</h2>
-          {(
-            [
-              ["LeftHand", "左手"],
-              ["RightHand", "右手"],
-              ["Other", "不分手"],
-              ["inherit", "沿用音轨"],
-            ] as [Paint, string][]
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              aria-pressed={paint === value}
-              onClick={() => setPaint(value)}
-              disabled={saving}
-            >
-              {value === "inherit" ? <Eraser /> : <Hand />}
-              {label}
-            </button>
-          ))}
-          <button
-            disabled={saving || disabled || stale}
-            aria-pressed={wholeSplit}
-            onClick={() => setWholeSplit((v) => !v)}
-          >
-            分开整首歌曲
-          </button>
-          <label>
-            分界音
-            <select
-              aria-label="分界音"
-              value={split}
-              onChange={(e) => setSplit(Number(e.target.value))}
-            >
-              {Array.from({ length: 49 }, (_, i) => i + 36).map((p) => (
-                <option key={p} value={p}>
-                  {pitchName(p)}
-                </option>
+      >
+        {leaving && dirty && (
+          <>
+            <span className="hand-split-warning">修改尚未保存</span>
+            <button className="ui-button" onClick={() => setLeaving(false)}>继续编辑</button>
+            <button className="ui-button" disabled={saving} onClick={back}>放弃并返回</button>
+          </>
+        )}
+        <button
+          className="ui-button ui-button--primary"
+          disabled={saving || disabled || stale || !proof}
+          onClick={() => {
+            if (dirty) void save();
+            else back();
+          }}
+        >
+          {saving ? "正在保存…" : dirty ? "保存" : "完成"}
+        </button>
+      </PageHeader>
+      <div className="hand-split-body">
+        <aside className="hand-split-tools ui-form" aria-label="分手工具">
+          <section aria-labelledby="split-left">
+            <h3 id="split-left">左键分配</h3>
+            <div className="ui-segmented hand-split-paint" role="group" aria-label="左键分配">
+              {PAINTS.map(([value, label]) => (
+                <button key={value} aria-pressed={paint === value} onClick={() => setPaint(value)} disabled={saving}>
+                  {label}
+                </button>
               ))}
-            </select>
-          </label>
-          <button disabled={saving || disabled || stale} onClick={setBySplit}>
-            按音高分配
-          </button>
-          <label>
-            显示范围
-            <select
-              aria-label="分手显示范围"
-              value={span}
-              onChange={(e) => setSpan(Number(e.target.value))}
-            >
-              {[2, 4, 8, 16, 32].map((v) => (
-                <option key={v} value={v}>
-                  {v} 秒
-                </option>
+            </div>
+            <h3 id="split-right">右键分界线</h3>
+            <div className="ui-segmented hand-split-paint" role="group" aria-label="右键分配">
+              {PAINTS.map(([value, label]) => (
+                <button key={value} aria-label={`右键${label}`} aria-pressed={rightPaint === value} onClick={() => setRightPaint(value)} disabled={saving}>
+                  {label}
+                </button>
               ))}
-            </select>
-          </label>
-          {dirty && (
-            <button
-              onClick={() => {
-                setDraft({});
-                setWholeSplit(false);
-              }}
-              disabled={saving}
-            >
-              撤销本次修改
+            </div>
+          </section>
+          <section aria-labelledby="split-whole">
+            <h3 id="split-whole">整首按音高</h3>
+            <label>
+              <span>分界音</span>
+              <select aria-label="分界音" value={split} onChange={(e) => setSplit(Number(e.target.value))}>
+                {Array.from({ length: 49 }, (_, i) => i + 36).map((p) => (
+                  <option key={p} value={p}>
+                    {pitchName(p)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <input type="checkbox" disabled={saving || disabled || stale} checked={wholeSplit} onChange={() => setWholeSplit((v) => !v)} />
+              整首在分界音处分开
+            </label>
+            <button disabled={saving || disabled || stale} onClick={setBySplit}>
+              只按音高分配当前音符
             </button>
-          )}
+          </section>
+          <section aria-labelledby="split-view">
+            <h3 id="split-view">显示</h3>
+            <label>
+              <span>每屏时长</span>
+              <select aria-label="分手显示范围" value={span} onChange={(e) => setSpan(Number(e.target.value))}>
+                {[2, 4, 8, 16, 32].map((v) => (
+                  <option key={v} value={v}>
+                    {v} 秒
+                  </option>
+                ))}
+              </select>
+            </label>
+            {dirty && (
+              <button
+                onClick={() => {
+                  setDraft({});
+                  setWholeSplit(false);
+                }}
+                disabled={saving}
+              >
+                撤销本次修改
+              </button>
+            )}
+          </section>
+          {error && <p role="alert">{error}</p>}
         </aside>
-        <section className="product-hand-roll">
-          <div className="product-hand-time">
+        <section className="hand-split-roll">
+          <div className="hand-split-time">
             <button
               aria-label="前一段"
               disabled={start <= 0}
@@ -571,10 +593,10 @@ export function HandSplitScreen({
                             : n.part;
                 const color =
                   part === "left"
-                    ? "#4c99df"
+                    ? "var(--hand-left)"
                     : part === "right"
-                      ? "#91c943"
-                      : "#a6adb5";
+                      ? "var(--hand-right)"
+                      : "var(--text-muted)";
                 return (
                   <rect
                     key={n.index}
@@ -587,8 +609,7 @@ export function HandSplitScreen({
                     y={410 - ((n.start + n.duration - start) / span) * 410}
                     height={Math.max(7, (n.duration / span) * 410)}
                     rx={3}
-                    fill={color}
-                    stroke={value ? "#fff" : "#223f55"}
+                    style={{ fill: color, stroke: value ? "var(--text-primary)" : "var(--surface-sunken)" }}
                     strokeWidth={value ? 2 : 1}
                     onPointerDown={(e) => {
                       if (e.pointerType!=="touch" && e.button === 0) {
@@ -631,61 +652,7 @@ export function HandSplitScreen({
             ))}
           </svg>
         </section>
-        <aside
-          className="product-hand-tools product-hand-right"
-          aria-label="右键分手工具"
-        >
-          <h2>右键分配</h2>
-          {(
-            [
-              ["LeftHand", "左手"],
-              ["RightHand", "右手"],
-              ["Other", "不分手"],
-              ["inherit", "沿用音轨"],
-            ] as [Paint, string][]
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              aria-label={`右键${label}`}
-              aria-pressed={rightPaint === value}
-              disabled={saving}
-              onClick={() => setRightPaint(value)}
-            >
-              {label}
-            </button>
-          ))}
-          <p>右键拖出分界线，调整一段音符。</p>
-        </aside>
       </div>
-      <footer className="product-page-footer">
-        <span>
-          {stale
-            ? "曲目标注已变化，请重新打开分手编辑。"
-            : dirty
-              ? `${wholeSplit ? "整首分手 · " : ""}${Object.keys(draft).length} 个逐音修正待保存`
-              : "点击或拖过音符分配手别"}
-        </span>
-        {leaving && dirty && (
-          <>
-            <span>当前修改尚未保存。</span>
-            <button onClick={() => setLeaving(false)}>继续编辑</button>
-            <button disabled={saving} onClick={back}>
-              放弃修改并返回
-            </button>
-          </>
-        )}
-        {error && <span role="status">{error}</span>}
-        <button
-          className="product-hand-continue"
-          disabled={saving || disabled || stale || !proof}
-          onClick={() => {
-            if (dirty) void save();
-            else back();
-          }}
-        >
-          {saving ? "正在保存…" : "继续"}
-        </button>
-      </footer>
     </main>
   );
 }

@@ -2,9 +2,9 @@ import { useApp } from "./AppContext";
 import { topInputScope, topPopup } from "./inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
 import { SongScreen } from "../screens/song/SongScreen";
-import { HandSplitScreen } from "../features/screens/HandSplitScreen";
+import { HandSplitScreen } from "../screens/song/HandSplitScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
-import { ScreenHeader } from "../features/screens/ScreenHeader";
+import { FreePlayScreen } from "../screens/freeplay/FreePlayScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
 import { PartsScreen } from "../screens/song/PartsScreen";
 
@@ -140,72 +140,7 @@ export function ProductScreens() {
             command={(value) => run(value, true)}
           />
         )}
-      {workspace === "practice" && productScreens.screen === "freePlay" && (
-        <main className="product-freeplay product-page">
-          <ScreenHeader
-            title="自由演奏"
-            back={() => void goHome()}
-            backDisabled={state.recording || busy}
-            backLabel="主页"
-          >
-            <label className="product-freeplay-tempo" title="录音按这个速度写入，量化与小节线以它为准">
-              速度
-              <input
-                type="number"
-                min={30}
-                max={300}
-                value={display.recordBpm}
-                disabled={state.recording}
-                aria-label="录音速度 BPM"
-                onChange={(event) => {
-                  const bpm = Number(event.target.value);
-                  if (bpm >= 30 && bpm <= 300) setDisplay((previous) => ({ ...previous, recordBpm: bpm }));
-                }}
-              />
-              BPM
-            </label>
-            <label className="product-freeplay-click">
-              <input
-                type="checkbox"
-                checked={display.recordClick}
-                disabled={state.recording}
-                onChange={(event) => setDisplay((previous) => ({ ...previous, recordClick: event.target.checked }))}
-              />
-              节拍器
-            </label>
-            <button
-              disabled={busy || !connected}
-              onClick={() =>
-                void run(
-                  state.recording
-                    ? { type: "recording", active: false }
-                    : { type: "recording", active: true, bpm: display.recordBpm, click: display.recordClick },
-                  state.recording,
-                )
-              }
-            >
-              {state.recording ? "停止并保存录音" : "录音"}
-            </button>
-            <button onClick={() => openSoundSettings()}>设置</button>
-          </ScreenHeader>
-          <div className="product-freeplay-stage">
-            <Piano
-              song={null}
-              state={playback.getSnapshot()}
-              store={playback}
-              onNote={pointerNote}
-              canInteract={() =>
-                !keyboardContext.current.paused &&
-                !topInputScope() &&
-                !topPopup(null)
-              }
-              keyboardRange={pianoRange}
-              keyboardViewport={pianoViewport}
-              display={display}
-            />
-          </div>
-        </main>
-      )}
+      {workspace === "practice" && productScreens.screen === "freePlay" && <FreePlayScreen />}
     </>
   );
 }

@@ -1,17 +1,11 @@
 import type { ReactNode } from "react";
 import { Dialog } from "../../ui/Dialog";
-export function SongOptionsDialog({
-  close,
-  children,
-}: {
-  close: () => void;
-  children: ReactNode;
-}) {
+
+/** The song's practice version (transposition and quantization). */
+export function SongOptionsDialog({ close, children }: { close: () => void; children: ReactNode }) {
   return (
-    <div className="product-song-options-dialog">
-      <Dialog title="歌曲选项" close={close}>
-        {children}
-      </Dialog>
-    </div>
+    <Dialog title="转调与量化" close={close}>
+      {children}
+    </Dialog>
   );
 }

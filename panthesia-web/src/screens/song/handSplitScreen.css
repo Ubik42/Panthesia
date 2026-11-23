@@ -1,0 +1,91 @@
+/* Note-by-note hand split (parts page → 逐音…): tools on the left, the piano roll on the right. */
+.hand-split-body {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.hand-split-tools {
+  align-content: start;
+  padding: var(--space-4);
+  border-right: 1px solid var(--line-subtle);
+  overflow: auto;
+}
+.hand-split-paint {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr 1fr;
+}
+.hand-split-warning {
+  color: var(--state-warn);
+  font-size: 13px;
+}
+.hand-split-roll {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface-sunken);
+}
+.hand-split-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--line-subtle);
+  color: var(--text-secondary);
+  font: 13px/1 var(--font-ui);
+}
+.hand-split-time label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.hand-split-time input {
+  width: 80px;
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font: 13px/1 var(--font-numeric);
+}
+.hand-split-time button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.hand-split-time button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.hand-split-time svg {
+  width: 16px;
+  height: 16px;
+}
+.hand-split-roll > svg {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  touch-action: none;
+}
+@media (max-width: 860px) {
+  .hand-split-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .hand-split-tools {
+    max-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+}
