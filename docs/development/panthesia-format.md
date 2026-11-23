@@ -100,7 +100,7 @@
 
 人工结果（`human`）不被自动重算覆盖；`generated` 结果在工具版本变化时可重算。时间一律用所属演奏的 tick。
 
-首次打开没有清单图层的 MIDI 时，Panthesia 自动生成分手（`hands`，只写没有轨道手别的音符）、指法（`fingering`）、段落（`sections`，文件自带标记时不生成）与和弦（`chords`，有 POP909 和弦文件时不生成），写为 `{ "origin": "generated", "tool": "panthesia-analysis", "review": "pending" }`、`status: "draft"`。已有的图层不动；用户编辑后该图层变为 `human`；演奏文件变化时，引用不到音符的草稿整层丢弃、重新生成（人工内容仍移入 `unmatched`）；给整条音轨指定手别时，替换该音轨的草稿逐音分手。同时，没有 `settings.variant` 且音符不在 1/16 网格上的 MIDI（演奏录制或转录；95% 以上起音已在网格上的编曲文件不需要）写入 1/16 量化（失败时 1/32）的练习版本；原始时值需要用户选择，选择后保存为 `quantize: 0`。由乐谱生成的歌曲不量化。
+首次打开没有清单图层的 MIDI 时，Panthesia 自动生成分手（`hands`，只写没有轨道手别的音符）、指法（`fingering`）、段落（`sections`，文件自带标记时不生成）与和弦（`chords`，有 POP909 和弦文件时不生成），写为 `{ "origin": "generated", "tool": "panthesia-analysis", "toolVersion": "2", "review": "pending" }`、`status: "draft"`。已有的图层不动（`toolVersion` 较旧且仍未检查的草稿会用新分析重新生成）；用户编辑后该图层变为 `human`；演奏文件变化时，引用不到音符的草稿整层丢弃、重新生成（人工内容仍移入 `unmatched`）；给整条音轨指定手别时，替换该音轨的草稿逐音分手。同时，没有 `settings.variant` 且音符不在 1/16 网格上的 MIDI（演奏录制或转录；95% 以上起音已在网格上的编曲文件不需要）写入 1/16 量化（失败时 1/32）的练习版本；原始时值需要用户选择，选择后保存为 `quantize: 0`。由乐谱生成的歌曲不量化。
 
 | 图层 | 内容 |
 | --- | --- |

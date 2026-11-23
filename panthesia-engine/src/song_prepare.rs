@@ -1,11 +1,14 @@
 //! First open of a MIDI song. A practice program plays the quantized version: a performed song
 //! (notes off the grid, as recorded or transcribed) without a saved practice version gets a
 //! 1/16 grid (1/32 where 1/16 fails); the original timing is the user's explicit choice. A
-//! sequenced file already on the grid needs no quantized version. Hands, fingering, sections and chords the song lacks are generated
-//! once and written to its manifest as drafts: origin `generated`, status `draft`, and
-//! `review: "pending"` in the provenance, meaning no AI or person has checked them yet. A later
-//! review (AI naming the sections, fixing doubtful fingers) sets `review` to who checked them.
-//! Layers that already exist are never touched; songs from a score keep their own timing.
+//! sequenced file already on the grid needs no quantized version.
+//!
+//! Hands, fingering, sections and chords the song lacks are generated and written to its
+//! manifest as drafts: origin `generated`, status `draft`, `review: "pending"` in the provenance
+//! (no AI or person has checked them yet) and the analysis version. A later review (AI naming
+//! the sections, fixing doubtful fingers) sets `review` to who checked them. Layers a person
+//! made or checked are never touched; unchecked drafts of an older analysis are generated
+//! again. Songs from a score keep their own timing.
 use crate::player::Player;
 use panthesia_core::library::{FingerHint, NoteHandHint};
 use panthesia_core::manifest::{Layer, Manifest, Origin, Provenance};
@@ -16,11 +19,22 @@ use serde_json::{Map, Value, json};
 use std::path::Path;
 
 pub(crate) const TOOL: &str = "panthesia-analysis";
+/// Raised when the analysis changes enough that unchecked drafts should be made again
+/// (2: Parncutt fingering model).
+const VERSION: &str = "2";
 
 fn draft() -> Provenance {
     let mut p = Provenance::new(Origin::Generated, Some(TOOL));
+    p.tool_version = Some(VERSION.into());
     p.rest.insert("review".into(), json!("pending"));
     p
+}
+
+/// An unchecked draft of an older analysis.
+fn outdated(layer: &Layer) -> bool {
+    layer.provenance.as_ref().is_some_and(|p| {
+        p.tool.as_deref() == Some(TOOL) && p.rest.get("review").is_some_and(|r| r == "pending") && p.tool_version.as_deref() != Some(VERSION)
+    })
 }
 
 /// Whether the song's layer `name` is a generated draft no one has checked yet.
@@ -102,12 +116,21 @@ impl Player {
         }
 
         let located = manifest_store::locate(&music)?;
-        let has = |name: &str| {
-            located.as_ref().is_some_and(|found| {
+        let layer = |name: &str| {
+            located.as_ref().and_then(|found| {
                 let performance = manifest_store::performance_of(found, &music).unwrap_or_else(|| found.manifest.default.performance.clone());
-                found.manifest.layer_for(name, &performance).is_some()
+                found.manifest.layer_for(name, &performance).cloned()
             })
         };
+        let stale = |name: &str| layer(name).as_ref().is_some_and(outdated);
+        // A layer that stays: anything but an outdated draft.
+        let has = |name: &str| layer(name).is_some() && !stale(name);
+        if stale("fingering") {
+            self.write_hints(Vec::new(), false)?;
+        }
+        if stale("hands") {
+            self.write_hands(Vec::new(), false)?;
+        }
         let mut drafted: Vec<&str> = Vec::new();
         if self.fingers.is_empty() && !has("fingering") {
             let planned = self.planned_fingers(&cid)?;
