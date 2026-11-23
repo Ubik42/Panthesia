@@ -205,6 +205,12 @@ export function usePerformanceKeyboard({
         uiRef.current.commands();
         return;
       }
+      // Full screen works on every page, like the command palette.
+      if (zoomChord && zoomChord === display.shortcuts.fullscreen && !e.defaultPrevented && !e.repeat && !e.isComposing) {
+        e.preventDefault();
+        uiRef.current.fullscreen();
+        return;
+      }
       if (
         songOpeningActive.current &&
         !editableTarget &&
@@ -408,9 +414,6 @@ export function usePerformanceKeyboard({
             break;
           case "passages":
             uiRef.current.passages();
-            break;
-          case "fullscreen":
-            uiRef.current.fullscreen();
             break;
         }
         return;
