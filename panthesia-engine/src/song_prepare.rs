@@ -1,6 +1,7 @@
-//! First open of a MIDI song. A practice program plays the quantized version: a song without a
-//! saved practice version gets a 1/16 grid (1/32 where 1/16 fails); the original timing is the
-//! user's explicit choice. Hands, fingering, sections and chords the song lacks are generated
+//! First open of a MIDI song. A practice program plays the quantized version: a performed song
+//! (notes off the grid, as recorded or transcribed) without a saved practice version gets a
+//! 1/16 grid (1/32 where 1/16 fails); the original timing is the user's explicit choice. A
+//! sequenced file already on the grid needs no quantized version. Hands, fingering, sections and chords the song lacks are generated
 //! once and written to its manifest as drafts: origin `generated`, status `draft`, and
 //! `review: "pending"` in the provenance, meaning no AI or person has checked them yet. A later
 //! review (AI naming the sections, fixing doubtful fingers) sets `review` to who checked them.
@@ -20,6 +21,37 @@ fn draft() -> Provenance {
     let mut p = Provenance::new(Origin::Generated, Some(TOOL));
     p.rest.insert("review".into(), json!("pending"));
     p
+}
+
+/// Whether the song's layer `name` is a generated draft no one has checked yet.
+pub(crate) fn pending_review(music: &Path, name: &str) -> bool {
+    let Ok(Some(found)) = manifest_store::locate(music) else { return false };
+    let performance = manifest_store::performance_of(&found, music).unwrap_or_else(|| found.manifest.default.performance.clone());
+    found
+        .manifest
+        .layer_for(name, &performance)
+        .and_then(|l| l.provenance.as_ref())
+        .and_then(|p| p.rest.get("review"))
+        .is_some_and(|r| r == "pending")
+}
+
+/// Whether the notes already start on a 1/16 grid (a sequenced file): it needs no quantized
+/// version. Performances (recorded or transcribed) do not.
+fn on_grid(file: &panthesia_music::MidiFile) -> bool {
+    let tempo = &file.tempo_track;
+    let step = f64::from(tempo.ppq()) / 4.;
+    let tolerance = (f64::from(tempo.ppq()) / 48.).max(1.);
+    let (mut on, mut all) = (0usize, 0usize);
+    for note in file.tracks.iter().flat_map(|t| t.notes.iter()).filter(|n| n.channel != 9) {
+        let tick = tempo.seconds_to_pulses(note.start.as_secs_f64());
+        let base = file.musical_time.measure_at(tick).map_or(0., |m| m.start_tick as f64);
+        let off = (tick - base).rem_euclid(step);
+        all += 1;
+        if off.min(step - off) <= tolerance {
+            on += 1;
+        }
+    }
+    all == 0 || on * 100 >= all * 95
 }
 
 fn is_midi(path: &Path) -> bool {
@@ -59,7 +91,7 @@ impl Player {
             return Ok(());
         }
         let cid = file.content_id.clone();
-        if !self.preferences.variants.contains_key(&cid) {
+        if !self.preferences.variants.contains_key(&cid) && !on_grid(&file) {
             for grid in [16, 32] {
                 let variant = Variant { quantize: grid, ..Default::default() };
                 if crate::practice_variant::transform(&file, &variant).is_ok() {

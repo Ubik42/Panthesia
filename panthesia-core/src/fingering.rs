@@ -2,6 +2,7 @@ use std::time::Duration;
 mod alternatives;
 pub use alternatives::{validate_substitution_plan,FingerSubstitution,suggest_fingering_plans_with_substitutions,suggest_fingering_plans_with_expression,FingeringPlan, FingeringSearchFailure, suggest_fingering_plans, suggest_fingering_plans_at_rate, suggest_fingering_plans_for_indices};
 mod review;
+mod hand_model;
 pub use review::{CrossHandReview, CrossHandReviewKind, FingeringReview, FingeringReviewKind, cross_hand_plan_cost, review_cross_hand, review_fingering_plan};
 use review::timed_movement_cost;
 
@@ -645,52 +646,78 @@ fn suggest_run(
     if notes.is_empty() {
         return;
     }
-    let mut costs = vec![[INFINITY; FINGER_COUNT]; notes.len()];
-    let mut previous = vec![[0_u8; FINGER_COUNT]; notes.len()];
-
-    for finger in 1..=5 {
-        if finger_allowed(notes[0], finger) {
-            costs[0][finger - 1] = start_cost(notes, hand, finger as u8);
+    // Second-order Viterbi: the state is (finger of the previous note, finger of this note), so
+    // three-note rules (changes of hand position) can be scored.
+    const F: usize = FINGER_COUNT;
+    let pair = |i: usize, a: usize, b: usize| -> i32 {
+        if rapid_repeated_transition(notes, i) {
+            rapid_repeat_cost(a as u8, b as u8)
+        } else {
+            transition_cost(notes[i - 1].pitch, a as u8, notes[i].pitch, b as u8, hand, profile)
+        }
+    };
+    // Notes far apart in time leave the hand free to move: no three-note rule across a rest.
+    let connected = |i: usize| notes[i].onset.saturating_sub(notes[i - 1].end) < Duration::from_millis(600);
+    let allowed = |i: usize, f: usize| finger_allowed(notes[i], f);
+    let mut costs = vec![[[INFINITY; F]; F]; notes.len()];
+    let mut back = vec![[[0_u8; F]; F]; notes.len()];
+    let first: Vec<i32> = (1..=F).map(|f| if allowed(0, f) { start_cost(notes, hand, f as u8) } else { INFINITY }).collect();
+    if notes.len() == 1 {
+        let f = (1..=F).min_by_key(|&f| first[f - 1]).unwrap_or(1);
+        output[0] = Some(FingerSuggestion { finger: f as u8, confidence_percent: confidence(FingeringReason::PhraseStart), reason: FingeringReason::PhraseStart });
+        return;
+    }
+    for a in 1..=F {
+        for b in 1..=F {
+            if first[a - 1] < INFINITY && allowed(1, b) {
+                costs[1][a - 1][b - 1] = first[a - 1] + pair(1, a, b);
+            }
         }
     }
-
-    for note_index in 1..notes.len() {
-        for next_finger in 1..=5 {
-            if !finger_allowed(notes[note_index], next_finger) {
-                continue;
-            }
-            for prior_finger in 1..=5 {
-                let prior_cost = costs[note_index - 1][prior_finger - 1];
-                if prior_cost == INFINITY {
+    for i in 2..notes.len() {
+        let third = connected(i) && connected(i - 1);
+        for b in 1..=F {
+            for c in 1..=F {
+                if !allowed(i, c) {
                     continue;
                 }
-                let transition = if rapid_repeated_transition(notes, note_index) {
-                    rapid_repeat_cost(prior_finger as u8, next_finger as u8)
-                } else {
-                    transition_cost(
-                        notes[note_index - 1].pitch,
-                        prior_finger as u8,
-                        notes[note_index].pitch,
-                        next_finger as u8,
-                        hand,
-                        profile,
-                    )
-                };
-                let candidate = prior_cost
-                    + transition
-                    + static_key_cost(notes[note_index].pitch, next_finger as u8);
-                if candidate < costs[note_index][next_finger - 1] {
-                    costs[note_index][next_finger - 1] = candidate;
-                    previous[note_index][next_finger - 1] = prior_finger as u8;
+                let step = pair(i, b, c);
+                for a in 1..=F {
+                    let prior = costs[i - 1][a - 1][b - 1];
+                    if prior >= INFINITY {
+                        continue;
+                    }
+                    let extra = if third {
+                        hand_model::triple_cost([notes[i - 2].pitch, notes[i - 1].pitch, notes[i].pitch], [a as u8, b as u8, c as u8], hand, profile)
+                    } else {
+                        0
+                    };
+                    let candidate = prior + step + extra;
+                    if candidate < costs[i][b - 1][c - 1] {
+                        costs[i][b - 1][c - 1] = candidate;
+                        back[i][b - 1][c - 1] = a as u8;
+                    }
                 }
             }
         }
     }
-
+    let last = notes.len() - 1;
+    let (mut b, mut c) = (1, 1);
+    let mut best = INFINITY;
+    for x in 1..=F {
+        for y in 1..=F {
+            if costs[last][x - 1][y - 1] < best {
+                best = costs[last][x - 1][y - 1];
+                (b, c) = (x, y);
+            }
+        }
+    }
     let mut fingers = vec![1_u8; notes.len()];
-    fingers[notes.len() - 1] = best_finger(&costs[notes.len() - 1]);
-    for note_index in (1..notes.len()).rev() {
-        fingers[note_index - 1] = previous[note_index][usize::from(fingers[note_index] - 1)];
+    fingers[last] = c as u8;
+    fingers[last - 1] = b as u8;
+    for i in (2..=last).rev() {
+        let a = back[i][fingers[i - 1] as usize - 1][fingers[i] as usize - 1];
+        fingers[i - 2] = a.max(1);
     }
 
     for note_index in 0..notes.len() {
@@ -762,15 +789,6 @@ fn finger_allowed(note: FingeringNote, finger: usize) -> bool {
         .is_none_or(|anchor| usize::from(anchor) == finger)
 }
 
-fn best_finger(costs: &[i32; FINGER_COUNT]) -> u8 {
-    costs
-        .iter()
-        .enumerate()
-        .min_by_key(|(_, cost)| *cost)
-        .map(|(index, _)| index as u8 + 1)
-        .unwrap_or(1)
-}
-
 fn start_cost(notes: &[FingeringNote], hand: FingeringHand, finger: u8) -> i32 {
     let direction = notes
         .iter()
@@ -818,27 +836,7 @@ fn transition_cost(
         return 12 + distance;
     }
 
-    let outward = match hand {
-        FingeringHand::Right => pitch_delta > 0,
-        FingeringHand::Left => pitch_delta < 0,
-    };
-    let finger_delta = i16::from(next_finger) - i16::from(prior_finger);
-    let follows_position = (outward && finger_delta > 0) || (!outward && finger_delta < 0);
-    let is_thumb_under = outward && next_finger == 1 && prior_finger >= 2;
-    let is_finger_over = !outward && prior_finger == 1 && next_finger >= 2;
-
-    let movement = if follows_position {
-        let expected = i32::from(finger_delta.unsigned_abs()) * 2;
-        1 + (distance - expected).unsigned_abs() as i32
-    } else if is_thumb_under || is_finger_over {
-        4 + if distance > 5 { (distance - 5) * 2 } else { 0 }
-    } else {
-        18 + distance
-    };
-
-    let finger_gap = i32::from(prior_finger.abs_diff(next_finger));
-    let comfortable_span = profile.comfortable_spans()[finger_gap as usize];
-    movement + (distance - comfortable_span).max(0) * 4
+    hand_model::pair_cost(prior_pitch, prior_finger, next_pitch, next_finger, hand, profile)
 }
 
 fn transition_reason(

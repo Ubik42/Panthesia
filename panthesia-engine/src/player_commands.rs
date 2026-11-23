@@ -133,7 +133,7 @@ impl Player {
                 None => Ok(serde_json::Value::Null),
             };
         }
-        if self.variant().active() && matches!(command,Command::Meter{..}|Command::SaveMeterMap{..}|Command::EditNotePlayback{..}|Command::EditFingersFor{..}) {return Err("请先恢复原始演奏，再修改源谱网格、分手或指法".into());}
+        if self.variant().active() && matches!(command,Command::Meter{..}|Command::SaveMeterMap{..}|Command::EditNotePlayback{..}) {return Err("请先恢复原始演奏，再修改源谱网格或演奏细节".into());}
         self.state.error = None;
         match command {
             Command::PracticeVariant{content_id,score_revision,value}=>return self.set_variant(&content_id,score_revision,value),
@@ -750,7 +750,12 @@ impl Player {
                     Err(e)=>return Err(e.to_string()),
                 };
                 annotations.track_parts.insert(id,part);
+                // A whole track given to one hand replaces the generated note-by-note split on
+                // it while that split is still an unchecked draft; a person's split stays.
+                let drafted=part!=PracticePart::Other&&crate::song_prepare::pending_review(&path,"hands");
+                if drafted{annotations.hands.retain(|h|h.track_id!=id);}
                 panthesia_core::library::save_song_sidecar(&path,&file.content_id,annotations).map_err(|e|e.to_string())?;
+                if drafted{self.note_hands.retain(|(track,_),_|*track!=id);}
                 self.state.hands = "custom".into();
                 self.previous_mode = None;
                 self.reset(self.state.position);

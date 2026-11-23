@@ -147,12 +147,19 @@ mod tests {
         let engine = Engine::start(data.clone(), lock, PathBuf::new(), true).unwrap();
         engine.wait_until_ready(std::time::Duration::from_secs(30)).unwrap();
 
-        let plain = engine.open_file(midi.clone()).unwrap();
-        assert!(plain["opened"]["manifest"].is_null());
-        assert!(!songs.join("sub").join("five.panthesia").exists(), "opening never creates a manifest");
-
-        // The first edit creates a same-name manifest; reopening restores from it.
+        engine.open_file(midi.clone()).unwrap();
+        // The first open drafts the song's analysis into a same-name manifest (song_prepare,
+        // 2026-11-22 user decision); every layer it wrote waits for review.
         let sibling = songs.join("sub").join("five.panthesia");
+        let drafted = manifest_store::read(&sibling).unwrap().manifest;
+        assert!(!drafted.layers.is_empty());
+        for layer in drafted.layers.values() {
+            let provenance = layer.provenance.as_ref().unwrap();
+            assert_eq!(provenance.rest["review"], "pending");
+            assert_eq!(layer.status.as_deref(), Some("draft"));
+        }
+
+        // Edits go to the same manifest; reopening restores from it.
         let cid = panthesia_music::MidiFile::new(&midi).unwrap().content_id;
         engine.command(Command::SaveBookmark { content_id: cid.clone(), id: None, name: "副歌".into(), tick: 480 }).unwrap();
         let saved = manifest_store::read(&sibling).unwrap().manifest;
@@ -198,9 +205,11 @@ mod tests {
         std::fs::write(&midi, other).unwrap();
         let opened = engine.open_file(midi.clone()).unwrap();
         assert_eq!(opened["opened"]["manifest"]["changed"][0], "perf");
-        assert_eq!(opened["opened"]["manifest"]["unmatchedNotes"], 1);
+        // The person's hand entry that matches no note is kept aside (it was set aside already
+        // when the earlier open drafted fingering); unchecked drafts are regenerated instead.
         let saved = manifest_store::read(&path).unwrap().manifest;
         assert_eq!(saved.layers["hands"].unmatched.len(), 1);
+        assert!(saved.layers.values().all(|l| l.unmatched.is_empty() || l.provenance.as_ref().is_none_or(|p| p.rest.get("review").is_none())));
         assert_ne!(saved.files[0].blake3.as_deref(), Some(blake3::hash(&original).to_hex().as_str()));
         assert!(engine.open_file(root.join("missing.mid")).is_err());
         drop(engine);

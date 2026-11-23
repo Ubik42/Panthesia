@@ -402,15 +402,33 @@ impl Manifest {
 
     /// Check every note reference of the layers bound to `performance_id` against the current
     /// performance. Entries whose note no longer exists or whose pitch differs move to the
-    /// layer's `unmatched` list; nothing is discarded. Returns how many entries moved.
+    /// layer's `unmatched` list; nothing a person wrote is discarded. A generated draft no one
+    /// has reviewed is dropped whole instead, to be generated again for the new performance.
+    /// Returns how many entries moved.
     pub fn reconcile_notes(&mut self, performance_id: &str, performance: &Performance) -> usize {
         let default = self.default.performance.clone();
         let mut moved = 0;
-        for layer in self.layers.values_mut() {
+        let mut stale = Vec::new();
+        for (name, layer) in self.layers.iter_mut() {
             if layer.performance.as_deref().unwrap_or(&default) != performance_id {
                 continue;
             }
+            let draft = layer
+                .provenance
+                .as_ref()
+                .is_some_and(|p| p.origin == Origin::Generated && p.rest.get("review").is_some_and(|r| r == "pending"));
             let Some(Value::Array(rows)) = layer.body.get_mut("notes") else { continue };
+            if draft {
+                let matches = |row: &Value| {
+                    row.get("note")
+                        .and_then(|n| serde_json::from_value::<NoteRef>(n.clone()).ok())
+                        .is_some_and(|r| performance.note(r.id()).is_some_and(|n| n.note == r.2))
+                };
+                if !rows.iter().all(matches) {
+                    stale.push(name.clone());
+                }
+                continue;
+            }
             let mut kept = Vec::with_capacity(rows.len());
             for row in rows.drain(..) {
                 let current = row
@@ -425,6 +443,9 @@ impl Manifest {
                 }
             }
             *rows = kept;
+        }
+        for name in stale {
+            self.layers.remove(&name);
         }
         moved
     }

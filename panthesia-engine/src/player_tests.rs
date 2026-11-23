@@ -248,6 +248,9 @@
     #[test]
     fn fingering_preview_acceptance_undo_and_content_guard() {
         let mut p = player();
+        // Start without hands or fingering: opening the song drafted both (song_prepare).
+        p.write_hands(Vec::new(), false).unwrap();
+        p.write_hints(Vec::new(), false).unwrap();
         assert!(
             p.command(Command::SuggestFingers {
                 hand: None,
