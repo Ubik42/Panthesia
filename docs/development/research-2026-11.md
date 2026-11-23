@@ -96,3 +96,25 @@ Rust 生态没有可直接用的符号域和声分析库（`kord` 只解析和�
 | `Datasets` | POP909（和弦/调/拍标注）、Hooktheory（和声 JSON）、MAESTRO（`.midi`，踏板）、GiantMIDI、Mutopia、Open_Pop_Style、`catalog.csv` | 和弦识别验证；性能与解析回归 |
 
 没有 ABC 文件，没有歌词。代表性测试子集见 current-plan.md 第 3.7 节。
+
+## 8. 指法解算与虚拟双手的开源资源（2026-11-22）
+
+起因：用户提出 [shafranek-js/pianomotion-studio](https://github.com/shafranek-js/pianomotion-studio) 也做 MIDI → 指法 → 手部动画，希望看能否直接使用或借鉴。各资源的许可证已通过 GitHub API 或许可文件核对。
+
+| 资源 | 内容 | 许可 | 能否用于 Panthesia |
+| --- | --- | --- | --- |
+| pianomotion-studio | 浏览器端工作室：指法规划（音型识别 + 代价模型 + 束搜索）、3D 手、视频导出 | 自有代码 MIT + 署名；**指法引擎 `python-core/handthesia_core`、`packages/engine-ts` 派生自 Hand-thesia，作者在 LICENSE 中排除，需 V9011N 授权**；内置 MIDI、手贴图未明 | 指法引擎与手动作不能用。自写部分（3D 渲染、手部绑定 `render3d/handRigBuilder.ts`）可在署名后使用。其研究文档 `docs/RESEARCH_PIANIST_HANDS_2026-10-26.md` 列出的数据集可直接参考 |
+| [marcomusy/pianoplayer](https://github.com/marcomusy/pianoplayer) | 物理手模型 + 局部搜索的指法生成，支持 MIDI / MusicXML / PIG | MIT（910 星，2026-06 仍更新） | 可移植算法到 Rust（保留版权声明） |
+| [PRamoneda/Automatic-Piano-Fingering](https://github.com/PRamoneda/Automatic-Piano-Fingering) | 自回归神经网络指法（ArLSTM / ArGNN），可在部分已标指法上补全 | 代码 MIT；训练数据 PIG / ThumbSet 需申请 | 需 PyTorch 推理，适合离线对照，不适合内置 |
+| [thegreatkwanghyeon/autofingering](https://github.com/thegreatkwanghyeon/autofingering) | Nakamura 式 HMM | MIT | 可作对照基线 |
+| PIG 数据集（Nakamura 等，150 首，多人指法） | 指法评测的标准数据，人与人一致率约 71% | 研究与非营利使用，需同意条款下载 | 本地评测用；由它学出的权重只在非营利前提下使用 |
+| Chirality（Hugging Face `vibetuned/chirality-models`） | 规则 + HMM + 强化学习；PIG 上学出的 Parncutt 规则权重达 65.4（人类 71.4） | AGPL-3.0；权重来自 PIG | 说明“Parncutt 规则 + 在 PIG 上学权重”是目前最强的非人类方案，可自行实现 |
+| [immersive-web/webxr-input-profiles](https://github.com/immersive-web/webxr-input-profiles) `generic-hand` | Meta 贡献的左右手 glb：25 个标准关节、带蒙皮网格 | W3C Software and Document License（宽松，兼容 GPL） | 可直接用：取真实关节比例，或整只手用 Three.js 正交俯视、平涂白色加描边渲染 |
+| [agnJason/PianoMotion10M](https://github.com/agnJason/PianoMotion10M) | 116 小时俯视演奏视频、1000 万手势标注、基线模型 | 代码 Apache-2.0；姿态为 MANO 参数（MANO 非商用、不可再分发） | 只作离线参考：手腕轨迹、拇指穿指等统计 |
+| FürElise（Stanford，SIGGRAPH Asia 2024） | 15 位钢琴家 10 小时 3D 手部动作，与 MIDI 同步 | CC BY-NC 4.0 | 只作离线评测参考 |
+
+结论：
+
+1. 没有可直接内置、许可干净且明显优于现有规划器的指法引擎。改进路线是先在 PIG 上建立评测（现有规划器、pianoplayer、HMM），用数字决定；再实现 Parncutt 规则并在 PIG 上学权重。
+2. 手部表现最有价值的资源是 WebXR `generic-hand`：真实的手部关节层级与比例（拇指 CMC、掌弓、虎口都是真实网格），许可宽松。可先取它的关节静止位置替换 `virtualHandPose.ts` 中手估的解剖数据，再评估用 Three.js 渲染整只手网格。
+3. Hand-thesia 及其派生（含 pianomotion-studio 的指法引擎与动作）在获得 V9011N 授权前都不能使用。
