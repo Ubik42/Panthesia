@@ -15,7 +15,8 @@ const normalize = pathKey;
 /** Home, settings, song setup, track and hand split screens, and free play. */
 export function ProductScreens() {
   const {
-    setAppMenuOpen,
+    setCommandsOpen,
+    clearLiveNotes,
     workspace,
     productScreens,
     songSetup,
@@ -110,7 +111,7 @@ export function ProductScreens() {
           back={() => {
             void goHome();
           }}
-          menu={() => setAppMenuOpen((v) => !v)}
+          menu={() => { clearLiveNotes(); setCommandsOpen(true); }}
           parts={() => productScreens.show("parts")}
           options={() => setSongOptions(true)}
           scores={() => setScoresDialog(true)}

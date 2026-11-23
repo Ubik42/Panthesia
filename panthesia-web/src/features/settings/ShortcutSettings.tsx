@@ -39,8 +39,8 @@ const shortcutGroups: {
       "inspector",
       "display",
       "passages",
-      "libraryManager",
       "commands",
+      "fullscreen",
     ],
   },
   {

@@ -7,7 +7,6 @@ export type DisplaySection = "display" | "appearance" | "keyboard" | "shortcuts"
 
 /** Which application dialogs are open, and their opening parameters. */
 export function useAppDialogs() {
-  const [appMenuOpen, setAppMenuOpen] = useState(false);
   const [displayDialog, setDisplayDialog] = useState(false);
   const [displaySection, setDisplaySection] = useState<DisplaySection | undefined>(undefined);
   const [commandsOpen, setCommandsOpen] = useState(false);
@@ -25,26 +24,6 @@ export function useAppDialogs() {
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [mediaExport, setMediaExport] = useState<(MediaExportSource & { kind?: MediaExportKind }) | null>(null);
 
-  // The application menu closes on Escape and on any click outside it or on one of its buttons.
-  useEffect(() => {
-    if (!appMenuOpen) return;
-    const pointer = (event: MouseEvent) => {
-      const target = event.target as Element;
-      const toggle = target.closest('button[aria-label="应用菜单"]');
-      const menu = target.closest(".workspace-topbar");
-      if (!toggle && (!menu || target.closest("button"))) setAppMenuOpen(false);
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAppMenuOpen(false);
-    };
-    window.addEventListener("click", pointer);
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("click", pointer);
-      window.removeEventListener("keydown", key);
-    };
-  }, [appMenuOpen]);
-
   const openSoundSettings = (device?: DeviceObject) => {
     setSettingsDevice(device);
     setSettingsTab("sound");
@@ -53,7 +32,7 @@ export function useAppDialogs() {
   };
 
   return {
-    appMenuOpen, setAppMenuOpen,
+
     displayDialog, setDisplayDialog, displaySection, setDisplaySection,
     commandsOpen, setCommandsOpen,
     aboutOpen, setAboutOpen,

@@ -85,6 +85,7 @@ export function usePerformanceKeyboard({
     options: () => void;
     display: () => void;
     passages: () => void;
+    fullscreen: () => void;
   };
 }) {
   const uiRef = useRef(ui);
@@ -405,13 +406,11 @@ export function usePerformanceKeyboard({
           case "display":
             uiRef.current.display();
             break;
-          case "history":
-            return;
           case "passages":
             uiRef.current.passages();
             break;
-          case "libraryManager":
-            uiRef.current.browse();
+          case "fullscreen":
+            uiRef.current.fullscreen();
             break;
         }
         return;

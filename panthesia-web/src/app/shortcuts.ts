@@ -22,18 +22,17 @@ export const shortcutActions = [
   { id: "faster", label: "速度提高 5 BPM", key: "Ctrl+Equal" },
   { id: "metronome", label: "开关节拍器", key: "Ctrl+KeyM" },
   { id: "view", label: "切换键盘 / 乐谱 / 纸谱", key: "Alt+KeyV" },
-  { id: "library", label: "打开选曲页", key: "Alt+KeyB" },
+  { id: "library", label: "返回主页", key: "Alt+KeyB" },
   { id: "inspector", label: "打开歌曲选项", key: "Alt+KeyI" },
   { id: "display", label: "打开界面与按键", key: "Ctrl+Comma" },
-  { id: "history", label: "打开练习历史", key: "Alt+KeyH" },
   { id: "passages", label: "打开练习段落", key: "Alt+KeyP" },
-  { id: "libraryManager", label: "打开选曲页", key: "Alt+KeyL" },
   { id: "loop", label: "开关分段循环", key: "Alt+KeyC" },
   { id: "zoomIn", label: "放大界面", key: "Alt+Shift+Equal" },
   { id: "zoomOut", label: "缩小界面", key: "Alt+Shift+Minus" },
   { id: "zoomReset", label: "恢复 100% 缩放", key: "Alt+Shift+Digit0" },
   { id: "silence", label: "暂停并停止发声", key: null },
   { id: "commands", label: "查找应用操作", key: "Ctrl+KeyK" },
+  { id: "fullscreen", label: "切换全屏", key: "F11" },
 ] as const;
 export type ShortcutAction = (typeof shortcutActions)[number]["id"];
 export type Shortcuts = Record<ShortcutAction, string | null>;
@@ -41,7 +40,7 @@ export const shortcutDefaults = Object.fromEntries(
   shortcutActions.map((a) => [a.id, a.key]),
 ) as Shortcuts;
 const codePattern =
-  /^(Key[A-Z]|Digit[0-9]|F[1-46-9]|F10|Space|ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown|Comma|Period|Semicolon|Minus|Equal|BracketLeft|BracketRight)$/;
+  /^(Key[A-Z]|Digit[0-9]|F[1-46-9]|F1[01]|Space|ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown|Comma|Period|Semicolon|Minus|Equal|BracketLeft|BracketRight)$/;
 export function shortcutError(
   chord: string,
   pianoKeys: string[],

@@ -21,7 +21,8 @@ const normalize = pathKey;
 /** The practice workspace: stage, notation, paper scores and transport. */
 export function PracticeWorkspace() {
   const {
-    setAppMenuOpen,
+    setCommandsOpen,
+    clearLiveNotes,
     workspace,
     productScreens,
     setSongSetup,
@@ -155,7 +156,7 @@ export function PracticeWorkspace() {
                 }}
               />
             }
-            menu={() => setAppMenuOpen((v) => !v)}
+            menu={() => { clearLiveNotes(); setCommandsOpen(true); }}
             available={!!song}
             busy={busy || openingActive}
             connected={connected}

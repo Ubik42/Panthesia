@@ -1,6 +1,5 @@
 import { useApp } from "./AppContext";
 import { AppDialogs } from "./AppDialogs";
-import { AppMenu } from "./AppMenu";
 import { AppNotices } from "./AppNotices";
 import { PracticeWorkspace } from "./PracticeWorkspace";
 import { ProductScreens } from "./ProductScreens";
@@ -17,7 +16,6 @@ export function AppShell() {
       data-engine-connected={connected}
       data-engine-ready={startupReady}
     >
-      <AppMenu />
       <AppNotices />
       <ProductScreens />
       <PracticeWorkspace />

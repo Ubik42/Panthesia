@@ -48,7 +48,7 @@ export function useAppModel() {
   useEffect(installDiagnostics, []);
   const dialogs = useAppDialogs();
   const {
-    appMenuOpen, setAppMenuOpen, displayDialog, setDisplayDialog, displaySection, setDisplaySection,
+ displayDialog, setDisplayDialog, displaySection, setDisplaySection,
     commandsOpen, setCommandsOpen, aboutOpen, setAboutOpen, editDraftsOpen, setEditDraftsOpen,
     metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
     settings, setSettings, settingsTab, setSettingsTab, settingsDevice, setSettingsReturnToScores, settingsReturnToScores,
@@ -256,7 +256,7 @@ export function useAppModel() {
   const {keyboardContext,invalidateKeyboardActions}=usePerformanceKeyboard({
     display,setDisplay,song,playback,getBoundSong,keyboardPaused,shortcutScope,ownershipRevision:inputOwnership.revision,songOpeningActive,
     run,action,setState,setError,onNote,clearLiveNotes,loopStart,loopEnd,bookmarkNavigation,
-    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>setDisplayDialog(true),passages:()=>launchPracticeTool(()=>setPassageDialog(true))},
+    ui:{commands:()=>setCommandsOpen(true),browse:()=>void productActions.current.browse(),options:()=>setSongOptions(previous=>!previous),display:()=>setDisplayDialog(true),passages:()=>launchPracticeTool(()=>setPassageDialog(true)),fullscreen:()=>fullscreen()},
   });
   releaseInput.current=()=>{invalidateKeyboardActions();clearLiveNotes();};
   useEffect(() => {
@@ -276,8 +276,17 @@ export function useAppModel() {
   const exportMidi = () => {
     if (song) setMediaExport({contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId});
   };
+  /** The desktop window itself goes full screen (a page-level fullscreen in the webview would
+   * not resize the window); the browser debug build uses the page fullscreen. */
   const fullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
+    if (api.desktop) {
+      void import("@tauri-apps/api/window")
+        .then(async ({ getCurrentWindow }) => {
+          const window = getCurrentWindow();
+          await window.setFullscreen(!(await window.isFullscreen()));
+        })
+        .catch(() => setError("当前窗口无法进入全屏"));
+    } else if (document.fullscreenElement) void document.exitFullscreen();
     else
       void document.documentElement
         .requestFullscreen()
@@ -396,11 +405,21 @@ export function useAppModel() {
     metadata: (signal) => openPracticeTool(signal, () => { setMetadataDraftPath(null); setMetadata(true); }, false),
     keyboard: (signal) => openPracticeTool(signal, () => setView("keyboard"), false),
     score: (signal) => openPracticeTool(signal, () => setView("score"), false),
-    libraryPanel: async () => { await chooseFile(); return true; },
     inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
     display: () => setDisplayDialog(true),
     silence: () => action({ type: "panic" }),
+    fullscreen: () => { fullscreen(); return true; },
+    exportPracticeMidi: () => {
+      if (!song) return false;
+      setMediaExport({ contentId: song.contentId, title: song.title, path: song.sourcePath, engineId: song.engineId, kind: "practiceMidi" });
+      return true;
+    },
+    exportMidi: () => { exportMidi(); return !!song; },
+    pairScore: (signal) => openPracticeTool(signal, () => scorePairing.request(), false),
+    fingeringWorkbench: (signal) => openPracticeTool(signal, () => setFingeringWorkbenchOpen(true), false),
+    logs: () => { void api.openLogs().catch((e) => setError(String(e))); return true; },
+    about: () => { setAboutOpen(true); return true; },
   }, {
     engine: !connected ? "练习室连接中断，请等待重新连接。" : binding ? "正在读取当前练习，请稍后再试。" : !startupReady ? "练习室正在恢复，完成后可使用。" : operationBusy ? "正在处理练习资料，请等待当前操作完成。" : null,
     idle: state.recording ? "请先停止并保存当前录音。" : null,
@@ -418,13 +437,11 @@ export function useAppModel() {
     }
   }, [openingActive, clearLiveNotes]);
   const {goHome,openFreePlay,resumePractice}=useProductNavigation({
-    screens:productScreens,changeWorkspace,run,clearLiveNotes,closeMenu:()=>setAppMenuOpen(false),
+    screens:productScreens,changeWorkspace,run,clearLiveNotes,closeMenu:()=>{},
   });
   const goHomeRef=useRef(goHome);goHomeRef.current=goHome;
   productActions.current={browse:goHome,resume:resumePractice};
   return {
-    appMenuOpen,
-    setAppMenuOpen,
     workspaceSessions,
     workspace,
     productScreens,
