@@ -850,7 +850,7 @@ button.icon-button {
 .score-note-editor{top:var(--score-editor-top,80px);max-height:var(--score-editor-height,350px);overflow:auto}@media(max-width:1050px){.score-note-editor{top:auto;max-height:min(300px,var(--score-editor-height,300px));bottom:0}}
 .score-paper g.note .notehead{pointer-events:bounding-box}
 
-.notation-scroll{min-width:0;overflow:auto;max-width:100%;max-height:calc(var(--notation-height,800px) - 80px);overscroll-behavior:contain}.notation-scroll .score-paper,.notation-body.editing .notation-scroll .score-paper{margin:12px auto;flex:none}.notation-toolbar select{font-size:11px;max-width:110px}.notation-body.editing{align-items:start}
+.notation-toolbar select{font-size:11px;max-width:110px}.notation-body.editing{align-items:start}
 
 .finger-plan-options {display:flex;gap:8px;padding:8px 0}.finger-plan-options button {flex:1;text-align:left;display:flex;flex-direction:column;gap:5px;padding:10px;background:var(--gray-27);border:1px solid var(--blue-39);border-radius:5px}.finger-plan-options button[aria-pressed="true"] {border-color:var(--teal-76);background:var(--teal-34)}.finger-plan-options small,.finger-position small {color:var(--gray-75);font-size:12px}.finger-position {padding:10px 12px;margin-bottom:8px;background:var(--gray-24);border:1px solid var(--blue-37);border-radius:5px}.finger-position>div {display:flex;align-items:center;gap:10px}.finger-position strong {margin-right:auto}.finger-position svg {display:block;height:100px;max-width:100%;margin:10px auto}.finger-position small {display:block}.fingering-dialog {max-height:94vh}.fingering-table-wrap {min-height:90px}
 

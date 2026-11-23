@@ -10,8 +10,18 @@ export const emptyScorePages: ScorePages = {
   key: "",
   get: async () => "",
 };
+/** One system of the score as laid out at the pane's width: its measure range and notes. */
+export type ScoreLine = { page: number; first: string; last: string; notes: string[] };
+/** The score as lines, each rendered alone (its own clef and key) to fill the pane. */
+export interface ScoreLines {
+  readonly lines: readonly ScoreLine[];
+  /** Break the score into lines for a new pane width (Verovio units). */
+  relayout(pageWidth: number): Promise<readonly ScoreLine[]>;
+  get(line: number, signal?: AbortSignal): Promise<string>;
+}
 export interface RenderedScore {
   pages: ScorePages;
+  lines?: ScoreLines;
   evidence(): Promise<{ midi: number[]; notes: RendererNoteEvidence[] }>;
 }
 // Only visible page artifacts survive a view. WASM layouts are leased and
@@ -52,6 +62,7 @@ function cleanSvg(source: string) {
 }
 type Response = {
   count?: number;
+  lines?: ScoreLine[];
   svg?: string;
   midi?: string;
   notes?: RendererNoteEvidence[];
@@ -69,6 +80,8 @@ class Layout {
   private ended = false;
   readonly ready: Promise<number>;
   private indexed?: ReturnType<RenderedScore["evidence"]>;
+  lines: ScoreLine[] = [];
+  private lineSvgs = new Map<number, Promise<string>>();
   constructor(
     readonly key: string,
     asset: {
@@ -78,6 +91,7 @@ class Layout {
     },
     progress: Pending["progress"],
     pageWidth: number | undefined,
+    lineView = false,
   ) {
     this.worker.onmessage = ({ data }) => {
       const request = this.pending.get(data.id);
@@ -101,10 +115,14 @@ class Layout {
         compressed: asset.compressed,
         alterations: asset.alterations,
         pageWidth,
+        lines: lineView,
       },
       progress,
       [bytes.buffer],
-    ).then((r) => r.count!);
+    ).then((r) => {
+      this.lines = r.lines ?? [];
+      return r.count!;
+    });
     void this.ready.catch(() => {});
   }
   private request(
@@ -160,6 +178,25 @@ class Layout {
     signal?.throwIfAborted();
     return result;
   }
+  async relayout(pageWidth: number) {
+    const r = await this.request({ type: "relayout", pageWidth });
+    this.lines = r.lines ?? [];
+    this.lineSvgs.clear();
+    return this.lines;
+  }
+  /** One line laid out alone; the most recent few are kept for stepping back and forth. */
+  line(index: number, signal?: AbortSignal): Promise<string> {
+    if (this.ended) return Promise.reject(new DOMException("谱面已关闭", "AbortError"));
+    signal?.throwIfAborted();
+    let work = this.lineSvgs.get(index);
+    if (!work) {
+      work = this.request({ type: "line", line: index }).then((r) => cleanSvg(r.svg!));
+      work.catch(() => this.lineSvgs.delete(index));
+      this.lineSvgs.set(index, work);
+      while (this.lineSvgs.size > 12) this.lineSvgs.delete(this.lineSvgs.keys().next().value!);
+    }
+    return work;
+  }
   evidence(progress: Pending["progress"]) {
     return (this.indexed ??= this.request({ type: "evidence" }, progress).then(
       (r) => ({
@@ -181,6 +218,8 @@ export async function renderScore(
   progress: (stage: string, page?: number, total?: number) => void,
   /** Verovio page width in its own units for a layout fitted to the pane; A4 pages without it. */
   pageWidth?: number,
+  /** Also break the score into lines that can be rendered one at a time. */
+  lineView = false,
 ): Promise<RenderedScore> {
   signal.throwIfAborted();
   const digest = await crypto.subtle.digest(
@@ -188,7 +227,7 @@ export async function renderScore(
     new Uint8Array(asset.bytes),
   );
   signal.throwIfAborted();
-  const key = `pages-v4:${pageWidth ?? "a4"}:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
+  const key = `pages-v4:${lineView ? "lines" : (pageWidth ?? "a4")}:${asset.compressed}:${Array.from(new Uint8Array(digest), (n) => n.toString(16).padStart(2, "0")).join("")}`;
   let lease = layouts.get(key);
   if (!lease) {
     const created = { references: 0 } as LayoutLease;
@@ -196,7 +235,7 @@ export async function renderScore(
       .then((input) => {
         if (!created.references)
           throw new DOMException("谱面已关闭", "AbortError");
-        const layout = new Layout(key, input, progress, pageWidth);
+        const layout = new Layout(key, input, progress, pageWidth, lineView);
         created.layout = layout;
         return layout;
       })
@@ -230,9 +269,21 @@ export async function renderScore(
     const count = await owned.ready;
     signal.throwIfAborted();
     // Make the initial reading page available before mapping preparation starts.
-    await owned.page(0, signal);
+    if (!lineView) await owned.page(0, signal);
     signal.throwIfAborted();
     return {
+      lines: lineView
+        ? {
+            get lines() {
+              return owned.lines;
+            },
+            relayout: (width) => owned.relayout(width),
+            get: (line, requestSignal) => {
+              signal.throwIfAborted();
+              return owned.line(line, requestSignal ?? signal);
+            },
+          }
+        : undefined,
       pages: {
         length: count,
         key,

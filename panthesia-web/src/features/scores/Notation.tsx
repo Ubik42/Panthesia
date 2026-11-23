@@ -1,7 +1,6 @@
 import { ToolbarMore } from "../../app/ToolbarMore";
-import { NotationTimeIndex, revealNotationNote } from "./notationTimeIndex";
-import { useScorePage } from "./useScorePage";
-import { emptyScorePages, type ScorePages, renderScore } from "./scoreRenderCache";
+import { NotationTimeIndex } from "./notationTimeIndex";
+import { emptyScorePages, type ScorePages, type ScoreLine, type ScoreLines, renderScore } from "./scoreRenderCache";
 import "./notationWorkspace.css";
 import type { ScoreToolRequest } from "./scoreToolRequest";
 import type { ScoreMappingRequest } from "./mappingTypes";
@@ -86,7 +85,6 @@ export function Notation({
     last: number;
   } | null>(null);
   const [pages, setPages] = useState<ScorePages>(emptyScorePages),
-    [page, setPage] = useState(0),
     [asset, setAsset] = useState<Asset | null>(null),
     [mapping, setMapping] = useState<Mapping[]>([]),
     [mappingToken, setMappingToken] = useState(""),
@@ -164,72 +162,102 @@ export function Notation({
     pages.length,
     clearToolRequest,
   ]);
-  const [zoom, setZoom] = useState(0),
-    [simpleFingers, setSimpleFingers] = useState(false),
-    [paperWidth, setPaperWidth] = useState(900);
-  // "Fit width" reflows systems to the pane instead of enlarging A4 pages: the staff size is
-  // the 100% size (0.5 px per Verovio unit), reduced until a system fits the pane.
-  // The visible score height; messages above the score shrink it for a while.
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [paneHeight, setPaneHeight] = useState(0),
-    [systemUnits, setSystemUnits] = useState(0);
-  // Wider systems hold more measures and grow taller, hence the 1.15 margin; below 0.35 the
-  // staff stops being readable, and the follow scroll keeps the current note in view instead.
-  const staffScale = systemUnits && paneHeight ? Math.max(0.35, Math.min(0.5, (paneHeight - 16) / (systemUnits * 1.15))) : 0.5;
-  useEffect(() => setSystemUnits(0), [song.contentId, song.scoreRevision]);
-  const layoutWidth = zoom ? undefined : Math.min(9600, Math.max(1200, Math.round(paperWidth / staffScale / 400) * 400));
+  const [simpleFingers, setSimpleFingers] = useState(false);
+  // The score is shown one line (system) at a time. Each line is laid out alone at the pane's
+  // width and scaled to fill the pane; nothing scrolls. The staff size follows the pane height.
+  const [pane, setPane] = useState({ width: 0, height: 0 });
+  /** Height of one line of this score in SVG units (grand staff and marks); measured from the
+   * first line drawn, so the lines get the pane's shape. */
+  const [lineUnits, setLineUnits] = useState(200);
+  useEffect(() => setLineUnits(200), [song.contentId, song.scoreRevision]);
+  /** Verovio page width (its units) for lines as wide, relative to their height, as the pane:
+   * a line is about 0.4 × the page width wide in SVG units. A pane too low for a readable staff
+   * gets wider lines, scaled down to its height. */
+  const aspect = pane.height ? Math.max(2.5, Math.min(14, pane.width / Math.max(90, pane.height - 12))) : 0;
+  const pageWidth = pane.width ? Math.max(1200, Math.min(12000, Math.round((lineUnits * aspect) / 0.4 / 100) * 100)) : 0;
   const scroll = useRef<HTMLDivElement>(null);
-  // "Fit width" shows one system (line) at a time with no scrollbar; following moves whole lines.
-  const singleLine = zoom === 0;
-  const [line, setLine] = useState(0),
-    [lineCount, setLineCount] = useState(0);
+  const [scoreLines, setScoreLines] = useState<ScoreLines | null>(null),
+    [lines, setLines] = useState<readonly ScoreLine[]>([]),
+    [line, setLine] = useState(0),
+    [lineSvg, setLineSvg] = useState(""),
+    [lineError, setLineError] = useState("");
   const lineRef = useRef(0);
   lineRef.current = line;
-  const lineAfterPage = useRef<"first" | "last">("first");
-  const systems = useCallback(() => Array.from(root.current?.querySelectorAll("g.system") ?? []), []);
-  useEffect(() => {
-    setLine(lineAfterPage.current === "last" ? Number.MAX_SAFE_INTEGER : 0);
-    lineAfterPage.current = "first";
-  }, [page, pages]);
+  const lineAfterLoad = useRef<"first" | "last">("first");
+  const noteLines = useMemo(() => {
+    const map = new Map<string, number>();
+    lines.forEach((l, index) => l.notes.forEach((id) => map.has(id) || map.set(id, index)));
+    return map;
+  }, [lines]);
   useEffect(() => {
     try {
-      const v = JSON.parse(
-        localStorage.getItem(`notation-view:${song.contentId}`) || "{}",
-      );
-      setZoom([0, 75, 100, 125, 150, 200].includes(v.zoom) ? v.zoom : 0);
+      const v = JSON.parse(localStorage.getItem(`notation-view:${song.contentId}`) || "{}");
       setSimpleFingers(v.simple === true);
     } catch {
-      setZoom(0);
       setSimpleFingers(false);
     }
   }, [song.contentId]);
   useEffect(() => {
     try {
-      localStorage.setItem(
-        `notation-view:${song.contentId}`,
-        JSON.stringify({ zoom, simple: simpleFingers }),
-      );
+      localStorage.setItem(`notation-view:${song.contentId}`, JSON.stringify({ simple: simpleFingers }));
     } catch {}
-  }, [song.contentId, zoom, simpleFingers]);
+  }, [song.contentId, simpleFingers]);
   useEffect(() => {
     const el = scroll.current;
     if (!el) return;
-    const update = () => {
-      setPaperWidth(Math.max(240, el.clientWidth - 24));
-      // The space below the toolbar, independent of how much score is loaded into it.
-      // Messages above the score come and go; the toolbar and the pane do not.
-      const box = el.closest(".notation-pane");
-      const room = (box?.clientHeight ?? 0) - (box?.querySelector<HTMLElement>(".notation-toolbar")?.offsetHeight ?? 0);
-      if (room > 0) setPaneHeight(room);
-      setViewportHeight(el.clientHeight);
-    };
+    const update = () => setPane((old) => (old.width === el.clientWidth && old.height === el.clientHeight ? old : { width: el.clientWidth, height: el.clientHeight }));
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    const pane = el.closest(".notation-pane");
-    if (pane) ro.observe(pane);
     update();
     return () => ro.disconnect();
   }, [edit, selected?.id, loading]);
+  // The pane changed size: break the score into lines again (after the resize settles).
+  const laidOutWidth = useRef(0);
+  useEffect(() => {
+    if (!scoreLines || !pageWidth || pageWidth === laidOutWidth.current) return;
+    const timer = window.setTimeout(() => {
+      const at = lines[lineRef.current]?.first;
+      laidOutWidth.current = pageWidth;
+      void scoreLines
+        .relayout(pageWidth)
+        .then((next) => {
+          setLines(next);
+          // Stay on the line that holds the measure that was first on screen.
+          const index = at ? next.findIndex((l) => l.first === at || l.notes.length === 0) : -1;
+          setLine(Math.max(0, index));
+        })
+        .catch((cause) => setLineError(cause instanceof Error ? cause.message : String(cause)));
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [scoreLines, pageWidth, lines]);
+  // The current line's markup; the next one is prepared while this one is read.
+  useEffect(() => {
+    if (!scoreLines || !lines.length) {
+      setLineSvg("");
+      return;
+    }
+    const index = Math.min(line, lines.length - 1);
+    if (index !== line) {
+      setLine(index);
+      return;
+    }
+    let current = true;
+    setLineError("");
+    scoreLines
+      .get(index)
+      .then((svg) => {
+        if (!current) return;
+        setLineSvg(svg);
+        const height = Number(svg.match(/viewBox="[\d.\s-]+?\s([\d.]+)"/)?.[1]);
+        // Adopt the measured line height once it differs clearly (avoids re-breaking on noise).
+        if (height > 40) setLineUnits((old) => (Math.abs(old - height) / old > 0.15 ? height : old));
+        if (index + 1 < lines.length) void scoreLines.get(index + 1).catch(() => {});
+      })
+      .catch((cause) => current && setLineError(cause instanceof Error ? cause.message : String(cause)));
+    return () => {
+      current = false;
+    };
+  }, [scoreLines, lines, line]);
   const important = useMemo(() => {
     const keep = new Set<string>();
     for (const a of song.fingerActions ?? []) keep.add(`${a.track}:${a.index}`);
@@ -261,21 +289,11 @@ export function Notation({
     }
     return keep;
   }, [song.notes, song.fingerActions]);
-  const pageView = useScorePage(pages,page);
-  const html = useMemo(() => ({ __html: pageView.markup }), [pageView.markup]);
-  useEffect(() => {
-    if (layoutWidth === undefined || !pageView.markup || !root.current) return;
-    const systems = [...root.current.querySelectorAll("g.system")];
-    const tallest = Math.max(0, ...systems.map((system) => system.getBoundingClientRect().height));
-    // Measured once, on the standard-size layout (rendered pixels per unit is the paper width
-    // over the layout width). Re-measuring after each reflow would chase taller systems that
-    // hold more measures and shrink the staff without end.
-    if (tallest) setSystemUnits((units) => units || Math.round(tallest / (paperWidth / layoutWidth)));
-  }, [pageView.markup, paperWidth, layoutWidth]);
+  const html = useMemo(() => ({ __html: lineSvg }), [lineSvg]);
   useEffect(()=>{
     const selected=new Set(practiceRange?mapping.filter(m=>m.start<practiceRange.end&&m.end>practiceRange.start).map(m=>m.id):[]);
     root.current?.querySelectorAll("g.note").forEach(note=>note.classList.toggle("practice-range-note",selected.has(note.id)));
-  },[practiceRange?.start,practiceRange?.end,mapping,pages,page,pageView.markup]);
+  },[practiceRange?.start,practiceRange?.end,mapping,lineSvg]);
   const notesById = useMemo(
     () => new Map(song.notes.map((n) => [`${n.track}:${n.index}`, n])),
     [song.notes],
@@ -326,7 +344,11 @@ export function Notation({
   };
   const root = useRef<HTMLDivElement>(null),
     activeIds = useRef<string[]>([]);
+  const paneReady = pageWidth > 0;
+  const initialWidth = useRef(0);
+  if (!initialWidth.current && pageWidth) initialWidth.current = pageWidth;
   useEffect(() => {
+    if (!paneReady) return;
     let disposed = false;
     renderedMapping.current = null;
     mappingSequence.current++;
@@ -343,7 +365,9 @@ export function Notation({
     setLoading(true);
     setRenderStage("正在读取乐谱…");
     setError("");
-    setPage(0);
+    setScoreLines(null);
+    setLines([]);
+    setLineSvg("");
     api
       .command<Asset | null>({ type:"scoreView",content_id:song.contentId,score_revision:song.scoreRevision,source:sourceRhythm&&song.hasScore,first_measure:rangeAnchor.first??null,position:rangeAnchor.position??currentPosition.current })
       .then((data) => {
@@ -355,11 +379,16 @@ export function Notation({
         }
         setAsset(data);
         void renderScore(data, controller.signal, (stage, page, total) => {
-          if (!disposed) setRenderStage(stage === "index" ? `正在对应谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
-        }, layoutWidth).then(async result => {
+          if (!disposed) setRenderStage(stage === "index" ? `正在对应谱页 ${page} / ${total}…` : stage === "midi" ? "正在整理乐谱演奏顺序…" : stage === "lines" ? "正在分行…" : stage === "loading" ? "正在读取并排版乐谱…" : "正在准备乐谱排版…");
+        }, initialWidth.current, true).then(async result => {
           if (disposed) return;
           setPages(result.pages);
-          if(rangeAnchor.last)setPage(Math.max(0,result.pages.length-1));
+          laidOutWidth.current = initialWidth.current;
+          setScoreLines(result.lines ?? null);
+          const loaded = result.lines?.lines ?? [];
+          setLines(loaded);
+          setLine(rangeAnchor.last || lineAfterLoad.current === "last" ? Math.max(0, loaded.length - 1) : 0);
+          lineAfterLoad.current = "first";
           const evidence=await result.evidence();
           if(disposed || controller.signal.aborted)return;
           await correlateRendered({
@@ -392,7 +421,7 @@ export function Notation({
       mappingWorking.current = false;
       controller.abort();
     };
-  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm, rangeAnchor, layoutWidth]);
+  }, [song.engineId, song.contentId, song.hasScore, song.scoreRevision, reload, correlateRendered, sourceRhythm, rangeAnchor, paneReady]);
   useEffect(()=>{
     const window=asset?.window;
     if(!window||!follow||loading)return;
@@ -410,7 +439,7 @@ export function Notation({
   },[asset,follow,loading,song.duration,store]);
   const timeIndex = useMemo(() => new NotationTimeIndex(mapping), [mapping]);
   useEffect(() => {
-    // Rendered markup, page, zoom or viewport size changed: element handles and the last target are stale.
+    // New line markup: element handles and the last target are stale.
     const elements = new Map<string, Element | null>();
     const element = (id: string) => {
       if (!elements.has(id)) elements.set(id, root.current?.querySelector(`[id="${CSS.escape(id)}"]`) ?? null);
@@ -418,11 +447,14 @@ export function Notation({
     };
     activeIds.current.forEach((id) => element(id)?.classList.remove("playing-note"));
     activeIds.current = [];
-    let revealed = "";
+    const shown = new Set(lines[line]?.notes ?? []);
     const update = () => {
       const { active: current, next } = timeIndex.at(position());
-      if (follow && next && next.page !== page) setPage(next.page);
-      const ids = current.filter((n) => n.page === page).map((n) => n.id);
+      if (follow && next) {
+        const target = noteLines.get(next.id);
+        if (target !== undefined && target !== lineRef.current) setLine(target);
+      }
+      const ids = current.map((n) => n.id).filter((id) => shown.has(id));
       if (ids.length !== activeIds.current.length || ids.some((id, i) => id !== activeIds.current[i])) {
         const keep = new Set(ids);
         activeIds.current.forEach((id) => keep.has(id) || element(id)?.classList.remove("playing-note"));
@@ -430,35 +462,10 @@ export function Notation({
         ids.forEach((id) => had.has(id) || element(id)?.classList.add("playing-note"));
         activeIds.current = ids;
       }
-      if (follow && next?.page === page && scroll.current && next.id !== revealed) {
-        revealed = next.id;
-        const note = element(next.id);
-        if (note && singleLine) {
-          const index = systems().indexOf(note.closest("g.system") as Element);
-          if (index >= 0 && index !== lineRef.current) setLine(index);
-        } else if (note) revealNotationNote(scroll.current, note.querySelector(".notehead") ?? note, [note.closest("g.system"), note.closest("g.staff")]);
-      }
     };
     update();
     return store.subscribe(update);
-  }, [store, timeIndex, follow, page, pages, pageView.markup, zoom, paperWidth, viewportHeight, singleLine, systems]);
-  // Single-line view: place the current system at the top of the pane.
-  useEffect(() => {
-    const view = scroll.current;
-    const all = systems();
-    setLineCount(all.length);
-    if (!singleLine || !view || !all.length) return;
-    const index = Math.min(line, all.length - 1);
-    if (index !== line) {
-      setLine(index);
-      return;
-    }
-    const box = all[index].getBoundingClientRect();
-    const top = box.top - view.getBoundingClientRect().top + view.scrollTop;
-    // Centre the line in the pane; a line taller than the pane starts at its top.
-    view.scrollTop = Math.max(0, top - Math.max(4, (view.clientHeight - box.height) / 2));
-    view.scrollLeft = 0;
-  }, [singleLine, line, page, pageView.markup, paperWidth, viewportHeight, systems]);
+  }, [store, timeIndex, follow, lines, line, lineSvg, noteLines]);
   const wheelAt = useRef(0);
   useEffect(() => {
     const el = root.current;
@@ -470,7 +477,8 @@ export function Notation({
       n.removeAttribute("role");
     });
     const groups = new Map<string, Mapping[]>();
-    for (const m of mapping.filter((m) => m.page === page)) {
+    const shown = new Set(lines[line]?.notes ?? []);
+    for (const m of mapping.filter((m) => shown.has(m.id))) {
       const old = groups.get(m.id) ?? [];
       if (!old.some((x) => x.track === m.track && x.index === m.index))
         old.push(m);
@@ -580,9 +588,9 @@ export function Notation({
     }
   }, [
     mapping,
-    pages,
-    pageView.markup,
-    page,
+    lines,
+    line,
+    lineSvg,
     song.notes,
     song.fingerActions,
     speed,
@@ -591,14 +599,12 @@ export function Notation({
     edit,
     simpleFingers,
     important,
-    zoom,
-    paperWidth,
     Boolean(selectPracticeNote),
   ]);
   const activate = (target: Element | null) => {
     if (!target || editorBusy) return;
     const choices = mapping.filter(
-      (n) => n.id === target.id && n.page === page,
+      (n) => n.id === target.id,
     );
     const unique = Array.from(
       new Map(choices.map((n) => [`${n.track}:${n.index}`, n])).values(),
@@ -621,7 +627,7 @@ export function Notation({
     if (label) {
       const id = label.getAttribute("data-score-note");
       const choices = mapping
-        .filter((m) => m.id === id && m.page === page)
+        .filter((m) => m.id === id)
         .sort((a, b) => a.start - b.start);
       const choice = choices.find((m) => m.end >= position()) ?? choices[0];
       if (!choice || editorBusy) return;
@@ -633,28 +639,28 @@ export function Notation({
       } else seek(choice.start);
     } else activate(element?.closest("g.note") ?? null);
   };
-  /** Previous or next line; past the first or last line of a page, the neighbouring page. */
+  /** Previous or next line; past the first or last line, the neighbouring measure window. */
   const stepLine = (direction: 1 | -1) => {
     desiredFollow.current = false;
     setFollow(false);
     const next = line + direction;
-    if (next >= 0 && next < lineCount) {
+    if (next >= 0 && next < lines.length) {
       setLine(next);
       return;
     }
     if (direction > 0) {
-      if (page < pages.length - 1) setPage(page + 1);
-      else if (asset?.window && asset.window.first + asset.window.count < asset.window.total) setRangeAnchor({ first: asset.window.first + asset.window.count });
-    } else if (page > 0) {
-      lineAfterPage.current = "last";
-      setPage(page - 1);
-    } else if (asset?.window?.first) setRangeAnchor({ first: asset.window.previous ?? Math.max(0, asset.window.first - 32), last: true });
+      if (asset?.window && asset.window.first + asset.window.count < asset.window.total) setRangeAnchor({ first: asset.window.first + asset.window.count });
+    } else if (asset?.window?.first) {
+      lineAfterLoad.current = "last";
+      setRangeAnchor({ first: asset.window.previous ?? Math.max(0, asset.window.first - 32), last: true });
+    }
   };
   const locate = (track: number, index: number) => {
     const next = mapping.find((m) => m.track === track && m.index === index);
     if (!next) return false;
     setFollow(false);
-    setPage(next.page);
+    const target = noteLines.get(next.id);
+    if (target !== undefined) setLine(target);
     setSelected(next);
     return true;
   };
@@ -662,7 +668,7 @@ export function Notation({
     ? Array.from(
         new Map(
           mapping
-            .filter((m) => m.id === selected.id && m.page === selected.page)
+            .filter((m) => m.id === selected.id)
             .map((m) => [`${m.track}:${m.index}`, m]),
         ).values(),
       ).sort((a, b) => a.start - b.start)
@@ -670,47 +676,19 @@ export function Notation({
   return (
     <div className="notation-pane">
       <div className="notation-toolbar">
-        {singleLine ? (
-          <>
-            <button disabled={loading || (page === 0 && line === 0 && !asset?.window?.first)} onClick={() => stepLine(-1)}>
-              上一行
-            </button>
-            <span>
-              {asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}
-              {pages.length ? `${page + 1} / ${pages.length} 页 · 第 ${Math.min(line, Math.max(0, lineCount - 1)) + 1} / ${lineCount || 1} 行` : "乐谱"}
-            </span>
-            <button
-              disabled={loading || (page >= pages.length - 1 && line >= lineCount - 1 && (!asset?.window || asset.window.first + asset.window.count >= asset.window.total))}
-              onClick={() => stepLine(1)}
-            >
-              下一行
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              disabled={loading || (page === 0 && !asset?.window?.first)}
-              onClick={() => {
-                desiredFollow.current=false;setFollow(false);
-                if(page>0)setPage(page-1);
-                else if(asset?.window)setRangeAnchor({first:asset.window.previous??Math.max(0,asset.window.first-32),last:true});
-              }}
-            >
-              上一页
-            </button>
-            <span>{asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}{pages.length ? `${page + 1} / ${pages.length}` : "乐谱"}</span>
-            <button
-              disabled={loading || (page >= pages.length - 1 && (!asset?.window || asset.window.first+asset.window.count>=asset.window.total))}
-              onClick={() => {
-                desiredFollow.current=false;setFollow(false);
-                if(page<pages.length-1)setPage(page+1);
-                else if(asset?.window)setRangeAnchor({first:asset.window.first+asset.window.count});
-              }}
-            >
-              下一页
-            </button>
-          </>
-        )}
+        <button disabled={loading || (line === 0 && !asset?.window?.first)} onClick={() => stepLine(-1)}>
+          上一行
+        </button>
+        <span>
+          {asset?.window ? `第 ${asset.window.firstNumber}–${asset.window.lastNumber} 小节 · ` : ""}
+          {lines.length ? `第 ${Math.min(line, lines.length - 1) + 1} / ${lines.length} 行` : "乐谱"}
+        </span>
+        <button
+          disabled={loading || (line >= lines.length - 1 && (!asset?.window || asset.window.first + asset.window.count >= asset.window.total))}
+          onClick={() => stepLine(1)}
+        >
+          下一行
+        </button>
         <label>
           <input
             type="checkbox"
@@ -719,21 +697,6 @@ export function Notation({
             disabled={loading || (!mapping.length && !asset?.window) || !!error}
           />
           跟随演奏
-        </label>
-        <label>
-          缩放
-          <select
-            aria-label="乐谱缩放"
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-          >
-            <option value={0}>适合宽度</option>
-            {[75, 100, 125, 150, 200].map((z) => (
-              <option key={z} value={z}>
-                {z}%
-              </option>
-            ))}
-          </select>
         </label>
         <ToolbarMore label="谱面选项" disabled={loading}>
         <button
@@ -825,8 +788,7 @@ export function Notation({
       )}
 
       <TaskActivity contentId={song.contentId} label="对应乐谱音符" cancelLabel="取消对应" />
-      {pageView.error && <p className="score-message" role="alert">{pageView.error}</p>}
-      {pageView.loading && pages.length>0 && <p className="score-message" role="status">正在读取谱页…</p>}
+      {lineError && <p className="score-message" role="alert">{lineError}</p>}
       {loading && <p className="score-message" role="status">{renderStage}</p>}
       {error && (
         <div className="score-message" role="alert">
@@ -836,7 +798,7 @@ export function Notation({
           </button>
         </div>
       )}
-      {!loading && !error && pages.length > 0 && !mapping.length && <p className="score-message">
+      {!loading && !error && lines.length > 0 && !mapping.length && <p className="score-message">
         原谱可继续阅读。建立可靠的逐音对应后，可使用跟随与指法编辑。
       </p>}
       {asset && asset.diagnostics.length > 0 && (
@@ -871,26 +833,18 @@ export function Notation({
       )}
       <div className={`notation-body ${edit && selected ? "editing" : ""}`}>
         <div
-          className={`notation-scroll${singleLine ? " single-line" : ""}`}
+          className="notation-line"
           ref={scroll}
-          onWheel={
-            singleLine
-              ? (event) => {
-                  if (Math.abs(event.deltaY) < 4) return;
-                  const now = performance.now();
-                  if (now - wheelAt.current < 220) return;
-                  wheelAt.current = now;
-                  stepLine(event.deltaY > 0 ? 1 : -1);
-                }
-              : undefined
-          }
+          onWheel={(event) => {
+            if (Math.abs(event.deltaY) < 4) return;
+            const now = performance.now();
+            if (now - wheelAt.current < 220) return;
+            wheelAt.current = now;
+            stepLine(event.deltaY > 0 ? 1 : -1);
+          }}
         >
           <div
             className="score-paper"
-            style={{
-              width: zoom ? `${(1050 * zoom) / 100}px` : `${paperWidth}px`,
-              maxWidth: "none",
-            }}
             ref={root}
             onClick={(e) => activateLabel(e.target as Element)}
             onKeyDown={(e) => {

@@ -109,11 +109,29 @@
   display: flex;
   flex-direction: column;
 }
-.notation-body > .notation-scroll {
+/* One line of score at a time: the line's own SVG fills the pane; nothing scrolls. */
+.notation-body > .notation-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100%;
   min-height: 0;
-  max-height: 100%;
-  overflow: auto;
+  overflow: hidden;
+  padding: 6px 12px;
+  box-sizing: border-box;
+}
+.notation-line > .score-paper {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  box-shadow: none;
+}
+.notation-line > .score-paper > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Fingering labels sit just below the staff and may pass the line's own box. */
+  overflow: visible;
 }
 .daily-workbench .notation-toolbar .toolbar-more-actions {
   background: var(--instrument-panel);
@@ -125,7 +143,4 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-/* "Fit width" notation shows one line; the component moves between lines (no scrollbar). */
-.notation-body > .notation-scroll.single-line {
-  overflow: hidden;
-}
+
