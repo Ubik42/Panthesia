@@ -40,7 +40,7 @@ export class HandDrawing {
     const c = this.ctx;
     const s = h.scale;
     const project = (p: V3): Point => ({ x: p.x * s, y: h.front - p.y * s });
-    const edge = Math.max(0.8, s * 0.9);
+    const edge = Math.max(1.2, s * 1.5);
     // Parts in drawing order: a thumb passing under first, then the palm, then fingers from the
     // lowest to the highest, so lifted fingers lie over the others.
     type Part = { z: number; draw: (extra: number) => void };
@@ -88,18 +88,17 @@ export class HandDrawing {
     c.lineJoin = "round";
     // Shadow on the keys: offset grows with height.
     c.save();
-    const lift = (h.wrist.z + 10) * s * 0.18;
-    c.translate(lift * 0.6, lift);
+    // Light from the upper left: the shadow falls to the right of the fingers, onto the keys.
+    const lift = (h.wrist.z + 10) * s * 0.2;
+    c.translate(lift, -lift * 0.15);
     c.filter = `blur(${Math.max(2, s * 6)}px)`;
     c.fillStyle = handSkin.shadow;
     c.strokeStyle = handSkin.shadow;
     for (const part of parts) part.draw(0);
     c.restore();
     // Each part: outline, then fill, so overlapping parts keep their own edge and joints read.
-    const fill = c.createLinearGradient(project(h.wrist).x - s * 50, 0, project(h.wrist).x + s * 50, 0);
-    fill.addColorStop(0, handSkin.shade);
-    fill.addColorStop(h.side === "right" ? 0.35 : 0.65, handSkin.fill);
-    fill.addColorStop(1, handSkin.shade);
+    // Flat fill with a pale halo around every part, as in a hand-drawn glove.
+    const fill = handSkin.fill;
     for (const part of parts) {
       c.strokeStyle = handSkin.outline;
       c.fillStyle = handSkin.outline;
@@ -108,9 +107,18 @@ export class HandDrawing {
       c.fillStyle = fill;
       part.draw(0);
     }
-    // Faint creases across the middle and end joints.
+    // Faint lines on the back of the hand, from each knuckle toward the wrist.
     c.strokeStyle = handSkin.crease;
-    c.lineWidth = Math.max(0.6, s * 0.9);
+    c.lineWidth = Math.max(0.6, s * 0.7);
+    const wristPoint = project(h.wrist);
+    for (const f of h.fingers.slice(1)) {
+      const k = project(f.points[0]);
+      c.beginPath();
+      c.moveTo(k.x + (wristPoint.x - k.x) * 0.15, k.y + (wristPoint.y - k.y) * 0.15);
+      c.lineTo(k.x + (wristPoint.x - k.x) * 0.55, k.y + (wristPoint.y - k.y) * 0.55);
+      c.stroke();
+    }
+    // Creases across the middle and end joints: two short parallel strokes each.
     for (const f of h.fingers) {
       if (f.finger === 1 && h.thumbUnder) continue;
       const pts = f.points.map(project);
@@ -120,11 +128,16 @@ export class HandDrawing {
           len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
         const nx = -(b.y - a.y) / len,
           ny = (b.x - a.x) / len,
-          r = f.widths[j] * s * 0.3;
-        c.beginPath();
-        c.moveTo(pts[j].x - nx * r, pts[j].y - ny * r);
-        c.lineTo(pts[j].x + nx * r, pts[j].y + ny * r);
-        c.stroke();
+          tx = (b.x - a.x) / len,
+          ty = (b.y - a.y) / len,
+          r = f.widths[j] * s * 0.22,
+          gap = Math.max(1.2, s * 1.1);
+        for (const o of [-gap / 2, gap / 2]) {
+          c.beginPath();
+          c.moveTo(pts[j].x - nx * r + tx * o, pts[j].y - ny * r + ty * o);
+          c.lineTo(pts[j].x + nx * r + tx * o, pts[j].y + ny * r + ty * o);
+          c.stroke();
+        }
       }
     }
     c.restore();

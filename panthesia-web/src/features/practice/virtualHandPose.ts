@@ -51,11 +51,11 @@ const ANATOMY = {
   ],
   // Drawn a little narrower than a bare hand: a slender glove reads better over the keys.
   widths: [
-    [17, 15, 13],
-    [13.5, 12, 10.5],
     [14, 12.5, 11],
-    [13, 11.5, 10.5],
+    [11, 10, 9],
     [11.5, 10.5, 9.5],
+    [10.5, 9.5, 9],
+    [9.5, 8.5, 8],
   ],
   // Where each fingertip rests, relative to its base (mm), when nothing is played.
   rest: [
@@ -68,7 +68,7 @@ const ANATOMY = {
   wristHalf: 27,
 };
 /** The knuckles sit this far behind the keys' front edge (toward the player), at this height. */
-const WRIST_Y = -100;
+const WRIST_Y = -92;
 const LIFT = 16;
 
 const smooth = (x: number) => {
@@ -155,7 +155,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     const g = geometry(pitch);
     if (!g) return null;
     const black = [1, 3, 6, 8, 10].includes(pitch % 12);
-    return { x: (g.x + g.w / 2) / scale, y: black ? keyHeight * 0.5 : Math.min(keyHeight * 0.22, 36), z: 0 };
+    return { x: (g.x + g.w / 2) / scale, y: black ? keyHeight * 0.55 : Math.min(keyHeight * 0.36, 55), z: 0 };
   };
   const base = (i: number) => ANATOMY.bases[i];
   const restTip = (i: number) => ({ x: base(i).x + ANATOMY.rest[i].x, y: base(i).y + ANATOMY.rest[i].y });
