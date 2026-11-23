@@ -54,29 +54,37 @@ export class HandDrawing {
       c.lineTo(q.x, q.y);
       c.stroke();
     };
+    // Palm outline through the midpoints of its corners, so corners round off and the web
+    // between thumb and index finger stays a soft curve.
     const palmPath = () => {
+      const pts = h.palm.map(project);
+      const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
       const path = new Path2D();
-      h.palm.forEach((v, i) => {
-        const p = project(v);
-        if (i) path.lineTo(p.x, p.y);
-        else path.moveTo(p.x, p.y);
+      const start = mid(pts[pts.length - 1], pts[0]);
+      path.moveTo(start.x, start.y);
+      pts.forEach((p, i) => {
+        const m = mid(p, pts[(i + 1) % pts.length]);
+        path.quadraticCurveTo(p.x, p.y, m.x, m.y);
       });
       path.closePath();
       return path;
     };
     const palm = palmPath();
+    const thumbBones = h.fingers[0];
+    // The palm carries the thumb's metacarpal: the ball of the thumb.
     const palmPart: Part = {
       z: 0,
       draw: (extra) => {
-        c.lineWidth = s * 14 + extra * 0.5;
+        c.lineWidth = s * 6 + extra;
         c.stroke(palm);
         c.fill(palm);
+        bone(thumbBones.points[0], thumbBones.points[1], thumbBones.widths[0])(extra);
       },
     };
     const fingerParts: Part[] = h.fingers.map((f) => ({
-      z: Math.max(...f.points.map((p) => p.z)) + (f.finger === 1 ? -1 : 0),
+      z: Math.max(...f.points.slice(f.finger === 1 ? 1 : 0).map((p) => p.z)) + (f.finger === 1 ? -1 : 0),
       draw: (extra) => {
-        for (let k = 0; k < 3; k++) bone(f.points[k], f.points[k + 1], f.widths[k])(extra);
+        for (let k = f.finger === 1 ? 1 : 0; k < 3; k++) bone(f.points[k], f.points[k + 1], f.widths[k])(extra);
       },
     }));
     const thumb = fingerParts[0];
@@ -122,7 +130,8 @@ export class HandDrawing {
     for (const f of h.fingers) {
       if (f.finger === 1 && h.thumbUnder) continue;
       const pts = f.points.map(project);
-      for (const j of [1, 2]) {
+      // The thumb's crease is at its one finger joint (IP); its MCP lies in the palm.
+      for (const j of f.finger === 1 ? [2] : [1, 2]) {
         const a = pts[j - 1],
           b = pts[j + 1],
           len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
