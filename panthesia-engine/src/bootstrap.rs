@@ -116,11 +116,13 @@ impl Engine {
             storage_tasks,
             tool_tasks,
             opened: Arc::new(std::sync::Mutex::new(None)),
+            songs: Default::default(),
             state,
             data: engine_data,
             _data_lock: data_lock,
         };
         engine.startup_task()?;
+        engine.rescan_songs();
         Ok(engine)
     }
 }

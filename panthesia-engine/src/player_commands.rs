@@ -927,6 +927,7 @@ impl Player {
                 self.load_stems();
                 return Ok(serde_json::json!(self.stems_state()));
             }
+            Command::SongSearch { .. } | Command::SongFolder | Command::SetSongFolder { .. } | Command::RescanSongFolder => return Err("曲目索引应由引擎调用线程处理".into()),
             Command::SongSummary { .. } | Command::SongSummaries { .. } | Command::GenerateMaterial { .. } | Command::TranscriptionTool | Command::SetTranscriptionTool { .. } => return Err("歌曲资料应由引擎调用线程处理".into()),
             Command::EditSongFile { action, path, id, role, stem, label } => {
                 let edit = song_files::SongFileEdit::parse(&action, path, id, role, stem, label)?;

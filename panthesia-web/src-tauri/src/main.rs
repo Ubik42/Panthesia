@@ -313,6 +313,12 @@ async fn pick_song_file(state:tauri::State<'_,State>,kind:String,near:Option<Pat
     Ok(Some(file.path().to_string_lossy().into()))
 }
 #[tauri::command]
+async fn pick_folder(state:tauri::State<'_,State>,title:String)->Result<Option<String>,String>{
+    let _close_lease=score_edit::reserve(&state,"native-pick-folder")?;
+    let Some(folder)=file_dialog(&state.data,"music").set_title(&title).pick_folder().await else{return Ok(None)};
+    Ok(Some(folder.path().to_string_lossy().into()))
+}
+#[tauri::command]
 async fn pick_paper_source(state:tauri::State<'_,State>)->Result<Option<String>,String>{
     let _close_lease=score_edit::reserve(&state,"native-pick-paper-source")?;
 
@@ -759,7 +765,7 @@ fn main() {
             score_attachment_bytes,
             import_score_attachments,
             pick_paper_source,
-            pick_song_file,
+            pick_song_file,pick_folder,
             desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,
             file_transfer::begin_score_input,
             file_transfer::write_score_input_chunk,

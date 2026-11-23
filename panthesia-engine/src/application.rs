@@ -198,6 +198,20 @@ impl Engine {
             Command::SongSummaries { paths } => return self.song_summaries(paths),
             Command::GenerateMaterial { kind, path } => return self.generate_material(kind, path),
             Command::TranscriptionTool => return Ok(crate::song_generate::tool_status(&self.data)),
+            Command::SongSearch { query } => {
+                let index = self.songs.read().map_err(|_| "曲目索引不可用")?;
+                return Ok(serde_json::json!({ "results": crate::song_index::search(&index.entries, &query), "status": crate::song_index::status_of(&index) }));
+            }
+            Command::SongFolder => return Ok(crate::song_index::status_of(&*self.songs.read().map_err(|_| "曲目索引不可用")?)),
+            Command::SetSongFolder { path } => {
+                crate::song_index::set_root(&self.data, path)?;
+                let (data, songs) = (self.data.clone(), self.songs.clone());
+                return self.tasks.run("扫描曲目文件夹", None, move |_| Ok(crate::song_index::refresh(&data, &songs)));
+            }
+            Command::RescanSongFolder => {
+                let (data, songs) = (self.data.clone(), self.songs.clone());
+                return self.tasks.run("扫描曲目文件夹", None, move |_| Ok(crate::song_index::refresh(&data, &songs)));
+            }
             Command::SetTranscriptionTool { path } => return crate::song_generate::set_tool(&self.data, path),
             Command::ForgetRecentFile { path } => return self.forget_recent(&path),
             Command::Tasks => {

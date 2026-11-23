@@ -2,6 +2,14 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · 新运行包、清理旧程序、曲目文件夹索引与搜索（本条提交）
+
+- 曲目文件夹索引（引擎 `song_index`）：设置保存在资料目录 `song-index.json`；启动时后台扫描（`D:\Music\MIDI` 约 3.6 万个文件，0.3 秒；跳过隐藏文件夹、`runs`、`索引库`）。清单代表它列出的演奏与谱面文件；其余 MIDI / MusicXML / ABC 按文件名收录。`索引库` 中每个 `.panthesia` 一个快捷方式（目标为当前 Panthesia.exe，参数为清单路径；同名加序号；不再对应歌曲的 `.lnk` 删除）。浏览器调试服务不写快捷方式。依赖 `mslnk`（MIT）。
+- 启动页搜索栏：按歌名、艺术家、文件夹的全部词匹配，已整理的歌曲在前，最多 200 个；显示曲目文件夹状态，可重新扫描、更改（桌面端新增文件夹选择命令）。
+- 真实资料：在 `%APPDATA%\com.ubik.neothesia\song-index.json` 写入曲目文件夹 `D:\Music\MIDI`（用户要求），启动一次新版，`索引库` 生成 11 个快捷方式并核对目标正确。
+- 运行包：`outputs/releases/Panthesia-20261122`（Release），隔离资料目录下启动自检通过；App Paths 指向新包。旧程序移入回收站：本工程旧运行包 2 个，前身 Neothesia 的发布包 14 个与工作目录便携包 9 个，桌面 Neothesia 快捷方式，共约 1.5 GB。
+- 发现：`Never See Me Again - Kanye West` 也有 `versions/` 下按转调与量化分开保存的版本（两个版本各有清单），可以像 Look at the Sky 一样合并，需用户确认。
+
 ## 2026-11-22 · 虚拟双手改为白色修长手型（本条提交）
 
 - 用户反馈肉色卡通手“不像正常的手”，要求参考视频中白色、修长、带关节的手。重写 `virtualHandDrawing.ts`（独立实现，未使用 pygame-piano-animator 的代码、参数或权重）：手掌包住拇指根部并落在琴键下沿，去掉袖口；五指逐节变细的圆头指节，先描边后填充得到一体的轮廓；关节折痕、指甲、柔和投影。手指长度加长约 1.2 倍。颜色集中在 `stageTheme.ts` 的 `handSkin`。

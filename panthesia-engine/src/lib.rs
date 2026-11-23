@@ -62,6 +62,7 @@ mod music_file;
 pub mod probe;
 pub mod song_summary;
 mod song_generate;
+pub mod song_index;
 pub use file_open::supported as openable_file;
 #[cfg(test)]
 mod test_fixtures;
@@ -182,6 +183,8 @@ pub struct Engine {
     tool_tasks: background_tasks::TaskPool,
     /// The song file the user opened, keyed by the content it loaded (`song_generate`).
     opened: Arc<std::sync::Mutex<Option<(String, PathBuf)>>>,
+    /// The music folder's song index, refreshed when the engine starts (`song_index`).
+    songs: song_index::Shared,
     state: Arc<state_projection::StateFeed>,
     data: PathBuf,
     _data_lock: Arc<data_root_lock::DataRootLock>,

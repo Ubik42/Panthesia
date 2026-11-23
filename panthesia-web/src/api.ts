@@ -125,6 +125,7 @@ export const api = {
   takeOpenRequests: async (): Promise<string[]> => isTauri() ? invoke<string[]>("take_open_requests") : [],
   pickSongFile: async (kind: "music" | "performance" | "audio" | "paper" | "score" | "tool", near?: string): Promise<string | null> =>
     isTauri() ? invoke<string | null>("pick_song_file", { kind, near: near ?? null }) : null,
+  pickFolder: async (title: string): Promise<string | null> => (isTauri() ? invoke<string | null>("pick_folder", { title }) : null),
   /** Show a file in the system file manager (desktop only). */
   revealFile: async (path: string): Promise<void> => { if (isTauri()) await invoke<void>("reveal_library_file", { path }); },
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,

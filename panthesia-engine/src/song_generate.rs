@@ -160,6 +160,11 @@ fn add_generators(summary: &mut Value, data: &Path) {
 }
 
 impl Engine {
+    /// Scan the music folder in the background (at startup); searches see the old index meanwhile.
+    pub(crate) fn rescan_songs(&self) {
+        let (data, songs) = (self.data.clone(), self.songs.clone());
+        let _ = self.tasks.post("扫描曲目文件夹", move |_| Ok(crate::song_index::refresh(&data, &songs)));
+    }
     /// The current song's performance file as opened, when it is still the loaded song.
     pub(crate) fn current_song_path(&self) -> Option<PathBuf> {
         let content = self.snapshot().content_id?;

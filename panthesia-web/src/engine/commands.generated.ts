@@ -1564,6 +1564,10 @@ export type EngineCommand =
   | { type: "transcriptionTool" }
   | { type: "setTranscriptionTool"; "path"?: string | null }
   | { type: "reloadStems" }
+  | { type: "songSearch"; "query": string }
+  | { type: "songFolder" }
+  | { type: "setSongFolder"; "path"?: string | null }
+  | { type: "rescanSongFolder" }
   | { type: "recentFiles" }
   | { type: "forgetRecentFile"; "path": string }
   | { type: "editSongFile"; "action": string; "path"?: string | null; "id"?: string | null; "role"?: string | null; "stem"?: string | null; "label"?: string | null }
