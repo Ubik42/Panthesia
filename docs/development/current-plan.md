@@ -162,7 +162,9 @@ Song
 
 | RA 默认量化与自动分析 | 打开 MIDI 默认使用量化版本（原始时值由用户选择）；首次打开自动生成分手、指法、段落、和弦草稿并标记“待检查” | 新 MIDI 打开后清单有四个 `generated`/`draft`/`review: "pending"` 图层与量化设置；歌曲页显示“待检查” | 已完成（2026-11-22） |
 
-顺序：RD → RS → RK → RP。RK 依赖 RS 的 `song_summary`。
+| RU 界面统一与架构重整 | 按 [interface-design.md](interface-design.md) 第 6 节：一个路由；设置页改为单页分区并取代显示 / 设备对话框；歌曲二级页（声部与手别、转调与量化、谱面资料）与自由演奏改用新视觉；舞台工具条合并弹出面板；删除应用菜单栏、旧皮肤、三套“未完成工作”视图与旧样式表；对话框与弹出面板各一种实现；拆分 `useAppModel`；谱面逐行渲染 | 没有界面使用旧样式表（`style.css` 旧段、`dailyTheme.css`、`synthesiaLayout.css`、`instrumentSkins.css`、`productScreens.css`）；每个全局设置只有一个修改位置；全屏缩放正确 | 进行中（2026-11-23）：谱面逐行渲染完成 |
+
+顺序：RD → RS → RK → RP → RU。RK 依赖 RS 的 `song_summary`。
 
 ### 待办（不排期，按需插入）
 
