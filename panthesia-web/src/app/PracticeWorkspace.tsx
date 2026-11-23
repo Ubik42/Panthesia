@@ -7,7 +7,6 @@ import type { PlaybackStore } from "../features/practice/playbackStore";
 import { PracticeStageReadout } from "../features/practice/PracticeReadouts";
 import { PracticeStage } from "../features/practice/PracticeStage";
 import { PracticeTransport } from "../features/practice/PracticeTransport";
-import { PracticeWelcome } from "../features/practice/PracticeWelcome";
 
 import { X } from "lucide-react";
 import { api,pitchName } from "../api";
@@ -386,27 +385,6 @@ export function PracticeWorkspace() {
                   </div>
                 </div>
               )}
-            {!song && (
-              <PracticeWelcome
-                resumeTitle={recentFiles.find((file) => file.exists)?.title}
-                resumeRecent={recentFiles.some((file) => file.exists)}
-                disabled={
-                  busy || openingActive || state.recording || !connected
-                }
-                input={state.input}
-                inputConnected={state.inputConnected}
-                resume={() => {
-                  const target = recentFiles.find((file) => file.exists);
-                  if (target) void openPath(target.path);
-                }}
-                choose={() => void chooseFile()}
-                importFile={() => void chooseFile()}
-                generate={() =>
-                  launchPracticeTool(() => setExerciseDialog(true))
-                }
-                devices={() => openSoundSettings()}
-              />
-            )}
           </PracticeStage>
         </main>
       </div>

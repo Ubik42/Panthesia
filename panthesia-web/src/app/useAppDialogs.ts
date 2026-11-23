@@ -7,7 +7,6 @@ import type { DeviceObject } from "../features/screens/MusicDeviceList";
 export function useAppDialogs() {
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [editDraftsOpen, setEditDraftsOpen] = useState(false);
   const [metadata, setMetadata] = useState(false);
   const [metadataDraftPath, setMetadataDraftPath] = useState<string | null>(null);
   const [settingsDevice, setSettingsDevice] = useState<DeviceObject | undefined>();
@@ -21,7 +20,6 @@ export function useAppDialogs() {
 
     commandsOpen, setCommandsOpen,
     aboutOpen, setAboutOpen,
-    editDraftsOpen, setEditDraftsOpen,
     metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
     settingsDevice, setSettingsDevice,
     exerciseDialog, setExerciseDialog,

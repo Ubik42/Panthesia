@@ -6,7 +6,6 @@ import { ActionSearch } from "./ActionSearch";
 import { SessionRecoveryDialog } from "./recovery/SessionRecovery";
 import { pathKey } from "../engine/pathIdentity";
 import { WorkProgressDialog } from "../features/activity/WorkProgress";
-import { EditDraftCenter } from "../features/editing/EditDraftCenter";
 
 import { api } from "../api";
 import { MediaExportDialog } from "../features/exports/MediaExportDialog";
@@ -58,8 +57,6 @@ export function AppDialogs() {
     setCommandsOpen,
     aboutOpen,
     setAboutOpen,
-    editDraftsOpen,
-    setEditDraftsOpen,
     metadataDraftPath,
     setMetadataDraftPath,
     recentCommands,
@@ -268,21 +265,6 @@ export function AppDialogs() {
             clearLiveNotes();
             await api.command({ type: "panic" });
             setState(await api.state());
-          }}
-        />
-      )}
-      {editDraftsOpen && (
-        <EditDraftCenter
-          store={workspaceSessions.edits}
-          close={() => setEditDraftsOpen(false)}
-          changed={async () => {
-            await refreshConfirmedSession();
-          }}
-          resumePractice={async (contentId, path) => {
-            if (!(await resumeEditingSong(contentId, path))) return false;
-            setMetadataDraftPath(path);
-            setMetadata(true);
-            return true;
           }}
         />
       )}

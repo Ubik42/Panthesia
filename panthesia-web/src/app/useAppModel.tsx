@@ -49,7 +49,7 @@ export function useAppModel() {
   useEffect(installDiagnostics, []);
   const dialogs = useAppDialogs();
   const {
-    commandsOpen, setCommandsOpen, aboutOpen, setAboutOpen, editDraftsOpen, setEditDraftsOpen,
+    commandsOpen, setCommandsOpen, aboutOpen, setAboutOpen,
     metadata, setMetadata, metadataDraftPath, setMetadataDraftPath,
     settingsDevice, setSettingsDevice, exerciseDialog, setExerciseDialog, passageDialog, setPassageDialog,
     progressOpen, setProgressOpen, recoveryOpen, setRecoveryOpen, mediaExport, setMediaExport,
@@ -241,7 +241,7 @@ export function useAppModel() {
     }
     return playback.getSnapshot().contentId === contentId;
   };
-  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, exerciseDialog, metadata, editDraftsOpen, fingeringWorkbenchOpen,
+  const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, exerciseDialog, metadata, fingeringWorkbenchOpen,
     fingeringDialog, passageDialog, handsDialog, meterDialog,
     scoresDialog, !!mediaExport]);
   const { recentFiles, forgetRecent, opening, openPath, chooseFile } = useSongOpening({
@@ -324,7 +324,7 @@ export function useAppModel() {
     openSimple:target=>{
       if(target==="devices")openSoundSettings();
       else if(target==="exercise")setExerciseDialog(true);
-      else if(target==="drafts")setEditDraftsOpen(true);
+      else if(target==="drafts"){setMetadataDraftPath(null);setMetadata(true);}
     },
     openInterface:()=>{
       const draft=getInterfaceWorkbench(),input=draft.getSnapshot(),settings=interfaceSettings.getSnapshot();
@@ -499,8 +499,6 @@ export function useAppModel() {
     setCommandsOpen,
     aboutOpen,
     setAboutOpen,
-    editDraftsOpen,
-    setEditDraftsOpen,
     metadataDraftPath,
     setMetadataDraftPath,
     recentCommands,
