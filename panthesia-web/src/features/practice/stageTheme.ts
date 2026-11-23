@@ -18,7 +18,7 @@ export const pitchColors = [
 export const handSkin = {
   fill: "#f7f8fa",
   shade: "#dde2ea",
-  outline: "#8e97a8",
+  outline: "#a9b0bd",
   crease: "#7d879a66",
   nail: "#ffffff",
   shadow: "#0b0e1466",
@@ -43,6 +43,7 @@ export const stageInk = {
   lyricSung: "#ffe7a3",
   shadow: "#000000c0",
   ledBase: "#ffffff1a",
+  handBay: "#0c0f15",
   sectionTag: "#ffd27a",
   sectionText: "#2a1d05",
   fingerOnWhite: "#294432",

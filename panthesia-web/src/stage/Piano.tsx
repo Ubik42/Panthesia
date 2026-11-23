@@ -36,6 +36,14 @@ import {
 } from "../features/settings/displayPreferences";
 
 const sharp = isBlackKey;
+/** Room under the keys for the virtual hands' palms: the knuckles sit about 3.3 white keys
+ * behind the keys' front edge, the wrist further back. */
+const handBay = (display: DisplayPreferences, keyWidth: number, height: number) =>
+  display.virtualHands ? Math.round(Math.min(height * 0.22, Math.max(36, keyWidth * 3))) : 0;
+/** With the hands shown, keys are drawn in their real proportion (about six key widths long),
+ * the same scale the hands use. */
+const keyLength = (display: DisplayPreferences, keyWidth: number, height: number) =>
+  Math.min(height * 0.4, display.virtualHands ? Math.max(display.keyboardHeight, keyWidth * 6) : display.keyboardHeight);
 export function Piano({
   song,
   state,
@@ -323,8 +331,10 @@ export function Piano({
         note: LoadedSong["notes"][number];
         action: NonNullable<LoadedSong["fingerActions"]>[number];
       }[] = [];
-      const keyboardHeight = Math.min(display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight, height * 0.45),
-        baseline = height - keyboardHeight;
+      const keyWidth = white.length ? geometry(white[Math.floor(white.length / 2)], width).w : width / 52,
+        keyboardHeight = keyLength(display, keyWidth, height),
+        bay = handBay(display, keyWidth, height),
+        baseline = height - keyboardHeight - bay;
       const position = clock.current.sample(now);
       layer.begin(width, height, baseline, dpr, {
         ...stageBackdrops[display.skin],
@@ -660,9 +670,13 @@ export function Piano({
           if (label && keyLabels.has(note.pitch) && !keyLabels.get(note.pitch)) keyLabels.set(note.pitch,label);
         });
       }
+      if (bay) {
+        ctx.fillStyle = stageInk.handBay;
+        ctx.fillRect(0, height - bay, width, bay);
+      }
       keyboard.paint(ctx, {
         width,
-        height,
+        height: height - bay,
         dpr,
         keyboardHeight,
         pressed: state.pressed,
@@ -703,7 +717,7 @@ export function Piano({
         }
       }
       virtualHands.configure(song,state.speed,display.virtualHands);
-      const handState=virtualHands.paint(position,baseline,keyboardHeight,width,pitch=>keyLayout.has(pitch)?geometry(pitch,width):undefined,display.virtualHandOpacity/100);
+      const handState=virtualHands.paint(position,baseline,baseline+keyboardHeight,height,width,pitch=>keyLayout.has(pitch)?geometry(pitch,width):undefined,display.virtualHandOpacity/100);
       element.dataset.virtualHands=display.virtualHands?(virtualHands.ready?"ready":"preparing"):"off";
       element.dataset.handPoses=String(handState.hands);
       element.dataset.thumbUnder=String(handState.thumbUnder);
@@ -804,7 +818,7 @@ export function Piano({
     canvas,
     viewport,
     previewBars,
-    keyboardHeight: display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight,
+    keyboardHeight: keyLength(display, (canvas.current?.clientWidth ?? 1040) / 52, canvas.current?.clientHeight ?? 600) + handBay(display, (canvas.current?.clientWidth ?? 1040) / 52, canvas.current?.clientHeight ?? 600),
     onViewportChange,
     onPreviewBarsChange,
     canInteract,
@@ -837,11 +851,12 @@ export function Piano({
           y =
             ((e.clientY - bounds.top) * e.currentTarget.clientHeight) /
             Math.max(1, bounds.height);
-        const keyboardHeight = Math.min(
-          display.virtualHands?Math.max(360,display.keyboardHeight):display.keyboardHeight,
-          e.currentTarget.clientHeight * 0.45,
-        );
-        if (y < e.currentTarget.clientHeight - keyboardHeight) {
+        const keys = painted.current;
+        const keyWidth = keys.white.length ? keys.geometry(keys.white[Math.floor(keys.white.length / 2)], e.currentTarget.clientWidth).w : e.currentTarget.clientWidth / 52;
+        const keyboardHeight = keyLength(display, keyWidth, e.currentTarget.clientHeight);
+        const bay = handBay(display, keyWidth, e.currentTarget.clientHeight);
+        if (y > e.currentTarget.clientHeight - bay) return;
+        if (y < e.currentTarget.clientHeight - bay - keyboardHeight) {
           if (hitSource.current !== song) return;
           const hit = [...hitNotes.current]
             .reverse()
@@ -860,7 +875,7 @@ export function Piano({
         release(e.pointerId);
         const {white,black,geometry} = painted.current;
         const candidates =
-          y < e.currentTarget.clientHeight - keyboardHeight * 0.38
+          y < e.currentTarget.clientHeight - bay - keyboardHeight * 0.38
             ? [...black, ...white]
             : white;
         const pitch = candidates.find((p) => {

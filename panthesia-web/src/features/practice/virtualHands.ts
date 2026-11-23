@@ -102,7 +102,8 @@ export class VirtualHands {
         this.song = null;
         this.rate = 0;
     }
-    paint(time: number, baseline: number, height: number, width: number, geometry: (pitch: number) => {
+    /** `top` and `bottom`: the keys' fallboard and front edges; `height`: the canvas bottom. */
+    paint(time: number, top: number, bottom: number, height: number, width: number, geometry: (pitch: number) => {
         x: number;
         w: number;
     } | undefined, opacity: number) {
@@ -118,11 +119,11 @@ export class VirtualHands {
             };
         }
         const poses = plan.hands
-            .map((track) => handPose(track, time, plan.rate, baseline, height, geometry))
+            .map((track) => handPose(track, time, plan.rate, { top, bottom }, geometry))
             .filter((p): p is HandPose => !!p);
         const crossed = poses.length === 2 && poses[0].wrist.x > poses[1].wrist.x;
         const ordered = arrangeHands(poses);
-        this.drawing?.draw(ordered, width, baseline + height, baseline, opacity);
+        this.drawing?.draw(ordered, width, height, top, opacity);
         return {
             hands: poses.length,
             thumbUnder: poses.filter((p) => p.thumbUnder).length,
