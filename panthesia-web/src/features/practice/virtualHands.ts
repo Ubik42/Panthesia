@@ -1,7 +1,7 @@
 import type { LoadedSong } from "../../engine/sessionTypes";
 import type { HandPlan } from "./virtualHandPlan";
 import { handPose, arrangeHands, type HandPose } from "./virtualHandPose";
-import { HandDrawing } from "./virtualHandDrawing";
+import { HandMeshDrawing } from "./virtualHandMesh";
 import { reportDiagnostic } from "../../app/diagnostics";
 import { api } from "../../api";
 import type { PlannedFinger } from "../../engine/commands.generated";
@@ -22,10 +22,10 @@ export class VirtualHands {
     private worker: Worker | null = null;
     private plan: HandPlan | null = null;
     private generation = 0;
-    private drawing: HandDrawing;
+    private drawing: HandMeshDrawing;
     private disposed = false;
     constructor(private canvas: HTMLCanvasElement, private wake: () => void) {
-        this.drawing = new HandDrawing(canvas);
+        this.drawing = new HandMeshDrawing(canvas, wake);
     }
     dispose() {
         this.disposed = true;

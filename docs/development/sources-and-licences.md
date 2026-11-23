@@ -6,6 +6,7 @@ Panthesia 以 GPL-3.0-or-later 发布。本页记录代码来源、第三方内�
 
 - 部分初始代码来自 [Neothesia](https://github.com/PolyMeilex/Neothesia)（GPL-3.0）。2026-11-20 的逐文件比对以上游 `bb3be49d` 为基线：全部 1126 个文本文件中，62 个与上游相同、19 个仅品牌替换、42 个同路径但修改。此后 R0–R2 删除了旧原生界面、旧渲染器、`midi-file`、`piano-layout` 与旧曲库；MIDI 读取、音乐时间与琴键几何由 `panthesia-music`、`panthesia-keyboard` 按规范重写。仍保留的来源声明见 NOTICE。
 - 开发中查看过上游代码，本项目不宣称严格的 clean-room 实现。
+- 虚拟双手的手部网格与关节比例来自 WebXR `generic-hand` 模型（[immersive-web/webxr-input-profiles](https://github.com/immersive-web/webxr-input-profiles)，Meta 贡献，W3C Software and Document License），文件未修改，见 `panthesia-web/public/models/generic-hand/NOTICE.md`。渲染用 [Three.js](https://threejs.org/)（MIT）。
 - 虚拟双手参考了 [V9011N/pygame-piano-animator](https://github.com/V9011N/pygame-piano-animator) 的公开视频观感。该仓库没有许可证，Panthesia 没有复制或移植它的源码、参数表与权重（2026-11-21 用户决定）。
 
 ## 源码中直接包含的第三方代码

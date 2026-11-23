@@ -7,16 +7,14 @@ export type FingerPose = {
   finger: number;
   /** Joints from the finger's base (MCP; the thumb's CMC) to the tip, in millimetres. */
   points: V3[];
-  /** Bone widths (mm), one per bone. */
-  widths: number[];
   pressed: boolean;
   substitution: boolean;
 };
 export type HandPose = {
   side: "left" | "right";
   wrist: V3;
-  /** Palm outline corners in order (wrist, thumb side, knuckles, little side), millimetres. */
-  palm: V3[];
+  /** Base of each finger's metacarpal (index to little), fixed in the hand. */
+  metacarpals: V3[];
   fingers: FingerPose[];
   thumbUnder: boolean;
   /** Pixels per millimetre and the screen position of the keys' front edge. */
@@ -31,51 +29,51 @@ export type KeyBand = { top: number; bottom: number };
 
 const WHITE_KEY_MM = 23.5;
 
-/** A right hand at rest, palm down, wrist at the origin (thumb toward -X). Bone lengths follow
- * common adult measurements; widths and the fan of the fingers follow the reference video
- * (BV1gasF6UERM): fingers about 0.6 of a white key wide, a broad palm, the thumb leaving the
- * palm low beside the wrist at an angle, with a deep web between thumb and index finger. The
- * left hand is the mirror image. */
+/** A right hand at rest, palm down, wrist at the origin, thumb toward -X, millimetres. The
+ * joints are those of the WebXR `generic-hand` model (immersive-web/webxr-input-profiles, W3C
+ * licence) that the hands are drawn with, so the skeleton and the mesh agree. The left hand is
+ * the mirror image. */
 const ANATOMY = {
-  // Thumb: the CMC joint beside the wrist. Fingers: the MCP heads (knuckles).
+  // Thumb: CMC (base of the metacarpal). Fingers: MCP (the knuckle).
   bases: [
-    { x: -30, y: 16, z: 12 },
-    { x: -33, y: 72, z: 20 },
-    { x: -11, y: 76, z: 21 },
-    { x: 11, y: 72, z: 20 },
-    { x: 31, y: 63, z: 18 },
+    { x: -28, y: 36, z: -19.2 },
+    { x: -23.6, y: 88.5, z: -7.3 },
+    { x: -1.7, y: 91.6, z: -2.5 },
+    { x: 17.5, y: 84.7, z: -6.5 },
+    { x: 35.1, y: 73.9, z: -13.7 },
   ],
-  // Thumb: metacarpal, proximal, distal. Fingers: proximal, middle, distal phalanx.
+  /** Base of the metacarpal of the index, middle, ring and little finger. */
+  metacarpals: [
+    { x: -10.2, y: 29.2, z: -7.1 },
+    { x: -3.4, y: 29.1, z: -6.1 },
+    { x: 8.1, y: 27, z: -6.1 },
+    { x: 23, y: 34.1, z: -9.4 },
+  ],
+  // Thumb: metacarpal, proximal, distal phalanx. Fingers: proximal, middle, distal phalanx (to
+  // the tip joint at the pad).
   bones: [
-    [46, 32, 26],
-    [42, 25, 19],
-    [46, 28, 20],
-    [43, 27, 19],
-    [34, 20, 17],
+    [32.5, 33.7, 14.9],
+    [45.4, 24.2, 11.6],
+    [46.9, 27.6, 12.2],
+    [42.9, 26.6, 11.9],
+    [34.6, 20.3, 11.9],
   ],
-  widths: [
-    [21, 16.5, 15],
-    [14.5, 13.5, 12.5],
-    [15, 14, 13],
-    [14, 13, 12],
-    [12.5, 11.5, 10.5],
-  ],
-  // Where each fingertip rests, relative to its base (mm), when nothing is played: the
-  // fingers fan out a little; the thumb points outward and forward.
+  // Where each fingertip rests, relative to its base, when nothing is played: the model's own
+  // fan of the fingers, with the tips lowered toward the keys.
   rest: [
-    { x: -38, y: 72, z: -8 },
-    { x: -12, y: 66, z: -14 },
-    { x: -2, y: 72, z: -15 },
-    { x: 8, y: 67, z: -14 },
-    { x: 17, y: 55, z: -12 },
+    { x: -48, y: 56, z: -8 },
+    { x: 4.2, y: 76, z: -16 },
+    { x: 9, y: 80, z: -17 },
+    { x: 14, y: 74, z: -16 },
+    { x: 14, y: 60, z: -13 },
   ],
   /** The thumb metacarpal turns outward between these angles (degrees from straight ahead). */
   thumbSpread: [18, 70] as const,
-  thumbRestSpread: 34,
-  wristHalf: { ulnar: 34, radial: 26 },
+  thumbRestSpread: 36,
 };
 /** The wrist sits this far behind the keys' front edge (toward the player), at this height. */
-const WRIST_Y = -97;
+const WRIST_Y = -115;
+const WRIST_Z = 30;
 const LIFT = 16;
 
 const smooth = (x: number) => {
@@ -252,9 +250,9 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   const wrist: V3 = {
     x: pulls.reduce((s, p) => s + p.x * p.weight, 0) / weight,
     y: WRIST_Y + pulls.reduce((s, p) => s + p.forward * p.weight, 0) / weight,
-    z: 30,
+    z: WRIST_Z,
   };
-  const world = (p: V3): V3 => ({ x: wrist.x + mirror * p.x, y: wrist.y + p.y, z: p.z });
+  const world = (p: V3): V3 => ({ x: wrist.x + mirror * p.x, y: wrist.y + p.y, z: wrist.z + p.z });
 
   const ci = at(track.crossings, time, (c) => c.start),
     cross = track.crossings[ci];
@@ -295,36 +293,15 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     return {
       finger: i + 1,
       points: i === 0 ? thumbChain(b, target, ANATOMY.bones[0], mirror) : fingerChain(b, target, ANATOMY.bones[i], 0.67),
-      widths: ANATOMY.widths[i],
       pressed,
       substitution,
     };
   });
 
-  // Palm outline: wrist, the ball of the thumb along its metacarpal, the web between thumb and
-  // index finger, the knuckles, the little-finger side.
-  const thumb = fingers[0].points;
-  const knuckle = (i: number) => fingers[i].points[0];
-  const index = knuckle(1);
-  // The web reaches down to the middle of the thumb's metacarpal, as in the reference video:
-  // above it the thumb (drawn as its own bones) stands free of the palm.
-  const along = { x: blend(thumb[0].x, thumb[1].x, 0.45), y: blend(thumb[0].y, thumb[1].y, 0.45) };
-  const web = { x: along.x + mirror * 9, y: along.y + 2, z: 20 };
-  const { ulnar, radial } = ANATOMY.wristHalf;
-  const palm = [
-    world({ x: ulnar, y: 0, z: 26 }),
-    world({ x: -radial, y: 0, z: 24 }),
-    thumb[0],
-    web,
-    { x: index.x - mirror * 6, y: index.y - 4, z: index.z },
-    ...[1, 2, 3, 4].map(knuckle),
-    { x: knuckle(4).x + mirror * 6, y: knuckle(4).y - 8, z: knuckle(4).z },
-    world({ x: ulnar + 4, y: 34, z: 24 }),
-  ];
   return {
     side: track.side,
     wrist,
-    palm,
+    metacarpals: ANATOMY.metacarpals.map(world),
     fingers,
     thumbUnder,
     scale,
@@ -345,7 +322,7 @@ export function arrangeHands(poses: HandPose[]) {
   if (overlap <= 0) return poses;
   const upper = left.motion > right.motion ? left : right;
   for (const finger of upper.fingers) finger.points.forEach((p, i) => (p.z += overlap * 22 * (finger.pressed ? 1 - i / 3 : 1)));
-  upper.palm.forEach((p) => (p.z += overlap * 22));
+  upper.metacarpals.forEach((p) => (p.z += overlap * 22));
   upper.wrist.z += overlap * 22;
   return poses.filter((p) => p !== upper).concat(upper);
 }

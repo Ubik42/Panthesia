@@ -14,13 +14,10 @@ export const pitchColors = [
   "#4f8ff7", "#ffe873", "#f07ad8", "#5be0c4", "#ffb35c", "#8fa2ff",
 ] as const;
 
-/** Virtual hands: slender white hands with soft grey edges and joint creases. */
+/** Virtual hands: flat off-white skin, a soft grey outline, a shadow on the keys. */
 export const handSkin = {
   fill: "#f4f4f1",
-  shade: "#e6e6e2",
-  outline: "#cfd1d6",
-  crease: "#9a9ea880",
-  nail: "#ffffff",
+  outline: "#a9adb6",
   shadow: "#0b0e1466",
 } as const;
 

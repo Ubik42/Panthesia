@@ -2,6 +2,13 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-22 · 虚拟双手改用真实手模型；指法与手部资源调研（本条提交）
+
+- 调研（研究文档第 8 节）：用户提出的 pianomotion-studio 自有代码为 MIT + 署名，但其指法引擎与手部动作派生自 Hand-thesia（作者在许可中排除），不能使用。用户决定：资源用开源的，指法自己改进。
+- 手模型：WebXR `generic-hand`（W3C 许可，未修改，附 NOTICE）。`virtualHandPose.ts` 的关节、骨长、静止姿态改用该模型的数据（之前为手估）；新 `virtualHandMesh.ts` 用 Three.js（MIT，按需加载，约 190 KB gzip）正交俯视渲染蒙皮网格，卡通平涂 + 反向外壳描边 + CSS 投影；删除 2D 胶囊绘制 `virtualHandDrawing.ts`。
+- 检查：Look at the Sky 副本中放大舞台查看，左右手方向、拇指外展与虎口正确，网格无撕裂。
+- 下一步：PIG 指法评测，然后改进指法规划。
+
 ## 2026-11-22 · 虚拟双手：拇指单独建模、虎口与宽手掌（本条提交）
 
 - 用户指出拇指画得和其他四指一样，没有虎口。对照视频单帧（`work/hand-animation-research/video-reference/frames/z40.png`、`z90.png`）：拇指在手掌最下方才和手掌分开，第一掌骨斜向外约 35°，虎口低于四指指根约 35 mm；四指指根间距较大、成扇形；拇指静止时指尖在琴键前沿附近。
