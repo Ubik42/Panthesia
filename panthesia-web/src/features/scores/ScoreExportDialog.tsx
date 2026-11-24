@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { X, Download, FileText, Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Download, FileText, Loader2, RefreshCw } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import type { LoadedSong } from "../../api";
 import type { ScoreExportOptions } from "../../engine/commands.generated";
 import { useScoreExport } from "./useScoreExport";
@@ -23,34 +24,43 @@ export function ScoreExportDialog({
     allowPrepare && (options.fingers || options.hands || options.substitutions);
   const displayedOptions =
     workspace.artifact?.options ?? workspace.legacyOptions ?? options;
-  useEffect(() => {
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !workspace.saving) {
-        event.preventDefault();
-        close();
-      }
-    };
-    window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, [workspace.saving, close]);
   return (
-    <div className="modal-backdrop">
-      <section
-        className="settings-dialog score-export-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="score-export-title"
-      >
-        <header className="dialog-heading">
-          <h2 id="score-export-title">导出个人标记谱</h2>
+    <Dialog
+      title="导出个人标记谱"
+      close={close}
+      closeLabel="关闭导出谱"
+      closeDisabled={workspace.saving}
+      keepOnBackdrop
+      wide
+      className="score-export-dialog"
+      footer={
+        <>
           <button
-            aria-label="关闭导出谱"
-            onClick={close}
-            disabled={workspace.saving}
+            className="ui-button"
+            disabled={busy || !canPrepare || !!workspace.job}
+            onClick={() => void workspace.run()}
           >
-            <X size={18} />
+            {preview ? "按当前设置重新制作" : "制作预览"}
           </button>
-        </header>
+          <button
+            className="ui-button ui-button--primary"
+            disabled={
+              busy ||
+              !preview ||
+              (!workspace.artifact && !workspace.artifactCurrent)
+            }
+            onClick={() => void workspace.save()}
+          >
+            <Download size={16} />
+            {workspace.saving
+              ? "正在保存…"
+              : workspace.artifact
+                ? "保存这份 MusicXML"
+                : "保存 MusicXML"}
+          </button>
+        </>
+      }
+    >
         <p>
           为《{song.title}》制作 MusicXML
           副本。保留原谱的小节、反复、歌词与演奏记号，写入已保存的个人标记。
@@ -108,7 +118,7 @@ export function ScoreExportDialog({
             </select>
           </label>
         </div>
-        <p className="muted">
+        <p className="score-export-hint">
           分手以“左手 /
           右手”文字标注；原谱声部和谱表布局保持原样。尚未接受的推荐、纸谱批注不会写入此文件。持音换指同时写出对应起音指、接替指和起音后经过的四分音符拍数，按保存时的推荐速度校验动作；具体排版由制谱软件决定。
         </p>
@@ -151,7 +161,7 @@ export function ScoreExportDialog({
           </div>
         )}
         {error && (
-          <p className="error" role="alert">
+          <p role="alert">
             {error}
           </p>
         )}
@@ -300,31 +310,6 @@ export function ScoreExportDialog({
             </ul>
           </details>
         )}
-        <footer>
-          <button
-            disabled={busy || !canPrepare || !!workspace.job}
-            onClick={() => void workspace.run()}
-          >
-            {preview ? "按当前设置重新制作" : "制作预览"}
-          </button>
-          <button
-            className="primary"
-            disabled={
-              busy ||
-              !preview ||
-              (!workspace.artifact && !workspace.artifactCurrent)
-            }
-            onClick={() => void workspace.save()}
-          >
-            <Download size={16} />
-            {workspace.saving
-              ? "正在保存…"
-              : workspace.artifact
-                ? "保存这份 MusicXML"
-                : "保存 MusicXML"}
-          </button>
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

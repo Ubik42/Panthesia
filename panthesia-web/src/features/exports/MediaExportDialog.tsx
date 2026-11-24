@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Download, FileMusic, Package, RefreshCw, X } from "lucide-react";
+import { Download, FileMusic, Package, RefreshCw } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import type { MediaExportKind } from "../../engine/commands.generated";
 import type { MediaExportSource } from "./mediaExportStore";
 import { useMediaExport } from "./useMediaExport";
@@ -26,41 +27,42 @@ export function MediaExportDialog({
     : workspace.listing.drafts.filter(
         (row) => row.contentId === source.contentId && row.kind === kind,
       );
+  const title =
+    kind === "practiceMidi" ? "导出练习版 MIDI" : kind === "midi" ? "导出原始 MIDI" : "导出曲目包";
   return (
-    <div
-      className="modal-backdrop"
-      onClick={(event) => {
-        event.stopPropagation();
-        if (!saving) close();
-      }}
-    >
-      <section
-        className="settings-dialog media-export-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="media-export-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="dialog-heading">
-          <div>
-            <h2 id="media-export-title">
-              {kind === "practiceMidi"
-                ? "导出练习版 MIDI"
-                : kind === "midi"
-                  ? "导出原始 MIDI"
-                  : "导出曲目包"}
-            </h2>
-            <p>{source.title}</p>
-          </div>
+    <Dialog
+      title={title}
+      subtitle={source.title}
+      close={close}
+      closeLabel="关闭文件导出"
+      closeDisabled={saving}
+      wide
+      className="media-export-dialog"
+      footer={
+        <>
+          {workspace.supported && (
+            <button
+              className="ui-button"
+              disabled={busy || !!workspace.job}
+              onClick={() => void workspace.legacy()}
+            >
+              直接另存当前曲目
+            </button>
+          )}
           <button
-            data-dialog-close
-            aria-label="关闭文件导出"
-            disabled={saving}
-            onClick={close}
+            className={!artifact ? "ui-button ui-button--primary" : "ui-button"}
+            disabled={busy || !!workspace.job}
+            onClick={() => void workspace.prepare()}
           >
-            <X size={18} />
+            {artifact
+              ? "按当前曲目重新制作并另存"
+              : workspace.supported
+                ? "制作并另存"
+                : "另存当前曲目"}
           </button>
-        </header>
+        </>
+      }
+    >
         <div className="media-export-intro">
           <FileMusic size={26} aria-hidden="true" />
           <p>
@@ -153,7 +155,7 @@ export function MediaExportDialog({
               <p className="media-export-warning">{artifact.warning}</p>
             )}
             <button
-              className="primary"
+              className="ui-button ui-button--primary"
               disabled={busy || !!workspace.job}
               onClick={() => void workspace.save(artifact)}
             >
@@ -249,28 +251,6 @@ export function MediaExportDialog({
             </ul>
           </details>
         )}
-        <footer>
-          <button
-            disabled={busy || !!workspace.job}
-            className={!artifact ? "primary" : undefined}
-            onClick={() => void workspace.prepare()}
-          >
-            {artifact
-              ? "按当前曲目重新制作并另存"
-              : workspace.supported
-                ? "制作并另存"
-                : "另存当前曲目"}
-          </button>
-          {workspace.supported && (
-            <button
-              disabled={busy || !!workspace.job}
-              onClick={() => void workspace.legacy()}
-            >
-              直接另存当前曲目
-            </button>
-          )}
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

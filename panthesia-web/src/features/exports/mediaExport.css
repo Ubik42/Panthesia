@@ -1,147 +1,104 @@
-.media-export-dialog {
-  width: min(850px, 94vw);
-  max-height: 90vh;
-  overflow: auto;
-}
-.media-export-dialog header p {
-  margin: 5px 0 0;
-  color: var(--blue-82);
-  overflow-wrap: anywhere;
-}
-.media-export-intro {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  padding: 14px 0;
-}
-.media-export-intro > svg {
-  flex: 0 0 auto;
-  color: var(--green-83);
-}
-.media-export-intro p {
-  margin: 0;
-  line-height: 1.8;
-  font-size: 13px;
-  color: var(--gray-85);
-}
-.media-export-progress {
-  padding: 12px;
-  background: var(--blue-32);
-  border-left: 3px solid var(--blue-75);
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-.media-export-task-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.media-export-result {
-  padding: 18px;
-  margin: 18px 0;
-  border: 1px solid var(--green-49);
-  border-radius: 9px;
-  background: linear-gradient(120deg, var(--teal-34), var(--blue-32));
-}
-.media-export-result-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.media-export-result strong {
-  color: var(--green-93);
-  overflow-wrap: anywhere;
-}
-.media-export-result span,
-.media-export-result p {
-  color: var(--gray-85);
-  line-height: 1.8;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.media-export-dialog .media-export-warning {
-  color: var(--orange-88);
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-.media-export-warning button {
-  margin-left: 10px;
-}
-.media-export-cache summary {
-  cursor: pointer;
-  line-height: 1.9;
-}
-.media-export-cache > p {
-  font-size: 12px;
-  color: var(--blue-82);
-  line-height: 1.8;
-}
-.media-export-cache-toolbar {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 12px 0;
-}
-.media-export-cache ul {
-  padding: 0;
-  list-style: none;
-}
-.media-export-cache li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--blue-43);
-}
-.media-export-cache li > div {
-  flex: 1;
-  min-width: 0;
-}
-.media-export-cache strong,
-.media-export-cache small {
-  display: block;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-}
-.media-export-cache small,
-.media-export-cache li p {
-  font-size: 12px;
-  color: var(--blue-82);
-  line-height: 1.7;
-}
-.media-export-cache button[aria-pressed="true"] {
-  border-color: var(--green-80);
-  color: var(--green-93);
-  background: var(--green-39);
-}
-.media-export-result {
-  scroll-margin-top: 18px;
-}
-.media-export-dialog footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 10px;
-  position: sticky;
-  bottom: 0;
-  background: var(--gray-29);
-  border-top: 1px solid var(--blue-43);
-  margin-top: 18px;
-  padding: 14px 0;
-  z-index: 1;
-}
-.media-export-dialog button:focus-visible,
-.media-export-cache summary:focus-visible {
-  outline: 2px solid var(--green-87);
-  outline-offset: 3px;
-}
-@media (max-width: 650px) {
-  .media-export-cache li {
+/* File export dialog (MediaExportDialog.tsx), inside ui/Dialog. */
+@layer screens {
+  .media-export-intro {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    padding-bottom: var(--space-3);
+  }
+  .media-export-intro > svg {
+    flex: none;
+    color: var(--accent-strong);
+  }
+  .ui-form .media-export-intro p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .ui-form .media-export-progress {
+    padding: var(--space-2) var(--space-3);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+  .media-export-task-actions,
+  .media-export-cache-toolbar {
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+  }
+  .media-export-result {
+    margin: var(--space-3) 0;
+    padding: var(--space-4);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--surface-panel);
+    scroll-margin-top: var(--space-4);
+  }
+  .media-export-result-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .media-export-result strong {
+    overflow-wrap: anywhere;
+  }
+  .ui-form .media-export-result :is(span, p) {
+    color: var(--text-secondary);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .ui-form .media-export-warning,
+  .ui-form .media-export-warning p {
+    color: var(--state-warn);
+    overflow-wrap: anywhere;
+  }
+  .media-export-cache {
+    margin-top: var(--space-4);
+  }
+  .media-export-cache summary {
+    padding-block: var(--space-1);
+    color: var(--text-secondary);
+  }
+  .ui-form .media-export-cache > p {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .media-export-cache ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .media-export-cache li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line-subtle);
   }
   .media-export-cache li > div {
-    flex-basis: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+  .media-export-cache :is(strong, small) {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  .ui-form .media-export-cache :is(small, li p) {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  @media (max-width: 650px) {
+    .media-export-cache li {
+      flex-wrap: wrap;
+    }
+    .media-export-cache li > div {
+      flex-basis: 100%;
+    }
   }
 }

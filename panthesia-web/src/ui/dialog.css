@@ -4,6 +4,8 @@
   inset: 0;
   z-index: 50;
   display: grid;
+  /* One track no wider than the window, so the dialog's min(…, 100%) width can shrink. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: var(--space-5);
   background: oklch(8% 0.01 262 / 0.62);
