@@ -1,4 +1,4 @@
-import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageBackgroundSettings } from "../settings/StageBackgroundSettings";
 import { useOpenSongCover } from "../library/songCover";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
@@ -7,7 +7,7 @@ import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
 import { shortcutLabel } from "../../lib/shortcuts";
-import { LabelSelect, LabelSettings } from "../settings/LabelSettings";
+import { LabelPicker } from "../settings/LabelPicker";
 import { KeyboardRangeControls } from "./KeyboardRangeControls";
 import type { KeyboardRange, KeyboardViewport } from "./keyboardViewport";
 import { PracticeLegend } from "./PracticeLegend";
@@ -125,12 +125,10 @@ export function PerformanceTools({
         <Toggle optional icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
         <Toggle optional icon={MicVocal} label="歌词" on={display.lyrics} disabled={!song?.importedLayers.lyrics.length} change={(lyrics) => set({ lyrics })} />
         <Toggle optional icon={Clock4} label="拍号" on={display.meterLabels} change={(meterLabels) => set({ meterLabels })} />
-        <Toggle icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
+        <Toggle optional icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
       </div>
 
       <div className="stage-tools-group stage-display" aria-label="显示">
-        <LabelSelect compact target="key" className="stage-select bar-1360" value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
-        <LabelSelect compact target="note" className="stage-select bar-1360" value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
         <span className="stage-preview bar-1280" title={`前方预览 ${previewBarsLabel(display.previewBars)}`}>
           <button className="ui-icon-button" aria-label="减少前方预览" disabled={display.previewBars <= 0.5} onClick={() => set({ previewBars: Math.max(0.5, display.previewBars >= 2 ? display.previewBars - 1 : display.previewBars - 0.5) })}>
             <ChevronLeft size={16} />
@@ -143,12 +141,21 @@ export function PerformanceTools({
       </div>
 
       <div className="stage-tools-group" aria-label="面板">
+      <ToolbarMore panel width={460} icon={<Tags size={21} />} label="标签（琴键与音符）" disabled={!startupReady}>
+        <LabelPicker value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
+        <PracticeLegend song={song} display={display} />
+      </ToolbarMore>
+
       <ToolbarMore panel width={440} icon={<Palette size={22} />} label="背景" disabled={!startupReady}>
         <StageBackgroundSettings value={display} change={set} cover={cover} />
       </ToolbarMore>
 
       <ToolbarMore panel icon={<SlidersHorizontal size={22} />} label="显示设置" disabled={!startupReady}>
         <section aria-label="舞台">
+          <label className="fallback-1180">
+            <input type="checkbox" aria-label="节拍器" checked={!!state.metronome} disabled={busy || !song} onChange={(event) => action({ type: "metronome", enabled: event.target.checked })} />
+            节拍器
+          </label>
           <label className="fallback-1180">
             <input type="checkbox" aria-label="琴键灯带" checked={display.ledStrip} onChange={(event) => set({ ledStrip: event.target.checked })} />
             琴键灯带
@@ -202,15 +209,6 @@ export function PerformanceTools({
               歌词
             </label>
           )}
-          <LabelSettings
-            value={display}
-            selectsClass="fallback-1360"
-            tonic={song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic}
-            minor={song?.practiceVariant?.minor}
-            fifths={song?.practiceVariant?.effectiveFifths}
-            change={set}
-          />
-          <PracticeLegend song={song} display={display} />
         </section>
         <button className="stage-panel-link" onClick={open.settings}>
           更多显示设置…

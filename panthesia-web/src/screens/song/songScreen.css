@@ -405,3 +405,72 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+
+/* Polish (2026-11-24): facts as tiles, the two material columns as cards, quieter empty rows. */
+.song-details .song-facts {
+  gap: var(--space-2);
+}
+.song-details .song-facts > div,
+.song-details .song-facts > div:first-child {
+  padding: var(--space-2) var(--space-3);
+  border-left: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+}
+.song-details .song-cover {
+  border-radius: var(--radius-m);
+  box-shadow: 0 6px 18px color-mix(in oklch, var(--text-primary) 14%, transparent);
+}
+.song-details .ui-dialog-actions .song-start {
+  min-height: 34px;
+  padding: 0 var(--space-4);
+}
+.song-details .material-columns {
+  gap: var(--space-3);
+}
+.song-details .material-column {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-m);
+}
+.song-details .material-column h4 {
+  margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--line-subtle);
+  color: var(--text-secondary);
+  font: 600 12px/1.6 var(--font-ui);
+  letter-spacing: 0.04em;
+}
+.song-details .material-row {
+  margin: 0 calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  border-top: 0;
+  border-radius: var(--radius-s);
+}
+.song-details .material-row:hover {
+  background: var(--surface-sunken);
+}
+.song-details .material-row:not([data-has]) .material-kind svg {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.material-layer {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+.material-layer em {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--state-warn) 14%, transparent);
+  color: var(--state-warn);
+  font-size: 11px;
+  font-style: normal;
+}
+.song-details .play-notes {
+  padding: var(--space-2) var(--space-3) var(--space-2) 1.8em;
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+}

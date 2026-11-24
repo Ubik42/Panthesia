@@ -18,7 +18,7 @@ import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { applyStageInk, backdropFor, luminance, pitchColors, stageAtmospheres, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
-import { presetUrl } from "./backgroundPresets";
+import { presetUrl, useImageTone } from "./backgroundPresets";
 import { useOpenSongCover } from "../features/library/songCover";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -89,6 +89,13 @@ export function Piano({
         : display.backgroundImage.startsWith("preset:")
           ? presetUrl(display.backgroundImage.slice(7))
           : null;
+  // A picture replaces the colour: the ink follows the picture's own brightness.
+  const imageTone = useImageTone(backgroundImage);
+  const stageTone = backgroundImage ? (imageTone ?? display.stageColor) : display.stageColor;
+  const stageToneRef = useRef(stageTone);
+  stageToneRef.current = stageTone;
+  const pictureRef = useRef(!!backgroundImage);
+  pictureRef.current = !!backgroundImage;
   const hideNotesRef = useRef(hideNotes);
   hideNotesRef.current = hideNotes;
   const lastBaseline = useRef(-1);
@@ -360,12 +367,13 @@ export function Piano({
         canvas.current?.closest<HTMLElement>(".practice-stage")?.style.setProperty("--waterfall-height", `${baseline}px`);
       }
       const position = clock.current.sample(now);
-      applyStageInk(display.stageColor);
+      const tone = stageToneRef.current;
+      applyStageInk(tone);
       layer.begin(width, height, baseline, dpr, {
-        ...backdropFor(display.stageColor),
+        ...backdropFor(tone),
         // The glow from the keys is a dark tint: only on dark backgrounds.
-        atmosphere: luminance(display.stageColor) > 0.4 ? "#00000000" : stageAtmospheres[display.effectsPalette],
-        opacity: display.backgroundOpacity / 100,
+        atmosphere: luminance(tone) > 0.4 || pictureRef.current ? "#00000000" : stageAtmospheres[display.effectsPalette],
+        opacity: pictureRef.current ? 0 : display.backgroundOpacity / 100,
       });
       for (const pitch of white) {
         const { x } = geometry(pitch, width);
@@ -437,7 +445,7 @@ export function Piano({
             if (to <= from) return;
             const top = baseline - (to + window.offset - tick) * pixels,
               bottom = baseline - (from + window.offset - tick) * pixels;
-            layer.rect(0, top, width, bottom - top, colors[i], luminance(display.stageColor) > 0.4 ? 0.05 : 0.12);
+            layer.rect(0, top, width, bottom - top, colors[i], luminance(stageToneRef.current) > 0.4 ? 0.05 : 0.12);
             layer.rect(0, top, 4, bottom - top, colors[i], 0.75);
           });
       }
@@ -868,7 +876,7 @@ export function Piano({
   });
   return (
     <div className="piano-surface">
-    {backgroundImage && <div className="piano-backdrop-image" style={{ backgroundImage: `url("${backgroundImage}")` }} aria-hidden="true" />}
+    {backgroundImage && <div className="piano-backdrop-image" style={{ backgroundImage: `url("${backgroundImage}")`, opacity: display.backgroundImageOpacity / 100 }} aria-hidden="true" />}
     <canvas ref={waterfallCanvas} className="piano-waterfall" aria-hidden="true" />
     <canvas
       ref={canvas}

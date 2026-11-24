@@ -8,8 +8,12 @@ import {
   Link2,
   LoaderCircle,
   Image,
+  Hand,
   Mic,
+  MicVocal,
+  Milestone,
   Music,
+  Music2,
   PencilLine,
   Play,
   Plus,
@@ -204,7 +208,6 @@ export function SongDetails({
 
   const facts = summary?.facts;
   const title = facts?.title ?? song.title;
-  const startLabel = mode === "listen" ? "开始播放" : "开始练习";
   const summaryText = `按上次的方式开始：${mode === "listen" ? "连续播放" : `等待按键 · ${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}`}`;
   const materials = summary?.materials ?? [];
   const cover = useSongCover(materials.find((m) => m.kind === "cover")?.items.find((i) => i.state !== "missing")?.path);
@@ -252,12 +255,32 @@ export function SongDetails({
   const files = (material: Material, list: MaterialItem[]) =>
     list.length ? <ul>{list.map((item) => fileLine(material, item))}</ul> : <span className="material-empty">—</span>;
 
+  const generatorButtons = (material: Material) =>
+    material.generators.map((generator) => (
+      <button
+        key={generator.id}
+        className="ui-icon-button"
+        disabled={locked || busyGenerating(generator) || !generator.available || readOnly}
+        title={`${generator.label}${generator.reason ? `（${generator.reason}）` : ""}`}
+        aria-label={generator.label}
+        onClick={() => generate(generator)}
+      >
+        {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
+      </button>
+    ));
+
   return (
     <Dialog
       title={title}
       subtitle={facts?.artist ?? undefined}
       close={back}
       className="song-details"
+      actions={
+        <button className="ui-button ui-button--primary song-start" disabled={locked} title={summaryText} onClick={() => void launch()}>
+          {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
+          {pending === "start" ? "正在准备…" : "开始练习"}
+        </button>
+      }
     >
       {(loadError || message || failure) && (
         <p className="song-message" role="alert">
@@ -270,10 +293,6 @@ export function SongDetails({
           {cover ? <img src={cover} alt="" /> : <Music aria-hidden="true" />}
         </div>
         <div className="song-head-main">
-          <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} title={summaryText} onClick={() => void launch()}>
-            {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
-            {pending === "start" ? "正在准备…" : startLabel}
-          </button>
         <dl className="song-facts">
           <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
           <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
@@ -347,53 +366,59 @@ export function SongDetails({
             <MaterialColumn
               title="输入"
               rows={materials
-                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin !== "generated") }))
-                .filter((r) => INPUT_ROWS.has(r.material.kind) || r.items.length)}
-              render={(material, items) => (
-                <>
-                  {files(material, items)}
-                  {ATTACH[material.kind] && INPUT_ROWS.has(material.kind) && (
-                    <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
-                      <Plus />
-                    </button>
-                  )}
-                </>
-              )}
+                .map((m) => ({ material: m, items: AUDIO_KINDS.has(m.kind) ? m.items : m.items.filter((i) => i.origin !== "generated") }))
+                .filter((r) => INPUT_ROWS.has(r.material.kind) || r.items.length)
+                .sort((a, b) => INPUT_ORDER.indexOf(a.material.kind) - INPUT_ORDER.indexOf(b.material.kind))
+                .map(({ material, items }) => ({
+                  key: material.kind,
+                  icon: ICONS[material.kind],
+                  label: material.label,
+                  has: items.some((i) => i.state !== "missing" && i.state !== "found"),
+                  content: (
+                    <>
+                      {material.empty && !items.length ? <span className="material-empty" title="分离结果几乎是静音，不作为分轨">无（分离结果为静音）</span> : files(material, items)}
+                      {AUDIO_KINDS.has(material.kind) && generatorButtons(material)}
+                      {ATTACH[material.kind] && (
+                        <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
+                          <Plus />
+                        </button>
+                      )}
+                    </>
+                  ),
+                }))}
             />
             <MaterialColumn
-              title="生成"
-              rows={materials
-                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin === "generated") }))
-                .filter((r) => r.items.length || r.material.empty || r.material.generators.length)}
-              render={(material, items) => (
-                <>
-                  {material.empty && !items.length ? <span className="material-empty" title="分离结果几乎是静音，不作为分轨">无（分离结果为静音）</span> : files(material, items)}
-                  {material.generators.map((generator) => (
-                    <button
-                      key={generator.id}
-                      className="ui-icon-button"
-                      disabled={locked || busyGenerating(generator) || !generator.available || readOnly}
-                      title={`${generator.label}${generator.reason ? `（${generator.reason}）` : ""}`}
-                      aria-label={generator.label}
-                      onClick={() => generate(generator)}
-                    >
-                      {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
-                    </button>
-                  ))}
-                </>
-              )}
+              title="输出"
+              rows={[
+                ...materials
+                  .filter((m) => !AUDIO_KINDS.has(m.kind))
+                  .map((m) => ({ material: m, items: m.items.filter((i) => i.origin === "generated") }))
+                  .filter((r) => r.items.length || r.material.generators.length)
+                  .map(({ material, items }) => ({
+                    key: material.kind,
+                    icon: ICONS[material.kind],
+                    label: material.label,
+                    has: items.length > 0,
+                    content: (
+                      <>
+                        {files(material, items)}
+                        {generatorButtons(material)}
+                      </>
+                    ),
+                  })),
+                ...(summary.layers ?? [])
+                  .filter((l) => OUTPUT_LAYERS.has(l.name) && (l.name !== "lyrics" || l.count > 0))
+                  .map((layer) => ({
+                    key: `layer:${layer.name}`,
+                    icon: LAYER_ICONS[layer.name],
+                    label: LAYER_NAMES[layer.name] ?? layer.label,
+                    has: !!layer.origin,
+                    content: <LayerCell layer={layer} edit={EDITABLE.has(layer.name) ? () => editLayer(layer.name) : undefined} disabled={locked} />,
+                  })),
+              ]}
             />
           </div>
         )}
-      </section>
-
-      <section className="song-section" aria-labelledby="song-layers-title">
-        <h3 id="song-layers-title">图层</h3>
-        <div className="song-layers">
-          {(summary?.layers ?? []).map((layer) => (
-            <LayerChip key={layer.name} layer={layer} edit={EDITABLE.has(layer.name) ? () => editLayer(layer.name) : undefined} disabled={locked} />
-          ))}
-        </div>
       </section>
 
       <section className="song-section song-overview" aria-label="MIDI 总览">
@@ -407,7 +432,16 @@ export function SongDetails({
 /** Rows the input column always shows, so a missing input can be added. Whether a file is an
  * input or generated comes from its provenance, not its kind (song-pipeline.md): a MIDI the
  * player brought is an input, one transcribed from the recording is generated. */
-const INPUT_ROWS = new Set(["performance", "musicxml", "source", "paper", "cover"]);
+const INPUT_ROWS = new Set(["performance", "musicxml", "source", "paper", "vocals", "accompaniment", "cover"]);
+/** Recordings and pictures count as inputs even when separated or cut from the video: they are
+ * what the player listens to and looks at, not notation made for practice. */
+const AUDIO_KINDS = new Set(["source", "vocals", "accompaniment", "stems", "cover"]);
+const INPUT_ORDER = ["source", "vocals", "accompaniment", "stems", "cover", "performance", "musicxml", "abc", "paper"];
+/** Layers shown with the outputs. Hands are part of the fingering (one algorithm makes both);
+ * key and tempo are in the facts; lyrics only when the MIDI has them. */
+const OUTPUT_LAYERS = new Set(["fingering", "chords", "sections", "lyrics"]);
+const LAYER_NAMES: Record<string, string> = { fingering: "指法与手别" };
+const LAYER_ICONS: Record<string, ReactNode> = { fingering: <Hand />, chords: <Music2 />, sections: <Milestone />, lyrics: <MicVocal /> };
 /** The step that made a generated file (provenance.step). */
 /** A generated file by its label and type ("乐谱量化 · MID"): its name repeats the song's. */
 const displayName = (item: MaterialItem) => {
@@ -417,19 +451,19 @@ const displayName = (item: MaterialItem) => {
 };
 const STEP_NAMES: Record<string, string> = { separate: "分离", transcribe: "转录", engrave: "制谱", export: "导出", frame: "视频画面", omr: "识谱" };
 
-/** One column of the materials: a row per kind, its files and its actions. */
-function MaterialColumn({ title, rows, render }: { title: string; rows: { material: Material; items: MaterialItem[] }[]; render: (material: Material, items: MaterialItem[]) => ReactNode }) {
+/** One column of the materials: a row per kind (or layer), its files and its actions. */
+function MaterialColumn({ title, rows }: { title: string; rows: { key: string; icon: ReactNode; label: string; has: boolean; content: ReactNode }[] }) {
   return (
     <div className="material-column">
       <h4>{title}</h4>
       <ul className="material-rows">
-        {rows.map(({ material, items }) => (
-          <li key={material.kind} className="material-row" data-has={items.some((i) => i.state !== "missing" && i.state !== "found") || undefined}>
+        {rows.map((row) => (
+          <li key={row.key} className="material-row" data-has={row.has || undefined}>
             <span className="material-kind">
-              {ICONS[material.kind]}
-              {material.label}
+              {row.icon}
+              {row.label}
             </span>
-            <span className="material-cell">{render(material, items)}</span>
+            <span className="material-cell">{row.content}</span>
           </li>
         ))}
       </ul>
@@ -569,24 +603,20 @@ function Fact({ name, value, note }: { name: string; value: string; note?: strin
   );
 }
 
-function LayerChip({ layer, edit, disabled }: { layer: Layer; edit?: () => void; disabled: boolean }) {
-  const tone = layer.origin === "generated" ? "generated" : layer.origin ? "ok" : "none";
-  const body = (
+/** A layer in the output column: where it came from, whether it waits for review, and edit. */
+function LayerCell({ layer, edit, disabled }: { layer: Layer; edit?: () => void; disabled: boolean }) {
+  return (
     <>
-      <span className="ui-dot" data-tone={tone} />
-      {layer.label}
-      <small>{layer.origin ? ORIGIN_NAMES[layer.origin] : "—"}</small>
-      {layer.review === "pending" && <small className="song-layer-review">待检查</small>}
+      <span className="material-layer">
+        {layer.origin ? `${ORIGIN_NAMES[layer.origin]}${layer.count ? ` · ${layer.count}` : ""}` : <span className="material-empty">—</span>}
+        {layer.review === "pending" && <em data-state="found" title="算法生成，尚未经 AI 或你检查">待检查</em>}
+      </span>
+      {edit && (
+        <button className="ui-icon-button" title={`编辑${layer.label}`} aria-label={`编辑${layer.label}`} disabled={disabled} onClick={edit}>
+          <PencilLine />
+        </button>
+      )}
     </>
-  );
-  return edit ? (
-    <button className="ui-chip" data-origin={layer.origin ?? "none"} disabled={disabled} onClick={edit} title={layer.review === "pending" ? `编辑${layer.label}（算法生成，尚未经 AI 检查润色）` : `编辑${layer.label}`}>
-      {body}
-    </button>
-  ) : (
-    <span className="ui-chip" data-origin={layer.origin ?? "none"} title={layer.review === "pending" ? "算法生成，尚未经 AI 检查润色" : undefined}>
-      {body}
-    </span>
   );
 }
 

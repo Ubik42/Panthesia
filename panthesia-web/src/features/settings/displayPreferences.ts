@@ -52,8 +52,10 @@ export type DisplayPreferences = {
   palette: "standard" | "accessible" | "pitch";
   /** How much of the waterfall backdrop covers the background image (0 shows only the image). */
   backgroundOpacity: number;
-  /** The picture behind the waterfall: none, the song's cover, a preset or the player's own. */
+  /** The picture behind the waterfall: none (the colour), the song's cover, a preset or the player's own. */
   backgroundImage: BackgroundImage;
+  /** How strongly the picture shows (0–100); the colour is not drawn while a picture is chosen. */
+  backgroundImageOpacity: number;
   /** A light strip along the top edge of the keys, lit in the colours of the sounding notes. */
   ledStrip: boolean;
   range: KeyboardRangeMode;
@@ -116,7 +118,7 @@ export const displayDefaults: DisplayPreferences = {
   keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
-  practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff", backgroundImage: "none",
+  practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff", backgroundImage: "none", backgroundImageOpacity: 100,
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
@@ -239,6 +241,7 @@ export function normalizeDisplayPreferences(
     backgroundOpacity: size(raw.backgroundOpacity, 0, 100, 100),
     // Before this setting a chosen picture always showed: keep showing it.
     backgroundImage: isBackgroundImage(raw.backgroundImage) ? raw.backgroundImage : hasStageBackground() ? "custom" : "none",
+    backgroundImageOpacity: size(raw.backgroundImageOpacity, 10, 100, 100),
     ledStrip: typeof raw.ledStrip === "boolean" ? raw.ledStrip : true,
     tonic:
       Number.isInteger(raw.tonic) && raw.tonic! >= 0 && raw.tonic! < 12

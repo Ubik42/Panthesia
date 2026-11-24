@@ -18,6 +18,7 @@ export function Dialog({
   keepOnBackdrop = false,
   closeDisabled = false,
   className,
+  actions,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -31,6 +32,8 @@ export function Dialog({
   closeDisabled?: boolean;
   /** Extra class on the dialog, for its own content styles. */
   className?: string;
+  /** Main actions in the title row, before the close button. */
+  actions?: ReactNode;
 }) {
   const ref = useRef<HTMLElement>(null);
   // Escape and Tab are handled for every dialog by the window's focus manager (useDialogFocus):
@@ -55,6 +58,7 @@ export function Dialog({
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
+          {actions && <div className="ui-dialog-actions">{actions}</div>}
           <button className="ui-icon-button" aria-label={closeLabel} data-dialog-close disabled={closeDisabled} onClick={close}>
             <X />
           </button>
