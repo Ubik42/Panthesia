@@ -553,13 +553,10 @@ export function Notation({
       label.setAttribute("y", String(point.y));
       label.setAttribute("font-size", String(13 / Math.hypot(ctm.a, ctm.b)));
       label.setAttribute("text-anchor", "middle");
+      // Colour by hand, or warning when an action cannot be used at this speed (notationWorkspace.css).
       label.setAttribute(
-        "fill",
-        actions.some((a) => !actionUsable(a, speed))
-          ? "#9a4b08"
-          : notes[0]?.part === "left"
-            ? "#0765a3"
-            : "#4b751c",
+        "data-tone",
+        actions.some((a) => !actionUsable(a, speed)) ? "warn" : notes[0]?.part === "left" ? "left" : "right",
       );
       label.setAttribute("font-weight", "700");
       label.textContent = fingers.join("/");

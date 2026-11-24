@@ -115,3 +115,29 @@
 .synthesia-layout .notation-pane > .notation-toolbar input[type="checkbox"] {
   accent-color: var(--accent);
 }
+
+/* Score background (settings → notes): transparent by default, the engraving drawn in the
+   interface text colour. Verovio strokes with currentColor, fills glyphs with the default
+   black and sets color="black" on its inner svg, so both colour and fill are set here. */
+.workbench[data-score-paper="transparent"] .score-paper {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+.workbench[data-score-paper="transparent"] .score-paper :is(svg, svg .definition-scale) {
+  color: var(--text-primary);
+  fill: currentColor;
+}
+.score-paper .score-practice-finger[data-tone="left"] { fill: var(--hand-left); }
+.score-paper .score-practice-finger[data-tone="right"] { fill: var(--hand-right); }
+.score-paper .score-practice-finger[data-tone="warn"] { fill: var(--state-warn); }
+/* On a white page the hand colours are darkened to keep their contrast. */
+.workbench[data-score-paper="paper"] .score-paper .score-practice-finger[data-tone] {
+  fill: color-mix(in oklab, var(--hand-right) 55%, var(--gray-0));
+}
+.workbench[data-score-paper="paper"] .score-paper .score-practice-finger[data-tone="left"] {
+  fill: color-mix(in oklab, var(--hand-left) 55%, var(--gray-0));
+}
+.workbench[data-score-paper="paper"] .score-paper .score-practice-finger[data-tone="warn"] {
+  fill: color-mix(in oklab, var(--state-warn) 50%, var(--gray-0));
+}

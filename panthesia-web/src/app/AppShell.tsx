@@ -13,6 +13,7 @@ export function AppShell() {
     <div
       className={`workbench daily-workbench synthesia-layout page-${workspace} ${display.practiceFocus ? "practice-focus" : ""}`}
       data-product-screen={productScreens.screen}
+      data-score-paper={display.scorePaper}
       data-engine-connected={connected}
       data-engine-ready={startupReady}
     >

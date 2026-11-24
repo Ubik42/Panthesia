@@ -136,6 +136,17 @@ export function DisplaySettingsPanel({
               <option value="pitch">按音高（12 色）</option>
             </select>
           </label>
+          <label>
+            <span>谱面背景</span>
+            <select
+              aria-label="谱面背景"
+              value={value.scorePaper}
+              onChange={(event) => update({ scorePaper: event.target.value as DisplayPreferences["scorePaper"] })}
+            >
+              <option value="transparent">透明</option>
+              <option value="paper">白纸</option>
+            </select>
+          </label>
           <PreviewBarsControl value={value.previewBars} change={previewBars=>update({previewBars})} label="前方预览" ariaLabel="键盘音符预览小节数"/>
         </section>
         <KeyboardRangeSettings value={value} change={update} input={input} />
