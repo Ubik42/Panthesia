@@ -282,23 +282,6 @@ export function usePracticeSession() {
       sessionReads.current.clear();
     };
   }, [refresh]);
-  useEffect(() => {
-    if (!api.desktop) return;
-    let stopped = false;
-    let unsubscribe: (() => void) | undefined;
-    void listen<string>("neothesia-close-blocked", (event) => {
-      if (!stopped) setError(event.payload);
-    })
-      .then((release) => {
-        if (stopped) release();
-        else unsubscribe = release;
-      })
-      .catch(() => {});
-    return () => {
-      stopped = true;
-      unsubscribe?.();
-    };
-  }, []);
   // Published states arrive in order from the engine. A state of another song or a new
   // engine marks the loaded song stale; it is read again at most once a second.
   useEffect(() => {

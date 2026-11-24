@@ -276,21 +276,21 @@ export function AppDialogs() {
           }}
         />
       )}
-      {recoveryOpen && !workspaceSessions.desktopClose.status && (
+      {recoveryOpen && (
         <SessionRecoveryDialog
           store={sessionRecovery}
           act={recoverSession}
           close={() => setRecoveryOpen(false)}
         />
       )}
-      {progressOpen && !workspaceSessions.desktopClose.status && (
+      {progressOpen && (
         <WorkProgressDialog
           store={workspaceSessions.workProgress}
           close={() => setProgressOpen(false)}
           open={openWork}
         />
       )}
-      {aboutOpen && !workspaceSessions.desktopClose.status && (
+      {aboutOpen && (
         <AboutDialog close={() => setAboutOpen(false)} />
       )}
     </>

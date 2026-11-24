@@ -1,4 +1,3 @@
-import { useCloseParticipant } from "../../lib/closePreparation";
 import { usePaperInk } from "./PaperInk";
 import { paperPoint as rotate, paperAnnotationBox } from "./PaperGeometry";
 export { paperAnnotationBox } from "./PaperGeometry";
@@ -179,9 +178,6 @@ export function PaperAnnotations({
     }
     setDraftStorageError("");
   };
-  useCloseParticipant("纸谱批注", () => edit && (draftBlocked.current || JSON.stringify(edit) !== draftOriginal.current) ? draftStorageError || "当前批注草稿尚未暂存。" : null, () => {
-    try { persistDraft(); } catch (error) { setDraftStorageError(error instanceof Error ? error.message : String(error)); throw error; }
-  });
   useEffect(() => {
     try {
       persistDraft();

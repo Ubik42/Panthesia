@@ -181,6 +181,7 @@ fn metadata(manifest: &Manifest) -> SongMetadata {
         collection: text("collection"),
         difficulty: text("difficulty"),
         notes: text("notes"),
+        source: text("source"),
         tags: manifest
             .metadata
             .get("tags")
@@ -201,6 +202,7 @@ fn set_metadata(manifest: &mut Manifest, value: &SongMetadata) {
         ("collection", &value.collection),
         ("difficulty", &value.difficulty),
         ("notes", &value.notes),
+        ("source", &value.source),
     ] {
         match field {
             Some(text) => manifest.metadata.insert(key.into(), json!(text)),

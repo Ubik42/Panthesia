@@ -5,7 +5,6 @@ import type { PaperAttachment, PaperView } from "./paperTypes";
 import { annotatedBookPdf } from "./PaperBookExport";
 import { annotatedRasterPng } from "./annotatedRaster";
 import { createPaperExportFeedback } from "./PaperExportFeedback";
-import { useCloseParticipant } from "../../lib/closePreparation";
 
 const exportName = (name: string, suffix: string) => {
   const stem = name
@@ -66,14 +65,6 @@ export function usePaperExport({
   const exportLock = useRef(false),
     exportCancelled = useRef(false),
     readerAlive = useRef(true);
-  useCloseParticipant("谱页批注导出", () => {
-    if (exportLock.current) return "批注图片或 PDF 仍在制作或保存，请等待当前处理结束。";
-    if (preparedPage && !savedArtifacts.current.has(preparedPage)) return "已制作的批注图片尚未另存，关闭后这份临时图片会释放。";
-    if (preparedBook && !savedArtifacts.current.has(preparedBook)) return "已制作的批注 PDF 尚未另存，关闭后这份临时 PDF 会释放。";
-    return null;
-  }, () => {
-    if (exportReadsSource.current && !exportCommitting) { exportCancelled.current = true; exportAbort.current?.abort("closing"); }
-  });
   useEffect(() => {
     readerAlive.current = true;
     return () => {

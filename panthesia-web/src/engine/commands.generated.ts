@@ -113,36 +113,6 @@ export interface MuseScoreProgramStatus {
   "cancelled": boolean;
 }
 
-export const DesktopClosePhaseValues = ["preparing", "saving", "finalizing", "reviewing", "returning"] as const;
-export type DesktopClosePhase = typeof DesktopClosePhaseValues[number];
-
-export interface DesktopCloseStatus {
-  "id": string;
-  "pass": number;
-  "phase": DesktopClosePhase;
-  "message": string;
-}
-
-export const DesktopCloseIssueKindValues = ["temporary", "recovery", "problem"] as const;
-export type DesktopCloseIssueKind = typeof DesktopCloseIssueKindValues[number];
-
-export interface DesktopCloseIssue {
-  "key": string;
-  "label": string;
-  "detail": string;
-  "kind"?: DesktopCloseIssueKind;
-}
-
-export interface DesktopCloseReport {
-  "issues": Array<DesktopCloseIssue>;
-  "checked": Array<string>;
-}
-
-export interface DesktopCloseReview {
-  "id": string;
-  "report": DesktopCloseReport;
-}
-
 export interface PaperPracticeSnapshot {
   "contentId": string | null;
   "grid": string;
@@ -1021,6 +991,7 @@ export interface SongMetadata {
   "difficulty"?: string | null;
   "tags"?: Array<string>;
   "notes"?: string | null;
+  "source"?: string | null;
 }
 
 export interface FingerHint {

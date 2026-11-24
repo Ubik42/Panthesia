@@ -10,7 +10,6 @@ export function useWorkspaceChange(o: {
   busy: boolean;
   startupReady: boolean;
   state: ControlSnapshot;
-  closing: boolean;
   binding: boolean;
   requestPending: boolean;
   requestBusy: MutableRefObject<boolean>;
@@ -33,8 +32,7 @@ export function useWorkspaceChange(o: {
         !live.recording && live.startup?.ready !== false && !live.storage?.operation;
     }, signal);
   }, [busy, startupReady, state.recording, workspace, run, clearLiveNotes, playback, requestBusy]);
-  const workspaceUnavailable = o.closing ? "正在保存并关闭软件。"
-    : o.binding ? "正在读取当前练习，完成后可切换工作区。"
+  const workspaceUnavailable = o.binding ? "正在读取当前练习，完成后可切换工作区。"
     : state.storage?.operation ? "正在保存练习资料，完成后可切换工作区。"
     : state.storage?.error ? "练习资料保存需要处理，请查看恢复入口。"
     : o.requestPending ? "正在处理当前操作，完成后可切换工作区。"

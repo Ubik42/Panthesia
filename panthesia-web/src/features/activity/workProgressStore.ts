@@ -74,7 +74,6 @@ export interface WorkSources {
 export interface ProgressContext {
   engineId?: string;
   connected: boolean;
-  closing: boolean;
 }
 export interface WorkSnapshot {
   connected: boolean;
@@ -594,7 +593,7 @@ export function collectWork(
 
 export function createWorkProgressStore(sources: WorkSources) {
   const deviceTasks = createDeviceTaskStore();
-  let context: ProgressContext = { connected: false, closing: false };
+  let context: ProgressContext = { connected: false };
   let snapshot: WorkSnapshot = {
     connected: false,
     rows: [],
@@ -666,7 +665,6 @@ export function createWorkProgressStore(sources: WorkSources) {
     const next = JSON.stringify([
       context.connected,
       context.engineId,
-      context.closing,
       rows.map((row) => [
         row.id,
         row.version,

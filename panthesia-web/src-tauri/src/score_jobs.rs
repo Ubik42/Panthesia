@@ -89,7 +89,7 @@ struct Entry {
     worker: Weak<()>,
 }
 #[derive(Clone, Default)]
-pub struct Jobs(Arc<Mutex<BTreeMap<String, Entry>>>, Arc<AtomicBool>);
+pub struct Jobs(Arc<Mutex<BTreeMap<String, Entry>>>);
 #[derive(Clone)]
 pub struct Token {
     id: String,
@@ -379,9 +379,6 @@ impl Jobs {
             return Err("曲目或文件任务已改变，请重新打开对应窗口".into());
         }
         let mut all = self.0.lock().map_err(|_| "文件任务状态不可用")?;
-        if self.1.load(Ordering::Acquire) {
-            return Err("软件正在关闭，文件任务尚未开始".into());
-        }
         if let Some(entry) = all.get(&request.id) {
             return Err(if entry.status.phase == ScoreJobPhase::Cancelled {
                 "后台任务已取消，请重新生成"
@@ -520,37 +517,6 @@ impl Jobs {
                 }
             }
         }
-    }
-    pub fn stop_for_close(&self) -> Result<(), String> {
-        self.1.store(true, Ordering::Release);
-        let mut all = self.0.lock().map_err(|_| "文件任务状态不可用")?;
-        for entry in all.values_mut() {
-            if entry.status.cancellable
-                && matches!(
-                    entry.status.phase,
-                    ScoreJobPhase::Preparing | ScoreJobPhase::Running
-                )
-            {
-                entry.cancelled.store(true, Ordering::Release);
-                entry.status.phase = ScoreJobPhase::Cancelled;
-                entry.status.stage = if entry.status.stage == "choosingExportTarget" {
-                    "cancelledChoosingExportTarget"
-                } else {
-                    "cancelled"
-                }
-                .into();
-                entry.status.cancellable = false;
-                entry.touched = Instant::now();
-            }
-        }
-        Ok(())
-    }
-    pub fn idle(&self) -> Result<bool, String> {
-        let all = self.0.lock().map_err(|_| "文件任务状态不可用")?;
-        Ok(all.values().all(|entry| entry.worker.strong_count() == 0))
-    }
-    pub fn resume_after_close(&self) {
-        self.1.store(false, Ordering::Release);
     }
 }
 #[tauri::command]

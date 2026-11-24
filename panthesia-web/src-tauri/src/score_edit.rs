@@ -96,17 +96,9 @@ impl Lease {
     fn take(
         all: Arc<Mutex<HashSet<String>>>,
         id: &str,
-        closing: &std::sync::atomic::AtomicBool,
-        allow_closing: Option<&std::sync::atomic::AtomicBool>,
     ) -> Result<Self, String> {
         {
             let mut pending = all.lock().map_err(|_| "原谱保存状态不可用")?;
-            if closing.load(std::sync::atomic::Ordering::Acquire)
-                && !allow_closing
-                    .is_some_and(|allow| allow.load(std::sync::atomic::Ordering::Acquire))
-            {
-                return Err("软件正在关闭，请返回后继续保存资料".into());
-            }
             if pending.len() >= 16 || !pending.insert(id.into()) {
                 return Err("这份资料正在处理，请等待原操作完成".into());
             }
@@ -124,7 +116,7 @@ impl Drop for Reservation {
     }
 }
 pub fn reserve(state: &crate::State, id: &str) -> Result<Lease, String> {
-    Lease::take(state.score_saves.clone(), id, &state.closing, None)
+    Lease::take(state.score_saves.clone(), id)
 }
 #[derive(Clone)]
 struct Cache {

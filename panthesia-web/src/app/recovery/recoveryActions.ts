@@ -85,8 +85,6 @@ export async function performRecoveryAction(
       live = current.snapshot();
     if (fresh.stateOrder?.engineId !== live.stateOrder?.engineId)
       throw new Error("这次读取来自上次连接，请重新读取当前练习室后继续。");
-    if (store.getContext()?.closing)
-      throw new Error("练习室正在准备退出，返回窗口后可继续。");
     if (
       fresh.stateOrder?.engineId !== origin.engineId ||
       (!origin.engineId &&

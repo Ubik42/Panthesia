@@ -174,17 +174,6 @@ impl Sessions {
             });
         Ok(())
     }
-    pub fn try_cancel_pending(&self) -> Result<bool, String> {
-        let mut all = match self.0.try_lock() {
-            Ok(all) => all,
-            Err(std::sync::TryLockError::WouldBlock) => return Ok(false),
-            Err(error) => return Err(error.to_string()),
-        };
-        let pending = std::mem::take(&mut *all);
-        drop(all);
-        drop(pending);
-        Ok(true)
-    }
 }
 #[tauri::command]
 pub async fn begin_score_batch_export(
@@ -273,9 +262,6 @@ async fn begin_export(
     else {
         return Ok(None);
     };
-    if state.closing.load(std::sync::atomic::Ordering::Acquire) {
-        return Err("软件正在关闭，本次导出尚未写入目标文件".into());
-    }
     let path = if kind.paper() {
         crate::export_files::destination(&state.data, file.path(), extension)?
     } else {

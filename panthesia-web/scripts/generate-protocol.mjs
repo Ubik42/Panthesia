@@ -17,7 +17,6 @@ const domains = [
   ["../src-tauri/src/located_paper_bridge.rs", ["LocatedPaperSaved"], "output"],
   ["../../panthesia-engine/src/score_attachments.rs", ["LocatedNoteDraft", "LocatedPaperUpload"]],
   ["../src-tauri/src/musescore_program.rs", ["ProgramSource", "MuseScoreProgramStatus"], "output"],
-  ["../src-tauri/src/desktop_close.rs", ["DesktopClosePhase", "DesktopCloseStatus", "DesktopCloseIssueKind", "DesktopCloseIssue", "DesktopCloseReport", "DesktopCloseReview"], "output"],
   ["../../panthesia-engine/src/paper_navigation.rs", ["PaperPracticeSnapshot"], "output"],
   ["../../panthesia-engine/src/paper_practice.rs", ["PaperPracticeRequest"]],
   ["../../panthesia-engine/src/score_review.rs", ["ScoreReviewExpectation"]],

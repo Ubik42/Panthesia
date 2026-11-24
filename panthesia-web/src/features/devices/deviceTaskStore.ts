@@ -35,9 +35,8 @@ export function createDeviceTaskStore() {
   const listeners = new Set<() => void>();
   let snapshot: readonly DeviceWork[] = [];
   let signature = "[]";
-  let context: { engineId?: string; connected: boolean; closing: boolean } = {
+  let context: { engineId?: string; connected: boolean } = {
     connected: false,
-    closing: false,
   };
   let monitor: ReturnType<typeof taskMonitor> | undefined;
   let release: (() => void) | undefined;
@@ -61,7 +60,7 @@ export function createDeviceTaskStore() {
     release = undefined;
     monitor = undefined;
     const engineId = context.engineId;
-    if (!listeners.size || !engineId || !context.connected || context.closing)
+    if (!listeners.size || !engineId || !context.connected)
       return;
     const current = taskMonitor(engineId);
     monitor = current;

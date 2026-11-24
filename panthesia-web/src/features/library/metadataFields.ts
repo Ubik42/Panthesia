@@ -11,6 +11,7 @@ export const metadataFields = [
   ["collection", "作品集"],
   ["difficulty", "难度"],
   ["tags", "标签"],
+  ["source", "来源链接"],
   ["notes", "备注"],
 ] as const;
 
@@ -24,5 +25,6 @@ export function completeMetadata(value: Metadata): Metadata {
     arranger: value.arranger ?? null,
     copyright: value.copyright ?? null,
     license: value.license ?? null,
+    source: value.source ?? null,
   };
 }

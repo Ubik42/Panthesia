@@ -1,13 +1,12 @@
 import { practiceUi, usePracticeUi } from "../stores/practiceUi";
 import { useApp } from "./AppContext";
-import { DesktopCloseProgress } from "./DesktopCloseProgress";
 import { SessionStatus } from "./SessionStatus";
 import { StartupNotice } from "./StartupNotice";
 import { TaskActivity } from "../engine/TaskActivity";
 import { useEffect, useState, type ReactNode } from "react";
 import "./appNotices.css";
 
-/** Close progress, startup and session notices, and the busy indicator. */
+/** Startup and session notices, and the busy indicator. */
 export function AppNotices() {
     const {
     workspaceSessions,
@@ -28,7 +27,6 @@ export function AppNotices() {
   const { setNotice } = practiceUi;
   return (
     <>
-      <DesktopCloseProgress {...workspaceSessions.desktopClose} />
       <StartupNotice
         status={state.startup}
         connected={connected}

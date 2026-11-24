@@ -10,6 +10,7 @@ import {
   Image,
   Mic,
   Music,
+  PencilLine,
   Play,
   Plus,
   Repeat,
@@ -87,6 +88,7 @@ export function SongDetails({
   scores,
   tools,
   editLayer,
+  editInfo,
   openVersion,
   start,
 }: {
@@ -101,6 +103,8 @@ export function SongDetails({
   /** Open the settings page where the transcription tool is chosen. */
   tools: () => void;
   editLayer: (name: string) => void;
+  /** The song information editor (title, artist, source link, notes…). */
+  editInfo: () => void;
   openVersion: (path: string) => Promise<boolean>;
   start: (mode: Mode, hands: HandChoice) => Promise<boolean>;
 }) {
@@ -112,6 +116,18 @@ export function SongDetails({
     return value === "left" || value === "right" ? value : "both";
   })();
   const [pending, setPending] = useState<string | null>(null);
+  // Source link and notes, read from the song's manifest (they change with the annotation revision).
+  const [info, setInfo] = useState<{ source?: string | null; notes?: string | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    api
+      .readPractice<{ source?: string | null; notes?: string | null }>(song, { type: "metadata" })
+      .then((value) => live && setInfo(value))
+      .catch(() => live && setInfo(null));
+    return () => {
+      live = false;
+    };
+  }, [song.contentId, song.annotationRevision]); // eslint-disable-line react-hooks/exhaustive-deps
   const [message, setMessage] = useState("");
   const locked = disabled || pending !== null;
 
@@ -265,6 +281,31 @@ export function SongDetails({
           <Fact name="音域" value={facts?.pitchRange ? `${noteName(facts.pitchRange[0])}–${noteName(facts.pitchRange[1])}` : "—"} />
           <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
           <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
+        </dl>
+        <dl className="song-info">
+          <div>
+            <dt>来源</dt>
+            <dd>
+              {info?.source ? (
+                /^https?:\/\//i.test(info.source) ? (
+                  <a href={info.source} title={info.source} onClick={(e) => { e.preventDefault(); void api.openLink(info.source!).catch((error) => setMessage(String(error))); }}>
+                    {info.source}
+                  </a>
+                ) : (
+                  info.source
+                )
+              ) : (
+                <span className="song-info-empty">—</span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>备注</dt>
+            <dd>{info?.notes ? <span className="song-info-notes">{info.notes}</span> : <span className="song-info-empty">—</span>}</dd>
+          </div>
+          <button className="ui-icon-button song-info-edit" title="编辑歌曲信息（标题、作者、来源链接、备注…）" aria-label="编辑歌曲信息" disabled={locked} onClick={editInfo}>
+            <PencilLine />
+          </button>
         </dl>
         </div>
       </section>

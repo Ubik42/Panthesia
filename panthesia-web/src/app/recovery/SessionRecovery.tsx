@@ -53,7 +53,6 @@ export function SessionRecoveryButton({
     <button
       type="button"
       className={`session-recovery-button ${state.problems ? "has-problems" : ""}`}
-      disabled={state.closing}
       aria-haspopup="dialog"
       aria-expanded={expanded}
       aria-label={`恢复与问题${state.problems ? `，${state.problems} 项需处理` : ""}`}

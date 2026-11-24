@@ -40,7 +40,6 @@ export interface RecoveryContext {
   reading: boolean;
   busy: boolean;
   commandPending: boolean;
-  closing: boolean;
   title?: string;
   path?: string;
   state: Pick<
@@ -425,7 +424,6 @@ export function recoveryActionDisabled(
   action: RecoveryAction,
   desktop: boolean,
 ): string | null {
-  if (context.closing) return "练习室正在准备退出，返回窗口后可继续。";
   if (action === "dataFolder")
     return desktop ? null : "资料文件夹需要从桌面版打开。";
   if (

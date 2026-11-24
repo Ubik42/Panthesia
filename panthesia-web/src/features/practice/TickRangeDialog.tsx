@@ -1,4 +1,3 @@
-import { useCloseParticipant } from "../../lib/closePreparation";
 import { Dialog } from "../../ui/Dialog";
 import "./tickRangeDialog.css";
 import { CopyPracticeDraft } from "./CopyPracticeDraft";
@@ -214,7 +213,6 @@ export function TickRangeDialog({
     setSaved(false);
     setRangeApplied(false);
   };
-  useCloseParticipant("精确选段", () => draft.current ? "当前拍位范围或段落输入尚未保存，可返回继续处理。" : null);
   const boundary = (v: Point, set: (v: Point) => void, title: string) => {
     const m = song.measures[v.measure - 1];
     const max = m ? 1 + (m.endTick - m.startTick) / length(m) : 1;

@@ -1,4 +1,3 @@
-import { useCloseParticipant } from "../../lib/closePreparation";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import type { PassageCatalog } from "../practice/catalogTypes";
 import {
@@ -121,7 +120,6 @@ export function ScoreRangeDialog({
     [error, setError] = useState(""),
     [appliedAction, setAppliedAction] = useState<"saved" | "loop" | null>(null);
   const busyRef = useRef(false);
-  useCloseParticipant("原谱选段", () => dirtyRef.current ? "原谱选段的范围、名称或备注尚未保存，可返回继续编辑。" : null);
   const exit = () => {
     if (
       !busyRef.current &&

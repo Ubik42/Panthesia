@@ -102,7 +102,7 @@ export function useAppModel() {
   const editors=useSongEditors(song);
   const {songOptions,setSongOptions,scoresDialog,setScoresDialog,meterDialog,setMeterDialog,handsDialog,setHandsDialog,fingeringDialog,setFingeringDialog,fingeringWorkbenchOpen,setFingeringWorkbenchOpen}=editors;
   const songOpeningActive = useRef(false);
-  const { onNote, pointerNote, clear: clearLiveNotes } = useLiveNotes(playback, connected && !binding && !workspaceSessions.desktopClose.status, setError,
+  const { onNote, pointerNote, clear: clearLiveNotes } = useLiveNotes(playback, connected && !binding, setError,
     () => !songOpeningActive.current && !document.hidden && !topInputScope() && !topPopup(null));
   const [sessionRecovery] = useState(() => createSessionRecoveryStore(health, workspaceSessions.workProgress));
   const startupReady = state.startup?.ready ?? true;
@@ -111,13 +111,13 @@ export function useAppModel() {
   const { setScoreToolRequest, setNotice, setSelectedNote } = practiceUi;
   const progressEngineId = useSyncExternalStore(playback.subscribe, playback.getEngineId, playback.getEngineId);
   useEffect(() => {
-    workspaceSessions.workProgress.setContext({ engineId: progressEngineId, connected, closing: !!workspaceSessions.desktopClose.status });
-  }, [workspaceSessions.workProgress, progressEngineId, connected, !!workspaceSessions.desktopClose.status]);
-  const operationBusy = !!workspaceSessions.desktopClose.status || requestPending || Boolean(state.storage?.operation) || Boolean(state.storage?.error);
+    workspaceSessions.workProgress.setContext({ engineId: progressEngineId, connected });
+  }, [workspaceSessions.workProgress, progressEngineId, connected]);
+  const operationBusy = requestPending || Boolean(state.storage?.operation) || Boolean(state.storage?.error);
   const busy = operationBusy || binding;
   useEffect(() => {
-    sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, closing: !!workspaceSessions.desktopClose.status, title: song?.title, path: song?.sourcePath, state });
-  }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, !!workspaceSessions.desktopClose.status, song?.title, song?.sourcePath, state]);
+    sessionRecovery.setContext({ engineId: progressEngineId, connected, binding, reading, busy: operationBusy, commandPending: requestPending, title: song?.title, path: song?.sourcePath, state });
+  }, [sessionRecovery, progressEngineId, connected, binding, reading, operationBusy, requestPending, song?.title, song?.sourcePath, state]);
   useEffect(() => {
     if (!scoreToolRequest) return;
     const actual = playback.getSnapshot();
@@ -150,7 +150,7 @@ export function useAppModel() {
   });
   const openPathRef = useRef<(path: string) => Promise<boolean>>(async () => false);
   const { changeWorkspace, workspaceUnavailable, resumeEditingSong } = useWorkspaceChange({
-    workspace, busy, startupReady, state, closing: !!workspaceSessions.desktopClose.status, binding, requestPending,
+    workspace, busy, startupReady, state, binding, requestPending,
     requestBusy, playback, run, clearLiveNotes, openPath: openPathRef,
   });
   const toolContext = JSON.stringify([aboutOpen, commandsOpen, progressOpen, recoveryOpen, exerciseDialog, metadata, fingeringWorkbenchOpen,
@@ -165,7 +165,7 @@ export function useAppModel() {
   const {openPracticeTool,launchPracticeTool}=usePracticeToolNavigation({toolContext,changeWorkspace,playback,run,setError});
   useWindowGuards(!!state.storage?.pending);
   const scorePairing=useScorePairing({song,playback,run,setView,setError});
-  const keyboardPaused=!!workspaceSessions.desktopClose.status||!startupReady||Boolean(state.storage?.operation)||workspace!=="practice"||!["performance","freePlay"].includes(productScreens.screen)||inputOwnership.modal||inputOwnership.popup;
+  const keyboardPaused=!startupReady||Boolean(state.storage?.operation)||workspace!=="practice"||!["performance","freePlay"].includes(productScreens.screen)||inputOwnership.modal||inputOwnership.popup;
   const shortcutScope=JSON.stringify([song?.engineId,song?.contentId,song?.scoreRevision,workspace,loopStart,loopEnd]);
   const {keyboardContext,invalidateKeyboardActions}=usePerformanceKeyboard({
     display,setDisplay,song,playback,getBoundSong,keyboardPaused,shortcutScope,ownershipRevision:inputOwnership.revision,songOpeningActive,
@@ -179,8 +179,6 @@ export function useAppModel() {
   const fullscreen = () => toggleFullscreen(setError);
   const openWork=(entry:WorkEntry,signal:AbortSignal)=>openWorkEntry(entry,signal,{
     unavailable:target=>{
-      if(workspaceSessions.desktopClose.status)return "正在准备退出，请返回窗口后继续。";
-      
       if(["scores","score","passage","hands","meter"].includes(target)){
         if(!connected||binding||!startupReady)return "练习室正在恢复，完成后可返回来源曲目。";
         if(state.recording)return "请先停止并保存录音，再返回来源曲目。";

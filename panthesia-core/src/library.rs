@@ -38,6 +38,9 @@ pub struct SongMetadata {
     pub tags: Vec<String>,
     #[serde(default)]
     pub notes: Option<String>,
+    /// Where the song comes from: a web link (the video or page it was transcribed from).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -348,6 +351,7 @@ impl SongMetadata {
         self.collection = normalized_text(self.collection);
         self.difficulty = normalized_text(self.difficulty);
         self.notes = normalized_text(self.notes);
+        self.source = normalized_text(self.source);
         self.tags = self
             .tags
             .into_iter()
@@ -372,6 +376,7 @@ impl SongMetadata {
         merge_first(&mut self.collection, other.collection);
         merge_first(&mut self.difficulty, other.difficulty);
         merge_first(&mut self.notes, other.notes);
+        merge_first(&mut self.source, other.source);
         self.tags.extend(other.tags);
         self.tags.sort_by_key(|tag| tag.to_lowercase());
         self.tags
@@ -1154,6 +1159,7 @@ mod tests {
             difficulty: Some("Advanced".into()),
             tags: vec!["Impressionism".into(), " impressionism ".into()],
             notes: Some("Voicing and soft pedal".into()),
+            source: None,
         };
 
         let sidecar = save_song_metadata(&midi_path, &content_id, metadata).unwrap();

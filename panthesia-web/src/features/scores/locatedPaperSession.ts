@@ -1,6 +1,5 @@
 import { activitySignal } from "../activity/activitySignal";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { registerCloseParticipant } from "../../lib/closePreparation";
 import type { LocatedPaperSaved } from "../../engine/commands.generated";
 
 export interface LocatedPaperSource { contentId: string; title?: string; engineId?: string | null; path?: string }
@@ -56,12 +55,6 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
       raw = next; publish({ storageError: "" });
     } catch (error) { publish({ storageError: text(error) }); }
   };
-  const unregisterClose = registerCloseParticipant(`located-paper-${++serial}`, {
-    label: "可定位纸谱", prepare: persist,
-    pending: () => state.busy ? "谱页制作或保存仍在处理，可返回查看结果。"
-      : state.dirty && state.storageError ? state.storageError
-      : images.length && !state.saved ? "已生成的谱页图片尚未采用，关闭后需要重新制作。名称和已暂存选择会保留。" : null,
-  });
   return {
     getSnapshot: (): State => state,
     getSource: () => state.busy && operationInfo ? operationInfo : sourceInfo,
@@ -77,7 +70,7 @@ function createSession(contentId: string, fingerprint: string, initialName: stri
       if (state.saved && savedSource !== source) publish({ saved: null, progress: "原条件的谱页继续保留，当前条件可以制作新版本。", error: "" });
     },
     canForget: () => !listeners.size && !state.busy && !images.length && !sources.length && (!state.dirty || !state.storageError),
-    dispose: unregisterClose,
+    dispose: () => {},
     memory: () => bytes + sources.length * 2,
     releaseImages: () => {
       if (state.busy) return;

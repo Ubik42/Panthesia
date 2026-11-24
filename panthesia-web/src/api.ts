@@ -130,6 +130,11 @@ export const api = {
   pickFolder: async (title: string): Promise<string | null> => (isTauri() ? invoke<string | null>("pick_folder", { title }) : null),
   /** Show a file in the system file manager (desktop only). */
   revealFile: async (path: string): Promise<void> => { if (isTauri()) await invoke<void>("reveal_library_file", { path }); },
+  /** Open a web link (a song's source) in the default browser. */
+  openLink: async (url: string): Promise<void> => {
+    if (isTauri()) await invoke<void>("open_web_link", { url });
+    else window.open(url, "_blank", "noopener");
+  },
   desktopBuildInfo: async (): Promise<DesktopBuildReport | null> => isTauri() ? readDesktopBuildReport(await invoke<unknown>("desktop_build_info")) : null,
   prepareMediaExport: (request: import("./engine/commands.generated").ScoreJobRequest, input: import("./engine/commands.generated").MediaExportInput): Promise<import("./engine/commands.generated").ScoreSubmitted> => invoke("prepare_media_export", {request, input}),
   listMediaExports: (engineId: string): Promise<import("./engine/commands.generated").MediaExportListing> => invoke("list_media_exports", {engineId}),

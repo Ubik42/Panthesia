@@ -16,7 +16,6 @@ mod duet_runtime;
 mod file_transfer;
 mod audiveris_paper;
 mod startup_checks;
-mod desktop_close;
 mod build_info;
 mod musescore_program;
 mod conversion_files;
@@ -29,17 +28,12 @@ use tauri::Manager;
 struct State {
     score_jobs: score_jobs::Jobs,
     score_saves: std::sync::Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
-    closing: std::sync::atomic::AtomicBool,
-    close_allowed: std::sync::atomic::AtomicBool,
-    allow_closing_drafts: std::sync::atomic::AtomicBool,
-    desktop_close: desktop_close::Bridge,
     engine: Engine,
     data: PathBuf,
     font: PathBuf,
     bundled_font: PathBuf,
     soundfont_status: std::sync::Arc<std::sync::Mutex<SoundFontStatus>>,
     soundfont_change: std::sync::Arc<std::sync::Mutex<()>>,
-    score_imports: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String,std::sync::Arc<std::sync::atomic::AtomicBool>>>>,
     generated_scores: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String,GeneratedScorePreview>>>,
     recognized_scores: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String,audiveris_paper::RecognizedScorePreview>>>,
 }
@@ -229,6 +223,21 @@ async fn reveal_library_file(state:tauri::State<'_,State>,path:PathBuf)->Result<
         {let directory=if requested_file{target.parent().ok_or("文件上级位置无效")?}else{target.as_path()};std::process::Command::new("xdg-open").arg(directory).spawn().map_err(|e|e.to_string())?;}
         Ok(())
     }).await.map_err(|e|e.to_string())?
+}
+
+/// Opens a song's source link (http or https only) in the default browser.
+#[tauri::command]
+async fn open_web_link(url:String)->Result<(),String>{
+    let url=url.trim().to_string();
+    let lower=url.to_ascii_lowercase();
+    if !(lower.starts_with("https://")||lower.starts_with("http://"))||url.chars().any(|c|c.is_control()||c=='"'){return Err("只能打开 http 或 https 链接".into());}
+    #[cfg(target_os="windows")]
+    {std::process::Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler",&url]).spawn().map_err(|e|format!("无法打开链接：{e}"))?;}
+    #[cfg(target_os="macos")]
+    {std::process::Command::new("open").arg(&url).spawn().map_err(|e|e.to_string())?;}
+    #[cfg(all(not(target_os="windows"),not(target_os="macos")))]
+    {std::process::Command::new("xdg-open").arg(&url).spawn().map_err(|e|e.to_string())?;}
+    Ok(())
 }
 
 #[tauri::command]
@@ -703,7 +712,7 @@ fn main() {
             app.manage(score_batch_export::Sessions::default());
             app.manage(score_export_bridge::Cache::default());
             app.manage(file_transfer::Sessions::default());
-            app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), closing:Default::default(), close_allowed:Default::default(), allow_closing_drafts:Default::default(), desktop_close:Default::default(), engine,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), score_imports:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
+            app.manage(State { score_jobs:Default::default(), score_saves:Default::default(), engine,data, font:selected_font, bundled_font:font, soundfont_status:std::sync::Arc::new(std::sync::Mutex::new(status)), soundfont_change:Default::default(), generated_scores:Default::default(), recognized_scores:Default::default() });
             if !startup_checks::enabled() {
                 app_paths::register();
             }
@@ -723,7 +732,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             score_batch_export::begin_score_batch_export,score_batch_export::begin_workspace_export,score_batch_export::begin_paper_pdf_export,score_batch_export::begin_paper_png_export,score_batch_export::write_score_batch_export,score_batch_export::finish_score_batch_export,score_batch_export::cancel_score_batch_export,
             diagnostics::record_diagnostic,diagnostics::open_log_folder,open_requests::take_open_requests,
-            reveal_library_file,open_practice_data_folder,
+            reveal_library_file,open_web_link,open_practice_data_folder,
             get_soundfont_status,
             select_soundfont,
             reset_soundfont,
@@ -778,7 +787,6 @@ fn main() {
             import_score_attachments,
             pick_paper_source,
             pick_song_file,pick_folder,
-            desktop_close::decide_desktop_close,desktop_close::attach_desktop_close,desktop_close::desktop_close_status,desktop_close::desktop_close_review,desktop_close::desktop_close_ready,desktop_close::cancel_desktop_close,
             file_transfer::begin_score_input,
             file_transfer::write_score_input_chunk,
             file_transfer::cancel_score_input,
@@ -813,13 +821,10 @@ fn main() {
                 open_requests::push(window.app_handle(), open_requests::dropped(paths));
                 return;
             }
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if let Some(state) = window.try_state::<State>() {
-                    use std::sync::atomic::Ordering;
-                    if state.close_allowed.load(Ordering::Acquire) { return; }
-                    api.prevent_close();
-                    desktop_close::request(window.clone());
-                }
+            // The window's close button quits at once: no confirmation, nothing more is saved
+            // (edits are written when they are made, by atomic file writes).
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                window.app_handle().exit(0);
             }
         })
         .run(context)

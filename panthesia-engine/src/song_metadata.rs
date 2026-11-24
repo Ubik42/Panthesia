@@ -61,6 +61,7 @@ fn validate(value: &SongMetadata) -> Result<(), String> {
         ("作品集", &value.collection, 2000),
         ("难度", &value.difficulty, 2000),
         ("备注", &value.notes, 10000),
+        ("来源链接", &value.source, 2000),
     ] {
         if text.as_ref().is_some_and(|s| s.chars().count() > limit) {
             return Err(format!("{label}最多 {limit} 字"));

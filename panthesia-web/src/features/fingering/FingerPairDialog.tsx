@@ -1,4 +1,3 @@
-import { useCloseParticipant } from "../../lib/closePreparation";
 import { useRequestScope } from "../../engine/useRequestScope";
 import { fingeringApi } from "../../engine/fingeringApi";
 import { HandSpanProfileValues, type HandSpanProfile, type PlanRequest, type PairPart, type Proposal, type PlanResult, type PairReview as Review } from "../../engine/commands.generated";
@@ -111,7 +110,6 @@ export function FingerPairDialog({
     return () => window.removeEventListener("beforeunload", unload);
   }, [results.length]);
   const dirty = results.length > 0;
-  useCloseParticipant("双手指法方案", () => busyRef.current ? "双手指法仍在处理，可返回等待并核对结果。" : dirty ? "双手指法方案尚未采用或保存，关闭后需要重新生成。" : null);
   const exit = () => {
     if (
       !busyRef.current &&

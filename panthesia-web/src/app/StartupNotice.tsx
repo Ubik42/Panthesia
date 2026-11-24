@@ -120,7 +120,7 @@ export function StartupNotice({
               打开资料文件夹
             </button>
           )}
-          <button disabled={recoveryState.closing} onClick={openRecovery}>
+          <button onClick={openRecovery}>
             查看恢复与问题
           </button>
           {!connected && <span>正在重新连接练习室…</span>}

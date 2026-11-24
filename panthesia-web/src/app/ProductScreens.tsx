@@ -1,3 +1,4 @@
+import { dialogs } from "../stores/dialogs";
 import { setDisplay } from "../features/settings/interfaceSettingsStore";
 import { useApp } from "./AppContext";
 import { topInputScope, topPopup } from "../lib/inputOwnership";
@@ -81,6 +82,7 @@ export function ProductScreens() {
             editLayer={(name) => {
               if (name === "fingering") setFingeringDialog(true);
             }}
+            editInfo={() => dialogs.setMetadata(true)}
             openVersion={(path) => run({ type: "openFile", path }, true)}
             start={async (mode, hands) => {
               if ((await run({ type: "hands", value: hands })) && (await run({ type: "mode", value: mode })) && (await run({ type: "play" }))) {

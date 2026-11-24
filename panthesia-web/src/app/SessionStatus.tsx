@@ -97,7 +97,6 @@ export function SessionStatus({
               className="icon-button"
               aria-label="收起这条操作提示"
               disabled={
-                state.closing ||
                 !!state.availability[primary.id]?.[
                   primary.actions.includes("dismissStartup")
                     ? "dismissStartup"

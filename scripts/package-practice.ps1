@@ -4,7 +4,11 @@
     [switch]$Offline,
     [switch]$SkipBuild,
     # Same-day rebuild: replace an existing package at the destination once the new one is ready.
-    [switch]$Replace
+    [switch]$Replace,
+    # Make the new package the one Windows starts: App Paths, Start-menu and desktop shortcuts that
+    # start Panthesia point at it, and older Panthesia-YYYYMMDD packages beside it go to the
+    # recycle bin (one version a day; a launcher must never start yesterday's build).
+    [switch]$Publish
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -92,6 +96,33 @@ try {
     }
     Write-Output "运行包已生成：$Destination"
     Write-Output "直接打开：$(Join-Path $Destination 'Panthesia.exe')"
+    if ($Publish) {
+        $exe = Join-Path $Destination 'Panthesia.exe'
+        $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\Panthesia.exe'
+        if (-not (Test-Path $key)) { [void](New-Item -Path $key -Force) }
+        Set-ItemProperty -Path $key -Name '(default)' -Value $exe
+        Set-ItemProperty -Path $key -Name 'Path' -Value $Destination
+        $shell = New-Object -ComObject WScript.Shell
+        $places = @([Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('CommonDesktopDirectory'))
+        foreach ($place in $places | Where-Object { $_ -and (Test-Path $_) }) {
+            foreach ($link in Get-ChildItem -LiteralPath $place -Filter *.lnk -File -ErrorAction SilentlyContinue) {
+                $shortcut = $shell.CreateShortcut($link.FullName)
+                if ($shortcut.TargetPath -match '[\\/]Panthesia-\d{8}[\\/]Panthesia\.exe$' -and $shortcut.TargetPath -ne $exe) {
+                    $shortcut.TargetPath = $exe
+                    $shortcut.WorkingDirectory = $Destination
+                    $shortcut.Save()
+                    Write-Output "已更新快捷方式：$($link.FullName)"
+                }
+            }
+        }
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        foreach ($older in Get-ChildItem -LiteralPath $parent -Directory | Where-Object { $_.Name -match '^Panthesia-\d{8}$' -and $_.Name -ne [IO.Path]::GetFileName($Destination) }) {
+            try {
+                [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($older.FullName, 'OnlyErrorDialogs', 'SendToRecycleBin')
+                Write-Output "旧运行包已移入回收站：$($older.Name)"
+            } catch { Write-Output "旧运行包正在使用，未移除：$($older.Name)" }
+        }
+    }
 } catch {
     if (Test-Path -LiteralPath $stage) { throw "运行包未发布，暂存文件保留在 $stage。$($_.Exception.Message)" }
     throw

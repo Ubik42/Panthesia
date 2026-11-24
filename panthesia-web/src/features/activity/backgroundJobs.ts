@@ -344,7 +344,7 @@ export function startBackgroundJobs(
           issue: ref.issue,
           read: async (valid) => {
             const status = await api.readScoreJob(ref.request);
-            if (stopped || context().closing || !ref.current() || ref.owned())
+            if (stopped || !ref.current() || ref.owned())
               return;
             if (!status && !valid()) return;
             if (!status)
@@ -371,7 +371,7 @@ export function startBackgroundJobs(
     timer = undefined;
     if (stopped || reading) return;
     const scope = context();
-    if (!scope.connected || scope.closing || !scope.engineId) return;
+    if (!scope.connected || !scope.engineId) return;
     const all = reads().filter((ref) => ref.available());
     if (!all.length) return;
     const now = Date.now(),
@@ -387,7 +387,6 @@ export function startBackgroundJobs(
         const valid = () =>
           !stopped &&
           context().connected &&
-          !context().closing &&
           context().engineId === ref.engineId;
         try {
           const delay = await ref.read(valid);

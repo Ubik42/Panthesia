@@ -38,7 +38,6 @@ export interface RecoverySnapshot {
   recent: readonly RecoveryOutcome[];
   connected: boolean;
   reading: boolean;
-  closing: boolean;
 }
 class RecoveryStateChanged extends Error {}
 export function createSessionRecoveryStore(
@@ -63,7 +62,6 @@ export function createSessionRecoveryStore(
     recent: [],
     connected: false,
     reading: false,
-    closing: false,
   };
   let release: (() => void) | undefined;
   const rebuild = () => {
@@ -94,7 +92,6 @@ export function createSessionRecoveryStore(
       recent,
       connected: context?.connected ?? false,
       reading: context?.reading ?? false,
-      closing: context?.closing ?? false,
     };
     const key = JSON.stringify(next);
     if (key === signature) return;
@@ -111,8 +108,8 @@ export function createSessionRecoveryStore(
     });
   };
   const inspectIssue = (issue: RecoveryIssue, action: RecoveryAction) => {
-    if (!context || context.closing)
-      throw new Error("练习室正在准备退出，返回窗口后可继续处理。");
+    if (!context)
+      throw new Error("练习室尚未连接，稍后再试。");
     const actual = projectRecovery(
       context,
       health.inspect(),
@@ -237,7 +234,6 @@ export function createSessionRecoveryStore(
           connected: context?.connected,
           binding: context?.binding,
           reading: context?.reading,
-          closing: context?.closing,
           startup: context?.state.startup,
           storage: context?.state.storage,
           recording: context

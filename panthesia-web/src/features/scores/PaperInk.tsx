@@ -6,7 +6,6 @@ import type { PaperAnnotation } from "./PaperAnnotations";
 import { moveInk, eraseInk } from "./paperInkEditing";
 import "./paperInkEditing.css";
 import { paperPoint } from "./PaperGeometry";
-import { useCloseParticipant } from "../../lib/closePreparation";
 const colors: Record<string, string> = {
   yellow: "#c69a20",
   blue: "#3679b9",
@@ -230,15 +229,6 @@ export function usePaperInk({
     const detail = error instanceof Error ? error.message : String(error);
     draftWriteError.current = detail; setDraftError(detail); setMessage(detail);
   };
-  useCloseParticipant("手写批注", () => {
-    if (drawing.current || move.current || eraseGesture.current) return "还有正在绘制、移动或擦除的笔迹，请返回结束当前操作。";
-    if (busy) return "手写笔迹仍在保存，请等待原操作完成。";
-    return changed && draftWriteError.current ? draftWriteError.current : null;
-  }, () => {
-    if (!changed) return;
-    try { persistDraft(); }
-    catch (error) { reportDraftError(error); throw error; }
-  });
   const push = (next: PaperAnnotation[]) => {
     if (JSON.stringify(next) === JSON.stringify(rows)) return;
     setMessage("");

@@ -23,7 +23,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useCloseParticipant } from "../../lib/closePreparation";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import { BrowseDetailWorkspace } from "../../ui/legacy/BrowseDetailWorkspace";
 import { useBrowseScroll } from "../../ui/legacy/useBrowseScroll";
@@ -461,11 +460,6 @@ export function FingeringDialog({
       latestCapture.current();
     };
   }, [drafts]);
-  useCloseParticipant(
-    "指法输入",
-    () => drafts.getSnapshot().error || null,
-    captureWorkbench,
-  );
   const close = () => {
     captureWorkbench();
     finishDialog();
