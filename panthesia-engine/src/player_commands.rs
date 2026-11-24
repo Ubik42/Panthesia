@@ -129,7 +129,7 @@ impl Player {
                     self.notation.is_some(),
                     self.score_revision,
                 ))
-                .map_err(|e| e.to_string()).map(|mut v|{v["annotationRevision"]=serde_json::json!(self.state.annotation_revision);v["grid"]=serde_json::json!(self.grid_signature());v["meterMap"]=serde_json::json!(self.current_meter_map());v["fingerUndoAvailable"]=serde_json::json!(!self.finger_undo.is_empty());v["trackSounds"]=serde_json::json!(self.track_sound_settings());v["soundPresets"]=serde_json::json!(self.soundfont_presets);self.decorate_tracks(&mut v);self.decorate_finger_actions(&mut v);v["practiceVariant"]=self.variant_document();v["harmony"]=serde_json::json!(harmony);v["sections"]=serde_json::json!(sections);if self.variant().active(){v["fingerActions"]=serde_json::json!([]);}v}),
+                .map_err(|e| e.to_string()).map(|mut v|{v["annotationRevision"]=serde_json::json!(self.state.annotation_revision);v["sustain"]=serde_json::json!(file.sustain_spans().iter().map(|(a,b)|[a.as_secs_f64(),b.as_secs_f64()]).collect::<Vec<_>>());v["grid"]=serde_json::json!(self.grid_signature());v["meterMap"]=serde_json::json!(self.current_meter_map());v["fingerUndoAvailable"]=serde_json::json!(!self.finger_undo.is_empty());v["trackSounds"]=serde_json::json!(self.track_sound_settings());v["soundPresets"]=serde_json::json!(self.soundfont_presets);self.decorate_tracks(&mut v);self.decorate_finger_actions(&mut v);v["practiceVariant"]=self.variant_document();v["harmony"]=serde_json::json!(harmony);v["sections"]=serde_json::json!(sections);if self.variant().active(){v["fingerActions"]=serde_json::json!([]);}v}),
                 None => Ok(serde_json::Value::Null),
             };
         }

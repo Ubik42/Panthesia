@@ -4,7 +4,8 @@ self.onmessage = (event: MessageEvent<{
     notes: LoadedSong["notes"];
     actions: LoadedSong["fingerActions"];
     rate: number;
+    sustain?: LoadedSong["sustain"];
 }>) => {
-    const { notes, actions, rate } = event.data;
-    self.postMessage(planHands(notes, actions, rate));
+    const { notes, actions, rate, sustain } = event.data;
+    self.postMessage(planHands(notes, actions, rate, sustain ?? []));
 };

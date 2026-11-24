@@ -104,9 +104,12 @@ impl Player {
                 .collect();
             notes.sort_by(|a, b| a.2.start.cmp(&b.2.start).then(a.2.note.cmp(&b.2.note)));
             let saved = |track: usize, n: &panthesia_music::MidiNote| self.fingers.get(&(track, n.start, n.note)).copied();
+            // Under the sustain pedal a key may be let go early (see `required_release`): the hand
+            // is free to move on, so the fingering need not keep it down.
+            let sustain = file.sustain_spans();
             let inputs: Vec<FingeringNote> = notes
                 .iter()
-                .map(|(track, _, n)| FingeringNote { pitch: n.note, onset: n.start, end: n.end, anchored_finger: saved(*track, n) })
+                .map(|(track, _, n)| FingeringNote { pitch: n.note, onset: n.start, end: panthesia_music::required_release(&sustain, n.start, n.end), anchored_finger: saved(*track, n) })
                 .collect();
             let suggestions = suggest_fingerings_with_profile(&inputs, hand, HandSpanProfile::Standard);
             // Where the planner finds no playable fingering (wide or crowded chords), the

@@ -370,3 +370,55 @@ pub static INSTRUMENT_NAMES: [&str; 128] = [
 
 #[cfg(test)]
 mod tests;
+
+/// Sustain pedal (CC 64 at 64 or more) spans, in seconds of the performance: what lets a finger
+/// leave a key before its written release without the sound changing.
+impl MidiFile {
+    /// Spans where the sustain pedal is down on any channel, sorted and merged.
+    pub fn sustain_spans(&self) -> Vec<(Duration, Duration)> {
+        let mut spans = Vec::new();
+        for track in self.tracks.iter() {
+            let mut down: [Option<Duration>; 16] = [None; 16];
+            for e in track.events.iter() {
+                let MidiMessage::Controller { controller, value } = e.message else { continue };
+                if controller.as_int() != 64 {
+                    continue;
+                }
+                let channel = usize::from(e.channel & 15);
+                match (down[channel], value.as_int() >= 64) {
+                    (None, true) => down[channel] = Some(e.timestamp),
+                    (Some(from), false) => {
+                        spans.push((from, e.timestamp));
+                        down[channel] = None;
+                    }
+                    _ => {}
+                }
+            }
+            spans.extend(down.into_iter().flatten().map(|from| (from, self.duration.max(from))));
+        }
+        spans.sort();
+        let mut merged: Vec<(Duration, Duration)> = Vec::with_capacity(spans.len());
+        for (from, to) in spans {
+            match merged.last_mut() {
+                Some(last) if from <= last.1 => last.1 = last.1.max(to),
+                _ => merged.push((from, to)),
+            }
+        }
+        merged
+    }
+}
+
+/// The earliest a key struck at `start` and released at `end` may be let go with the same sound:
+/// when the sustain pedal is down from some moment up to `end`, from that moment (a short time
+/// after it, so the pedal has caught the string, and never sooner than `MIN_HOLD` after the
+/// strike); otherwise `end`.
+pub fn required_release(spans: &[(Duration, Duration)], start: Duration, end: Duration) -> Duration {
+    const MIN_HOLD: Duration = Duration::from_millis(60);
+    const CATCH: Duration = Duration::from_millis(30);
+    let i = spans.partition_point(|s| s.0 <= end);
+    let Some(&(from, to)) = i.checked_sub(1).map(|i| &spans[i]) else { return end };
+    if to < end || from >= end {
+        return end;
+    }
+    (start + MIN_HOLD).max(from + CATCH).min(end)
+}

@@ -104,6 +104,8 @@ export interface LoadedSong {
   sourcePath: string;
   duration: number;
   notes: Note[];
+  /** Sustain pedal spans [down, up] in seconds. */
+  sustain?: [number, number][];
   ppq: number;
   generated: boolean;
   hasScore: boolean;

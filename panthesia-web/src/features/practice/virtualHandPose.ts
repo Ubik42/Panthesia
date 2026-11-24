@@ -314,7 +314,8 @@ function aims(track: HandTrack, time: number, rate: number): Aim[] {
     const nextReady = !!future && future.start - time < 0.34 * rate;
     const contact = held ? prev : nextReady ? future : prev && time - release < 0.55 * rate ? prev : undefined;
     // A key held long ago (often sustained by the pedal) barely shapes the hand.
-    const heldNeed = held ? (time - prev!.start > 0.6 * rate ? 0.3 : 3) : 0;
+    // So does one the sustain pedal has caught (its finger may leave; the sound stays).
+    const heldNeed = held ? blend(3, 0.3, Math.max(smooth((time - prev!.start - 0.45 * rate) / (0.3 * rate)), smooth((time - prev!.free) / (0.2 * rate)))) : 0;
     const releasedNeed = prev && !held ? 3 * (1 - smooth((time - release) / (0.22 * rate))) : 0;
     const comingNeed = future ? 3 * smooth(1 - (future.start - time) / (0.34 * rate)) : 0;
     const need = contact === future ? Math.max(comingNeed, heldNeed) : Math.max(heldNeed, releasedNeed, comingNeed * 0.5);
@@ -332,7 +333,7 @@ const WRIST_SPEED = 1600,
   YAW_SPEED = 2.5;
 /** Fingertip speed limit (millimetres per real second) and smoothing time constant (seconds). */
 const TIP_SPEED = 1200,
-  TIP_TAU = 0.028;
+  TIP_OMEGA = 26;
 type Block = Float64Array; // x, y, yaw, weight per grid point; NaN where the hand is away
 const trajectories = new WeakMap<HandTrack, { layout: string; blocks: Map<number, Block> }>();
 
@@ -409,11 +410,52 @@ function computeBlock(index: number, raw: (t: number) => { x: number; y: number;
   const forward = limit(1),
     backward = limit(-1);
   for (let i = 0; i < n * 4; i++) if ((i & 3) !== 3 && !Number.isNaN(smoothed[i])) smoothed[i] = (forward[i] + backward[i]) / 2;
-  return smoothed;
+  // Then a wider smoothing (±100 ms) so the speed-limited moves start and stop gently: the hand
+  // sets off a little before it must and settles a little after, at a near-steady speed between.
+  const R2 = 12;
+  const eased = new Float64Array(smoothed);
+  for (let i = 0; i < n; i++) {
+    if (Number.isNaN(smoothed[i * 4])) continue;
+    let sx = 0, sy = 0, syaw = 0, sw = 0;
+    for (let k = -R2; k <= R2; k++) {
+      const j = i + k;
+      if (j < 0 || j >= n || Number.isNaN(smoothed[j * 4])) continue;
+      const w = R2 + 1 - Math.abs(k);
+      sx += smoothed[j * 4] * w;
+      sy += smoothed[j * 4 + 1] * w;
+      syaw += smoothed[j * 4 + 2] * w;
+      sw += w;
+    }
+    eased.set([sx / sw, sy / sw, syaw / sw], i * 4);
+  }
+  return eased;
 }
 
 /** What a hand remembers between frames: its fingertips' last targets (see `handPose`). */
-export type HandMemory = { time: number; tips: V3[] };
+export type HandMemory = { time: number; tips: V3[]; velocity?: V3[] };
+
+/** Weighted isotonic regression with minimum gaps (pool adjacent violators): the positions
+ * nearest `want` (weighted) such that each is at least `gaps[i]` after the one before. */
+function orderLaterals(want: number[], weight: number[], gaps: number[]) {
+  const offset = [0];
+  for (let i = 1; i < want.length; i++) offset[i] = offset[i - 1] + gaps[i - 1];
+  const blocks: { sum: number; weight: number; count: number }[] = [];
+  want.forEach((w, i) => {
+    blocks.push({ sum: (w - offset[i]) * weight[i], weight: weight[i], count: 1 });
+    while (blocks.length > 1) {
+      const b = blocks[blocks.length - 1],
+        a = blocks[blocks.length - 2];
+      if (a.sum / a.weight <= b.sum / b.weight) break;
+      blocks.pop();
+      a.sum += b.sum;
+      a.weight += b.weight;
+      a.count += b.count;
+    }
+  });
+  const out: number[] = [];
+  for (const b of blocks) for (let k = 0; k < b.count; k++) out.push(b.sum / b.weight + offset[out.length]);
+  return out;
+}
 
 export function handPose(track: HandTrack, time: number, rate: number, band: KeyBand, geometry: Geometry, memory?: HandMemory): HandPose | null {
   if (!track.notes.length) return null;
@@ -447,7 +489,8 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     rows.map((a, i) => {
       if (!goals[i] || !a.contact) return 0;
       // A fresh key holds the hand firmly; an older one (often kept by the pedal) gives way.
-      if (a.held) return blend(20, 0.5, smooth((t - a.contact.start - 0.12 * rate) / (0.5 * rate)));
+      // A key the sustain pedal has caught lets the hand go sooner (see `Contact.free`).
+      if (a.held) return blend(20, 0.5, Math.max(smooth((t - a.contact.start - 0.12 * rate) / (0.5 * rate)), smooth((t - a.contact.free) / (0.15 * rate))));
       // Rises to the held weight as the strike comes, so nothing jumps at the strike.
       if (a.contact === a.future) return 10 * smooth(1 - (a.future.start - t) / (0.25 * rate));
       return 0;
@@ -657,30 +700,14 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     return { target, pressed, substitution: contact.substitution, priority: pressed ? 3 : Math.min(2, must[i] / 5), since: contact.start };
   });
 
-  // Fingers 2-5 keep their order across the hand with room between them: free fingers make way
-  // for the ones on keys and lift a little when pushed.
+  // Fingers keep their order across the hand with room between them. No collisions and no
+  // pushing: one weighted projection (`orderLaterals`) puts each finger as near its own target
+  // as the order allows; fingers on keys stay, fingers about to strike nearly so, free ones make
+  // way. It is continuous in its inputs, so it never makes a finger jump or shake.
   const lateral = (p: V3) => mirror * (cos * (p.x - wrist.x) + sin * (p.y - wrist.y));
-  const shiftLateral = (t: Target, by: number) => {
-    t.target = { ...t.target, x: t.target.x + mirror * cos * by, y: t.target.y + mirror * sin * by, z: t.target.z + Math.min(3, Math.abs(by) * 0.25) };
-  };
-  const separate = (a: Target, b: Target) => {
-    const need = FINGER_GAP - (lateral(b.target) - lateral(a.target));
-    if (need <= 0) return;
-    if (a.priority >= 3 && b.priority >= 3) {
-      // Two fingers on keys that would cross: fingers never pass through each other, so the one
-      // that pressed first lets its key go (the pedal or the sound's release carries it).
-      const older = a.since <= b.since ? a : b;
-      older.pressed = false;
-      older.priority = 1.5;
-      older.target = { ...older.target, z: older.target.z + LIFT * 0.4 };
-    }
-    const share = b.priority === a.priority ? 0.5 : b.priority < a.priority ? 1 : 0;
-    if (share > 0) shiftLateral(b, need * share);
-    if (share < 1) shiftLateral(a, -need * (1 - share));
-  };
-  /** A free finger's target turned into the sideways range it can reach from its knuckle, so
-   * the finger chain never has to bend it away from where the order below put it; it also stays
-   * over the keys (a finger not playing never reaches past them toward the fallboard). */
+  const moveLateral = (p: V3, by: number): V3 => ({ ...p, x: p.x + mirror * cos * by, y: p.y + mirror * sin * by });
+  /** A free finger's target turned into the sideways range it can reach from its knuckle; it
+   * also stays over the keys (a finger not playing never reaches past them toward the fallboard). */
   const reachable = (i: number, t: Target) => {
     if (t.priority >= 3) return;
     if (t.target.y > keyHeight * 0.85) t.target = { ...t.target, y: keyHeight * 0.85 };
@@ -701,58 +728,114 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     t.target = { ...t.target, x: kb.x + mirror * cos * nx - sin * ny, y: kb.y + mirror * sin * nx + cos * ny };
   };
   // The thumb keeps to its side of the index finger too, except while it passes under the hand.
-  const first = thumbUnder ? 2 : 1;
-  const order = (passes: number) => {
-    for (let pass = 0; pass < passes; pass++) {
-      targets.forEach((t, i) => reachable(i, t));
-      for (let i = first; i <= 4; i++) separate(targets[i - 1], targets[i]);
-      for (let i = 4; i >= first; i--) separate(targets[i - 1], targets[i]);
+  const first = thumbUnder ? 1 : 0;
+  // Two fingers on keys in the wrong order cannot both stay: the one that pressed first lets its
+  // key go (the pedal or the sound's release carries it). Decided by the keys, not by motion.
+  for (let i = first; i < 4; i++)
+    for (let k = i + 1; k <= 4; k++) {
+      const a = targets[i],
+        b = targets[k];
+      if (a.priority < 3 || b.priority < 3 || lateral(b.target) - lateral(a.target) > 0) continue;
+      const older = a.since <= b.since ? a : b;
+      older.pressed = false;
+      older.priority = 1.5;
+      older.target = { ...older.target, z: older.target.z + LIFT * 0.4 };
     }
-    targets.forEach((t, i) => reachable(i, t));
+  /** Orders the fingers' points (each as near its own place as its weight asks) and lifts free
+   * fingers that are squeezed or moved aside, continuously, by how much. */
+  const arrange = (points: V3[], fixed: boolean[], weights: number[], gap: number, lifting: boolean) => {
+    const want = points.slice(first).map(lateral);
+    const n = want.length;
+    // Between two fixed fingers the room is shared out evenly when it is short.
+    const gaps = Array.from({ length: n - 1 }, () => gap);
+    let last = -1;
+    for (let k = 0; k < n; k++) {
+      if (!fixed[k + first]) continue;
+      if (last >= 0 && k - last > 1) {
+        const room = Math.max(0, want[k] - want[last]) / (k - last);
+        for (let m = last; m < k; m++) gaps[m] = Math.min(gap, room);
+      }
+      last = k;
+    }
+    const got = orderLaterals(
+      want,
+      weights.slice(first).map((w, k) => (fixed[k + first] ? 1e6 : w)),
+      gaps,
+    );
+    return points.map((p, i) => {
+      if (i < first || fixed[i]) return p;
+      const k = i - first,
+        by = got[k] - want[k];
+      const squeezed = Math.max(k > 0 ? 1 - gaps[k - 1] / gap : 0, k < n - 1 ? 1 - gaps[k] / gap : 0);
+      // Lifted once, before the smoothing (the thumb stays low: lifting it bends it backward).
+      const lift = lifting && i > 0 ? Math.min(HOVER, Math.abs(by) * 0.35 + squeezed * HOVER) : 0;
+      return { ...moveLateral(p, by), z: p.z + lift };
+    });
   };
-  order(3);
+  const weightOf = (t: Target) => 1 + 20 * t.priority;
+  const orderTargets = (lifting: boolean) => {
+    targets.forEach((t, i) => reachable(i, t));
+    const placed = arrange(
+      targets.map((t) => t.target),
+      targets.map((t) => t.priority >= 3),
+      targets.map(weightOf),
+      FINGER_GAP,
+      lifting,
+    );
+    targets.forEach((t, i) => (t.target = placed[i]));
+  };
+  orderTargets(true);
 
-  // 3. Continuous fingertips: from where each tip was on the last frame toward its target, at
-  // most TIP_SPEED and smoothed; a finger on its key lands exactly. A seek or a long gap starts over.
+  // In the hand's own frame (across, forward, height from the wrist): the fingers' motion is
+  // smoothed relative to the hand, so they move with it and never trail behind a moving hand.
+  const toHand = (p: V3): V3 => {
+    const dx = p.x - wrist.x,
+      dy = p.y - wrist.y;
+    return { x: mirror * (cos * dx + sin * dy), y: -sin * dx + cos * dy, z: p.z };
+  };
+  const fromHand = (l: V3): V3 => ({ x: wrist.x + mirror * cos * l.x - sin * l.y, y: wrist.y + mirror * sin * l.x + cos * l.y, z: l.z });
+  // Continuous fingertips: each free fingertip follows its target as a critically damped spring
+  // (it speeds up and slows down smoothly, keeps a steady speed behind a moving target, starts a
+  // little late and arrives a little after: no sudden moves). A finger striking soon follows
+  // more tightly; a finger on its key sits on it. A seek or a long gap starts over.
   if (memory) {
     const real = (time - memory.time) / Math.max(0.1, rate);
     const fresh = !(real > 0 && real < 0.15) || memory.tips.length !== targets.length;
+    const velocity =
+      fresh || !memory.velocity || memory.velocity.length !== targets.length ? targets.map(() => ({ x: 0, y: 0, z: 0 })) : memory.velocity;
     targets.forEach((t, i) => {
       const before = memory.tips[i];
-      if (fresh || !before || t.pressed) return;
-      const k = 1 - Math.exp(-real / TIP_TAU);
-      let mx = (t.target.x - before.x) * k,
-        my = (t.target.y - before.y) * k,
-        mz = (t.target.z - before.z) * k;
-      const step = Math.hypot(mx, my, mz),
-        max = TIP_SPEED * real;
-      if (step > max) {
-        mx *= max / step;
-        my *= max / step;
-        mz *= max / step;
+      if (fresh || !before) return;
+      const goal = toHand(t.target);
+      if (t.pressed) {
+        velocity[i] = { x: (goal.x - before.x) / real, y: (goal.y - before.y) / real, z: (goal.z - before.z) / real };
+        return;
       }
-      t.target = { x: before.x + mx, y: before.y + my, z: before.z + mz };
+      const omega = TIP_OMEGA * (1 + Math.min(1, t.priority / 2) * 1.2);
+      let p = { ...before },
+        v = { ...velocity[i] };
+      const steps = Math.max(1, Math.ceil(real * 240)),
+        dt = real / steps;
+      for (let k = 0; k < steps; k++) {
+        v = {
+          x: v.x + (omega * omega * (goal.x - p.x) - 2 * omega * v.x) * dt,
+          y: v.y + (omega * omega * (goal.y - p.y) - 2 * omega * v.y) * dt,
+          z: v.z + (omega * omega * (goal.z - p.z) - 2 * omega * v.z) * dt,
+        };
+        const speed = Math.hypot(v.x, v.y, v.z);
+        if (speed > TIP_SPEED) v = { x: (v.x * TIP_SPEED) / speed, y: (v.y * TIP_SPEED) / speed, z: (v.z * TIP_SPEED) / speed };
+        p = { x: p.x + v.x * dt, y: p.y + v.y * dt, z: p.z + v.z * dt };
+      }
+      // Never into the keys while not pressing.
+      p.z = Math.max(p.z, Math.min(goal.z, 1));
+      t.target = fromHand(p);
+      velocity[i] = v;
     });
-    if (!fresh) {
-      // Keep the order once more after smoothing, but move no tip faster than the limit allows
-      // in this frame: a finger that slipped past its neighbour is brought back over a few frames.
-      order(2);
-      targets.forEach((t, i) => {
-        const before = memory.tips[i];
-        if (!before || t.pressed) return;
-        const mx = t.target.x - before.x,
-          my = t.target.y - before.y,
-          mz = t.target.z - before.z;
-        const step = Math.hypot(mx, my, mz),
-          max = TIP_SPEED * 1.6 * real;
-        if (step > max) t.target = { x: before.x + (mx * max) / step, y: before.y + (my * max) / step, z: before.z + (mz * max) / step };
-      });
-    }
+    memory.velocity = velocity;
     memory.time = time;
+    // The order once more after smoothing (continuous, so it adds no jumps).
+    orderTargets(false);
   }
-  // The hard rule last: whatever smoothing did, the fingers keep their order across the hand.
-  order(2);
-  if (memory) memory.tips = targets.map((t) => ({ ...t.target }));
 
   const chain = (i: number, target: V3, loose = false) => {
     const b = world(base(i));
@@ -771,44 +854,24 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
           splay: ((SPLAY[i] + (loose ? 30 : 8)) * Math.PI) / 180,
         });
   };
-  const fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target), pressed, substitution }));
-  // Hard rule on the real fingertips (2026-11-24): fingers never pass through each other. A free
-  // finger still on the wrong side of its neighbour is put right beside it, even past its usual
-  // sideways range; two fingers on keys were already resolved above (the older one lets go).
-  const tipOf = (i: number) => fingers[i].points[fingers[i].points.length - 1];
-  const GAP = 7;
-  for (let pass = 0; pass < 2; pass++) {
-    // Fingers on keys stay; the free ones take places in order between them: a sweep from the
-    // little finger's side, then one from the thumb's, then free fingers squeezed between two
-    // keys sit in the middle, lifted.
-    const at = fingers.map((_, i) => lateral(tipOf(i)));
-    const fixed = fingers.map((f) => f.pressed);
-    const want = [...at];
-    for (let i = 3; i >= 0; i--) if (!fixed[i] && want[i] > want[i + 1] - GAP) want[i] = want[i + 1] - GAP;
-    for (let i = 1; i <= 4; i++) if (!fixed[i] && want[i] < want[i - 1] + GAP) want[i] = want[i - 1] + GAP;
-    const lift = fingers.map(() => 0);
-    for (let i = 0; i <= 4; i++) {
-      if (fixed[i]) continue;
-      const left = i > 0 ? want[i - 1] : -Infinity,
-        right = i < 4 ? want[i + 1] : Infinity;
-      if (right - left < 2 * GAP) {
-        want[i] = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : want[i];
-        lift[i] = HOVER;
-      }
-    }
-    let changed = false;
-    for (let i = 0; i <= 4; i++) {
-      if (fixed[i] || Math.abs(want[i] - at[i]) < 0.5) continue;
-      const from = tipOf(i),
-        by = want[i] - at[i];
-      const target = { x: from.x + mirror * cos * by, y: from.y + mirror * sin * by, z: Math.max(from.z, lift[i]) };
-      fingers[i] = { ...fingers[i], points: chain(i, target, true) };
-      targets[i] = { ...targets[i], target };
-      changed = true;
-    }
-    if (!changed) break;
-  }
-  if (memory) memory.tips = targets.map((t) => ({ ...t.target }));
+  let fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target), pressed, substitution }));
+  // The same order on the real fingertips (a finger's own limits can bend it off its target):
+  // the same projection, and a finger moved by it reaches its new place with a looser sideways
+  // range. Fingers never pass through each other.
+  const tips = fingers.map((f) => f.points[f.points.length - 1]);
+  const placedTips = arrange(
+    tips,
+    fingers.map((f) => f.pressed),
+    targets.map(weightOf),
+    7,
+    false,
+  );
+  fingers = fingers.map((f, i) => {
+    const q = placedTips[i];
+    if (Math.hypot(q.x - tips[i].x, q.y - tips[i].y, q.z - tips[i].z) < 0.3) return f;
+    return { ...f, points: chain(i, q, true) };
+  });
+  if (memory) memory.tips = targets.map((t) => toHand(t.target));
   return {
     side: track.side,
     wrist,

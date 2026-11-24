@@ -73,6 +73,8 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
     return mesh;
   };
   const FLOOR = -720;
+  /** Half the room's depth (and the space beside the keyboard): the piano stands in the middle. */
+  const ROOM_HALF = 4200;
   const left = -40,
     wide = right + 80,
     mid = right / 2;
@@ -98,11 +100,11 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
-  const floorWidth = right + 6000,
-    floorDepth = 6000;
+  const floorWidth = right + 2 * ROOM_HALF,
+    floorDepth = 2 * ROOM_HALF;
   texture.repeat.set(floorWidth / (tile.width * 2.2), floorDepth / (tile.height * 2.2));
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(floorWidth, floorDepth), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.55 }));
-  floor.position.set(mid, keyHeight + 900 - floorDepth / 2, FLOOR);
+  floor.position.set(mid, 0, FLOOR);
   floor.receiveShadow = true;
   group.add(floor);
 
@@ -137,27 +139,42 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
   box(benchW + 20, 350, 30, mid, -520, FLOOR + 450, walnut);
   for (const dx of [-1, 1]) for (const dy of [-1, 1]) box(40, 40, 440, mid + dx * (benchW / 2 - 30), -520 + dy * 140, FLOOR + 220, walnut);
 
-  // Walls: warm plaster above dark wainscoting; a window on the back wall.
+  // Walls: warm plaster above dark wainscoting, windows on the wall behind the piano. The piano
+  // stands in the middle of the room; each wall is one-sided, facing in, so from outside the
+  // room (a camera turned or zoomed far out) it is not drawn and never hides the piano.
   const plaster = new THREE.MeshStandardMaterial({ color: 0xd9cdb8, roughness: 0.95 });
   const panel = new THREE.MeshStandardMaterial({ color: 0x4a3423, roughness: 0.6 });
-  const backY = keyHeight + 420,
-    wallW = right + 5000;
-  box(wallW, 40, 3000, mid, backY, FLOOR + 1500, plaster, false);
-  box(wallW, 30, 900, mid, backY - 30, FLOOR + 450, panel, false);
-  box(wallW, 40, 30, mid, backY - 50, FLOOR + 910, walnut, false);
-  for (const side of [-1, 1]) {
-    const x = mid + side * (wallW / 2);
-    box(40, 5000, 3000, x, backY - 2500, FLOOR + 1500, plaster, false);
-    box(30, 5000, 900, x - side * 30, backY - 2500, FLOOR + 450, panel, false);
-  }
   const glow = new THREE.MeshBasicMaterial({ color: 0xfff1d6 });
   const windowFrame = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.5 });
+  const wall = (w: number, h: number, x: number, y: number, z: number, nx: number, ny: number, material: Three.Material) => {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
+    mesh.position.set(x, y, z);
+    mesh.up.set(0, 0, 1);
+    mesh.lookAt(x + nx, y + ny, z);
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  };
+  const backY = ROOM_HALF,
+    frontY = -ROOM_HALF,
+    wallW = right + 2 * ROOM_HALF;
+  const sides: [number, number, number, number, number][] = [
+    // centre x, centre y, width, inward normal x, y
+    [mid, backY, wallW, 0, -1],
+    [mid, frontY, wallW, 0, 1],
+    [mid - wallW / 2, 0, 2 * ROOM_HALF, 1, 0],
+    [mid + wallW / 2, 0, 2 * ROOM_HALF, -1, 0],
+  ];
+  for (const [x, y, w, nx, ny] of sides) {
+    wall(w, 3000, x, y, FLOOR + 1500, nx, ny, plaster);
+    wall(w, 900, x + nx * 3, y + ny * 3, FLOOR + 450, nx, ny, panel);
+    wall(w, 30, x + nx * 6, y + ny * 6, FLOOR + 905, nx, ny, walnut);
+  }
   for (const dx of [-1, 1]) {
     const wx = mid + dx * Math.max(900, right * 0.45);
-    box(900, 20, 1300, wx, backY - 30, FLOOR + 1650, windowFrame, false);
-    box(800, 22, 1200, wx, backY - 34, FLOOR + 1650, glow, false);
-    box(800, 26, 24, wx, backY - 40, FLOOR + 1650, windowFrame, false);
-    box(24, 26, 1200, wx, backY - 40, FLOOR + 1650, windowFrame, false);
+    wall(900, 1300, wx, backY - 4, FLOOR + 1650, 0, -1, windowFrame);
+    wall(800, 1200, wx, backY - 6, FLOOR + 1650, 0, -1, glow);
+    wall(800, 24, wx, backY - 8, FLOOR + 1650, 0, -1, windowFrame);
+    wall(24, 1200, wx, backY - 8, FLOOR + 1650, 0, -1, windowFrame);
   }
 
   // On the piano: a vase of flowers and a framed photograph of the sea.

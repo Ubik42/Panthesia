@@ -237,6 +237,10 @@
   width: 30px;
   height: 30px;
 }
+/* Standard cards: no material tags (they would change the card's height). */
+.home-grid[data-size="normal"] .home-card-marks {
+  display: none;
+}
 /* Roomy cards: a larger picture. */
 .home-grid[data-size="roomy"] .home-card-open {
   grid-template-columns: 112px minmax(0, 1fr);

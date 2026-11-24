@@ -21,7 +21,7 @@ use std::path::Path;
 pub(crate) const TOOL: &str = "panthesia-analysis";
 /// Raised when the analysis changes enough that unchecked drafts should be made again
 /// (2: Parncutt fingering model; 3: chords recognised within 30 ms).
-const VERSION: &str = "8";
+const VERSION: &str = "9";
 
 fn draft() -> Provenance {
     let mut p = Provenance::new(Origin::Generated, Some(TOOL));

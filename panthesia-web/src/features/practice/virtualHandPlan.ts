@@ -7,6 +7,9 @@ export type Contact = {
     velocity: number;
     key: string;
     substitution: boolean;
+    /** From when the finger may leave the key with the sound unchanged: the sustain pedal
+     * catches it (see `requiredRelease`); `end` without the pedal. */
+    free: number;
 };
 export type HandTrack = {
     side: "left" | "right";
@@ -24,7 +27,21 @@ export type HandPlan = {
     rate: number;
 };
 /** Independent read-only motion plan from Panthesia annotations. No inferred hand/finger assignments. */
-export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["fingerActions"], rate: number): HandPlan {
+/** The earliest a key struck at `start` and released at `end` may be let go with the same sound:
+ * when the sustain pedal is down from some moment up to `end`, shortly after that moment (and at
+ * least 60 ms after the strike). Mirrors `panthesia_music::required_release`. */
+export function requiredRelease(spans: readonly [number, number][], start: number, end: number) {
+    let lo = 0, hi = spans.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (spans[mid][0] <= end) lo = mid + 1;
+        else hi = mid;
+    }
+    const span = spans[lo - 1];
+    if (!span || span[1] < end || span[0] >= end) return end;
+    return Math.min(end, Math.max(start + 0.06, span[0] + 0.03));
+}
+export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["fingerActions"], rate: number, sustain: readonly [number, number][] = []): HandPlan {
     const byNote = new Map<string, NonNullable<LoadedSong["fingerActions"]>>();
     for (const action of actions ?? []) {
         if (!action.valid || Math.abs(action.validationRate - rate) > 0.0001)
@@ -58,6 +75,7 @@ export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["finge
             const c = {
                 start,
                 end: finish,
+                free: Math.min(finish, Math.max(start, requiredRelease(sustain, note.start, end))),
                 pitch: note.pitch,
                 finger: finger!,
                 velocity: note.velocity,

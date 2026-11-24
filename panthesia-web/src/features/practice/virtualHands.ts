@@ -87,6 +87,7 @@ export class VirtualHands {
                 notes,
                 actions: song.fingerActions,
                 rate,
+                sustain: song.sustain,
             });
         }
         catch (error) {

@@ -127,13 +127,14 @@ pub fn prepare_basic(
     while end < notes.len() && notes[end - 1].start == notes[end].start {
         end += 1;
     }
+    let sustain = file.sustain_spans();
     let inputs: Vec<_> = notes[begin..end]
         .iter()
         .enumerate()
         .map(|(i, n)| FingeringNote {
             pitch: n.note,
             onset: n.start,
-            end: n.end,
+            end: panthesia_music::required_release(&sustain, n.start, n.end),
             anchored_finger: if range.is_none() && (bounds.0..bounds.1).contains(&(begin + i)) {
                 None
             } else {
@@ -364,10 +365,11 @@ pub fn prepare(
             || pins.insert((track,pin.index),pin.finger).is_some() {return Err("固定指法包含无效音符或重复位置".into());}
     }
     let mut notes=vec![];let mut positions=vec![];
+    let sustain=file.sustain_spans();
     for j in indices {
         let (track,i,n)=domain[j];let is_target=target(&domain[j]);
         let existing=saved.get(&(track,n.start,n.note)).copied();
-        notes.push(FingeringNote{pitch:n.note,onset:n.start,end:n.end,anchored_finger:if is_target {
+        notes.push(FingeringNote{pitch:n.note,onset:n.start,end:panthesia_music::required_release(&sustain,n.start,n.end),anchored_finger:if is_target {
             pins.get(&(track,i)).copied().or(if request.keep_saved {existing} else {None})
         } else {existing}});
         let tick=file.tempo_track.seconds_to_pulses(n.start.as_secs_f64()).round() as u64;
@@ -384,7 +386,7 @@ pub fn prepare(
             || n.start.as_secs_f64()>=target_end || n.end.as_secs_f64()<=target_start {continue;}
         let finger=saved.get(&(track.track_id,n.start,n.note)).copied().filter(|f|(1..=5).contains(f));
         let tick=file.tempo_track.seconds_to_pulses(n.start.as_secs_f64()).round() as u64;
-        opposite_notes.push(FingeringNote{pitch:n.note,onset:n.start,end:n.end,anchored_finger:finger});
+        opposite_notes.push(FingeringNote{pitch:n.note,onset:n.start,end:panthesia_music::required_release(&sustain,n.start,n.end),anchored_finger:finger});
         opposite_positions.push(Position{track:track.track_id,index,pitch:n.note,
             measure:file.musical_time.measures.partition_point(|m|m.start_tick<=tick).max(1),saved:finger,
             target:false,onset:n.start.as_secs_f64(),end:n.end.as_secs_f64()});
