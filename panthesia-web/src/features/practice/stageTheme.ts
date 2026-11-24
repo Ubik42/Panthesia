@@ -56,8 +56,9 @@ export const pitchColors = [
 
 /** Virtual hands: flat off-white skin, a soft grey outline, a shadow on the keys. */
 export const handSkin = {
-  fill: "#f4f4f1",
-  outline: "#a9adb6",
+  fill: "#e9b896",
+  sheen: "#ffd9c2",
+  outline: "#8a5a44",
   shadow: "#0b0e1466",
 } as const;
 

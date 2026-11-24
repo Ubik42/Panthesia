@@ -356,3 +356,36 @@
     transition: none;
   }
 }
+
+/* The keyboard viewport on the bar; on a narrow bar it moves into its own panel. */
+.stage-keyrange {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+}
+.stage-keyrange .ui-icon-button {
+  width: 26px;
+  height: 28px;
+  font-size: 15px;
+}
+.stage-keyrange select {
+  max-width: 82px;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: 12px/1 var(--font-ui);
+}
+.toolbar-more.narrow-only {
+  display: none;
+}
+@container stagebar (max-width: 1229px) {
+  .toolbar-more.narrow-only {
+    display: inline-block;
+  }
+}

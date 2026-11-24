@@ -14,7 +14,10 @@ export function ToolbarMore({
   icon,
   panel = false,
   width: panelWidth,
+  className,
 }: {
+  /** Extra class on the trigger's wrapper (e.g. shown only on a narrow bar). */
+  className?: string;
   /** A settings panel (interface-design.md §4.4): titled, drawn with the shared form styles,
    * and it stays open while its controls are used. */
   panel?: boolean;
@@ -109,7 +112,7 @@ export function ToolbarMore({
   return (
     <details
       ref={root}
-      className="toolbar-more"
+      className={["toolbar-more", className].filter(Boolean).join(" ")}
       data-input-popup=""
       onToggle={() => {
         if (!root.current?.open || !trigger.current) return;

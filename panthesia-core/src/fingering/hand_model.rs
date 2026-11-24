@@ -38,6 +38,21 @@ pub(crate) fn spans(i: u8, j: u8, profile: HandSpanProfile) -> [i32; 6] {
     s
 }
 
+/// Extra cost of a real crossing: the thumb passing under (or a finger over it) while the first
+/// key is still held. Fingers then pass through each other's place, which the hands never do
+/// (2026-11-24 user decision); with the first key released it is an ordinary change of position.
+pub(crate) const CROSSING: i32 = 30;
+
+/// Whether playing `p2` with `f2` after `p1` with `f1` puts the thumb on the far side of the
+/// other finger (thumb under / finger over).
+pub(crate) fn crosses(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand) -> bool {
+    if f1 == f2 || (f1 != 1 && f2 != 1) {
+        return false;
+    }
+    let (i, _, d) = oriented(p1, f1, p2, f2, hand);
+    i == 1 && d < 0
+}
+
 /// Signed distance from the lower-numbered finger to the higher, in the right hand's direction;
 /// the fingers in order (lower, higher).
 fn oriented(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand) -> (u8, u8, i32) {

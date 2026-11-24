@@ -90,18 +90,8 @@ export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["finge
                 if (contacts[i - 1].end > contacts[i].start + 0.01)
                     conflicts++;
         }
-        const sign = hand.side === "right" ? 1 : -1;
-        for (let i = 1; i < hand.notes.length; i++) {
-            const a = hand.notes[i - 1], b = hand.notes[i], up = (b.pitch - a.pitch) * sign;
-            if (b.start - a.start > 0.7 * rate || b.start === a.start)
-                continue;
-            if ((a.finger > 1 && b.finger === 1 && up > 0) ||
-                (a.finger === 1 && b.finger > 1 && up < 0))
-                hand.crossings.push({
-                    start: b.start - 0.24 * rate,
-                    end: b.start + 0.14 * rate,
-                });
-        }
+        // No thumb passes under the hand (2026-11-24): where the fingering turns the thumb
+        // under, the hand moves to the new position instead; fingers never pass through each other.
     }
     return { hands, missing, conflicts, rate };
 }

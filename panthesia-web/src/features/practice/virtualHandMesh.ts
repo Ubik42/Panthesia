@@ -5,8 +5,8 @@ import { handSkin } from "./stageTheme";
 /** The hands drawn as skinned meshes: the WebXR `generic-hand` model (immersive-web/
  * webxr-input-profiles, W3C Software and Document License, `public/models/generic-hand`).
  * The pose's joints drive the model's 25 joints directly; each bone turns from its rest
- * direction to the posed one. Seen from straight above (orthographic), flat white toon shading
- * with an outline, as in the reference video. Three.js loads with the first hands drawn. */
+ * direction to the posed one. Seen from straight above (orthographic), with a skin material
+ * and a thin outline. Three.js loads with the first hands drawn. */
 
 type Side = "left" | "right";
 const FINGERS = ["index-finger", "middle-finger", "ring-finger", "pinky-finger"] as const;
@@ -17,7 +17,7 @@ const CHAINS: string[][] = [
   ["wrist", ...THUMB],
   ...FINGERS.map((f) => [`${f}-metacarpal`, ...PHALANGES.map((p) => `${f}-${p}`)]),
 ];
-const OUTLINE_PX = 2;
+const OUTLINE_PX = 1.2;
 
 type Joint = { bone: Three.Bone; rest: Three.Vector3; restQuat: Three.Quaternion };
 type Model = { root: Three.Object3D; joints: Map<string, Joint>; wrist: Three.Vector3; thickness: { value: number } };
@@ -29,10 +29,18 @@ function loadKit(): Promise<Kit> {
     const THREE = await import("three");
     const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
     const loader = new GLTFLoader();
-    const gradient = new THREE.DataTexture(new Uint8Array([168, 222, 255]), 3, 1, THREE.RedFormat);
-    gradient.minFilter = gradient.magFilter = THREE.NearestFilter;
-    gradient.needsUpdate = true;
-    const skin = new THREE.MeshToonMaterial({ color: handSkin.fill, gradientMap: gradient });
+    // Skin: a physically based material with a soft sheen (the light scattered in the skin's
+    // surface) and a warm tone; lit by a warm key light, a cool fill and light from below.
+    const skin = new THREE.MeshPhysicalMaterial({
+      color: handSkin.fill,
+      roughness: 0.62,
+      metalness: 0,
+      sheen: 0.6,
+      sheenRoughness: 0.55,
+      sheenColor: new THREE.Color(handSkin.sheen),
+      clearcoat: 0.08,
+      clearcoatRoughness: 0.6,
+    });
     const load = async (side: Side): Promise<Model> => {
       const gltf = await loader.loadAsync(`/models/generic-hand/${side}.glb`);
       const root = gltf.scene;
@@ -98,11 +106,14 @@ export class HandMeshDrawing {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, antialias: true, premultipliedAlpha: true });
     this.renderer.setClearColor(0x000000, 0);
     this.scene = new THREE.Scene();
-    this.scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const light = new THREE.DirectionalLight(0xffffff, 1.6);
-    // Light from the upper left, above: the same side as the drop shadow's offset implies.
+    this.scene.add(new THREE.HemisphereLight(0xfff3e6, 0x6b4a36, 1.1));
+    const light = new THREE.DirectionalLight(0xfff1e0, 2.2);
+    // Key light from the upper left, above: the same side as the drop shadow's offset implies.
     light.position.set(-0.6, 0.5, 1);
     this.scene.add(light);
+    const fill = new THREE.DirectionalLight(0xdfe8ff, 0.6);
+    fill.position.set(0.8, -0.4, 0.6);
+    this.scene.add(fill);
     for (const side of ["left", "right"] as const) {
       k.models[side].root.visible = false;
       this.scene.add(k.models[side].root);

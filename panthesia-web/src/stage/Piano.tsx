@@ -19,6 +19,7 @@ import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { applyStageInk, backdropFor, luminance, pitchColors, stageAtmospheres, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
 import { presetUrl, useImageTone } from "./backgroundPresets";
+import { paintWoodFloor } from "./woodFloor";
 import { useOpenSongCover } from "../features/library/songCover";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -42,7 +43,7 @@ const sharp = isBlackKey;
 /** Room under the keys for the virtual hands' palms: the knuckles sit about 3.3 white keys
  * behind the keys' front edge, the wrist further back. */
 const handBay = (display: DisplayPreferences, keyWidth: number, height: number) =>
-  display.virtualHands ? Math.round(Math.min(height * 0.22, Math.max(36, keyWidth * 3))) : 0;
+  display.virtualHands ? Math.round(Math.min(height * 0.14, Math.max(28, keyWidth * 1.9))) : 0;
 /** With the hands shown, keys are drawn in their real proportion (about six key widths long),
  * the same scale the hands use. */
 const keyLength = (display: DisplayPreferences, keyWidth: number, height: number) =>
@@ -721,8 +722,7 @@ export function Piano({
         });
       }
       if (bay) {
-        ctx.fillStyle = stageInk.handBay;
-        ctx.fillRect(0, height - bay, width, bay);
+        paintWoodFloor(ctx, 0, height - bay, width, bay, Math.max(0.5, keyWidth / 24));
       }
       keyboard.paint(ctx, {
         width,

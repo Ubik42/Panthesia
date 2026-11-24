@@ -8,7 +8,7 @@ import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { LabelPicker } from "../settings/LabelPicker";
-import { KeyboardRangeControls } from "./KeyboardRangeControls";
+import { KeyboardRangeControls, KeyboardRangeInline } from "./KeyboardRangeControls";
 import type { KeyboardRange, KeyboardViewport } from "./keyboardViewport";
 import { PracticeLegend } from "./PracticeLegend";
 import { PreviewBarsControl } from "./PreviewBarsControl";
@@ -131,6 +131,9 @@ export function PerformanceTools({
       </div>
 
       <div className="stage-tools-group stage-display" aria-label="显示">
+        {(view === "keyboard" || view === "combined") && (
+          <KeyboardRangeInline className="bar-1280" value={display} range={keyboard.range} viewport={keyboard.viewport} change={(patch) => startupReady && set(patch)} />
+        )}
         <span className="stage-preview bar-1280" title={`前方预览 ${previewBarsLabel(display.previewBars)}`}>
           <button className="ui-icon-button" aria-label="减少前方预览" disabled={display.previewBars <= 0.5} onClick={() => set({ previewBars: Math.max(0.5, display.previewBars >= 2 ? display.previewBars - 1 : display.previewBars - 0.5) })}>
             <ChevronLeft size={16} />
@@ -176,7 +179,7 @@ export function PerformanceTools({
         <StageBackgroundSettings value={display} change={set} cover={cover} />
       </ToolbarMore>
 
-      <ToolbarMore panel width={420} icon={<Piano size={21} />} label="键盘范围与前方预览" disabled={!startupReady || (view !== "keyboard" && view !== "combined")}>
+      <ToolbarMore panel width={420} className="narrow-only" icon={<Piano size={21} />} label="键盘范围与前方预览" disabled={!startupReady || (view !== "keyboard" && view !== "combined")}>
         <section aria-label="键盘范围">
           <span className="fallback-1280">
             <PreviewBarsControl value={display.previewBars} change={(previewBars) => set({ previewBars })} label="前方预览" ariaLabel="预览小节数" />

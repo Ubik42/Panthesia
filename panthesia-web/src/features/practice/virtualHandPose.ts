@@ -248,6 +248,8 @@ function reachRange(finger: number, down: number) {
 const SPLAY = [0, 20, 14, 14, 20];
 const YAW_LIMIT = (20 * Math.PI) / 180;
 const FINGER_GAP = 12;
+/** How far the thumb's key stays outside the index finger's resting tip, across the hand (mm). */
+const THUMB_CLEAR = 22;
 
 type Placement = { x: number; y: number; yaw: number; weight: number; forward: number };
 type Aim = {
@@ -442,6 +444,17 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
         cx = (ox / d) * (d - min);
         cy = (oy / d) * (d - min);
       }
+      if (i === 0) {
+        // The thumb's key stays on the thumb's side of the hand, clear of where the index finger
+        // can reach: a thumb under the palm would put the fingers through each other.
+        const thumbSide = mirror * (cos * (g.x - w.x) + sin * (g.y - w.y));
+        const limit = (ANATOMY.bases[1].x + ANATOMY.rest[1].x) - THUMB_CLEAR;
+        if (thumbSide > limit) {
+          const side = (thumbSide - limit) * mirror;
+          cx += cos * side;
+          cy += sin * side;
+        }
+      }
       if (i > 0) {
         // Sideways reach: the angle from the hand's forward direction, beyond the finger's range.
         const local = Math.atan2(cos * ox + sin * oy, -sin * ox + cos * oy);
@@ -535,17 +548,17 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
 
   // Each finger's target: its key when it can reach it, else its rest place in the hand.
   /** `priority`: who yields when two fingers would cross (pressed 3, striking soon up to 2). */
-  type Target = { target: V3; pressed: boolean; substitution: boolean; priority: number };
+  type Target = { target: V3; pressed: boolean; substitution: boolean; priority: number; since: number };
   const targets: Target[] = rows.map(({ prev, future, held, contact, release }, i) => {
     const b = world(base(i));
     const rest = world({ x: restTip(i).x * mirror, y: restTip(i).y, z: base(i).z + ANATOMY.rest[i].z });
     const goal = goals[i];
-    if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0 };
+    if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0, since: -Infinity };
     const { max } = reachRange(i, b.z);
     // Out of reach even after the key fix: the finger lets the key go (the pedal keeps it
     // sounding) and returns to its place in the hand, smoothly as the distance grows.
     const away = smooth((Math.hypot(goal.x - b.x, goal.y - b.y) - max) / 25) * (1 - smooth((must[i] - 3) / 7));
-    if (away >= 0.999) return { target: rest, pressed: false, substitution: false, priority: 0 };
+    if (away >= 0.999) return { target: rest, pressed: false, substitution: false, priority: 0, since: -Infinity };
     let target: V3 = { ...goal };
     let pressed = held && away < 0.5;
     if (!held && future === contact) {
@@ -568,7 +581,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       pressed = false;
     }
     if (away > 0) target = { x: blend(target.x, rest.x, away), y: blend(target.y, rest.y, away), z: blend(target.z, rest.z, away) };
-    return { target, pressed, substitution: contact.substitution, priority: pressed ? 3 : Math.min(2, must[i] / 5) };
+    return { target, pressed, substitution: contact.substitution, priority: pressed ? 3 : Math.min(2, must[i] / 5), since: contact.start };
   });
 
   // Fingers 2-5 keep their order across the hand with room between them: free fingers make way
@@ -580,7 +593,14 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   const separate = (a: Target, b: Target) => {
     const need = FINGER_GAP - (lateral(b.target) - lateral(a.target));
     if (need <= 0) return;
-    if (a.priority >= 3 && b.priority >= 3) return; // both on keys: the fingering's own crossing
+    if (a.priority >= 3 && b.priority >= 3) {
+      // Two fingers on keys that would cross: fingers never pass through each other, so the one
+      // that pressed first lets its key go (the pedal or the sound's release carries it).
+      const older = a.since <= b.since ? a : b;
+      older.pressed = false;
+      older.priority = 1.5;
+      older.target = { ...older.target, z: older.target.z + LIFT * 0.6 };
+    }
     const share = b.priority === a.priority ? 0.5 : b.priority < a.priority ? 1 : 0;
     if (share > 0) shiftLateral(b, need * share);
     if (share < 1) shiftLateral(a, -need * (1 - share));
@@ -653,10 +673,12 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       });
     }
     memory.time = time;
-    memory.tips = targets.map((t) => ({ ...t.target }));
   }
+  // The hard rule last: whatever smoothing did, the fingers keep their order across the hand.
+  order(2);
+  if (memory) memory.tips = targets.map((t) => ({ ...t.target }));
 
-  const chain = (i: number, target: V3) => {
+  const chain = (i: number, target: V3, loose = false) => {
     const b = world(base(i));
     if (i === 0 && thumbUnder) {
       // Passing under the hand: the thumb's base swings toward the palm and drops.
@@ -670,10 +692,47 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
           forward: { x: -sin, y: cos },
           side: { x: mirror * cos, y: mirror * sin },
           rest: Math.atan2(ANATOMY.rest[i].x, ANATOMY.rest[i].y),
-          splay: ((SPLAY[i] + 8) * Math.PI) / 180,
+          splay: ((SPLAY[i] + (loose ? 30 : 8)) * Math.PI) / 180,
         });
   };
   const fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target), pressed, substitution }));
+  // Hard rule on the real fingertips (2026-11-24): fingers never pass through each other. A free
+  // finger still on the wrong side of its neighbour is put right beside it, even past its usual
+  // sideways range; two fingers on keys were already resolved above (the older one lets go).
+  const tipOf = (i: number) => fingers[i].points[fingers[i].points.length - 1];
+  const GAP = 7;
+  for (let pass = 0; pass < 2; pass++) {
+    // Fingers on keys stay; the free ones take places in order between them: a sweep from the
+    // little finger's side, then one from the thumb's, then free fingers squeezed between two
+    // keys sit in the middle, lifted.
+    const at = fingers.map((_, i) => lateral(tipOf(i)));
+    const fixed = fingers.map((f) => f.pressed);
+    const want = [...at];
+    for (let i = 3; i >= 0; i--) if (!fixed[i] && want[i] > want[i + 1] - GAP) want[i] = want[i + 1] - GAP;
+    for (let i = 1; i <= 4; i++) if (!fixed[i] && want[i] < want[i - 1] + GAP) want[i] = want[i - 1] + GAP;
+    const lift = fingers.map(() => 0);
+    for (let i = 0; i <= 4; i++) {
+      if (fixed[i]) continue;
+      const left = i > 0 ? want[i - 1] : -Infinity,
+        right = i < 4 ? want[i + 1] : Infinity;
+      if (right - left < 2 * GAP) {
+        want[i] = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : want[i];
+        lift[i] = 14;
+      }
+    }
+    let changed = false;
+    for (let i = 0; i <= 4; i++) {
+      if (fixed[i] || Math.abs(want[i] - at[i]) < 0.5) continue;
+      const from = tipOf(i),
+        by = want[i] - at[i];
+      const target = { x: from.x + mirror * cos * by, y: from.y + mirror * sin * by, z: Math.max(from.z, lift[i]) };
+      fingers[i] = { ...fingers[i], points: chain(i, target, true) };
+      targets[i] = { ...targets[i], target };
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  if (memory) memory.tips = targets.map((t) => ({ ...t.target }));
   return {
     side: track.side,
     wrist,

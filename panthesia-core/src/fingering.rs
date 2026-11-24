@@ -688,7 +688,9 @@ fn suggest_run(
         if rapid_repeated_transition(notes, i) {
             rapid_repeat_cost(a as u8, b as u8)
         } else {
-            transition_cost(notes[i - 1].pitch, a as u8, notes[i].pitch, b as u8, hand, profile)
+            let held = notes[i - 1].end > notes[i].onset + Duration::from_millis(30);
+            let crossing = if held && hand_model::crosses(notes[i - 1].pitch, a as u8, notes[i].pitch, b as u8, hand) { hand_model::CROSSING } else { 0 };
+            transition_cost(notes[i - 1].pitch, a as u8, notes[i].pitch, b as u8, hand, profile) + crossing
         }
     };
     // Notes far apart in time leave the hand free to move: no three-note rule across a rest.
