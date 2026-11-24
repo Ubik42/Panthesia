@@ -2,6 +2,22 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-23 · RU 前端架构：主界面、歌曲详情面板、路由与分层（提交 d4ac986、4bd1e4e、e4f4a74、71db1ec 及本条）
+
+用户重整了本地前端技能，要求按项目实际设计前端架构并与现状比对；主界面左栏三个大按钮留白太多、按行列出看到的太少，歌曲详情不需要“更多”、应在主界面选歌时弹出。随后明确：曲库管理（文件夹浏览、标签）由 Keel 承担，Panthesia 不重复做，只从技术架构和适合项目的角度整理。
+
+- 架构：新文档 `frontend-architecture.md`，四层（app / screens / features / stores）加基础层（ui、lib、engine），依赖只向下；zustand 按领域分 store；不引入 Tailwind 与 shadcn（现有 CSS 变量 + 级联层体系，引入第二套写法会长期并存），组件 API 参照 shadcn 的组合方式；桌面约定（框架文字不可选、默认光标、细滚动条、Esc 总有作用、输入法组字判断）。
+- 主界面：顶栏（品牌、搜索、打开文件、自由演奏与设置图标按钮）+ 最近打开的双列卡片，窄窗口一列；搜索结果同样用卡片。曲目文件夹的位置与重新扫描移到设置页新分区“曲目文件夹”。
+- 歌曲详情：`SongScreen` 改为 `SongDetails`，用 `ui/Sheet` 从主界面右侧滑出，练习区放最前，去掉“更多”。从舞台返回时回到详情。
+- 路由与对话框：`stores/route.ts` 取代 `useWorkspaceNavigation` 与原 `useProductScreens` 的两套状态（页面、引擎工作区的受控切换、设置页返回目标）；`stores/dialogs.ts` 保存全部对话框开关。
+- 分层：被 features 反向引用的 11 个 `app/` 模块移出——与界面无关的工具进 `lib/`，旧共用组件进 `ui/legacy/`（样式仍归 components 层，使 features 中的旧覆写继续生效）；`features/screens` 目录拆散（导航编排进 `app/`，其余归各领域）。设置页与自由演奏页不再读应用 Context，改为 props，偏好用 `useDisplay`、对话框读 store。现在 ui、lib、stores、features、screens 都不导入 `app/`。
+- 新组件：`ui/components.tsx`（Button、IconButton、Segmented、Badge、Empty、Sheet）、`ui/desktop.css`。
+- 检查：`npm run build`、`cargo check`；浏览器逐步走通：主页 → 详情 → 开始 → 舞台 → Ctrl+, 设置 → 返回舞台 → 返回详情 → 关闭；主页 → 设置 → 返回；主页 → 自由演奏 → 声音与设备 → 返回 → 主页。
+- 旧样式表：用 PostCSS 逐条检查（规则的每个选择器都含源码中不存在的类名才算死），`style.css` 等已无死规则，剩余部分只能随组件改写删除。
+- 未做：约 20 个旧对话框逐个改写到 `ui/Dialog`（内部布局依赖 `.settings-dialog .xxx` 后代选择器，需要逐个改写并目测）；引擎会话状态仍在 `useAppModel`（应用层组合根）。
+- 运行包：`outputs/releases/Panthesia-20261123b`（Release，来源提交 71db1ec），App Paths 已指向它。冒烟测试未完成：程序是单实例，用户正在运行的上一版接管了启动；为不打断用户没有关闭它。上一版 `Panthesia-20261123` 仍在使用，未移除。
+- 下一入口：旧对话框按大小从小到大改写（InkMergeReview、SongMetadataDialog、LocatedScorePaperDialog、AboutDialog…），每改完一个删除它在 `style.css` 中的规则。
+
 ## 2026-11-23 · RU 界面统一与架构整理（提交 097984b…8096267 及本条）
 
 用户反馈：界面需要统一现代化，设置太散；设置页点进去仍是 Synthesia 风格；谱面应每次单独渲染一行而不是内嵌列表滚动；演奏界面全屏不缩放；很多设计继承了早期 GPT 工程。先请子代理盘点全部界面入口（同一设置分散在 3–7 处、两套路由、5 种对话框实现、三套“未完成工作”视图、只作用于旧界面的皮肤），据此写入界面规范第 6 节与计划 RU 阶段。
