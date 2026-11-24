@@ -7,6 +7,7 @@ import {
   Library,
   Link2,
   LoaderCircle,
+  Image,
   Mic,
   Music,
   Play,
@@ -37,7 +38,7 @@ import {
 import type { Variant } from "../../engine/commands.generated";
 import "../../ui/controls.css";
 import { Dialog } from "../../ui/Dialog";
-import { PartsList, type PartsListProps } from "./PartsList";
+import { useSongCover } from "../../features/library/songCover";
 import "./songScreen.css";
 
 type Mode = "listen" | "wait";
@@ -52,9 +53,10 @@ const ICONS: Record<string, ReactNode> = {
   vocals: <Mic />,
   accompaniment: <Layers />,
   stems: <AudioLines />,
+  cover: <Image />,
 };
 /** Which file kind the picker offers, and how the file is registered, per material. */
-const ATTACH: Record<string, { pick: "performance" | "audio" | "paper" | "score"; role: string; stem?: string }> = {
+const ATTACH: Record<string, { pick: "performance" | "audio" | "paper" | "score" | "image"; role: string; stem?: string }> = {
   performance: { pick: "performance", role: "performance" },
   musicxml: { pick: "score", role: "score" },
   abc: { pick: "score", role: "score" },
@@ -62,6 +64,7 @@ const ATTACH: Record<string, { pick: "performance" | "audio" | "paper" | "score"
   source: { pick: "audio", role: "source" },
   vocals: { pick: "audio", role: "stem", stem: "vocals" },
   accompaniment: { pick: "audio", role: "stem", stem: "accompaniment" },
+  cover: { pick: "image", role: "cover" },
 };
 /** Background task labels of the external generators (`song_generate.rs`). */
 const TOOL_TASKS: Record<string, string> = { transcribe: "从原曲转录 MIDI", separate: "从原曲分离人声与伴奏" };
@@ -69,17 +72,17 @@ const TOOL_TASKS: Record<string, string> = { transcribe: "从原曲转录 MIDI",
 const fileName = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 
 /** Song details (interface-design.md 3.2, frontend-architecture.md §3): a dialog over the
- * library with everything that belongs to this song, set in place: its parts, its practice
- * version (transposition, quantization), its materials (input and generated files) and layers,
- * and an overview of the music. Practice mode and hands are chosen on the stage; starting uses
- * the last ones. Global settings (keyboard, sound) stay on the settings page. */
+ * library with what belongs to this song: its picture and facts, its practice version
+ * (transposition, quantization), its materials — every kind of the song model as one row, input
+ * and generated files side by side — its layers, and an overview of the music. Parts, practice
+ * mode and hands are set on the stage; starting uses the last ones. Global settings (keyboard,
+ * sound) stay on the settings page. */
 export function SongDetails({
   song,
   store,
   disabled,
   engineId,
   back,
-  parts,
   variant,
   scores,
   tools,
@@ -92,8 +95,6 @@ export function SongDetails({
   disabled: boolean;
   engineId?: string;
   back: () => void;
-  /** The parts list's own props (sound and track commands). */
-  parts: Omit<PartsListProps, "song" | "disabled">;
   variant: (value: Variant) => Promise<boolean>;
   /** The score manager (score files, paper pages, sources). */
   scores: () => void;
@@ -190,31 +191,21 @@ export function SongDetails({
   const startLabel = mode === "listen" ? "开始播放" : "开始练习";
   const summaryText = `${mode === "listen" ? "连续播放" : "等待按键"} · ${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}`;
   const materials = summary?.materials ?? [];
-  const items = materials.flatMap((m) => m.items.map((item) => ({ material: m, item })));
-  const inputs = items.filter(({ item }) => item.origin !== "generated");
-  const generated = items.filter(({ item }) => item.origin === "generated");
-  // One button per generator, named by what it makes (separation makes vocals and accompaniment).
-  const generators = [...new Map(materials.flatMap((m) => m.generators.map((g) => [g.id, { generator: g, makes: materials.filter((x) => x.generators.some((y) => y.id === g.id)).map((x) => x.label) }] as const))).values()];
-  const missingAttach = materials.filter((m) => ATTACH[m.kind] && !m.items.some((i) => i.state !== "missing" && i.state !== "found"));
+  const cover = useSongCover(materials.find((m) => m.kind === "cover")?.items.find((i) => i.state !== "missing")?.path);
   const busyGenerating = (g: Generator) => running.has(g.id) || pending === `generate:${g.id}`;
-  const fileRow = ({ material, item }: { material: Material; item: MaterialItem }) => (
-    <li key={`${material.kind}:${item.id ?? ""}:${item.path ?? item.relative}`} className="material-row" data-state={item.state}>
-      <span className="material-kind" title={material.label}>
-        {ICONS[material.kind]}
-        <span>{material.label}</span>
-      </span>
+  const readOnly = !!summary?.manifest?.readOnly;
+  const fileLine = (material: Material, item: MaterialItem) => (
+    <li key={`${item.id ?? ""}:${item.path ?? item.relative}`} className="material-file" data-state={item.state}>
       <span className="material-name" title={item.path ?? item.relative}>
         {fileName(item.relative)}
       </span>
-      <span className="material-tags">
-        {item.state === "current" && <em>当前</em>}
-        {item.paired && <em>谱面</em>}
-        {item.state === "missing" && <em data-state="missing">缺失</em>}
-        {item.state === "found" && <em data-state="found">未登记</em>}
-      </span>
+      {item.state === "current" && <em>当前</em>}
+      {item.paired && <em>谱面</em>}
+      {item.state === "missing" && <em data-state="missing">缺失</em>}
+      {item.state === "found" && <em data-state="found">未登记</em>}
       <span className="material-actions">
         {item.state === "found" && (
-          <button className="ui-icon-button" title="登记到歌曲清单" aria-label="登记到歌曲清单" disabled={locked || !!summary?.manifest?.readOnly} onClick={() => void register(item)}>
+          <button className="ui-icon-button" title="登记到歌曲清单" aria-label="登记到歌曲清单" disabled={locked || readOnly} onClick={() => void register(item)}>
             <Plus />
           </button>
         )}
@@ -234,13 +225,15 @@ export function SongDetails({
           </button>
         )}
         {item.id && item.state !== "current" && item.state !== "found" && (
-          <button className="ui-icon-button" title="从清单移除" aria-label="从清单移除" disabled={locked || !!summary?.manifest?.readOnly} onClick={() => unregister(item)}>
+          <button className="ui-icon-button" title="从清单移除" aria-label="从清单移除" disabled={locked || readOnly} onClick={() => unregister(item)}>
             <Trash2 />
           </button>
         )}
       </span>
     </li>
   );
+  const files = (material: Material, list: MaterialItem[]) =>
+    list.length ? <ul>{list.map((item) => fileLine(material, item))}</ul> : <span className="material-empty">—</span>;
 
   return (
     <Dialog
@@ -264,9 +257,19 @@ export function SongDetails({
         </p>
       )}
 
-      <section className="song-section" aria-labelledby="song-parts-title">
-        <h3 id="song-parts-title">声部</h3>
-        <PartsList song={song} disabled={locked} {...parts} />
+      <section className="song-head" aria-label="歌曲">
+        <div className="song-cover" data-empty={!cover || undefined}>
+          {cover ? <img src={cover} alt="" /> : <Music aria-hidden="true" />}
+        </div>
+        <dl className="song-facts">
+          <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
+          <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
+          <Fact name="拍号" value={facts?.timeSignature ?? "—"} />
+          <Fact name="调" value={keyLabel(facts?.key) ?? "—"} note={facts && facts.keySource !== "midi" ? SOURCE_NAMES[facts.keySource] : undefined} />
+          <Fact name="音域" value={facts?.pitchRange ? `${noteName(facts.pitchRange[0])}–${noteName(facts.pitchRange[1])}` : "—"} />
+          <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
+          <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
+        </dl>
       </section>
 
       <section className="song-section" aria-labelledby="song-version-title">
@@ -290,42 +293,54 @@ export function SongDetails({
         </div>
         {!summary && !loadError && <p className="song-loading">正在读取资料…</p>}
         {summary && (
-          <div className="song-materials">
-            <div className="material-column">
-              <h4>输入文件</h4>
-              <ul className="material-list">{inputs.map(fileRow)}</ul>
-              {missingAttach.length > 0 && (
-                <div className="material-add">
-                  {missingAttach.map((m) => (
-                    <button key={m.kind} className="ui-button ui-button--ghost" disabled={locked || !!summary.manifest?.readOnly} title={`关联${m.label}文件`} onClick={() => void attach(m)}>
-                      <Plus />
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="material-column">
-              <h4>生成文件</h4>
-              {generated.length > 0 ? <ul className="material-list">{generated.map(fileRow)}</ul> : <p className="material-none">还没有生成的文件</p>}
-              {generators.length > 0 && (
-                <div className="material-add">
-                  {generators.map(({ generator, makes }) => (
-                    <button
-                      key={generator.id}
-                      className="ui-button"
-                      disabled={locked || busyGenerating(generator) || !generator.available || !!summary.manifest?.readOnly}
-                      title={`${generator.label}：${makes.join("、")}${generator.reason ? `（${generator.reason}）` : ""}`}
-                      onClick={() => generate(generator)}
-                    >
-                      {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
-                      {makes.join(" + ")}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <table className="material-table">
+            <thead>
+              <tr>
+                <th scope="col">类型</th>
+                <th scope="col">输入文件</th>
+                <th scope="col">生成文件</th>
+                <th scope="col" aria-label="操作" />
+              </tr>
+            </thead>
+            <tbody>
+              {materials.map((material) => {
+                const input = material.items.filter((i) => i.origin !== "generated");
+                const made = material.items.filter((i) => i.origin === "generated");
+                const has = material.items.some((i) => i.state !== "missing" && i.state !== "found");
+                return (
+                  <tr key={material.kind} data-has={has || undefined}>
+                    <th scope="row">
+                      <span className="material-kind">
+                        {ICONS[material.kind]}
+                        {material.label}
+                      </span>
+                    </th>
+                    <td>{files(material, input)}</td>
+                    <td>{files(material, made)}</td>
+                    <td className="material-row-actions">
+                      {material.generators.map((generator) => (
+                        <button
+                          key={generator.id}
+                          className="ui-icon-button"
+                          disabled={locked || busyGenerating(generator) || !generator.available || readOnly}
+                          title={`${generator.label}${generator.reason ? `（${generator.reason}）` : ""}`}
+                          aria-label={generator.label}
+                          onClick={() => generate(generator)}
+                        >
+                          {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
+                        </button>
+                      ))}
+                      {ATTACH[material.kind] && (
+                        <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
+                          <Plus />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </section>
 
@@ -341,15 +356,6 @@ export function SongDetails({
       <section className="song-section song-overview" aria-label="MIDI 总览">
         <h3>MIDI 总览</h3>
         <PianoRoll song={song} />
-        <dl className="song-facts">
-          <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
-          <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
-          <Fact name="拍号" value={facts?.timeSignature ?? "—"} />
-          <Fact name="调" value={keyLabel(facts?.key) ?? "—"} note={facts && facts.keySource !== "midi" ? SOURCE_NAMES[facts.keySource] : undefined} />
-          <Fact name="音域" value={facts?.pitchRange ? `${noteName(facts.pitchRange[0])}–${noteName(facts.pitchRange[1])}` : "—"} />
-          <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
-          <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
-        </dl>
       </section>
     </Dialog>
   );

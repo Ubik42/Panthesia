@@ -63,9 +63,9 @@
   color: var(--muted);
 }
 .startup-actions button {
-  border-color: var(--green-57);
-  background: var(--green-39);
-  color: var(--teal-96);
+  border-color: var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--text-primary);
 }
 .startup-spinner {
   animation: startup-spin 1.5s linear infinite;

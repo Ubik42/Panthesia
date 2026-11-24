@@ -104,47 +104,50 @@
   font-size: 12px;
 }
 
-/* Materials: input files and generated files side by side, one row per file. */
-.song-materials {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+/* Materials: the song model's kinds as rows, input and generated files as columns. */
+.material-table {
+  width: 100%;
   margin-top: var(--space-2);
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
 }
-.material-column h4 {
-  margin: 0 0 var(--space-1);
+.material-table th,
+.material-table td {
+  padding: 5px var(--space-2);
+  border-top: 1px solid var(--line-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+.material-table thead th {
+  border-top: 0;
   color: var(--text-muted);
   font: 500 11px/1.4 var(--font-ui);
 }
-.material-list {
+.material-table thead th:nth-child(1) {
+  width: 132px;
+}
+.material-table thead th:nth-child(4) {
+  width: 72px;
+}
+.material-table tbody th {
+  font-weight: 400;
+}
+.material-table tr:not([data-has]) .material-kind {
+  color: var(--text-muted);
+}
+.material-table ul {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-.material-row {
-  display: grid;
-  grid-template-columns: minmax(80px, 124px) minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 32px;
-  border-top: 1px solid var(--line-subtle);
-}
-.material-row:first-child {
-  border-top: 0;
 }
 .material-kind {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 12px;
   white-space: nowrap;
-}
-.material-kind > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .material-kind svg {
   width: 14px;
@@ -152,66 +155,95 @@
   flex: none;
   color: var(--accent-strong);
 }
+.material-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 26px;
+}
 .material-name {
   overflow: hidden;
-  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
   user-select: text;
 }
-.material-row[data-state="missing"] .material-name {
+.material-file[data-state="missing"] .material-name {
   color: var(--state-missing);
   text-decoration: line-through;
 }
-.material-row[data-state="found"] .material-name {
+.material-file[data-state="found"] .material-name {
   color: var(--text-muted);
 }
-.material-tags {
-  display: inline-flex;
-  gap: 4px;
-}
-.material-tags em {
-  padding: 1px 6px;
+.material-file em {
+  flex: none;
+  padding: 0 6px;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 11px;
   font-style: normal;
 }
-.material-tags em[data-state="missing"] {
+.material-file em[data-state="missing"] {
   background: color-mix(in oklch, var(--state-missing) 14%, transparent);
   color: var(--state-missing);
 }
-.material-tags em[data-state="found"] {
+.material-file em[data-state="found"] {
   background: color-mix(in oklch, var(--state-warn) 14%, transparent);
   color: var(--state-warn);
 }
+.material-empty {
+  color: var(--text-muted);
+}
+/* File actions show on the row the pointer is over (and stay reachable by keyboard). */
 .material-actions {
   display: inline-flex;
-  gap: 0;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out);
 }
-.material-actions .ui-icon-button {
-  width: 28px;
-  height: 28px;
+.material-file:hover .material-actions,
+.material-actions:focus-within {
+  opacity: 1;
 }
-.material-actions .ui-icon-button svg {
+.material-table :is(.material-actions, .material-row-actions) .ui-icon-button {
+  width: 26px;
+  height: 26px;
+}
+.material-table :is(.material-actions, .material-row-actions) .ui-icon-button svg {
   width: 15px;
   height: 15px;
 }
-.material-add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
+.material-row-actions {
+  text-align: right;
+  white-space: nowrap;
 }
-.material-add .ui-button {
-  min-height: 28px;
-  padding: 0 var(--space-2);
-  font-size: 12px;
+
+/* Head: the song's picture and its facts. */
+.song-head {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
 }
-.material-add .ui-button svg {
-  width: 14px;
-  height: 14px;
+.song-cover {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+.song-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.song-cover svg {
+  width: 32px;
+  height: 32px;
 }
 
 /* Layers. */
@@ -245,7 +277,7 @@
 .song-facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  margin: var(--space-2) 0 0;
+  margin: 0;
 }
 .song-facts > div {
   padding: var(--space-1) var(--space-3);
@@ -290,11 +322,7 @@
     animation: none;
   }
 }
-@media (max-width: 760px) {
-  .song-materials {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 .song-details .ui-dialog-footer {
   align-items: center;
 }

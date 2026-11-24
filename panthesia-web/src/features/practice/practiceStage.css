@@ -37,24 +37,10 @@
   inset: 0;
   background: transparent;
 }
-/* On the stage the score has no toolbar band: its controls float at the top right, faint until
-   pointed at. Measure numbers are left out (the stage shows the measure in the timeline). */
-.practice-stage .practice-stage-notation .notation-pane > .notation-toolbar {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-2);
-  z-index: 2;
-  width: auto;
-  padding: 2px var(--space-2);
-  border: 0;
-  border-radius: var(--radius-m);
-  background: color-mix(in oklab, var(--surface-panel) 80%, transparent);
-  opacity: 0.25;
-  transition: opacity 140ms var(--ease-out);
-}
-.practice-stage .practice-stage-notation:hover .notation-pane > .notation-toolbar,
-.practice-stage .practice-stage-notation .notation-pane > .notation-toolbar:focus-within {
-  opacity: 1;
+/* On the stage the score has no bars of its own: no toolbar, route or notes; the wheel turns
+   lines. Measure numbers are left out (the stage shows the measure in the timeline). */
+.practice-stage .practice-stage-notation .notation-pane > :is(.notation-toolbar, .score-route, .score-message, .score-rhythm-note) {
+  display: none;
 }
 .practice-stage .practice-stage-notation .score-paper g.mNum {
   display: none;
@@ -128,6 +114,7 @@
 }
 .notation-line > .score-paper {
   width: 100%;
+  max-width: none;
   height: 100%;
   margin: 0;
   box-shadow: none;

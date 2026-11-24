@@ -14,7 +14,7 @@ export type DisplayPreferences = {
   noteLabelsOwnOnly: boolean;
   practiceLayoutVersion: number;
   practiceFocus: boolean;
-  practiceView: "keyboard" | "score" | "paper" | "combined";
+  practiceView: "keyboard" | "paper" | "combined";
   practiceSplitAxis: "auto" | "rows" | "columns";
   practiceSplitRatio: number;
   /** Score background on the stage: none (ink in the interface text colour) or a white page. */
@@ -112,7 +112,7 @@ export const displayDefaults: DisplayPreferences = {
   keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
-  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff",
+  practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff",
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
@@ -206,7 +206,8 @@ export function normalizeDisplayPreferences(
     recordClick: raw.recordClick === true,
     reduceMotion: typeof raw.reduceMotion === "boolean" ? raw.reduceMotion : false,
     practiceFocus: raw.practiceFocus === true,
-    practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" || raw.practiceView === "combined" ? raw.practiceView : "score",
+    // The score-only view became the combined view (the score over the waterfall).
+    practiceView: raw.practiceView === "keyboard" || raw.practiceView === "paper" ? raw.practiceView : "combined",
     practiceSplitAxis: raw.practiceSplitAxis === "rows" || raw.practiceSplitAxis === "columns" ? raw.practiceSplitAxis : "auto",
     practiceSplitRatio: size(raw.practiceSplitRatio, 25, 75, 55),
     scorePaper: raw.scorePaper === "paper" ? "paper" : "transparent",

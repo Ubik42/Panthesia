@@ -53,7 +53,7 @@ export function useScorePairing({
         true,
       );
       if (paired && playback.getSnapshot().contentId === target.contentId)
-        setView("score");
+        setView("combined");
     } catch (err) {
       setError(String(err));
     }

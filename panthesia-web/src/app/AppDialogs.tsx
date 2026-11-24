@@ -120,7 +120,7 @@ export function AppDialogs() {
             throw new Error("当前歌曲已改变，请返回对应歌曲打开谱面。");
           if (!(await changeWorkspace("practice")))
             throw new Error("谱面已采用，可稍后打开演奏。");
-          setView("score");
+          setView("combined");
           productScreens.show("performance");
           setScoresDialog(false);
           setPaperRevision((value) => value + 1);

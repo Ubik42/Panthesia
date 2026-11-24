@@ -1,4 +1,5 @@
 /* Parts of the song in the song details (PartsList.tsx): one compact row per track. */
+@layer screens {
 .parts-panel {
   position: relative;
 }
@@ -135,4 +136,24 @@
   .parts-hand {
     min-width: 0;
   }
+}
+
+/* In the stage's parts panel: one tight row per track. */
+.stage-panel .parts-row {
+  grid-template-columns: 22px minmax(90px, 1fr) auto 130px auto;
+  gap: var(--space-2);
+}
+.stage-panel .parts-hand button {
+  white-space: nowrap;
+}
+.stage-panel .parts-swatch {
+  width: 22px;
+  height: 22px;
+}
+.stage-panel .parts-sound input[type="range"] {
+  width: 64px;
+}
+.stage-panel .parts-tools {
+  top: -34px;
+}
 }

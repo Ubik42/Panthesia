@@ -121,7 +121,7 @@ export function useAppModel() {
   useEffect(() => {
     if (!scoreToolRequest) return;
     const actual = playback.getSnapshot();
-    if (workspace !== "practice" || view !== "score" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
+    if (workspace !== "practice" || view !== "combined" || actual.contentId !== scoreToolRequest.contentId || actual.stateOrder?.engineId !== scoreToolRequest.engineId) setScoreToolRequest(null);
   }, [scoreToolRequest, workspace, view, state.contentId, progressEngineId, state.mode, playback]);
   usePracticeUiSync(song, state.passage, fingeringDialog);
   const { pianoViewport, pianoRange, changePianoViewport, outsidePianoRange } = useKeyboardViewport(display, setDisplay, song?.notes, state.input);
@@ -197,7 +197,7 @@ export function useAppModel() {
       if(target==="passage")setPassageDialog(true);else if(target==="hands")setHandsDialog(true);else setMeterDialog(true);
     }),
     openScores:()=>setScoresDialog(true),
-    openScore:request=>{setView("score");productScreens.show("performance");setScoreToolRequest(request);},
+    openScore:request=>{setView("combined");productScreens.show("performance");setScoreToolRequest(request);},
     openSimple:target=>{
       if(target==="devices")openSoundSettings();
       else if(target==="exercise")setExerciseDialog(true);
@@ -273,7 +273,7 @@ export function useAppModel() {
     scores: (signal) => openPracticeTool(signal, () => setScoresDialog(true), false),
     metadata: (signal) => openPracticeTool(signal, () => { setMetadataDraftPath(null); setMetadata(true); }, false),
     keyboard: (signal) => openPracticeTool(signal, () => setView("keyboard"), false),
-    score: (signal) => openPracticeTool(signal, () => setView("score"), false),
+    score: (signal) => openPracticeTool(signal, () => setView("combined"), false),
     inspector: (signal) => openPracticeTool(signal, () => setSongOptions(true), false),
     devices: () => openSoundSettings(),
     display: () => openSettings("notes"),

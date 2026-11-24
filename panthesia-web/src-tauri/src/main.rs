@@ -306,6 +306,7 @@ async fn pick_song_file(state:tauri::State<'_,State>,kind:String,near:Option<Pat
         "performance"=>dialog.set_title("选择同一首歌的另一个 MIDI 版本").add_filter("MIDI", &["mid","midi","kar"]),
         "paper"=>dialog.set_title("选择谱页原件").add_filter("谱页", &["pdf","png","jpg","jpeg","webp"]),
         "score"=>dialog.set_title("选择五线谱或 ABC 谱").add_filter("乐谱", &["musicxml","mxl","xml","abc"]),
+        "image"=>dialog.set_title("选择歌曲图片").add_filter("图片", &["jpg","jpeg","png","webp"]),
         "tool"=>dialog.set_title("选择转录工具（music-transcription 的 Run.cmd）").add_filter("程序", &["cmd","bat","exe","py"]),
         _=>dialog.set_title("选择伴奏、人声或原音频").add_filter("音频与视频", &["wav","mp3","flac","ogg","m4a","aac","opus","mp4","mkv","webm"]),
     };

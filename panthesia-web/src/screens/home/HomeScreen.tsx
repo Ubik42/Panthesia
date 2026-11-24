@@ -4,13 +4,14 @@ import { api } from "../../api";
 import { product } from "../../product.generated";
 import { Badge, Button, Empty, IconButton, Segmented } from "../../ui/components";
 import { setDisplay, useDisplay } from "../../features/settings/interfaceSettingsStore";
+import { useSongCover } from "../../features/library/songCover";
 import { formatDuration, keyLabel, type SongFacts } from "../../features/library/songSummary";
 import "../../ui/controls.css";
 import "./homeScreen.css";
 
 export type RecentFile = { path: string; title: string; openedAt: number; exists: boolean };
 type Marks = { performance: boolean; score: boolean; audio: boolean; vocals: boolean; accompaniment: boolean };
-type Brief = { facts?: SongFacts; has?: Marks; error?: string };
+type Brief = { facts?: SongFacts; has?: Marks; cover?: string | null; error?: string };
 type FolderStatus = { root: string | null; songs: number; files: number; scannedAt: number | null; error: string | null };
 type Found = { path: string; title: string; artist: string | null; kind: "manifest" | "midi" | "musicxml" | "abc"; folder: string; materials: string[] };
 
@@ -220,6 +221,7 @@ export function HomeScreen({
                       marks={MARKS.map(([key, label]) => [label, !!brief?.has?.[key]])}
                       facts={facts ? [formatDuration(facts.durationSeconds), keyLabel(facts.key)].filter(Boolean).join(" · ") : ""}
                       time={ago(file.openedAt)}
+                      cover={brief?.cover}
                       open={choose}
                       forget={() => {
                         if (!file.exists || window.confirm(`从最近打开中移除“${file.title}”？文件本身不受影响。`)) forget(file.path);
@@ -251,6 +253,7 @@ function SongCard({
   asking,
   ask,
   relocate,
+  cover,
 }: {
   title: string;
   place: string;
@@ -267,7 +270,10 @@ function SongCard({
   asking?: boolean;
   ask?: () => void;
   relocate?: () => void;
+  /** Path of the song's picture. */
+  cover?: string | null;
 }) {
+  const picture = useSongCover(cover);
   if (missing && asking)
     return (
       <div className="home-card ui-card" data-missing="true" data-asking="true" title={path}>
@@ -304,6 +310,9 @@ function SongCard({
           : undefined
       }
     >
+      <span className="home-card-cover" data-empty={!picture || undefined} aria-hidden="true">
+        {picture ? <img src={picture} alt="" /> : <Music />}
+      </span>
       <span className="home-card-main">
         <strong>{title}</strong>
         <small>{place}</small>

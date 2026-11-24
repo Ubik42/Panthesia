@@ -22,6 +22,7 @@ pub const MATERIALS: &[(&str, &str)] = &[
     ("vocals", "人声"),
     ("accompaniment", "伴奏"),
     ("stems", "其他分轨"),
+    ("cover", "封面图片"),
 ];
 /// Layers in display order, with their names.
 const LAYERS: &[(&str, &str)] = &[
@@ -163,6 +164,7 @@ fn material_of(role: &str, stem: Option<&str>, path: &str) -> Option<&'static st
         ("stem", Some("vocals")) => Some("vocals"),
         ("stem", Some("accompaniment")) => Some("accompaniment"),
         ("stem", _) => Some("stems"),
+        ("cover", _) => Some("cover"),
         _ => None,
     }
 }
@@ -225,7 +227,7 @@ fn materials(music: &Path, located: Option<&Located>, performance: &str, check_f
     Value::Array(
         groups
             .into_iter()
-            .filter(|(kind, items)| *kind != "stems" || !items.is_empty())
+            .filter(|(kind, items)| (*kind != "stems" && *kind != "cover") || !items.is_empty())
             .map(|(kind, items)| json!({"kind": kind, "label": names[kind], "items": items}))
             .collect(),
     )

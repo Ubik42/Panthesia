@@ -1,5 +1,6 @@
-import { AudioLines, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, Blend, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageColorPicker } from "../settings/StageColorPicker";
+import { PartsList, type PartsListProps } from "../parts/PartsList";
 import { useState, type ComponentType, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
@@ -19,10 +20,11 @@ import { usePlaybackFields } from "./usePlaybackFields";
 import { ChordsDialog } from "./ChordsDialog";
 import "../../ui/stagePanel.css";
 
+/** Views of the stage: the waterfall alone, one score line over the waterfall, or the paper
+ * score above the keys. (A score without the waterfall is the combined view.) */
 const VIEWS: [string, string, boolean, LucideIcon][] = [
   ["keyboard", "瀑布", false, KeyboardMusic],
   ["combined", "谱面 + 瀑布", true, Rows2],
-  ["score", "五线谱", false, FileMusic],
   ["paper", "谱页", true, ScrollText],
 ];
 
@@ -48,6 +50,7 @@ export function PerformanceTools({
   adjustRealtime,
   setView,
   open,
+  parts,
 }: {
   song: LoadedSong | null;
   playback: PlaybackStore;
@@ -66,6 +69,8 @@ export function PerformanceTools({
   adjustRealtime: (command: { type: "seek"; position: number }) => Promise<boolean>;
   setView: (value: string) => void;
   open: { settings: () => void; fingering: () => void };
+  /** The song's parts (hands, colours, instruments) for the parts panel. */
+  parts: Omit<PartsListProps, "song" | "disabled">;
 }) {
   const { busy, openingActive, connected, startupReady } = status;
   const view = display.practiceView;
@@ -77,26 +82,24 @@ export function PerformanceTools({
     <div className="stage-tools">
       {chordsOpen && song && <ChordsDialog song={song} close={() => setChordsOpen(false)} run={run} />}
 
-      <div className="stage-tools-group" aria-label="练习">
-        <div className="ui-segmented stage-inline" role="group" aria-label="练习方式">
-          <button aria-pressed={state.mode === "wait"} aria-label="等待按键" disabled={locked || !song} title="等待按键：弹对后音乐才继续" onClick={() => action({ type: "mode", value: "wait" })}>
-            <Hourglass size={17} aria-hidden="true" />
-          </button>
-          <button aria-pressed={state.mode === "listen"} aria-label="连续播放" disabled={locked || !song} title="连续播放：音乐不等待" onClick={() => action({ type: "mode", value: "listen" })}>
-            <AudioLines size={17} aria-hidden="true" />
-          </button>
-        </div>
-        <div className="ui-segmented stage-inline" role="group" aria-label="练习的手">
-          {[
+      <div className="ui-segmented stage-inline stage-practice" role="group" aria-label="练习方式与手">
+        <button aria-pressed={state.mode === "wait"} aria-label="等待按键" disabled={locked || !song} title="等待按键：弹对后音乐才继续" onClick={() => action({ type: "mode", value: "wait" })}>
+          <Hourglass size={17} aria-hidden="true" />
+        </button>
+        {/* Which hand plays matters only while the music waits for the player. */}
+        {state.mode === "wait" &&
+          [
             ["left", "左", "只练左手"],
             ["both", "双", "双手练习"],
             ["right", "右", "只练右手"],
           ].map(([value, short, label]) => (
-            <button key={value} aria-pressed={state.hands === value} aria-label={label} title={label} disabled={busy || state.recording || !song} onClick={() => action({ type: "hands", value })}>
+            <button key={value} className="stage-hand" aria-pressed={state.hands === value} aria-label={label} title={label} disabled={busy || state.recording || !song} onClick={() => action({ type: "hands", value })}>
               {short}
             </button>
           ))}
-        </div>
+        <button aria-pressed={state.mode === "listen"} aria-label="连续播放" disabled={locked || !song} title="连续播放：音乐不等待" onClick={() => action({ type: "mode", value: "listen" })}>
+          <AudioLines size={17} aria-hidden="true" />
+        </button>
       </div>
 
       <div className="ui-segmented stage-inline stage-views" role="group" aria-label="练习视图">
@@ -198,6 +201,10 @@ export function PerformanceTools({
         <button className="stage-panel-link" onClick={open.settings}>
           更多显示设置…
         </button>
+      </ToolbarMore>
+
+      <ToolbarMore panel width={660} icon={<Blend size={22} />} label="声部" disabled={!song || !startupReady}>
+        {song && <PartsList song={song} disabled={busy || !connected} {...parts} />}
       </ToolbarMore>
 
       <ToolbarMore panel icon={<Repeat size={24} />} label="循环与书签" disabled={!song || !startupReady}>

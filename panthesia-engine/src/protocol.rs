@@ -304,6 +304,7 @@ pub enum Command {
     SongFiles,
     SongSummary { #[serde(default)] path: Option<PathBuf> },
     SongSummaries { paths: Vec<PathBuf> },
+    SongCover { path: PathBuf },
     GenerateMaterial { kind: String, #[serde(default)] path: Option<PathBuf> },
     TranscriptionTool,
     SetTranscriptionTool { #[serde(default)] path: Option<PathBuf> },

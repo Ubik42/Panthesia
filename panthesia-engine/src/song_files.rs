@@ -7,7 +7,7 @@ use panthesia_core::manifest::{FileRef, Manifest, PerformanceRef};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
-const ROLES: &[&str] = &["performance", "stem", "source", "paper", "score", "annotation-source"];
+const ROLES: &[&str] = &["performance", "stem", "source", "paper", "score", "annotation-source", "cover"];
 
 pub enum SongFileEdit {
     Add { path: PathBuf, role: String, stem: Option<String>, label: Option<String> },

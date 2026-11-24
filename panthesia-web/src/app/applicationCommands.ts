@@ -173,8 +173,8 @@ const definitions = [
   },
   {
     id: "score",
-    label: "切换到乐谱视图",
-    description: "跟随演奏查看可播放乐谱",
+    label: "切换到谱面 + 瀑布",
+    description: "一行谱面叠在瀑布上，跟随演奏",
     group: "工作区",
     icon: FileMusic,
     keywords: "五线谱 谱面 跟谱 notation",

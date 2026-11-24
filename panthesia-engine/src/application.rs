@@ -196,6 +196,7 @@ impl Engine {
             Command::RecentFiles => return Ok(self.recent_files()),
             Command::SongSummary { path } => return self.song_summary(path),
             Command::SongSummaries { paths } => return self.song_summaries(paths),
+            Command::SongCover { path } => return crate::song_generate::song_cover(&path),
             Command::GenerateMaterial { kind, path } => return self.generate_material(kind, path),
             Command::TranscriptionTool => return Ok(crate::song_generate::tool_status(&self.data)),
             Command::SongSearch { query } => {

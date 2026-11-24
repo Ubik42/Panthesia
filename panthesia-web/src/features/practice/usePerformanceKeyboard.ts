@@ -393,15 +393,7 @@ export function usePerformanceKeyboard({
             execute((c) => ({ type: "metronome", enabled: !c.metronome }));
             break;
           case "view":
-            setView((v) =>
-              v === "keyboard"
-                ? "score"
-                : v === "score"
-                  ? "combined"
-                  : v === "combined"
-                    ? "paper"
-                    : "keyboard",
-            );
+            setView((v) => (v === "keyboard" ? "combined" : v === "combined" ? "paper" : "keyboard"));
             break;
           case "library":
             uiRef.current.browse();

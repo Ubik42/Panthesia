@@ -1560,6 +1560,7 @@ export type EngineCommand =
   | { type: "songFiles" }
   | { type: "songSummary"; "path"?: string | null }
   | { type: "songSummaries"; "paths": Array<string> }
+  | { type: "songCover"; "path": string }
   | { type: "generateMaterial"; "kind": string; "path"?: string | null }
   | { type: "transcriptionTool" }
   | { type: "setTranscriptionTool"; "path"?: string | null }

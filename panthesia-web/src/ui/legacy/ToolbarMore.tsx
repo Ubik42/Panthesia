@@ -13,10 +13,13 @@ export function ToolbarMore({
   children,
   icon,
   panel = false,
+  width: panelWidth,
 }: {
   /** A settings panel (interface-design.md §4.4): titled, drawn with the shared form styles,
    * and it stays open while its controls are used. */
   panel?: boolean;
+  /** Width of the panel in CSS pixels (default 360). */
+  width?: number;
   label?: string;
   disabled: boolean;
   scale?: number;
@@ -52,7 +55,7 @@ export function ToolbarMore({
     const top = rect.top / zoom,
       bottom = rect.bottom / zoom,
       right = rect.right / zoom;
-    const width = Math.min(panel ? 360 : 340, viewportWidth - 24);
+    const width = Math.min(panel ? (panelWidth ?? 360) : 340, viewportWidth - 24);
     const above = viewportHeight - bottom < 230 && top > viewportHeight / 2;
     setPosition({
       width,

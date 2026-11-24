@@ -58,7 +58,7 @@
 | 字段 | 说明 |
 | --- | --- |
 | `id` | 清单内唯一，`[A-Za-z0-9_.-]{1,64}` |
-| `role` | `performance`、`score`、`paper`（PDF / 图片谱）、`stem`、`source`（原音频 / 视频）、`annotation-source`（如 POP909 `chord_midi.txt`）；未知角色保留 |
+| `role` | `performance`、`score`、`paper`（PDF / 图片谱）、`stem`、`source`（原音频 / 视频）、`annotation-source`（如 POP909 `chord_midi.txt`）、`cover`（歌曲图片，主界面与详情显示）；未知角色保留 |
 | `path` | 相对清单所在目录，用 `/` 分隔，可用 `../`；不得为绝对路径或盘符 |
 | `blake3`、`bytes` | 内容哈希（小写十六进制）与字节数，创建引用时记录 |
 | `stem` | `role` 为 `stem` 时必需：`vocals`、`accompaniment`、`piano`、`drums`、`bass`、`other` 或其他名称 |

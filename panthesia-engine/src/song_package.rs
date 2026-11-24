@@ -9,6 +9,8 @@ const VIDEO: &[&str] = &["mp4", "mkv", "webm"];
 const MIDI: &[&str] = &["mid", "midi", "kar"];
 const SCORE: &[&str] = &["musicxml", "mxl", "xml", "abc"];
 const PAPER: &[&str] = &["pdf"];
+/// Pictures of the song (cover art): same-name images, or cover.* / folder.* in its folder.
+pub const IMAGE: &[&str] = &["jpg", "jpeg", "png", "webp"];
 /// Ground-truth annotation files of the POP909 dataset.
 const POP909: &[(&str, &str)] = &[
     ("chord_midi.txt", "和弦（MIDI 时间）"),
@@ -105,6 +107,8 @@ pub fn related_files(song: &Path, known: &[PathBuf]) -> Vec<Suggestion> {
             }
         } else if SCORE.contains(&e.as_str()) && (s == base || s == song_stem || name == "score.musicxml" || name == "score.mxl") {
             push(Suggestion { path: file.clone(), role: "score", stem: None, label: None, reason: "与乐曲同名或导出的乐谱".into() });
+        } else if IMAGE.contains(&e.as_str()) && (s == base || s == song_stem || name.starts_with("cover.") || name.starts_with("folder.")) {
+            push(Suggestion { path: file.clone(), role: "cover", stem: None, label: None, reason: "与乐曲同名的图片或封面".into() });
         } else if PAPER.contains(&e.as_str()) && (s == base || s == song_stem) {
             push(Suggestion { path: file.clone(), role: "paper", stem: None, label: None, reason: "与乐曲同名的 PDF 谱".into() });
         } else if let Some((_, label)) = POP909.iter().find(|(n, _)| *n == name) {

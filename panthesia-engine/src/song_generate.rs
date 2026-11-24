@@ -190,7 +190,7 @@ impl Engine {
         })
     }
 
-    /// Facts and material marks for several songs (the start page's recent list).
+    /// Facts, material marks and cover picture for several songs (the start page's recent list).
     pub(crate) fn song_summaries(&self, paths: Vec<PathBuf>) -> Result<Value, String> {
         self.tasks.run("读取最近的歌曲", None, move |token| {
             let mut out = Map::new();
@@ -200,7 +200,7 @@ impl Engine {
                 let value = match song_summary::summarize(&path, true) {
                     Ok((summary, _)) => {
                         let has = |kind: &str| summary["materials"].as_array().is_some_and(|all| all.iter().any(|m| m["kind"] == kind && m["items"].as_array().is_some_and(|i| i.iter().any(|i| i["state"] != "missing" && i["state"] != "found"))));
-                        json!({"facts": summary["facts"], "has": {
+                        json!({"facts": summary["facts"], "cover": cover_path(&summary), "has": {
                             "performance": has("performance"), "score": has("musicxml") || has("abc") || has("paper"),
                             "audio": has("source"), "vocals": has("vocals"), "accompaniment": has("accompaniment"),
                         }})
@@ -451,4 +451,32 @@ fn mix(stems: &[PathBuf], target: &Path) -> Result<(), String> {
         }
     }
     atomic_file::write(target, &out).map_err(|e| format!("伴奏无法写入：{e}"))
+}
+
+/// The song's picture: a cover listed in the summary's materials whose file exists.
+pub(crate) fn cover_path(summary: &Value) -> Value {
+    summary["materials"]
+        .as_array()
+        .and_then(|all| all.iter().find(|m| m["kind"] == "cover"))
+        .and_then(|m| m["items"].as_array())
+        .and_then(|items| items.iter().find(|i| i["state"] != "missing").map(|i| i["path"].clone()))
+        .unwrap_or(Value::Null)
+}
+
+/// A song picture for the interface, as a data URL (images only, at most 12 MB).
+pub(crate) fn song_cover(path: &std::path::Path) -> Result<Value, String> {
+    use base64::Engine as _;
+    let ext = song_summary::extension(path);
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        _ => return Err("只能读取 JPG、PNG 或 WebP 图片".into()),
+    };
+    let meta = std::fs::metadata(path).map_err(|e| format!("图片无法读取：{e}"))?;
+    if meta.len() > 12 * 1024 * 1024 {
+        return Err("图片超过 12 MB".into());
+    }
+    let bytes = std::fs::read(path).map_err(|e| format!("图片无法读取：{e}"))?;
+    Ok(json!({"dataUrl": format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes))}))
 }

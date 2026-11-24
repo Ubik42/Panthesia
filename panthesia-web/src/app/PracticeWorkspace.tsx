@@ -135,6 +135,17 @@ export function PracticeWorkspace() {
                 run={run}
                 adjustRealtime={adjustRealtime}
                 setView={setView}
+                parts={{
+                  builtin: !state.outputId,
+                  pianoOnly: /default\.sf2$/i.test(state.soundfont ?? ""),
+                  custom: (track) => {
+                    const t = song?.tracks.find((t) => t.id === track);
+                    if (t && !t.visible)
+                      void run({ type: "track", id: t.id, mode: t.mode, part: t.part, visible: true }, true).then((ok) => ok && productScreens.split(track));
+                    else productScreens.split(track);
+                  },
+                  command: (value) => run(value, true),
+                }}
                 open={{
                   settings: () => openSettings("notes"),
                   fingering: () =>
@@ -222,7 +233,7 @@ export function PracticeWorkspace() {
             >
               {productScreens.screen === "performance" && (
                   <Piano
-                    hideNotes={view === "score" || view === "paper"}
+                    hideNotes={view === "paper"}
                     song={song}
                     state={playback.getSnapshot()}
                     store={playback}
@@ -262,12 +273,12 @@ export function PracticeWorkspace() {
             <div
               className="practice-stage-notation"
               data-view={view}
-              hidden={view !== "score" && view !== "combined"}
+              hidden={view !== "combined"}
               role="region"
               aria-label="五线谱区域"
             >
               {productScreens.screen === "performance" &&
-                (view === "score" || view === "combined") &&
+                view === "combined" &&
                 song && (
                   state.contentId === song.contentId && (
 <Notation
@@ -324,7 +335,6 @@ export function PracticeWorkspace() {
                 )
               )}
             {selectedNote &&
-              view !== "score" &&
               view !== "combined" && (
                 <div className="finger-editor">
                   <span>

@@ -16,7 +16,7 @@ export type MaterialItem = {
   reason?: string;
 };
 export type Generator = { id: string; label: string; external: boolean; available: boolean; reason?: string | null };
-export type MaterialKind = "performance" | "musicxml" | "abc" | "paper" | "source" | "vocals" | "accompaniment" | "stems";
+export type MaterialKind = "performance" | "musicxml" | "abc" | "paper" | "source" | "vocals" | "accompaniment" | "stems" | "cover";
 export type Material = { kind: MaterialKind; label: string; items: MaterialItem[]; generators: Generator[] };
 /** `review: "pending"`: generated on first open and not yet checked by AI or the player. */
 export type Layer = { name: string; label: string; origin: "human" | "imported" | "generated" | null; count: number; review?: string | null };

@@ -2,21 +2,25 @@ import createModule from "./module.mjs";
 import { VerovioToolkit } from "./toolkit.mjs";
 import { createMidiValueIndex } from "./midi-value-index.mjs";
 let toolkit,
-  lineToolkit,
   count = 0,
-  lines = [];
+  lines = [],
+  pageSvgs = [];
 /** Line view: the systems of the auto layout at the pane's width, each as its first and last
- * measure and the notes it holds. A line is then laid out alone by a second toolkit that
- * renders only that measure range (breaks "none"), so every line has its own clef and key. */
+ * measure and the notes it holds. A line is shown as its system cut out of the rendered page
+ * (`systemSvg`): systems are justified to the full width and each starts with its clef and key,
+ * so every line fills the pane's width. */
 function computeLines() {
   const out = [];
+  pageSvgs = [];
   for (let page = 1; page <= count; page++) {
     const svg = toolkit.renderToSVG(page);
+    pageSvgs.push(svg);
+    let system = 0;
     for (const tag of svg.matchAll(/<g\b([^>]*)>/g)) {
       const attrs = tag[1];
       const kind = attrs.match(/\bclass="([^"]*)"/)?.[1] ?? "";
       const id = attrs.match(/\bdata-id="([^"]*)"/)?.[1] ?? attrs.match(/\bid="([^"]*)"/)?.[1];
-      if (/(^|\s)system(\s|$)/.test(kind)) out.push({ page: page - 1, first: "", last: "", notes: [] });
+      if (/(^|\s)system(\s|$)/.test(kind)) out.push({ page: page - 1, system: system++, first: "", last: "", notes: [] });
       else if (!out.length || !id) continue;
       else if (/(^|\s)measure(\s|$)/.test(kind)) {
         const line = out[out.length - 1];
@@ -26,6 +30,54 @@ function computeLines() {
     }
   }
   return out.filter((line) => line.first);
+}
+/** The `index`-th system of a rendered page as its own SVG, cropped to what it draws. The crop
+ * is computed from the coordinates in its markup (glyph positions, paths, text), with room above
+ * and below for stems and slurs; the viewBox keeps the page's outer units. */
+function systemSvg(page, index) {
+  const outer = page.match(/^<svg\b[^>]*>/)?.[0] ?? "<svg>";
+  const outerBox = outer.match(/viewBox="([^"]+)"/)?.[1].split(/\s+/).map(Number);
+  const innerBox = page.match(/class="definition-scale"[^>]*viewBox="([^"]+)"/)?.[1].split(/\s+/).map(Number);
+  const k = outerBox && innerBox && innerBox[2] ? outerBox[2] / innerBox[2] : 1;
+  const starts = [...page.matchAll(/<g\b[^>]*class="system"[^>]*>/g)];
+  const start = starts[index]?.index;
+  if (start === undefined) throw new Error("谱面行位置无效");
+  // The system's own markup: from its opening tag to the matching close.
+  const tag = /<(\/?)g\b[^>]*?(\/?)>/g;
+  tag.lastIndex = start;
+  let depth = 0,
+    end = page.length,
+    m;
+  while ((m = tag.exec(page))) {
+    if (m[1]) depth--;
+    else if (!m[2]) depth++;
+    if (depth === 0) {
+      end = m.index + m[0].length;
+      break;
+    }
+  }
+  // Part names (label, labelAbbr) stand left of the staff: a stage line has none.
+  const system = page.slice(start, end).replace(/<g\b[^>]*class="label(?:Abbr)?"[^>]*>[\s\S]*?<\/g>/g, "");
+  const xs = [],
+    ys = [];
+  for (const t of system.matchAll(/translate\((-?[\d.]+)[ ,]+(-?[\d.]+)\)/g)) xs.push(+t[1]), ys.push(+t[2]);
+  for (const d of system.matchAll(/\sd="([^"]+)"/g)) {
+    const n = d[1].match(/-?[\d.]+/g)?.map(Number) ?? [];
+    for (let i = 0; i + 1 < n.length; i += 2) xs.push(n[i]), ys.push(n[i + 1]);
+  }
+  for (const t of system.matchAll(/<text\b[^>]*\bx="(-?[\d.]+)"[^>]*\by="(-?[\d.]+)"/g)) xs.push(+t[1]), ys.push(+t[2]);
+  if (!xs.length) throw new Error("谱面行为空");
+  const left = Math.min(...xs),
+    right = Math.max(...xs),
+    top = Math.min(...ys),
+    bottom = Math.max(...ys);
+  const pad = Math.max(300, (bottom - top) * 0.12);
+  const box = [left - 120, top - pad, right - left + 240, bottom - top + 2 * pad].map((v) => +(v * k).toFixed(1));
+  const defs = page.match(/<defs>[\s\S]*?<\/defs>/)?.[0] ?? "";
+  // Every style block: one holds the music font (@font-face) for tempo marks and text glyphs.
+  const style = (page.match(/<style\b[\s\S]*?<\/style>/g) ?? []).join("");
+  const id = outer.match(/\bid="([^"]+)"/)?.[1] ?? "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="${id}" class="definition-scale" color="black" font-family="Times, serif" overflow="visible" viewBox="${box.join(" ")}">${defs}${style}<g class="page-margin" transform="scale(${k})">${system}</g></svg>`;
 }
 function layoutOptions(pageWidth) {
   return {
@@ -88,20 +140,6 @@ self.onmessage = async ({ data }) => {
         throw new Error("这份文件未生成可显示的谱页");
       if (data.lines) {
         progress("lines");
-        lineToolkit = new VerovioToolkit(await createModule());
-        lineToolkit.setOptions({
-          breaks: "none",
-          header: "none",
-          footer: "none",
-          scale: 40,
-          svgHtml5: true,
-          svgViewBox: true,
-          xmlIdChecksum: true,
-          expandNever: true,
-          adjustPageWidth: true,
-          adjustPageHeight: true,
-        });
-        if (!lineToolkit.loadData(toolkit.getMEI())) throw new Error("谱面单行排版无法读取");
         lines = computeLines();
       }
       self.postMessage({ id, count, lines: data.lines ? lines : undefined });
@@ -120,7 +158,7 @@ self.onmessage = async ({ data }) => {
       });
     } else if (type === "relayout") {
       // The pane changed width: break the score into lines again.
-      if (!toolkit || !lineToolkit) throw new Error("谱面尚未排版");
+      if (!toolkit) throw new Error("谱面尚未排版");
       toolkit.setOptions(layoutOptions(data.pageWidth));
       toolkit.redoLayout();
       count = toolkit.getPageCount();
@@ -128,10 +166,8 @@ self.onmessage = async ({ data }) => {
       self.postMessage({ id, count, lines });
     } else if (type === "line") {
       const line = lines[data.line];
-      if (!lineToolkit || !line) throw new Error("谱面行位置无效");
-      lineToolkit.select({ start: line.first, end: line.last });
-      lineToolkit.redoLayout();
-      self.postMessage({ id, line: data.line, svg: lineToolkit.renderToSVG(1) });
+      if (!line || !pageSvgs[line.page]) throw new Error("谱面行位置无效");
+      self.postMessage({ id, line: data.line, svg: systemSvg(pageSvgs[line.page], line.system) });
     } else if (type === "evidence") {
       if (!toolkit) throw new Error("谱面尚未排版");
       progress("midi");

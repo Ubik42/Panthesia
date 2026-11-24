@@ -74,17 +74,6 @@ export function ProductScreens() {
             back={() => {
               void goHome();
             }}
-            parts={{
-              builtin: !state.outputId,
-              pianoOnly: /default\.sf2$/i.test(state.soundfont ?? ""),
-              custom: (track) => {
-                const t = song.tracks.find((t) => t.id === track);
-                if (t && !t.visible)
-                  void run({ type: "track", id: t.id, mode: t.mode, part: t.part, visible: true }, true).then((ok) => ok && productScreens.split(track));
-                else productScreens.split(track);
-              },
-              command: (value) => run(value, true),
-            }}
             variant={(value) => applyPracticeVariant(run, song, value)}
             scores={() => setScoresDialog(true)}
             tools={() => openSettings("tools")}

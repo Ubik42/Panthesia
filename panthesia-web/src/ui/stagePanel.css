@@ -177,3 +177,9 @@
     display: none;
   }
 }
+/* Practice mode and hands in one switch: the hands sit inside it, after the wait mode. */
+.stage-practice .stage-hand {
+  min-width: 26px;
+  padding: 0 4px;
+  font-size: 12px;
+}
