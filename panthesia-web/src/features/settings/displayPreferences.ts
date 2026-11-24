@@ -118,7 +118,7 @@ export const displayDefaults: DisplayPreferences = {
   keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
-  practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff", backgroundImage: "none", backgroundImageOpacity: 100,
+  practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff", backgroundImage: "preset:night", backgroundImageOpacity: 100,
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
@@ -240,7 +240,14 @@ export function normalizeDisplayPreferences(
     palette: raw.palette === "accessible" || raw.palette === "pitch" ? raw.palette : "standard",
     backgroundOpacity: size(raw.backgroundOpacity, 0, 100, 100),
     // Before this setting a chosen picture always showed: keep showing it.
-    backgroundImage: isBackgroundImage(raw.backgroundImage) ? raw.backgroundImage : hasStageBackground() ? "custom" : "none",
+    // The starry sky is the default picture. Settings saved before the picture had its own
+    // strength (no backgroundImageOpacity) never chose "none" on purpose: they get it too.
+    backgroundImage:
+      isBackgroundImage(raw.backgroundImage) && (raw.backgroundImage !== "none" || raw.backgroundImageOpacity !== undefined)
+        ? raw.backgroundImage
+        : hasStageBackground()
+          ? "custom"
+          : "preset:night",
     backgroundImageOpacity: size(raw.backgroundImageOpacity, 10, 100, 100),
     ledStrip: typeof raw.ledStrip === "boolean" ? raw.ledStrip : true,
     tonic:

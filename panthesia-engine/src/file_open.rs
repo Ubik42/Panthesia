@@ -97,7 +97,10 @@ impl Engine {
             }
         }
         let shown = result["title"].as_str().map(str::to_owned).unwrap_or_else(|| title(located.as_ref().map(|l| &l.manifest), &target));
-        self.remember_recent(&path, &shown);
+        // One entry per song: a song with a manifest is remembered by its manifest, so opening
+        // one of its versions (乐谱量化, 练习版) does not add another song to the list.
+        let remembered = located.as_ref().map_or_else(|| path.clone(), |found| found.path.clone());
+        self.remember_recent(&remembered, &shown);
         self.remember_opened(target.clone());
         result["opened"] = json!({
             "path": path,

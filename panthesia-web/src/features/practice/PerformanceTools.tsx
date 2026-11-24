@@ -1,4 +1,4 @@
-import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, PencilLine, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageBackgroundSettings } from "../settings/StageBackgroundSettings";
 import { useOpenSongCover } from "../library/songCover";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
@@ -176,21 +176,17 @@ export function PerformanceTools({
         <section aria-label="标注">
           <h3>标注</h3>
           {!!song?.harmony?.chords.length && (
-            <div className="ui-row">
-              <span>
-                和弦 <small>{song.harmony.origin === "generated" ? "自动分析" : song.harmony.origin === "imported" ? "来自标注" : "已编辑"}</small>
-              </span>
-              <span className="settings-row-actions">
-                <select aria-label="和弦显示" value={display.chordLabels} onChange={(event) => set({ chordLabels: event.target.value as DisplayPreferences["chordLabels"] })}>
-                  <option value="off">不显示</option>
-                  <option value="degree">级数</option>
-                  <option value="name">和弦名</option>
-                  <option value="both">级数与和弦名</option>
-                </select>
-                <button disabled={busy} onClick={() => setChordsOpen(true)}>
-                  编辑…
-                </button>
-              </span>
+            <div className="stage-chords">
+              <span>和弦</span>
+              <select aria-label="和弦显示" value={display.chordLabels} onChange={(event) => set({ chordLabels: event.target.value as DisplayPreferences["chordLabels"] })}>
+                <option value="off">不显示</option>
+                <option value="degree">级数</option>
+                <option value="name">和弦名</option>
+                <option value="both">级数与和弦名</option>
+              </select>
+              <button className="ui-icon-button" title="编辑和弦" aria-label="编辑和弦" disabled={busy} onClick={() => setChordsOpen(true)}>
+                <PencilLine size={16} />
+              </button>
             </div>
           )}
           {!!song?.sections?.items.length && (
@@ -215,7 +211,7 @@ export function PerformanceTools({
         </button>
       </ToolbarMore>
 
-      <ToolbarMore panel icon={<AudioWaveform size={22} />} label={state.stems?.stems.length ? "音轨（人声、伴奏）" : "音轨：这首歌没有人声或伴奏分轨"} disabled={!song || !startupReady || !state.stems?.stems.length}>
+      <ToolbarMore panel icon={<AudioWaveform size={22} />} label={state.stems?.stems.length ? "音轨" : "音轨（这首歌没有分轨）"} disabled={!song || !startupReady || !state.stems?.stems.length}>
         <StemControls store={playback} command={action} />
       </ToolbarMore>
 

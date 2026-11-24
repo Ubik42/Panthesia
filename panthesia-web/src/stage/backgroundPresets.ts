@@ -7,7 +7,7 @@ export const BACKGROUND_PRESETS: { id: string; name: string }[] = [
   { id: "dusk", name: "暮色" },
   { id: "ocean", name: "深海" },
   { id: "aurora", name: "极光" },
-  { id: "night", name: "夜空" },
+  { id: "night", name: "星空" },
 ];
 export const presetUrl = (id: string) => `/backgrounds/${id}.svg`;
 

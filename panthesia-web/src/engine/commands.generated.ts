@@ -1057,6 +1057,8 @@ export interface TrackSound {
   "volume": number;
   "pan"?: number | null;
   "program"?: number | null;
+  "left"?: number | null;
+  "right"?: number | null;
 }
 
 export const PracticeTrackModeValues = ["Mute", "Auto", "Human"] as const;

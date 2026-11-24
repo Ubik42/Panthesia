@@ -338,12 +338,6 @@ export function SongDetails({
           choose={(item) => switchTo(item)}
         />
         <VariantRow song={song} disabled={locked} apply={variant} />
-        <PlayNotes
-          current={materials.find((m) => m.kind === "performance")?.items.find((i) => i.state === "current")}
-          quantized={!!song.practiceVariant?.settings?.quantize}
-          paired={materials.some((m) => m.kind === "musicxml" && m.items.some((i) => i.paired))}
-          audio={materials.some((m) => (m.kind === "vocals" || m.kind === "accompaniment") && m.items.some((i) => i.state !== "missing" && i.state !== "found"))}
-        />
       </section>
 
       <section className="song-section" aria-labelledby="song-materials-title">
@@ -376,7 +370,7 @@ export function SongDetails({
                   has: items.some((i) => i.state !== "missing" && i.state !== "found"),
                   content: (
                     <>
-                      {material.empty && !items.length ? <span className="material-empty" title="分离结果几乎是静音，不作为分轨">无（分离结果为静音）</span> : files(material, items)}
+                      {material.empty && !items.length ? <span className="material-empty" title="分离结果几乎是静音">无</span> : files(material, items)}
                       {AUDIO_KINDS.has(material.kind) && generatorButtons(material)}
                       {ATTACH[material.kind] && (
                         <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
@@ -498,23 +492,6 @@ function PerformanceChoice({ items, disabled, choose }: { items: MaterialItem[];
         </select>
       </span>
     </div>
-  );
-}
-
-/** What the current choice means on the stage (song-pipeline.md, "演奏"). */
-function PlayNotes({ current, quantized, paired, audio }: { current?: MaterialItem; quantized: boolean; paired: boolean; audio: boolean }) {
-  const notes: string[] = [];
-  if (current?.step === "transcribe")
-    notes.push("转录 MIDI 保留原曲的时间与力度，没有真实的拍子：小节线、节拍器和段落只作参考；需要准确小节时选“乐谱量化”。");
-  if (quantized && audio) notes.push("练习量化会挪动音符时间，人声与伴奏可能和音符对不齐；跟原曲一起弹时用原始时值。");
-  if (!quantized && !paired) notes.push("没有配对的乐谱：谱面按原始时值自动排版，节奏可能零碎；可选“乐谱量化”或配对 MusicXML。");
-  if (!notes.length) return null;
-  return (
-    <ul className="play-notes">
-      {notes.map((n) => (
-        <li key={n}>{n}</li>
-      ))}
-    </ul>
   );
 }
 

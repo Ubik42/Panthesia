@@ -178,14 +178,11 @@ export const SongBookmarks = forwardRef<BookmarkNavigation, Props>(
     return (
       <section className="song-bookmarks" aria-label="演奏书签">
         <div className="bookmark-actions">
-          <span className="bookmark-heading">
-            <Flag size={13} />
-            书签
-          </span>
           <label>
             <span className="sr-only">选择书签</span>
             <select
               aria-label="选择书签"
+              title={shortcutHint}
               disabled={locked || !rows.length}
               value={selected}
               onChange={(e) => {
@@ -292,7 +289,6 @@ export const SongBookmarks = forwardRef<BookmarkNavigation, Props>(
               </button>
             </>
           )}
-          <small>{shortcutHint}</small>
         </div>
         {!!marks.length && (
           <div className="bookmark-ruler" aria-label="书签在全曲中的位置">

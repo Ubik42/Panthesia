@@ -7,6 +7,28 @@ pub struct TrackSound {
     pub volume: u8,
     pub pan: Option<u8>,
     pub program: Option<u8>,
+    /// Per-hand level (0–100) of a track whose notes are split between the hands, applied to
+    /// each note's velocity; `None` plays the hand at the track's level.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub left: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right: Option<u8>,
+}
+impl TrackSound {
+    /// The velocity of a note of `part` after its hand's level; `None` silences it.
+    pub(crate) fn hand_velocity(&self, part: panthesia_core::practice::PracticePart, velocity: u8) -> Option<u8> {
+        use panthesia_core::practice::PracticePart;
+        let level = match part {
+            PracticePart::LeftHand => self.left,
+            PracticePart::RightHand => self.right,
+            _ => None,
+        };
+        match level {
+            None => Some(velocity),
+            Some(0) => None,
+            Some(level) => Some(((u16::from(velocity) * u16::from(level) + 50) / 100).clamp(1, 127) as u8),
+        }
+    }
 }
 impl Default for TrackSound {
     fn default() -> Self {
@@ -14,6 +36,8 @@ impl Default for TrackSound {
             volume: 100,
             pan: None,
             program: None,
+            left: None,
+            right: None,
         }
     }
 }
@@ -334,7 +358,7 @@ impl Player {
             return Err("找不到音轨".into());
         }
         if let Some(s) = &sound {
-            if s.volume > 100 || s.pan.is_some_and(|p| p > 127) {
+            if s.volume > 100 || s.pan.is_some_and(|p| p > 127) || s.left.is_some_and(|v| v > 100) || s.right.is_some_and(|v| v > 100) {
                 return Err("音量或声像超出范围".into());
             }
             if s.program
@@ -410,6 +434,8 @@ mod tests {
                 volume: 50,
                 pan: Some(10),
                 program: Some(22),
+                left: None,
+                right: None,
             },
         )]);
         assert_eq!(r.transform(1, &[144, 60, 83], &s), vec![vec![145, 60, 83]]);

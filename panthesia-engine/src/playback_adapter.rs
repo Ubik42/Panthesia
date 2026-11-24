@@ -144,7 +144,18 @@ impl Player {
                     {
                         continue;
                     }
-                    ([144 | event.channel, key.as_int(), vel.as_int()], 3)
+                    // A track split between the hands can play each hand at its own level.
+                    let mut velocity = vel.as_int();
+                    if let (Some(sound), Some(&index)) = (self.track_sound_cache.get(&event.track_id), event.source_note.and_then(|id| self.event_notes.get(&id))) {
+                        if sound.left.is_some() || sound.right.is_some() {
+                            let part = crate::hands::part(&self.config, &self.note_hands, event.track_id, index);
+                            match sound.hand_velocity(part, velocity) {
+                                Some(v) => velocity = v,
+                                None => continue,
+                            }
+                        }
+                    }
+                    ([144 | event.channel, key.as_int(), velocity], 3)
                 }
                 M::NoteOff { key, vel } => {
                     if event

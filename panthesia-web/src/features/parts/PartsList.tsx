@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import { KeyboardMusic, Palette, RotateCcw, Volume2, VolumeX, Wand2 } from "lucide-react";
 import type { LoadedSong, EngineCommand } from "../../api";
 import type { PracticePart } from "../../engine/commands.generated";
@@ -63,22 +63,14 @@ export function PartsList({ song, disabled, builtin, pianoOnly, custom, command 
             const color = t.color ?? (t.part === "left" ? "var(--hand-left)" : t.part === "right" ? "var(--hand-right)" : "var(--text-muted)");
             const sound = parts.soundOf(t);
             return (
-              <li key={t.id} className="parts-row" style={{ "--part-color": color } as CSSProperties} data-hidden={!t.visible || undefined}>
+              <Fragment key={t.id}>
+              <li className="parts-row" style={{ "--part-color": color } as CSSProperties} data-hidden={!t.visible || undefined}>
                 <button className="parts-swatch" aria-label={`${t.name}音符颜色`} disabled={locked} onClick={() => setPicker({ track: t.id, kind: "color" })}>
                   <Palette aria-hidden="true" />
                 </button>
                 <div className="parts-name" title={`${t.notes.toLocaleString()} 个音符${!t.visible ? " · 音符已隐藏" : ""}`}>
                   <strong>{t.name}</strong>
-                  <small>
-                    {split ? (
-                      <>
-                        <span className="parts-split" data-hand="left">左 {split[0][1].toLocaleString()}</span>
-                        <span className="parts-split" data-hand="right">右 {split[1][1].toLocaleString()}</span>
-                      </>
-                    ) : (
-                      t.notes.toLocaleString()
-                    )}
-                  </small>
+                  <small>{t.notes.toLocaleString()}</small>
                 </div>
                 <div className="ui-segmented parts-hand" role="group" aria-label={`${t.name}手别`}>
                   {HANDS.map(([part, id, label]) => (
@@ -108,6 +100,26 @@ export function PartsList({ song, disabled, builtin, pianoOnly, custom, command 
                   <VolumeSlider label={`${t.name}音量`} value={sound?.volume ?? 100} disabled={locked || t.mode === "mute"} commit={(volume) => void parts.setSound(t, { volume })} />
                 </div>
               </li>
+              {split?.map(([hand, count]) => {
+                const level = sound?.[hand] ?? 100;
+                const name = hand === "left" ? "左手" : "右手";
+                return (
+                  <li key={`${t.id}:${hand}`} className="parts-row parts-hand-row" style={{ "--part-color": `var(--hand-${hand})` } as CSSProperties}>
+                    <span className="parts-hand-dot" aria-hidden="true" />
+                    <div className="parts-name">
+                      <strong>{name}</strong>
+                      <small>{count.toLocaleString()}</small>
+                    </div>
+                    <div className="parts-sound">
+                      <button className="ui-icon-button" aria-label={level === 0 ? `开启${name}声音` : `${name}静音`} aria-pressed={level === 0} disabled={locked || t.mode === "mute"} onClick={() => void parts.setSound(t, { [hand]: level === 0 ? null : 0 })}>
+                        {level === 0 ? <VolumeX /> : <Volume2 />}
+                      </button>
+                      <VolumeSlider label={`${name}音量`} value={level} disabled={locked || t.mode === "mute" || level === 0} commit={(value) => void parts.setSound(t, { [hand]: value === 100 ? null : value })} />
+                    </div>
+                  </li>
+                );
+              })}
+              </Fragment>
             );
           })}
         </ul>

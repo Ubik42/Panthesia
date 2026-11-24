@@ -1,5 +1,5 @@
 import { reportDiagnostic } from "../lib/diagnostics";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { CheckCircle2, LifeBuoy, LoaderCircle, X } from "lucide-react";
 import {
   recoveryActionLabels,
@@ -39,6 +39,13 @@ export function SessionStatus({
         !issue.startupWarning,
     ),
     recording = state.issues.find((issue) => issue.id === "recording-saved");
+  // A progress note shows only when the work takes a moment: quick switches do not flash it.
+  const [shownProgress, setShownProgress] = useState<string | null>(null);
+  useEffect(() => {
+    if (!progress) return setShownProgress(null);
+    const timer = window.setTimeout(() => setShownProgress(progress.id), 800);
+    return () => window.clearTimeout(timer);
+  }, [progress?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const actionButton = (
     issue: RecoveryIssue,
     action: RecoveryAction,
@@ -65,7 +72,7 @@ export function SessionStatus({
   );
   return (
     <div className="session-status-stack">
-      {progress && (
+      {progress && shownProgress === progress.id && (
         <div
           className="session-save-status session-compact-progress"
           role="status"

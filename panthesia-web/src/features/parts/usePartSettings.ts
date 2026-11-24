@@ -69,10 +69,14 @@ export function usePartSettings(song: LoadedSong, disabled: boolean, command: (v
     });
   const toggleSound = (t: Track) =>
     run(() => command(trackCommand(t, { mode: t.mode === "mute" ? (t.part === "other" ? "auto" : "human") : "mute" })));
-  const setSound = (t: Track, patch: Partial<{ volume: number; program: number | null }>) => {
+  const setSound = (t: Track, patch: Partial<{ volume: number; program: number | null; left: number | null; right: number | null }>) => {
     const sound = soundOf(t);
     return run(() =>
-      command({ type: "trackSound", id: t.id, sound: { volume: sound?.volume ?? 100, pan: sound?.pan ?? null, program: sound?.program ?? null, ...patch } }),
+      command({
+        type: "trackSound",
+        id: t.id,
+        sound: { volume: sound?.volume ?? 100, pan: sound?.pan ?? null, program: sound?.program ?? null, left: sound?.left ?? null, right: sound?.right ?? null, ...patch },
+      }),
     );
   };
   const resetAll = () =>

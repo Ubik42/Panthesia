@@ -1,25 +1,47 @@
-/* The stage's 音轨 panel (StemControls.tsx). */
+/* The stage's 音轨 panel (StemControls.tsx): one row per stem. */
+@layer screens {
 .stem-controls {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 260px;
+  display: grid;
+  gap: var(--space-1);
+  min-width: 280px;
 }
-.stem-controls p,
-.stem-controls small {
+.stem-controls p {
   margin: 0;
   color: var(--text-muted);
   font-size: 12px;
 }
-.stem-controls label {
-  display: flex;
+.stem-row {
+  display: grid;
+  grid-template-columns: 30px 3em minmax(0, 1fr) 3.2em;
   align-items: center;
   gap: var(--space-2);
+  min-height: 36px;
 }
-.stem-controls label > span {
-  flex: 0 0 4.5em;
+.stem-row .ui-icon-button {
+  width: 30px;
+  height: 30px;
 }
-.stem-controls input[type="range"] {
-  flex: 1;
+.stem-row .ui-icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+.stem-name {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.stem-row input[type="range"] {
+  width: 100%;
   min-width: 0;
+  accent-color: var(--accent);
+}
+.stem-row output {
+  color: var(--text-muted);
+  font: 12px/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.stem-row[data-off] .stem-name,
+.stem-row[data-off] output {
+  color: var(--text-muted);
+}
 }
