@@ -215,6 +215,7 @@ export function SongDetails({
       <span className="material-name" title={item.path ?? item.relative}>
         {fileName(item.relative)}
       </span>
+      {item.origin === "generated" && item.step && <em data-state="made" title={item.tool ? `由 ${item.tool} ${STEP_NAMES[item.step] ?? item.step}` : undefined}>{STEP_NAMES[item.step] ?? item.step}</em>}
       {item.state === "current" && <em>当前</em>}
       {item.paired && <em>谱面</em>}
       {item.state === "missing" && <em data-state="missing">缺失</em>}
@@ -335,13 +336,12 @@ export function SongDetails({
             <MaterialColumn
               title="输入"
               rows={materials
-                .filter((m) => INPUT_KINDS.has(m.kind) || m.items.some((i) => i.origin !== "generated"))
                 .map((m) => ({ material: m, items: m.items.filter((i) => i.origin !== "generated") }))
-                .filter((r) => INPUT_KINDS.has(r.material.kind) || r.items.length)}
+                .filter((r) => INPUT_ROWS.has(r.material.kind) || r.items.length)}
               render={(material, items) => (
                 <>
                   {files(material, items)}
-                  {ATTACH[material.kind] && INPUT_KINDS.has(material.kind) && (
+                  {ATTACH[material.kind] && INPUT_ROWS.has(material.kind) && (
                     <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
                       <Plus />
                     </button>
@@ -352,11 +352,11 @@ export function SongDetails({
             <MaterialColumn
               title="生成"
               rows={materials
-                .filter((m) => !INPUT_KINDS.has(m.kind) || m.items.some((i) => i.origin === "generated"))
-                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin === "generated") }))}
+                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin === "generated") }))
+                .filter((r) => r.items.length || r.material.empty || r.material.generators.length)}
               render={(material, items) => (
                 <>
-                  {files(material, items)}
+                  {material.empty && !items.length ? <span className="material-empty" title="分离结果几乎是静音，不作为分轨">无（分离结果为静音）</span> : files(material, items)}
                   {material.generators.map((generator) => (
                     <button
                       key={generator.id}
@@ -393,9 +393,12 @@ export function SongDetails({
   );
 }
 
-/** Kinds the player brings (the rest are made from them): the performance, the recording, paper
- * pages, the picture. A transcribed MIDI or a player's own MusicXML shows in both columns. */
-const INPUT_KINDS = new Set(["performance", "source", "paper", "cover", "stems"]);
+/** Rows the input column always shows, so a missing input can be added. Whether a file is an
+ * input or generated comes from its provenance, not its kind (song-pipeline.md): a MIDI the
+ * player brought is an input, one transcribed from the recording is generated. */
+const INPUT_ROWS = new Set(["performance", "musicxml", "source", "paper", "cover"]);
+/** The step that made a generated file (provenance.step). */
+const STEP_NAMES: Record<string, string> = { separate: "分离", transcribe: "转录", engrave: "制谱", export: "导出", frame: "视频画面", omr: "识谱" };
 
 /** One column of the materials: a row per kind, its files and its actions. */
 function MaterialColumn({ title, rows, render }: { title: string; rows: { material: Material; items: MaterialItem[] }[]; render: (material: Material, items: MaterialItem[]) => ReactNode }) {

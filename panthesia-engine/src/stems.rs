@@ -303,10 +303,11 @@ fn prepare(files: Vec<(PathBuf, String, String)>, onsets: Vec<(f64, u8)>, second
         }
         None => panthesia_audio::Alignment { offset: 0.0, rate: 1.0, confidence: 0.0, anchors: vec![] },
     };
-    // The piano itself doubles the instrument: off by default, the rest on.
+    // The separated piano doubles the instrument the player hears: off by default. Vocals and
+    // the accompaniment (everything that is neither piano nor voice) play.
     let stems = decoded
         .iter()
-        .map(|(_, kind, label)| StemState { kind: kind.clone(), label: label.clone(), gain: if kind == "piano" || kind == "accompaniment" { 0.0 } else { 1.0 } })
+        .map(|(_, kind, label)| StemState { kind: kind.clone(), label: label.clone(), gain: if kind == "piano" { 0.0 } else { 1.0 } })
         .collect();
     let ratio = f64::from(source_rate) / rate;
     let resample = |samples: Vec<f32>| -> Vec<f32> {

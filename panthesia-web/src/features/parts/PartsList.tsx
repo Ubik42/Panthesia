@@ -56,6 +56,10 @@ export function PartsList({ song, disabled, builtin, pianoOnly, custom, command 
         <ul className="parts-list">
           {tracks.map((t) => {
             const custom_ = song.notes.some((n) => n.track === t.id && n.manualHand);
+            // A track split note by note: how many notes each hand plays.
+            const split = custom_
+              ? (["left", "right"] as const).map((hand) => [hand, song.notes.filter((n) => n.track === t.id && n.part === hand).length] as const)
+              : null;
             const color = t.color ?? (t.part === "left" ? "var(--hand-left)" : t.part === "right" ? "var(--hand-right)" : "var(--text-muted)");
             const sound = parts.soundOf(t);
             return (
@@ -65,7 +69,16 @@ export function PartsList({ song, disabled, builtin, pianoOnly, custom, command 
                 </button>
                 <div className="parts-name" title={`${t.notes.toLocaleString()} 个音符${!t.visible ? " · 音符已隐藏" : ""}`}>
                   <strong>{t.name}</strong>
-                  <small>{t.notes.toLocaleString()}</small>
+                  <small>
+                    {split ? (
+                      <>
+                        <span className="parts-split" data-hand="left">左 {split[0][1].toLocaleString()}</span>
+                        <span className="parts-split" data-hand="right">右 {split[1][1].toLocaleString()}</span>
+                      </>
+                    ) : (
+                      t.notes.toLocaleString()
+                    )}
+                  </small>
                 </div>
                 <div className="ui-segmented parts-hand" role="group" aria-label={`${t.name}手别`}>
                   {HANDS.map(([part, id, label]) => (

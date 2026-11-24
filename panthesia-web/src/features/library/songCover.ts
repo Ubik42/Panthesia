@@ -26,3 +26,21 @@ export function useSongCover(path: string | null | undefined) {
   }, [path]);
   return url;
 }
+
+/** The open song's cover as a data URL; `key` (the song's content id) is null when not needed. */
+export function useOpenSongCover(key: string | null | undefined) {
+  const [path, setPath] = useState<string | null>(null);
+  useEffect(() => {
+    setPath(null);
+    if (!key) return;
+    let current = true;
+    api
+      .command<{ materials: { kind: string; items: { path: string | null; state: string }[] }[] }>({ type: "songSummary", path: null })
+      .then((summary) => current && setPath(summary.materials.find((m) => m.kind === "cover")?.items.find((i) => i.state !== "missing")?.path ?? null))
+      .catch(() => current && setPath(null));
+    return () => {
+      current = false;
+    };
+  }, [key]);
+  return useSongCover(path);
+}

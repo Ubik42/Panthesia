@@ -73,14 +73,44 @@ fn free_path(beside: &Path, stem: &str, ext: &str) -> PathBuf {
     (2..1000).map(|n| dir.join(format!("{stem} ({n}).{ext}"))).find(|p| !p.exists()).unwrap_or(first)
 }
 
-/// Register `file` in the manifest of `music` (created if needed). Returns the new file id.
-fn register(music: &Path, file: &Path, role: &str, stem: Option<&str>, label: &str, tool: &str) -> Result<(), String> {
+/// Where a generated file comes from (song-pipeline.md §3): the tool, the step and the files
+/// it was made from. `None` registers an input (a file the player brought).
+pub(crate) struct Made<'a> {
+    pub tool: &'a str,
+    pub step: &'a str,
+    pub from: Vec<PathBuf>,
+}
+
+/// Register `file` in the manifest of `music` (created if needed). A file already registered
+/// under the same path gets its hash, size and provenance refreshed (a regenerated output).
+fn register(music: &Path, file: &Path, role: &str, stem: Option<&str>, label: &str, made: Option<Made>) -> Result<(), String> {
     manifest_store::edit(music, true, |m, _, dir| {
         let relative = manifest_store::adopt_file(dir, m, file, role, stem, Some(label))?;
-        if m.files.iter().any(|f| f.path.eq_ignore_ascii_case(&relative)) {
-            return Ok(((), false));
-        }
         let (hash, bytes) = manifest_store::hash_file(&dir.join(&relative))?;
+        let provenance = made.as_ref().map(|made| {
+            let from: Vec<String> = made
+                .from
+                .iter()
+                .filter_map(|p| {
+                    // By path, or by content (a source brought into the song folder is a hard link).
+                    let hash = manifest_store::hash_file(p).ok().map(|(h, _)| h);
+                    m.files
+                        .iter()
+                        .find(|f| manifest_store::resolve(dir, &f.path) == manifest_store::resolve(dir, &p.to_string_lossy()) || (hash.is_some() && f.blake3 == hash))
+                        .map(|f| f.id.clone())
+                })
+                .collect();
+            json!({"origin": "generated", "tool": made.tool, "step": made.step, "from": from, "createdAt": now_ms()})
+        });
+        if let Some(existing) = m.files.iter_mut().find(|f| f.path.eq_ignore_ascii_case(&relative)) {
+            let changed = existing.blake3.as_deref() != Some(hash.as_str());
+            existing.blake3 = Some(hash);
+            existing.bytes = Some(bytes);
+            if let Some(p) = provenance {
+                existing.rest.insert("provenance".into(), p);
+            }
+            return Ok(((), changed));
+        }
         let base: String = stem.unwrap_or(match role {
             "performance" => "perf",
             r => r,
@@ -90,7 +120,9 @@ fn register(music: &Path, file: &Path, role: &str, stem: Option<&str>, label: &s
         .collect();
         let id = (1..).map(|n| if n == 1 { base.clone() } else { format!("{base}{n}") }).find(|id| !m.files.iter().any(|f| &f.id == id) && !m.performances.iter().any(|p| &p.id == id)).unwrap_or(base);
         let mut rest = Map::new();
-        rest.insert("provenance".into(), json!({"origin": "generated", "tool": tool, "createdAt": now_ms()}));
+        if let Some(p) = provenance {
+            rest.insert("provenance".into(), p);
+        }
         m.files.push(FileRef {
             id: id.clone(),
             role: role.into(),
@@ -115,6 +147,39 @@ fn register(music: &Path, file: &Path, role: &str, stem: Option<&str>, label: &s
         Ok(((), true))
     })?;
     Ok(())
+}
+
+/// Record one run of an AI step in `extensions.panthesia.steps` (song-pipeline.md §3).
+fn record_step(music: &Path, step: Value) -> Result<(), String> {
+    manifest_store::edit(music, true, |m, _, _| {
+        let panthesia = m.extensions.entry("panthesia".to_string()).or_insert_with(|| json!({}));
+        if !panthesia.is_object() {
+            *panthesia = json!({});
+        }
+        let steps = panthesia.as_object_mut().unwrap().entry("steps").or_insert_with(|| json!([]));
+        if let Some(all) = steps.as_array_mut() {
+            all.push(step.clone());
+        } else {
+            *steps = json!([step.clone()]);
+        }
+        Ok(((), true))
+    })?;
+    Ok(())
+}
+
+/// Mean level of an audio file in dBFS (both channels), or `None` when it cannot be read.
+fn level_db(path: &Path) -> Option<f64> {
+    let pcm = panthesia_audio::decode(path, 3.0 * 60.0 * 60.0).ok()?;
+    let (sum, count) = pcm.left.iter().chain(&pcm.right).fold((0f64, 0usize), |(s, c), v| (s + f64::from(*v) * f64::from(*v), c + 1));
+    (count > 0).then(|| 10. * (sum / count as f64).max(1e-12).log10())
+}
+/// A separated stem counts as empty when it is 30 dB below the piano or below −60 dBFS: the
+/// "accompaniment" of a solo piano video is near silence and must not be offered as one.
+pub(crate) fn stem_is_empty(stem: Option<f64>, piano: Option<f64>) -> bool {
+    match stem {
+        None => true,
+        Some(level) => level < -60. || piano.is_some_and(|p| level < p - 30.),
+    }
 }
 
 /// The first usable item of a material in a summary.
@@ -146,12 +211,14 @@ fn add_generators(summary: &mut Value, data: &Path) {
     let Some(materials) = summary["materials"].as_array_mut() else { return };
     for material in materials {
         let generators: Vec<Value> = match material["kind"].as_str().unwrap_or_default() {
-            "performance" if kind == "midi" => vec![external("transcribe", "从原曲转录")],
+            "performance" if kind == "midi" || kind == "manifest" => vec![local("practice", "生成练习版 MIDI（分手双轨，按练习版本）"), external("transcribe", "从原曲转录")],
             "performance" => vec![local("midi", "由乐谱导出 MIDI"), external("transcribe", "从原曲转录")],
             "musicxml" if kind == "midi" => vec![local("musicxml", "从演奏生成")],
             "musicxml" if kind == "abc" => vec![local("musicxml", "从 ABC 转换")],
             "abc" if kind == "midi" => vec![local("abc", "从演奏生成")],
             "abc" if kind == "musicxml" => vec![local("abc", "从五线谱转换")],
+            // A stem the separation found empty is not offered again.
+            "vocals" | "accompaniment" if material["empty"] == true => Vec::new(),
             "vocals" | "accompaniment" => vec![external("separate", "从原曲分离")],
             _ => Vec::new(),
         };
@@ -234,12 +301,26 @@ impl Engine {
                 summary["current"] = json!(current);
                 Ok(summary)
             }
+            "practice" => {
+                // The practice MIDI is made from the open song (its hands and practice version).
+                let content_id = self.snapshot().content_id.ok_or("请先打开这首歌")?;
+                let path = self.current_song_path().ok_or("请先打开这首歌，再生成练习版 MIDI")?;
+                let output = self.prepare_media_export(crate::media_export::MediaExportInput { content_id, kind: crate::media_export::MediaExportKind::HandMidi }, &|| Ok(()))?;
+                let target = path.clone();
+                let written = self.tasks.run("生成练习版 MIDI", None, move |token| {
+                    token.stage("computing")?;
+                    Ok(json!(write_practice_midi(&target, &output.bytes)?))
+                })?;
+                let mut summary = self.song_summary(Some(path))?;
+                summary["written"] = written;
+                Ok(summary)
+            }
             "transcribe" | "separate" => {
                 let (tool, _) = tool(&self.data).ok_or("需要在设置中指定转录工具")?;
                 let (summary, _) = song_summary::summarize(&path, true)?;
                 let (source, state) = first_item(&summary, "source").ok_or("这首歌没有原曲音频")?;
                 if state == "found" {
-                    register(&path, &source, "source", None, "原曲", "panthesia")?;
+                    register(&path, &source, "source", None, "原曲", None)?;
                 }
                 let engine = self.clone();
                 let transcribe = kind == "transcribe";
@@ -257,6 +338,26 @@ impl Engine {
             other => Err(format!("不能生成这种资料：{other}")),
         }
     }
+}
+
+/// Write the hand-split practice MIDI beside the manifest as `歌名（练习版）.mid` and register
+/// it (replacing an earlier one Panthesia made; a file of the player's own is never replaced).
+fn write_practice_midi(music: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
+    let (_, song) = song_summary::summarize(music, true)?;
+    let found = song.located.as_ref().ok_or("这首歌还没有歌曲清单")?;
+    let dir = found.path.parent().ok_or("清单所在目录无法读取")?;
+    let base = song.music.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "song".into());
+    let name = format!("{base}（练习版）.mid");
+    let target = dir.join(&name);
+    if target.exists() {
+        let ours = found.manifest.files.iter().any(|f| f.path.eq_ignore_ascii_case(&name) && f.rest.get("provenance").and_then(|p| p.get("origin")).and_then(Value::as_str) == Some("generated"));
+        if !ours {
+            return Err(format!("{name} 已存在且不是 Panthesia 生成的，没有覆盖"));
+        }
+    }
+    atomic_file::write(&target, bytes).map_err(|e| format!("{}：{e}", target.display()))?;
+    register(music, &target, "performance", None, "练习版", Some(Made { tool: "panthesia", step: "export", from: vec![song.music.clone()] }))?;
+    Ok(target)
 }
 
 /// MusicXML, ABC or MIDI made from the song's own music. Returns the written file.
@@ -302,7 +403,8 @@ fn make_local(music: &Path, kind: &str) -> Result<PathBuf, String> {
         }
     };
     atomic_file::write(&target, &bytes).map_err(|e| format!("{}：{e}", target.display()))?;
-    register(music, &target, role, None, label, "panthesia")?;
+    let step = if role == "performance" { "export" } else { "engrave" };
+    register(music, &target, role, None, label, Some(Made { tool: "panthesia", step, from: vec![song.music.clone()] }))?;
     Ok(target)
 }
 
@@ -369,20 +471,7 @@ fn run_tool(tool: &Path, music: &Path, source: &Path, transcribe: bool, token: &
     let latest: Value = serde_json::from_slice(&latest).map_err(|e| e.to_string())?;
     let exports = PathBuf::from(latest["directory"].as_str().ok_or("结果清单缺少目录")?);
     let mut added = Vec::new();
-    let mut add = |name: &str, role: &str, stem: Option<&str>, label: &str| -> Result<(), String> {
-        let file = exports.join(name);
-        if file.is_file() {
-            register(music, &file, role, stem, label, "music-transcription")?;
-            added.push(name.to_string());
-        }
-        Ok(())
-    };
-    add("vocals.wav", "stem", Some("vocals"), "人声")?;
-    add("piano.wav", "stem", Some("piano"), "钢琴")?;
-    if transcribe {
-        add("piano_raw.mid", "performance", None, "转录")?;
-    }
-    // The tool keeps the other stems in its run folder; their sum is the accompaniment.
+    // The other stems stay in the tool's run folder; their sum is the accompaniment.
     if let Some(run) = latest["run"].as_str().map(PathBuf::from) {
         let target = exports.join("accompaniment.wav");
         if !target.is_file() {
@@ -390,7 +479,32 @@ fn run_tool(tool: &Path, music: &Path, source: &Path, transcribe: bool, token: &
                 mix(&stems, &target)?;
             }
         }
-        add("accompaniment.wav", "stem", Some("accompaniment"), "伴奏")?;
+    }
+    let piano = level_db(&exports.join("piano.wav"));
+    let mut outputs = Vec::new();
+    let mut empty = Vec::new();
+    for (name, stem, label) in [("piano.wav", "piano", "钢琴"), ("vocals.wav", "vocals", "人声"), ("accompaniment.wav", "accompaniment", "伴奏")] {
+        let file = exports.join(name);
+        if !file.is_file() {
+            continue;
+        }
+        if stem != "piano" && stem_is_empty(level_db(&file), piano) {
+            empty.push(stem);
+            continue;
+        }
+        register(music, &file, "stem", Some(stem), label, Some(Made { tool: "music-transcription", step: "separate", from: vec![source.to_path_buf()] }))?;
+        outputs.push(stem);
+        added.push(name.to_string());
+    }
+    record_step(music, json!({"step": "separate", "tool": "BS-RoFormer-SW", "from": ["source"], "outputs": outputs, "empty": empty, "createdAt": now_ms()}))?;
+    if transcribe {
+        let file = exports.join("piano_raw.mid");
+        if file.is_file() {
+            let from = if exports.join("piano.wav").is_file() { exports.join("piano.wav") } else { source.to_path_buf() };
+            register(music, &file, "performance", None, "转录", Some(Made { tool: "music-transcription", step: "transcribe", from: vec![from] }))?;
+            added.push("piano_raw.mid".into());
+            record_step(music, json!({"step": "transcribe", "tool": "Transkun", "outputs": ["performance"], "createdAt": now_ms()}))?;
+        }
     }
     Ok(added)
 }

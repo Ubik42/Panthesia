@@ -391,3 +391,7 @@
   grid-column: 2;
   align-self: start;
 }
+.material-file em[data-state="made"] {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}

@@ -1,5 +1,6 @@
-import { AudioLines, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
-import { StageColorPicker } from "../settings/StageColorPicker";
+import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { StageBackgroundSettings } from "../settings/StageBackgroundSettings";
+import { useOpenSongCover } from "../library/songCover";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
 import { useState, type ComponentType, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
@@ -19,6 +20,7 @@ import type { PracticeRangeController } from "./usePracticeRange";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackFields } from "./usePlaybackFields";
 import { ChordsDialog } from "./ChordsDialog";
+import { StemControls } from "./StemControls";
 import "../../ui/stagePanel.css";
 
 /** Views of the stage: the waterfall alone, one score line over the waterfall, or the paper
@@ -75,8 +77,9 @@ export function PerformanceTools({
 }) {
   const { busy, openingActive, connected, startupReady } = status;
   const view = display.practiceView;
-  const state = usePlaybackFields(playback, ["mode", "hands", "metronome", "recording", "passage"]);
+  const state = usePlaybackFields(playback, ["mode", "hands", "metronome", "recording", "passage", "stems"]);
   const [chordsOpen, setChordsOpen] = useState(false);
+  const cover = useOpenSongCover(song?.contentId);
   const set = (patch: Partial<DisplayPreferences>) => setDisplay((previous) => ({ ...previous, ...patch }));
   const locked = busy || openingActive || !connected || state.recording;
   return (
@@ -137,26 +140,18 @@ export function PerformanceTools({
             <ChevronRight size={16} />
           </button>
         </span>
-        <input type="color" className="stage-color bar-1280" title="舞台背景色" aria-label="舞台背景色" value={display.stageColor} onChange={(e) => set({ stageColor: e.target.value })} />
       </div>
 
       <div className="stage-tools-group" aria-label="面板">
+      <ToolbarMore panel icon={<Palette size={22} />} label="背景" disabled={!startupReady}>
+        <StageBackgroundSettings value={display} change={set} cover={cover} />
+      </ToolbarMore>
+
       <ToolbarMore panel icon={<SlidersHorizontal size={22} />} label="显示设置" disabled={!startupReady}>
         <section aria-label="舞台">
-          <label className="fallback-1280">
-            <span>背景色</span>
-            <StageColorPicker value={display.stageColor} change={(stageColor) => set({ stageColor })} />
-          </label>
           <label className="fallback-1180">
             <input type="checkbox" aria-label="琴键灯带" checked={display.ledStrip} onChange={(event) => set({ ledStrip: event.target.checked })} />
             琴键灯带
-          </label>
-          <label title="瀑布底色盖住背景图片的程度">
-            <span>背景图片</span>
-            <span className="settings-range">
-              <input type="range" aria-label="背景不透明度" min={0} max={100} value={display.backgroundOpacity} onChange={(event) => set({ backgroundOpacity: Number(event.target.value) })} />
-              <output>{display.backgroundOpacity}%</output>
-            </span>
           </label>
           <span className="fallback-1280">
             <PreviewBarsControl value={display.previewBars} change={(previewBars) => set({ previewBars })} label="前方预览" ariaLabel="预览小节数" />
@@ -214,6 +209,10 @@ export function PerformanceTools({
         <button className="stage-panel-link" onClick={open.settings}>
           更多显示设置…
         </button>
+      </ToolbarMore>
+
+      <ToolbarMore panel icon={<AudioWaveform size={22} />} label={state.stems?.stems.length ? "音轨（人声、伴奏）" : "音轨：这首歌没有人声或伴奏分轨"} disabled={!song || !startupReady || !state.stems?.stems.length}>
+        <StemControls store={playback} command={action} />
       </ToolbarMore>
 
       <ToolbarMore panel width={660} icon={<Blend size={22} />} label="声部" disabled={!song || !startupReady}>

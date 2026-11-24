@@ -7,16 +7,18 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub enum MediaExportKind {
     Midi,
-    PracticeMidi,}
+    PracticeMidi,
+    /// The practice MIDI split by hand (written beside the song as `歌名（练习版）.mid`).
+    HandMidi,}
 impl MediaExportKind {
     pub fn extension(self) -> &'static str {
         match self {
-            Self::Midi | Self::PracticeMidi => "mid",
+            Self::Midi | Self::PracticeMidi | Self::HandMidi => "mid",
         }
     }
     pub fn maximum(self) -> usize {
         match self {
-            Self::Midi | Self::PracticeMidi => 32_000_000,
+            Self::Midi | Self::PracticeMidi | Self::HandMidi => 32_000_000,
         }
     }
 }
@@ -85,6 +87,7 @@ impl Engine {
                         let bytes:Vec<u8>=serde_json::from_value(value["bytes"].clone()).map_err(|e|e.to_string())?;
                         (bytes,MediaExportSummary::default())
                     }
+                    MediaExportKind::HandMidi => (reader.export_hand_split()?, MediaExportSummary::default()),
                     MediaExportKind::Midi => {
                         (reader.prepare_midi_export()?, MediaExportSummary::default())
                     }

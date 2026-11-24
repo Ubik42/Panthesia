@@ -273,6 +273,15 @@ pub(super) fn key_estimate(file: &MidiFile) -> (u8, bool) {
 }
 impl Player {
     pub(super) fn export_practice_variant(&self) -> Result<serde_json::Value, String> {
+        Ok(serde_json::json!({"bytes": self.practice_smf(false)?}))
+    }
+    /// The practice MIDI split by hand: one track each for the right hand, the left hand and the
+    /// rest (song-pipeline.md, "练习 MIDI"), with the practice version applied. Pedal and
+    /// program changes go to every hand track, each hand on its own channel.
+    pub(crate) fn export_hand_split(&self) -> Result<Vec<u8>, String> {
+        self.practice_smf(true)
+    }
+    fn practice_smf(&self, split: bool) -> Result<Vec<u8>, String> {
         use panthesia_music::midly::{
             Format, Header, MetaMessage, Smf, Timing, TrackEvent, TrackEventKind,
             num::{u4, u15, u24, u28},
@@ -330,7 +339,39 @@ impl Player {
             Ok(out)
         }
         let mut tracks = vec![encode(conductor)?];
-        for track in file.tracks.iter() {
+        let pulses = |t: std::time::Duration| file.tempo_track.seconds_to_pulses(t.as_secs_f64()).round().max(0.) as u64;
+        if split {
+            use panthesia_core::practice::PracticePart;
+            let hands = [(PracticePart::RightHand, "右手", 0u8), (PracticePart::LeftHand, "左手", 1), (PracticePart::Other, "其他", 2)];
+            let mut parts: Vec<Vec<(u64, TrackEventKind<'static>)>> = hands.iter().map(|_| Vec::new()).collect();
+            let mut used = [false; 3];
+            for track in file.tracks.iter() {
+                for (index, n) in track.notes.iter().enumerate() {
+                    let part = crate::hands::part(&self.config, &self.note_hands, track.track_id, index);
+                    let slot = hands.iter().position(|(p, _, _)| *p == part).unwrap_or(2);
+                    used[slot] = true;
+                    let channel = u4::from(hands[slot].2);
+                    parts[slot].push((pulses(n.start), TrackEventKind::Midi { channel, message: M::NoteOn { key: u7::from(n.note), vel: u7::from(n.velocity.max(1)) } }));
+                    parts[slot].push((pulses(n.end), TrackEventKind::Midi { channel, message: M::NoteOff { key: u7::from(n.note), vel: u7::from(0) } }));
+                }
+            }
+            for track in file.tracks.iter() {
+                for e in track.events.iter().filter(|e| !matches!(e.message, M::NoteOn { .. } | M::NoteOff { .. })) {
+                    for (slot, (_, _, channel)) in hands.iter().enumerate() {
+                        parts[slot].push((pulses(e.timestamp), TrackEventKind::Midi { channel: u4::from(*channel), message: e.message }));
+                    }
+                }
+            }
+            for (slot, events) in parts.into_iter().enumerate() {
+                if !used[slot] {
+                    continue;
+                }
+                let mut events = events;
+                events.insert(0, (0, TrackEventKind::Meta(MetaMessage::TrackName(hands[slot].1.as_bytes()))));
+                tracks.push(encode(events)?);
+            }
+        }
+        for track in file.tracks.iter().filter(|_| !split) {
             tracks.push(encode(
                 track
                     .events
@@ -359,7 +400,7 @@ impl Player {
         };
         let mut bytes = Vec::new();
         smf.write_std(&mut bytes).map_err(|e| e.to_string())?;
-        Ok(serde_json::json!({"bytes":bytes}))
+        Ok(bytes)
     }
     pub(super) fn variant(&self) -> Variant {
         self.file

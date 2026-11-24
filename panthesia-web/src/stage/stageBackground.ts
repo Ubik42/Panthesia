@@ -37,6 +37,8 @@ export async function chooseStageBackground(file: File) {
   publish(canvas.toDataURL("image/jpeg", 0.86));
 }
 export const clearStageBackground = () => publish(null);
+/** Whether the player has chosen a picture of their own. */
+export const hasStageBackground = () => !!current;
 
 export function useStageBackground() {
   return useSyncExternalStore(

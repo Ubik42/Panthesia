@@ -73,6 +73,22 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+.parts-split {
+  margin-right: var(--space-2);
+  white-space: nowrap;
+}
+.parts-split::before {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-radius: 2px;
+  background: var(--hand-right);
+  content: "";
+}
+.parts-split[data-hand="left"]::before {
+  background: var(--hand-left);
+}
 .parts-hand button {
   min-height: 28px;
   padding: 0 var(--space-2);

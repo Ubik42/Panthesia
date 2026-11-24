@@ -1,6 +1,5 @@
 import type { DisplayPreferences } from "./displayPreferences";
-import { chooseStageBackground, clearStageBackground, useStageBackground } from "../../stage/stageBackground";
-import { StageColorPicker } from "./StageColorPicker";
+import { StageBackgroundSettings } from "./StageBackgroundSettings";
 
 type Change = (patch: Partial<DisplayPreferences>) => void;
 
@@ -19,7 +18,6 @@ function Percent({ label, value, change, min = 0 }: { label: string; value: numb
 
 /** Stage appearance on the settings page: backdrop, key light, virtual hands, practice grid. */
 export function PianoEffectsSettings({ value, change }: { value: DisplayPreferences; change: Change }) {
-  const image = useStageBackground();
   return (
     <>
       <section aria-labelledby="appearance-theme">
@@ -36,42 +34,11 @@ export function PianoEffectsSettings({ value, change }: { value: DisplayPreferen
           </span>
         </div>
       </section>
-      <section aria-labelledby="appearance-backdrop">
-        <h3 id="appearance-backdrop">舞台背景</h3>
-        <div className="ui-row">
-          <span>背景色</span>
-          <StageColorPicker value={value.stageColor} change={(stageColor) => change({ stageColor })} />
-        </div>
-        <Percent label="背景不透明度" value={value.backgroundOpacity} change={(backgroundOpacity) => change({ backgroundOpacity })} />
-        <div className="ui-row">
-          <span>背景图片</span>
-          <span className="settings-row-actions">
-            <label className="settings-file">
-              选择图片…
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void chooseStageBackground(file).then(() => value.backgroundOpacity === 100 && change({ backgroundOpacity: 55 }));
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            {image && (
-              <button type="button" onClick={clearStageBackground}>
-                移除
-              </button>
-            )}
-          </span>
-        </div>
-        <label>
-          <input type="checkbox" checked={value.ledStrip} onChange={(e) => change({ ledStrip: e.target.checked })} />
-          琴键上沿灯带，随发声的音符亮起
-        </label>
-        <p className="parameter-help">不透明度 100% 时只见舞台底色；调低后背景图片透过瀑布显示。图片只保存在本机。</p>
-      </section>
+      <StageBackgroundSettings value={value} change={change} />
+      <label>
+        <input type="checkbox" checked={value.ledStrip} onChange={(e) => change({ ledStrip: e.target.checked })} />
+        琴键上沿灯带，随发声的音符亮起
+      </label>
 
       <section aria-labelledby="appearance-keys">
         <h3 id="appearance-keys">琴键与光效</h3>

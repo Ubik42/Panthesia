@@ -1,5 +1,7 @@
 # `.panthesia` 歌曲清单格式（版本 1）
 
+资料从哪里来、哪些算输入哪些算生成，见 [song-pipeline.md](song-pipeline.md)。
+
 歌曲数据跟着文件走：清单放在乐曲文件旁边，用相对路径引用素材，自身保存图层与练习设置。规则来源见 [current-plan.md](current-plan.md) 3.1、3.6。机器校验用 [panthesia-format.schema.json](panthesia-format.schema.json)。
 
 ## 文件
@@ -79,7 +81,7 @@
 | `stem` | `role` 为 `stem` 时必需：`vocals`、`accompaniment`、`piano`、`drums`、`bass`、`other` 或其他名称 |
 | `range` | 可选 `[起, 止]` 秒，引用长音视频中的一段 |
 | `label` | 可选显示名 |
-| `provenance` | 可选；由程序生成的文件为 `{ "origin": "generated", "tool", "createdAt" }` |
+| `provenance` | 可选；由程序生成的文件为 `{ "origin": "generated", "tool", "step", "from", "createdAt" }`（`step`：separate / transcribe / engrave / export / frame / omr；`from`：来源文件 id）。没有 `provenance` 的文件是输入。AI 步骤的运行记录（含被判为空的分轨）写在 `extensions.panthesia.steps`，见 [song-pipeline.md](song-pipeline.md) |
 
 **一致性**（打开时）：
 
@@ -180,7 +182,7 @@
 
 ## 伴奏音轨（Panthesia 的读取方式）
 
-清单中 `role` 为 `stem` 的文件是伴奏音轨（WAV、FLAC、MP3、Ogg Vorbis，单个最长 30 分钟，采样率须一致）。打开歌曲时在后台解码，按输出设备采样率重采样，并与演奏对齐一次：取 `piano` 或 `accompaniment` 音轨，与演奏比较起音，得到偏移、速率与分段锚点（平均每 5 秒一个）；其余音轨（如人声）视为同一录音切出，沿用这个对齐。对齐结果暂不写入清单，每次打开重新计算（Release 构建约 1 秒以内）。播放时：`piano` / `accompaniment` 默认关闭（与乐器重复），其余默认开启；只在聆听与跟弹模式中随演奏发声，变速时保持音高。
+清单中 `role` 为 `stem` 的文件是伴奏音轨（WAV、FLAC、MP3、Ogg Vorbis，单个最长 30 分钟，采样率须一致）。打开歌曲时在后台解码，按输出设备采样率重采样，并与演奏对齐一次：取 `piano` 或 `accompaniment` 音轨，与演奏比较起音，得到偏移、速率与分段锚点（平均每 5 秒一个）；其余音轨（如人声）视为同一录音切出，沿用这个对齐。对齐结果暂不写入清单，每次打开重新计算（Release 构建约 1 秒以内）。播放时：`piano` 默认关闭（与乐器重复），人声与伴奏默认开启，在演奏界面顶栏“音轨”面板中开关与调音量；只在聆听与跟弹模式中随演奏发声，变速时保持音高。分离结果中近乎静音的音轨不登记（见 [song-pipeline.md](song-pipeline.md)）。
 
 MIDI 中没有任何速度事件时，按清单 `tempo` 图层或文件名中的 BPM（如 `BPM76`）作为速度；内容身份仍按原始字节计算。
 

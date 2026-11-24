@@ -279,7 +279,7 @@ export interface ReplayClip {
   "performanceRevision"?: string;
 }
 
-export const MediaExportKindValues = ["midi", "practiceMidi"] as const;
+export const MediaExportKindValues = ["midi", "practiceMidi", "handMidi"] as const;
 export type MediaExportKind = typeof MediaExportKindValues[number];
 
 export interface MediaExportInput {

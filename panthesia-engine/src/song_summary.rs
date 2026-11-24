@@ -187,7 +187,9 @@ fn materials(music: &Path, located: Option<&Located>, performance: &str, check_f
                 let path = manifest_store::resolve(dir, &f.path);
                 let state = if p.id == performance { "current" } else { state_of(&path) };
                 let kind = if SCORE.contains(&extension(&path).as_str()) { if extension(&path) == "abc" { "abc" } else { "musicxml" } } else { "performance" };
-                push(kind, item(Some(&p.id), Some(path.clone()), &f.path, p.label.as_deref(), state, origin_of(f)));
+                let mut value = item(Some(&p.id), Some(path.clone()), &f.path, p.label.as_deref(), state, origin_of(f));
+                made(&mut value, f);
+                push(kind, value);
                 known.push(path);
             }
             for f in m.files.iter().filter(|f| f.role != "performance") {
@@ -197,6 +199,7 @@ fn materials(music: &Path, located: Option<&Located>, performance: &str, check_f
                 let mut value = item(Some(&f.id), Some(path.clone()), &f.path, f.label.as_deref(), state_of(&path), origin_of(f));
                 value["paired"] = json!(paired);
                 value["stem"] = json!(f.stem);
+                made(&mut value, f);
                 push(kind, value);
                 known.push(path);
             }
@@ -223,14 +226,30 @@ fn materials(music: &Path, located: Option<&Located>, performance: &str, check_f
         value["stem"] = json!(s.stem);
         push(kind, value);
     }
+    // Stems an AI step found empty (song-pipeline.md §2): shown as "none", not offered again.
+    let empty: Vec<String> = located
+        .and_then(|found| found.manifest.extensions.get("panthesia"))
+        .and_then(|p| p.get("steps"))
+        .and_then(Value::as_array)
+        .map(|steps| steps.iter().flat_map(|s| s["empty"].as_array().cloned().unwrap_or_default()).filter_map(|v| v.as_str().map(str::to_string)).collect())
+        .unwrap_or_default();
     let names: std::collections::HashMap<_, _> = MATERIALS.iter().copied().collect();
     Value::Array(
         groups
             .into_iter()
             .filter(|(kind, items)| (*kind != "stems" && *kind != "cover") || !items.is_empty())
-            .map(|(kind, items)| json!({"kind": kind, "label": names[kind], "items": items}))
+            .map(|(kind, items)| json!({"kind": kind, "label": names[kind], "empty": items.is_empty() && empty.iter().any(|e| e == kind), "items": items}))
             .collect(),
     )
+}
+
+/// The step and tool that made a generated file, and the files it came from (ids).
+fn made(value: &mut Value, f: &panthesia_core::manifest::FileRef) {
+    if let Some(p) = f.rest.get("provenance") {
+        value["step"] = p.get("step").cloned().unwrap_or(Value::Null);
+        value["tool"] = p.get("tool").cloned().unwrap_or(Value::Null);
+        value["from"] = p.get("from").cloned().unwrap_or(Value::Null);
+    }
 }
 
 fn origin_of(f: &panthesia_core::manifest::FileRef) -> Option<&'static str> {

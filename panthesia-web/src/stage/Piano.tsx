@@ -18,6 +18,8 @@ import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { applyStageInk, backdropFor, luminance, pitchColors, stageAtmospheres, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
+import { presetUrl } from "./backgroundPresets";
+import { useOpenSongCover } from "../features/library/songCover";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
@@ -77,7 +79,16 @@ export function Piano({
   /** Keys and grid only: the score views draw the music above the keys instead. */
   hideNotes?: boolean;
 }) {
-  const backgroundImage = useStageBackground();
+  const ownBackground = useStageBackground();
+  const cover = useOpenSongCover(display.backgroundImage === "cover" ? song?.contentId : null);
+  const backgroundImage =
+    display.backgroundImage === "custom"
+      ? ownBackground
+      : display.backgroundImage === "cover"
+        ? cover
+        : display.backgroundImage.startsWith("preset:")
+          ? presetUrl(display.backgroundImage.slice(7))
+          : null;
   const hideNotesRef = useRef(hideNotes);
   hideNotesRef.current = hideNotes;
   const lastBaseline = useRef(-1);
@@ -517,7 +528,8 @@ export function Piano({
           ? handColor(note.part, display)
           : display.palette === "pitch"
             ? pitchColors[note.pitch % 12]
-          : customTracks.has(note.track)
+          : // A track colour paints the whole track; notes split by hand keep the hand colours.
+            customTracks.has(note.track) && !(note.manualHand && note.part !== "other")
             ? (trackColors.get(note.track) ?? palette.right)
             : note.part === "left"
               ? palette.left
@@ -856,7 +868,7 @@ export function Piano({
   });
   return (
     <div className="piano-surface">
-    {backgroundImage && <div className="piano-backdrop-image" style={{ backgroundImage: `url(${backgroundImage})` }} aria-hidden="true" />}
+    {backgroundImage && <div className="piano-backdrop-image" style={{ backgroundImage: `url("${backgroundImage}")` }} aria-hidden="true" />}
     <canvas ref={waterfallCanvas} className="piano-waterfall" aria-hidden="true" />
     <canvas
       ref={canvas}

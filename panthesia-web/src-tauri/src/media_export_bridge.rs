@@ -31,17 +31,17 @@ fn name(title: &str, kind: MediaExportKind) -> String {
 }
 fn location(kind: MediaExportKind) -> &'static str {
     match kind {
-        MediaExportKind::Midi | MediaExportKind::PracticeMidi => "exportMidi",
+        MediaExportKind::Midi | MediaExportKind::PracticeMidi | MediaExportKind::HandMidi => "exportMidi",
     }
 }
 fn title(kind: MediaExportKind) -> &'static str {
     match kind {
-        MediaExportKind::Midi | MediaExportKind::PracticeMidi => "另存 MIDI 副本",
+        MediaExportKind::Midi | MediaExportKind::PracticeMidi | MediaExportKind::HandMidi => "另存 MIDI 副本",
     }
 }
 fn filter(kind: MediaExportKind) -> &'static str {
     match kind {
-        MediaExportKind::Midi | MediaExportKind::PracticeMidi => "MIDI 演奏",
+        MediaExportKind::Midi | MediaExportKind::PracticeMidi | MediaExportKind::HandMidi => "MIDI 演奏",
     }
 }
 
@@ -56,7 +56,7 @@ pub async fn prepare_media_export(
     }
     let cache_lease = crate::score_edit::reserve(&state, "media-export-cache")?;
     let kind = match input.kind {
-        MediaExportKind::Midi | MediaExportKind::PracticeMidi => ScoreJobKind::MidiExport,
+        MediaExportKind::Midi | MediaExportKind::PracticeMidi | MediaExportKind::HandMidi => ScoreJobKind::MidiExport,
     };
     let guard = state.score_jobs.begin(
         Some(request.clone()),
