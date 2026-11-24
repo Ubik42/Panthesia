@@ -1,113 +1,441 @@
-.settings-dialog.fingering-dialog {
-  width: min(1120px, 96vw);
-  height: min(920px, 92vh);
-  max-height: 92vh;
-  gap: 10px;
-  background: var(--gray-29);
-}
-.fingering-dialog > .dialog-heading {
-  flex: none;
-  margin-bottom: 0;
-}
-.fingering-dialog > .dialog-heading p {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-  line-height: 1.6;
-}
-.fingering-dialog .fingering-workspace-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 14px 0;
-  scrollbar-gutter: stable;
-}
-.fingering-dialog .fingering-workspace-body .browse-detail-masthead {
-  background: var(--gray-29);
-}
-.fingering-dialog > .dialog-actions {
-  flex: none;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 10px 0 0;
-  border-top: 1px solid var(--blue-43);
-  gap: 8px;
-}
-.fingering-dialog > .dialog-actions button {
-  min-height: 34px;
-  font-size: 12px;
-}
-.fingering-dialog .fingering-options {
-  gap: 14px;
-  align-items: end;
-}
-.fingering-dialog .fingering-options label {
-  line-height: 1.6;
-  color: var(--gray-85);
-}
-.fingering-dialog .fingering-options input,
-.fingering-dialog .fingering-options select {
-  min-height: 33px;
-  padding: 6px 8px;
-}
-.fingering-dialog .fingering-options input[type="text"] {
-  width: 86px;
-  font-variant-numeric: tabular-nums;
-}
-.fingering-dialog .fingering-options input[aria-invalid="true"] {
-  border-color: var(--orange-71);
-  background: var(--gray-31);
-}
-.fingering-dialog .fingering-help {
-  color: var(--blue-82);
-  line-height: 1.7;
-}
-.fingering-dialog .fingering-table-wrap {
-  max-height: 52vh;
-  border-color: var(--blue-46);
-}
-.fingering-dialog .fingering-table {
-  line-height: 1.6;
-}
-.fingering-dialog .fingering-table th {
-  background: var(--blue-32);
-  color: var(--gray-89);
-}
-.fingering-dialog .fingering-table td:last-child {
-  min-width: 200px;
-}
-.fingering-dialog .fingering-selection {
-  flex-wrap: wrap;
-  gap: 9px 15px;
-}
-.fingering-dialog .finger-review {
-  margin-block: 18px;
-}
-.fingering-dialog .finger-acceptance {
-  margin-top: 0;
-}
-.fingering-dialog .fingering-empty {
-  line-height: 1.8;
-}
-.fingering-dialog .finger-position:focus-visible {
-  outline: 2px solid var(--green-80);
-  outline-offset: 3px;
-}
-@media (max-width: 680px) {
-  .settings-dialog.fingering-dialog {
-    padding: 15px;
-    width: 97vw;
+/* Fingering suggestions (FingeringDialog.tsx) inside ui/Dialog, and the parts it shares with
+   the two-hand review (FingerPairDialog.tsx): plan choice, demo, practice builder, review
+   lists. The dialog body is a `.ui-form`, so element rules here carry the dialog's class to
+   keep their own layout (rows, grids, tabs) over the form defaults. Semantic tokens only. */
+@layer screens {
+  :is(.fingering-dialog, .finger-pair-dialog) [hidden] {
+    display: none;
   }
-  .fingering-dialog .fingering-options > label {
-    flex: 1 1 140px;
-    min-width: 0;
+
+  /* Shell: a tall dialog whose tab content scrolls between the masthead and the footer. */
+  .ui-dialog.fingering-dialog {
+    width: min(1120px, 100%);
+    height: min(920px, 92vh);
+    max-height: 92vh;
   }
-  .fingering-dialog .fingering-options label > select {
-    width: 100%;
+  .ui-dialog.fingering-dialog > .ui-dialog-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
   }
-  .fingering-dialog .finger-plan-options {
+  .fingering-dialog-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .fingering-dialog .fingering-workspace-body {
+    flex: 1;
+    min-height: 0;
+    padding: var(--space-3) 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+  .fingering-dialog .ui-dialog-footer {
     flex-wrap: wrap;
   }
-  .fingering-dialog > .dialog-actions .primary-button {
-    flex: 1 1 180px;
+  .fingering-dialog .ui-dialog-footer .menu-spacer {
+    flex: 1;
+  }
+  @media (max-width: 680px) {
+    .fingering-dialog .ui-dialog-footer .ui-button--primary {
+      flex: 1 1 180px;
+    }
+  }
+
+  /* The legacy browse workspace inside: masthead, tabs, sections. */
+  .fingering-dialog .browse-detail-masthead {
+    margin-top: calc(-1 * var(--space-3));
+    padding-top: var(--space-3);
+    border-bottom-color: var(--line-subtle);
+    background: var(--surface-raised);
+  }
+  .fingering-dialog .browse-detail-masthead .browse-detail-heading {
+    display: -webkit-box;
+    margin: 0 0 var(--space-1);
+    color: var(--text-primary);
+    font: 650 17px/1.45 var(--font-ui);
+    letter-spacing: normal;
+  }
+  .fingering-dialog .browse-detail-subtitle {
+    margin: 0 0 var(--space-3);
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .fingering-dialog .browse-detail-actions > button {
+    min-height: 34px;
+    font-size: 12px;
+  }
+  .fingering-dialog .browse-detail-tabs > button {
+    flex: 1 0 auto;
+    min-height: 34px;
+    padding: var(--space-1) var(--space-2);
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .fingering-dialog .browse-detail-tabs > button:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+  .fingering-dialog .browse-detail-tabs > button[aria-selected="true"] {
+    border-color: var(--line-strong);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+  .fingering-dialog .browse-detail-tab-count {
+    color: var(--accent-strong);
+  }
+  .fingering-dialog .browse-detail-section {
+    display: block;
+    padding: var(--space-4) 0 var(--space-1);
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .fingering-dialog .browse-detail-section h4 {
+    margin: 0 0 var(--space-2);
+    color: var(--text-primary);
+    font-size: 14px;
+    letter-spacing: normal;
+  }
+  .fingering-dialog .browse-detail-section .parameter-help {
+    color: var(--text-muted);
+  }
+
+  /* Recommendation conditions. */
+  .fingering-dialog .fingering-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-3);
+  }
+  .fingering-dialog .fingering-options label {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: var(--space-1);
+    min-height: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .fingering-dialog .fingering-options input {
+    width: 72px;
+  }
+  .fingering-dialog .fingering-options input[type="text"] {
+    width: 86px;
+    font-variant-numeric: tabular-nums;
+  }
+  .fingering-dialog .fingering-options input[aria-invalid="true"] {
+    border-color: var(--state-missing);
+  }
+  .fingering-dialog .fingering-help {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .fingering-dialog .fingering-hand-setup {
+    color: var(--text-secondary);
+  }
+  .fingering-dialog .finger-anchor-toggle {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+    margin: var(--space-2) 0;
+  }
+  @media (max-width: 680px) {
+    .fingering-dialog .fingering-options > label {
+      flex: 1 1 140px;
+      min-width: 0;
+    }
+    .fingering-dialog .fingering-options label > select {
+      width: 100%;
+    }
+    .fingering-dialog .finger-plan-options {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* Note table. */
+  .fingering-dialog .fingering-table-wrap {
+    min-height: 90px;
+    max-height: 52vh;
+    border-color: var(--line-subtle);
+  }
+  .fingering-dialog .fingering-table :is(th, td) {
+    border-bottom-color: var(--line-subtle);
+  }
+  .fingering-dialog .fingering-table th {
+    background: var(--surface-panel);
+    color: var(--text-secondary);
+  }
+  .fingering-dialog .fingering-table td:last-child {
+    min-width: 200px;
+  }
+  .fingering-dialog .fingering-table select {
+    min-width: 52px;
+  }
+  .fingering-dialog .fingering-table .finger-preview-row {
+    background: var(--accent-soft);
+  }
+  .fingering-dialog .fingering-table .finger-preview-row td:first-child {
+    box-shadow: inset 3px 0 var(--accent);
+  }
+  .fingering-dialog .fingering-selection {
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    color: var(--text-muted);
+  }
+  .fingering-dialog .fingering-selection label {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .fingering-dialog .fingering-empty {
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  /* Plan choice and per-position cards. */
+  .fingering-dialog .finger-plan-options button {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: var(--space-1);
+    min-height: 0;
+    padding: var(--space-2) var(--space-3);
+    border-color: var(--line-subtle);
+    background: var(--surface-panel);
+    color: var(--text-primary);
+    line-height: 1.4;
+    text-align: left;
+  }
+  .fingering-dialog .finger-plan-options button[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+  .fingering-dialog :is(.finger-plan-options, .finger-position) small {
+    color: var(--text-muted);
+  }
+  .fingering-dialog .finger-position {
+    border-color: var(--line-subtle);
+    background: var(--surface-panel);
+  }
+  .fingering-dialog .finger-position:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 3px;
+  }
+
+  /* Review lists (also the held-finger plans). */
+  .fingering-dialog .finger-review {
+    display: block;
+    margin-block: var(--space-4);
+    padding: var(--space-3);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-s);
+  }
+  .fingering-dialog .finger-acceptance {
+    margin-top: 0;
+  }
+  .fingering-dialog .finger-review p {
+    margin: var(--space-2) 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .fingering-dialog .finger-review > button {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(200px, 1.4fr);
+    align-items: start;
+    justify-content: stretch;
+    gap: var(--space-1) var(--space-3);
+    width: 100%;
+    min-height: 0;
+    margin-top: var(--space-1);
+    padding: var(--space-2);
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .fingering-dialog .finger-review > button small {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 700px) {
+    .fingering-dialog .finger-review > button {
+      grid-template-columns: 1fr;
+    }
+  }
+  .fingering-dialog .finger-batch-targets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin: var(--space-2) 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-s);
+    background: none;
+  }
+  .fingering-dialog .finger-batch-targets label {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .fingering-dialog .finger-batch-targets small {
+    flex-basis: 100%;
+  }
+  .fingering-dialog .finger-batch-summary > div {
+    background: var(--surface-panel);
+  }
+  .fingering-dialog .held-finger-plans {
+    margin: var(--space-3) 0;
+    padding: var(--space-3) var(--space-4);
+  }
+  .fingering-dialog .held-finger-plans .held-action-row {
+    border-bottom-color: var(--line-subtle);
+  }
+  .fingering-dialog .held-demo-controls label,
+  .fingering-dialog .held-action-editor label {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .fingering-dialog .held-action-editor {
+    border-color: var(--line-subtle);
+  }
+  .fingering-dialog .held-finger-demo {
+    display: flex;
+    padding: var(--space-2) 0;
+    border: 0;
+    border-top: 1px solid var(--line-subtle);
+    border-radius: 0;
+    background: none;
+  }
+  .fingering-dialog .held-finger-demo > small {
+    color: var(--text-muted);
+  }
+
+  /* Plan comparison. */
+  .fingering-dialog .finger-comparison {
+    display: block;
+    margin: var(--space-3) 0;
+    padding: var(--space-3);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-m);
+    background: var(--surface-panel);
+  }
+  .fingering-dialog .finger-comparison p {
+    color: var(--text-secondary);
+  }
+  .fingering-dialog .finger-comparison-tools label {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .fingering-dialog .finger-comparison-table :is(th, td) {
+    border-bottom-color: var(--line-subtle);
+  }
+  .fingering-dialog .finger-comparison-table small {
+    color: var(--text-muted);
+  }
+  .fingering-dialog .finger-comparison-table td:nth-child(2) button {
+    min-height: 0;
+    padding: var(--space-1) var(--space-2);
+    font-size: 12px;
+  }
+
+  /* Shared with the two-hand review: demo, coverage, practice builder. */
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-controls label {
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-navigation label:first-child {
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+    min-width: 200px;
+    min-height: 0;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-navigation input[type="range"] {
+    width: 100%;
+    max-width: none;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-keyboard-legend span:first-child {
+    color: var(--hand-left);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-keyboard-legend span:nth-child(2) {
+    color: var(--state-warn);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-demo-keyboard-legend small {
+    color: var(--text-muted);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-pair-live > div {
+    border-color: var(--line-subtle);
+    border-radius: var(--radius-s);
+    background: var(--surface-panel);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-live-note {
+    background: var(--surface-sunken);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-coverage {
+    display: block;
+    border-color: var(--line-subtle);
+    border-radius: var(--radius-m);
+    background: var(--surface-panel);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-coverage > p,
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-coverage-row small {
+    color: var(--text-muted);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-coverage-row {
+    border-top-color: var(--line-subtle);
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder {
+    display: block;
+    margin: var(--space-3) 0;
+    padding: var(--space-3) 0 0;
+    border: 0;
+    border-top: 1px solid var(--line-subtle);
+    border-radius: 0;
+    background: none;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder fieldset {
+    display: block;
+    min-width: 0;
+    margin: var(--space-2) 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-s);
+    background: none;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder label {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: var(--space-1);
+    min-height: 0;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder legend label {
+    flex-direction: row;
+    align-items: center;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder :is(input, textarea) {
+    width: 100%;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder input[type="checkbox"] {
+    width: 16px;
+  }
+  :is(.fingering-dialog, .finger-pair-dialog) .finger-practice-builder textarea {
+    min-height: 70px;
+    resize: vertical;
   }
 }

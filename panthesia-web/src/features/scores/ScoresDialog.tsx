@@ -21,7 +21,7 @@ import { ScoreConversionPanel } from "./ScoreConversionPanel";
 import { usePdfConversion } from "./usePdfConversion";
 import { PdfConversionPanel } from "./PdfConversionPanel";
 import { recognitionPdf } from "./recognitionPdf";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { readScoreCatalog } from "./scoreCatalog";
 import { BrowseDetailWorkspace } from "../../ui/legacy/BrowseDetailWorkspace";
 import {
@@ -530,7 +530,7 @@ export function ScoresDialog({
           <p>添加文件或制作初稿，核对演奏顺序后决定保存与使用。</p>
         </div>
         <button
-          className="primary"
+          className="ui-button ui-button--primary"
           disabled={busy || paperBusy}
           onClick={() => input.current?.click()}
         >
@@ -682,7 +682,7 @@ export function ScoresDialog({
             >
               添加并使用
             </button>
-            {openPractice && <button className="primary-button" disabled={busy || !validImportName || filePreview.evidence.route?.complete !== true} onClick={() => void saveFile("use", true)}>添加并打开演奏</button>}
+            {openPractice && <button className="ui-button ui-button--primary" disabled={busy || !validImportName || filePreview.evidence.route?.complete !== true} onClick={() => void saveFile("use", true)}>添加并打开演奏</button>}
             <button
               disabled={busy || !validImportName}
               onClick={() => saveFile("save")}
@@ -800,34 +800,23 @@ export function ScoresDialog({
     </>
   );
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (canClose) close();
-      }}
-    >
-      <section
-        className="settings-dialog scores-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="scores-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="scores-title">谱面管理</h2>
-            <p>{song.title}</p>
-          </div>
-          <button
-            autoFocus
-            data-dialog-close
-            aria-label="关闭谱面管理"
-            disabled={!canClose}
-            onClick={close}
-          >
-            <X size={18} />
+    <>
+    <Dialog
+      title="谱面管理"
+      subtitle={song.title}
+      close={close}
+      closeLabel="关闭谱面管理"
+      closeDisabled={!canClose}
+      className="scores-dialog"
+      footer={
+        <div className="score-manager-footer">
+          <span>初稿和处理进度可从工作进度继续查看。</span>
+          <button className="ui-button" disabled={!canClose} onClick={close}>
+            完成
           </button>
         </div>
+      }
+    >
         {localBusy && (
           <p className="score-manager-local-progress" role="status">
             正在{conversion.localAction || "处理谱面"}…
@@ -945,12 +934,7 @@ export function ScoresDialog({
             },
           ]}
         />
-        <div className="dialog-actions score-manager-footer">
-          <span>初稿和处理进度可从工作进度继续查看。</span>
-          <button disabled={!canClose} onClick={close}>
-            完成
-          </button>
-        </div>
+    </Dialog>
         {sourcesOpen && (
           <ScoreSourcesDialog
             contentId={song.contentId}
@@ -963,7 +947,6 @@ export function ScoresDialog({
             }}
           />
         )}
-      </section>
-    </div>
+    </>
   );
 }

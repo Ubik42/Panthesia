@@ -1,0 +1,45 @@
+/* Beat-level passage dialog (TickRangeDialog.tsx), inside ui/Dialog. */
+@layer screens {
+  .tick-range-dialog.ui-dialog {
+    width: min(720px, 100%);
+  }
+  .tick-boundaries {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+  .ui-form .tick-boundary {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+  .tick-boundary :is(legend, small) {
+    grid-column: 1 / -1;
+  }
+  .ui-form :is(.tick-boundary label, .tick-range-dialog .ui-dialog-body > label) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+    min-height: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .tick-boundary input {
+    width: 100%;
+  }
+  .tick-preview {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+  }
+  .tick-range-dialog textarea {
+    resize: vertical;
+  }
+  @media (max-width: 650px) {
+    .tick-boundaries {
+      grid-template-columns: 1fr;
+    }
+  }
+}

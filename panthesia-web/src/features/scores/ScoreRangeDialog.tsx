@@ -7,7 +7,8 @@ import {
 } from "../../engine/useCatalogRead";
 import { TaskActivity } from "../../engine/TaskActivity";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
+import "./scoreRange.css";
 import { api, type LoadedSong } from "../../api";
 import type { WrittenRoute, WrittenVisit } from "./ScoreRoute";
 
@@ -436,34 +437,49 @@ export function ScoreRangeDialog({
     }
   };
   return (
-    <div
-      className="modal-backdrop"
-      onClick={(e) => {
-        e.stopPropagation();
-        exit();
-      }}
+    <Dialog
+      title="原谱选段练习"
+      subtitle={song.title}
+      close={exit}
+      closeLabel="关闭原谱选段"
+      closeDisabled={busy}
+      wide
+      className="score-range-dialog"
+      footer={
+        <>
+              {appliedAction && (
+                <button
+                  className="ui-button ui-button--primary"
+                  disabled={busy}
+                  onClick={() => void retryRefresh()}
+                >
+                  重试读取已
+                  {appliedAction === "saved" ? "保存的段落" : "启用的循环"}
+                </button>
+              )}
+              <button className="ui-button" disabled={!allowed} onClick={() => void work(false)}>
+                循环所选范围
+              </button>
+              <button
+                className="ui-button ui-button--primary"
+                disabled={
+                  !allowed ||
+                  !name.trim() ||
+                  !catalogRevision ||
+                  catalogReading ||
+                  !!catalogError ||
+                  missingTarget
+                }
+                onClick={() => void work(true)}
+              >
+                {targetId ? "更新原谱练习段" : "保存原谱练习段"}
+              </button>
+              <button className="ui-button" disabled={busy} onClick={exit}>
+                {appliedAction ? "关闭" : "取消"}
+              </button>
+        </>
+      }
     >
-      <section
-        className="settings-dialog score-range-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="score-range-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="score-range-title">原谱选段练习</h2>
-            <p>{song.title}</p>
-          </div>
-          <button
-            autoFocus
-            disabled={busy}
-            aria-label="关闭原谱选段"
-            onClick={exit}
-          >
-            <X size={18} />
-          </button>
-        </div>
         {preset && (
           <p className="score-range-original">
             原保存范围：{preset.scoreRange.description}
@@ -738,39 +754,6 @@ export function ScoreRangeDialog({
         <p className="score-range-hint">
           保存时记住当前手别、音轨、速度、模式、预备拍与遍数。练习计划也可使用此段落；谱面或路径改变时需重新审阅。
         </p>
-        <div className="file-actions">
-          {appliedAction && (
-            <button
-              className="primary-button"
-              disabled={busy}
-              onClick={() => void retryRefresh()}
-            >
-              重试读取已
-              {appliedAction === "saved" ? "保存的段落" : "启用的循环"}
-            </button>
-          )}
-          <button disabled={!allowed} onClick={() => void work(false)}>
-            循环所选范围
-          </button>
-          <button
-            className="primary-button"
-            disabled={
-              !allowed ||
-              !name.trim() ||
-              !catalogRevision ||
-              catalogReading ||
-              !!catalogError ||
-              missingTarget
-            }
-            onClick={() => void work(true)}
-          >
-            {targetId ? "更新原谱练习段" : "保存原谱练习段"}
-          </button>
-          <button disabled={busy} onClick={exit}>
-            {appliedAction ? "关闭" : "取消"}
-          </button>
-        </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

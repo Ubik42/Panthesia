@@ -6,6 +6,7 @@ import {
   type FingeringDraft,
   type FingeringWorkbenchStore,
 } from "./fingeringWorkbenchStore";
+import { Dialog } from "../../ui/Dialog";
 import "./fingeringWorkbench.css";
 
 export function FingeringWorkbenchButton({
@@ -84,30 +85,16 @@ export function FingeringWorkbench({
     }
   };
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
+    <Dialog
+      title="指法工作台"
+      close={() => {
         if (!working.current) close();
       }}
+      closeLabel="关闭指法工作台"
+      closeDisabled={!!busy}
+      wide
+      className="fingering-workbench"
     >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fingering-workbench-title"
-        className="settings-dialog fingering-workbench"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <h2 id="fingering-workbench-title">指法工作台</h2>
-          <button
-            autoFocus
-            disabled={!!busy}
-            onClick={close}
-            aria-label="关闭指法工作台"
-          >
-            关闭
-          </button>
-        </div>
         <p className="parameter-help">
           这里保留推荐条件、固定手指和审阅选择。正式指法只有在“接受并保存”后才会改变；重新启动或资料更新后，需要按原输入重新推荐。
         </p>
@@ -218,7 +205,6 @@ export function FingeringWorkbench({
             </p>
           )}
         </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

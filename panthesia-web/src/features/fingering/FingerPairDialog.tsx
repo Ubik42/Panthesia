@@ -19,6 +19,9 @@ import {
   type FingerDifficulty,
 } from "./FingerPracticeBuilder";
 import { useEffect, useRef, useState } from "react";
+import { Dialog } from "../../ui/Dialog";
+import "./fingeringWorkspace.css";
+import "./fingerPairDialog.css";
 import { api, pitchName, type LoadedSong } from "../../api";
 const recommended = (proposal: Proposal) =>
   proposal.confidence >= 60 && proposal.saved !== proposal.finger;
@@ -51,7 +54,7 @@ export function FingerPairDialog({
     [pendingRefresh, setPendingRefresh] = useState(false),
     [error, setError] = useState("");
   const busyRef = useRef(false),
-    root = useRef<HTMLElement>(null);
+    root = useRef<HTMLDivElement>(null);
   const hands = ["left", "right"] as const;
   const captureRequest = useRequestScope(JSON.stringify([
     song.engineId, song.contentId, song.scoreRevision, song.annotationRevision, first, last, rate, profiles,
@@ -223,30 +226,58 @@ export function FingerPairDialog({
     invalidate();
   };
   return (
-    <div
-      className="modal-backdrop"
-      onClick={(e) => {
-        e.stopPropagation();
-        exit();
-      }}
-    >
-      <section
-        ref={root}
-        className="settings-dialog finger-pair-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="finger-pair-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="finger-pair-title">双手指法审阅</h2>
-            <p>{song.title}</p>
-          </div>
-          <button autoFocus data-dialog-close="" disabled={busy} onClick={exit}>
-            关闭
+    <Dialog
+      title="双手指法审阅"
+      subtitle={song.title}
+      close={exit}
+      closeDisabled={busy}
+      className="finger-pair-dialog"
+      footer={
+        <>
+          <button
+            className="ui-button"
+            disabled={busy || results.length !== 2}
+            onClick={() =>
+              void work(async () => {
+                const isCurrent = captureRequest();
+                setAck(false);
+                const next = await fingeringApi.reviewPair(song, parts());
+                if (isCurrent()) setReview(next);
+              })
+            }
+          >
+            核对双手保存结果
           </button>
-        </div>
+          <button
+            className="ui-button ui-button--primary"
+            disabled={busy || pendingRefresh || !review?.valid || (review.needsAck && !ack)}
+            onClick={() =>
+              void work(async () => {
+                if (!review) throw new Error("请先核对双手保存结果");
+                await fingeringApi.acceptPair(song, {
+                  parts: parts(), proof: review.proof, acknowledged: ack,
+                });
+                setPendingRefresh(true);
+                setReview(null);
+                setResults([]);
+                try {
+                  await changed();
+                  close();
+                } catch (cause) {
+                  setError(`双手指法已保存，但界面刷新失败：${String(cause)}。请只重试读取，不要再次保存。`);
+                }
+              })
+            }
+          >
+            保存双手指法
+          </button>
+          <button className="ui-button" disabled={busy} onClick={exit}>
+            取消
+          </button>
+        </>
+      }
+    >
+      <div ref={root} className="finger-pair-content">
         <p className="parameter-help">
           各手联合自己的音轨推荐，再核对两手的保存结果。一笔保存和撤销；手交叉、身体动作与双手同音仍需人工审阅。
         </p>
@@ -724,48 +755,7 @@ export function FingerPairDialog({
             changed={changed}
           />
         )}
-        <div className="dialog-actions">
-          <button
-            disabled={busy || results.length !== 2}
-            onClick={() =>
-              void work(async () => {
-                const isCurrent = captureRequest();
-                setAck(false);
-                const next = await fingeringApi.reviewPair(song, parts());
-                if (isCurrent()) setReview(next);
-              })
-            }
-          >
-            核对双手保存结果
-          </button>
-          <button
-            className="primary"
-            disabled={busy || pendingRefresh || !review?.valid || (review.needsAck && !ack)}
-            onClick={() =>
-              void work(async () => {
-                if (!review) throw new Error("请先核对双手保存结果");
-                await fingeringApi.acceptPair(song, {
-                  parts: parts(), proof: review.proof, acknowledged: ack,
-                });
-                setPendingRefresh(true);
-                setReview(null);
-                setResults([]);
-                try {
-                  await changed();
-                  close();
-                } catch (cause) {
-                  setError(`双手指法已保存，但界面刷新失败：${String(cause)}。请只重试读取，不要再次保存。`);
-                }
-              })
-            }
-          >
-            保存双手指法
-          </button>
-          <button disabled={busy} onClick={exit}>
-            取消
-          </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Dialog>
   );
 }

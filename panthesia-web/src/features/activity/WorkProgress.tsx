@@ -16,6 +16,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import type {
   WorkEntry,
   WorkPhase,
@@ -254,35 +255,31 @@ export function WorkProgressDialog({
           "interface-settings": "打开界面与按键",
         }[entry.target];
   return (
-    <div
-      className="modal-backdrop work-progress-backdrop"
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !opening) close();
-      }}
-    >
-      <section
-        className="work-progress-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="work-progress-title"
-        aria-describedby="work-progress-description"
-      >
-        <header className="work-progress-heading">
-          <div>
-            <span className="work-progress-eyebrow">练习室 · 当前工作</span>
-            <h2 id="work-progress-title">工作进度</h2>
-          </div>
+    <Dialog
+      title="工作进度"
+      subtitle="练习室 · 当前工作"
+      close={close}
+      closeLabel="关闭工作进度"
+      closeDisabled={!!opening}
+      wide
+      className="work-progress-dialog"
+      footer={
+        <>
+          <span className="work-progress-footnote">查看工作会保留原请求；完成记录可暂时收起。</span>
           <button
             type="button"
-            className="icon-button"
-            data-dialog-close
-            aria-label="关闭工作进度"
-            disabled={!!opening}
-            onClick={close}
+            className="ui-button"
+            disabled={!snapshot.completed || !!opening}
+            onClick={() => {
+              store.hideCompleted();
+              restoreFocus();
+            }}
           >
-            <X size={20} />
+            收起已完成
           </button>
-        </header>
+        </>
+      }
+    >
         <p id="work-progress-description" className="work-progress-description">
           {snapshot.pending
             ? `${snapshot.running} 项进行中，${snapshot.attention} 项需处理，${snapshot.waiting} 项待继续。`
@@ -496,20 +493,6 @@ export function WorkProgressDialog({
             </div>
           )}
         </div>
-        <footer className="work-progress-footer">
-          <span>查看工作会保留原请求；完成记录可暂时收起。</span>
-          <button
-            type="button"
-            disabled={!snapshot.completed || !!opening}
-            onClick={() => {
-              store.hideCompleted();
-              restoreFocus();
-            }}
-          >
-            收起已完成
-          </button>
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

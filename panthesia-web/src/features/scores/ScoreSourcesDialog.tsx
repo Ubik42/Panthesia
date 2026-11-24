@@ -2,7 +2,9 @@ import { ScoreTaskActivity } from "../../engine/ScoreTaskActivity";
 import { requireValue } from "../../engine/requireValue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createScoreSourceClient } from "./scoreSourceClient";
-import { X, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
+import "./scoreSources.css";
 import { api } from "../../api";
 import { ScoreSourceBatch } from "./ScoreSourceBatch";
 import {
@@ -307,34 +309,40 @@ export function ScoreSourcesDialog({
     [rows.length],
   );
   return (
-    <div
-      className="modal-backdrop score-sources-backdrop"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!busy) close();
-      }}
-    >
-      <section
-        className="settings-dialog score-sources-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="score-sources-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="score-sources-title">原谱文件</h2>
-            <p>保存版本与外部 MusicXML / MXL 原文件的对应关系</p>
-          </div>
+    <Dialog
+      title="原谱文件"
+      subtitle="保存版本与外部 MusicXML / MXL 原文件的对应关系"
+      close={close}
+      closeLabel="关闭原谱文件"
+      closeDisabled={busy}
+      wide
+      className="score-sources-dialog"
+      footer={
+        <div className="score-sources-footer">
           <button
-            aria-label="关闭原谱文件"
-            autoFocus
+            className="ui-button"
             disabled={busy}
-            onClick={close}
+            onClick={() =>
+              void work(async () => {
+                await client.command({ type: "pause" });
+                setMessage(
+                  "已停止当前练习，可重新预览并应用更新。录音需先在录制窗口结束。",
+                );
+                await changed();
+              })
+            }
           >
-            <X size={18} />
+            停止当前练习
+          </button>
+          <span>
+            {entries.length} 个版本关联 · 每 5 秒检查；应用前再次核对文件内容
+          </span>
+          <button className="ui-button" disabled={busy} onClick={close}>
+            完成
           </button>
         </div>
+      }
+    >
         <p className="parameter-help">
           原文件修改后，保存的谱面、演奏和个人资料继续保留。先预览，再选择添加谱面版本或生成新演奏。这里的文件位置仅保存在本机。
         </p>
@@ -397,7 +405,7 @@ export function ScoreSourcesDialog({
             清空选择
           </button>
           <button
-            className="primary-button"
+            className="ui-button ui-button--primary"
             disabled={
               busy ||
               batch ||
@@ -462,7 +470,7 @@ export function ScoreSourcesDialog({
                     {s.active ? " · 当前关联" : ""}
                   </strong>
                 </label>
-                <span className={s.pending ? "source-updated" : "muted"}>
+                <span className={s.pending ? "source-updated" : "source-current"}>
                   {states[s.status]}
                 </span>
               </header>
@@ -646,7 +654,7 @@ export function ScoreSourcesDialog({
                 保存并使用新谱面
               </button>
               <button
-                className="primary-button"
+                className="ui-button ui-button--primary"
                 disabled={
                   busy ||
                   !currentPreview.performanceReady ||
@@ -668,29 +676,6 @@ export function ScoreSourcesDialog({
             </div>
           </section>
         )}
-        <footer className="dialog-actions">
-          <button
-            disabled={busy}
-            onClick={() =>
-              void work(async () => {
-                await client.command({ type: "pause" });
-                setMessage(
-                  "已停止当前练习，可重新预览并应用更新。录音需先在录制窗口结束。",
-                );
-                await changed();
-              })
-            }
-          >
-            停止当前练习
-          </button>
-          <span className="parameter-help">
-            {entries.length} 个版本关联 · 每 5 秒检查；应用前再次核对文件内容
-          </span>
-          <button disabled={busy} onClick={close}>
-            完成
-          </button>
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

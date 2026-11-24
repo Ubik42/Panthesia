@@ -1,357 +1,208 @@
-.exercise-dialog.exercise-workbench {
-  max-height: 94vh;
-  overflow: auto;
-  padding: 24px;
-  background: var(--gray-26);
-  border-color: var(--blue-46);
-}
-.exercise-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.exercise-heading > svg {
-  color: var(--green-86);
-}
-.exercise-heading p {
-  margin: 5px 0 0;
-  color: var(--blue-82);
-  font-size: 12px;
-}
-.exercise-workbench-body {
-  display: grid;
-  grid-template-columns: minmax(210px, 0.85fr) minmax(0, 1.4fr);
-  gap: 24px;
-  align-items: start;
-  margin-top: 18px;
-}
-.exercise-preview {
-  min-width: 0;
-  padding: 20px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, var(--teal-34), var(--gray-29) 70%);
-  border: 1px solid var(--blue-46);
-}
-.exercise-preview-label {
-  font-size: 12px;
-  color: var(--green-87);
-}
-.exercise-preview h3 {
-  margin: 9px 0 8px;
-  font-size: 23px;
-  font-weight: 650;
-  line-height: 1.5;
-  color: var(--gray-96);
-  overflow-wrap: anywhere;
-}
-.exercise-preview > p {
-  margin: 0;
-  color: var(--gray-85);
-  font-size: 13px;
-  line-height: 1.75;
-}
-.exercise-tonic-keyboard {
-  display: block;
-  width: 100%;
-  margin: 24px auto 18px;
-  max-width: 280px;
-  overflow: visible;
-  filter: drop-shadow(0 5px 8px color-mix(in oklab, var(--gray-0) 20%, transparent));
-}
-.exercise-tonic-keyboard .white-key {
-  fill: var(--gray-96);
-  stroke: var(--gray-75);
-}
-.exercise-tonic-keyboard .black-key {
-  fill: var(--gray-24);
-  stroke: var(--blue-43);
-}
-.exercise-tonic-keyboard .selected-white {
-  fill: var(--green-86);
-  stroke: var(--green-93);
-  stroke-width: 2;
-}
-.exercise-tonic-keyboard .selected-black {
-  fill: var(--green-75);
-  stroke: var(--green-93);
-  stroke-width: 2;
-}
-.exercise-tonic-keyboard text {
-  fill: var(--teal-34);
-  font-size: 11px;
-  text-anchor: middle;
-}
-.exercise-rhythm {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 18px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--blue-43);
-}
-.exercise-rhythm > span {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 24px;
-  font-variant-numeric: tabular-nums;
-  color: var(--green-93);
-}
-.exercise-rhythm small {
-  font-size: 11px;
-  color: var(--gray-82);
-}
-.exercise-preview > .exercise-preview-help {
-  font-size: 12px;
-  color: var(--blue-82);
-  line-height: 1.8;
-}
-.exercise-result-status {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 18px;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--blue-43);
-  font-size: 12px;
-  line-height: 1.7;
-}
-.exercise-result-status strong {
-  color: var(--green-86);
-  font-size: 13px;
-}
-.exercise-result-status span {
-  color: var(--gray-85);
-  overflow-wrap: anywhere;
-}
-.exercise-result-status.needs-review strong {
-  color: var(--orange-88);
-}
-.exercise-parameters {
-  min-width: 0;
-}
-.exercise-parameter-group {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  margin: 0 0 22px;
-}
-.exercise-parameter-group legend {
-  display: block;
-  float: none;
-  margin: 0 0 13px;
-  padding: 0;
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--gray-92);
-}
-.exercise-workbench .exercise-grid {
-  gap: 14px 16px;
-}
-.exercise-workbench .exercise-grid label {
-  font-size: 12px;
-  color: var(--gray-85);
-  gap: 7px;
-  min-width: 0;
-}
-.exercise-workbench .exercise-grid select,
-.exercise-workbench .exercise-grid input,
-.exercise-workbench .exercise-presets select,
-.exercise-workbench .exercise-presets input {
-  box-sizing: border-box;
-  min-width: 0;
-  min-height: 36px;
-  color: var(--gray-96);
-  background: var(--gray-24);
-  border: 1px solid var(--blue-50);
-  border-radius: 6px;
-  padding: 7px 9px;
-  font-size: 13px;
-}
-.exercise-workbench input:focus-visible,
-.exercise-workbench select:focus-visible,
-.exercise-workbench button:focus-visible,
-.exercise-workbench summary:focus-visible {
-  outline: 2px solid var(--green-86);
-  outline-offset: 3px;
-}
-.exercise-workbench input:disabled,
-.exercise-workbench select:disabled {
-  opacity: 0.65;
-}
-.exercise-field-help {
-  align-self: end;
-  margin: 0;
-  padding: 5px 0;
-  font-size: 11px;
-  line-height: 1.75;
-  color: var(--blue-78);
-}
-.exercise-saved-presets {
-  border-top: 1px solid var(--blue-41);
-  padding-top: 18px;
-  margin-top: 5px;
-}
-.exercise-section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.exercise-section-heading h3 {
-  margin: 0;
-  font-size: 14px;
-}
-.exercise-section-heading > span {
-  color: var(--blue-78);
-  font-size: 11px;
-}
-.exercise-workbench .exercise-presets {
-  margin-bottom: 12px;
-}
-.exercise-workbench .exercise-presets label {
-  color: var(--gray-85);
-}
-.exercise-workbench .preset-management {
-  margin-bottom: 8px;
-  color: var(--gray-85);
-}
-.exercise-workbench .preset-management summary {
-  cursor: pointer;
-  padding: 5px 0;
-}
-.exercise-workbench .preset-management > div {
-  border-bottom: 1px solid var(--blue-37);
-}
-.exercise-workbench .preset-management span {
-  overflow-wrap: anywhere;
-}
-.exercise-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  position: sticky;
-  bottom: -24px;
-  padding: 16px 0 18px;
-  margin-top: 10px;
-  background: color-mix(in oklab, var(--gray-26) 96%, transparent);
-  border-top: 1px solid var(--blue-43);
-  z-index: 1;
-}
-.exercise-actions > span {
-  color: var(--gray-85);
-  font-size: 12px;
-}
-.exercise-actions > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: end;
-}
-.exercise-actions button,
-.exercise-workbench .exercise-presets button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-}
-.exercise-actions .exercise-primary {
-  background: var(--green-86);
-  border-color: var(--green-86);
-  color: var(--green-25);
-  min-width: 148px;
-  font-weight: 650;
-}
-.exercise-storage-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 12px 0;
-  padding: 12px;
-  border: 1px solid var(--orange-56);
-  border-radius: 6px;
-  color: var(--orange-88);
-  font-size: 12px;
-  line-height: 1.75;
-}
-@media (max-width: 700px) {
-  .exercise-dialog.exercise-workbench {
-    padding: 18px;
+/* Technical exercise dialog (ExerciseDialog.tsx), inside ui/Dialog. The preview card, the
+   parameter groups and the saved presets are .ui-form sections. */
+@layer screens {
+  .exercise-dialog.ui-dialog {
+    width: min(860px, 100%);
   }
   .exercise-workbench-body {
-    grid-template-columns: 1fr;
-    gap: 18px;
+    display: grid;
+    grid-template-columns: minmax(210px, 0.85fr) minmax(0, 1.4fr);
+    gap: var(--space-4);
+    align-items: start;
   }
   .exercise-preview {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(110px, 0.8fr);
-    gap: 6px 18px;
-    padding: 16px;
+    min-width: 0;
   }
-  .exercise-preview-label,
-  .exercise-preview h3,
-  .exercise-preview > p {
-    grid-column: 1;
+  .exercise-preview-label {
+    color: var(--accent-strong);
+    font-size: 12px;
   }
-  .exercise-preview h3 {
+  .ui-form .exercise-preview h3 {
+    color: var(--text-primary);
     font-size: 21px;
-    margin: 0;
+    font-weight: 650;
+    letter-spacing: 0;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
   }
   .exercise-tonic-keyboard {
-    grid-column: 2;
-    grid-row: 1 / 4;
-    align-self: center;
-    margin: 0;
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    margin: var(--space-3) auto;
+    overflow: visible;
+  }
+  .exercise-tonic-keyboard .white-key {
+    fill: var(--text-primary);
+    stroke: var(--text-muted);
+  }
+  .exercise-tonic-keyboard .black-key {
+    fill: var(--surface-base);
+    stroke: var(--line-strong);
+  }
+  .exercise-tonic-keyboard :is(.selected-white, .selected-black) {
+    fill: var(--accent);
+    stroke: var(--accent-strong);
+    stroke-width: 2;
+  }
+  .exercise-tonic-keyboard text {
+    fill: var(--on-accent);
+    font-size: 11px;
+    text-anchor: middle;
   }
   .exercise-rhythm {
-    grid-column: 1 / -1;
-    margin: 8px 0;
-    padding-bottom: 12px;
-    justify-content: start;
-    gap: 30px;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--line-subtle);
   }
   .exercise-rhythm > span {
-    font-size: 21px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--text-primary);
+    font: 22px/1.2 var(--font-numeric);
+    font-variant-numeric: tabular-nums;
   }
-  .exercise-preview > .exercise-preview-help,
+  .exercise-rhythm small {
+    color: var(--text-muted);
+    font: 11px/1.3 var(--font-ui);
+  }
+  .ui-form .exercise-preview-help {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
   .exercise-result-status {
-    grid-column: 1 / -1;
+    display: grid;
+    gap: var(--space-1);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line-subtle);
+    font-size: 12px;
   }
-  .exercise-result-status {
-    margin-top: 6px;
+  .exercise-result-status strong {
+    color: var(--state-ok);
+    font-size: 13px;
   }
-  .exercise-actions {
-    bottom: -18px;
+  .exercise-result-status span {
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+  .exercise-result-status.needs-review strong {
+    color: var(--state-warn);
+  }
+  .exercise-parameters {
+    display: grid;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  .exercise-parameter-group {
+    min-width: 0;
+  }
+  .exercise-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3) var(--space-4);
+  }
+  .ui-form :is(.exercise-grid, .exercise-presets) label {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .ui-form :is(.exercise-grid, .exercise-presets) :is(select, input) {
+    width: 100%;
+    min-width: 0;
+    min-height: 34px;
+  }
+  .ui-form .exercise-field-help {
+    align-self: end;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .exercise-section-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .exercise-section-heading > span {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .exercise-presets {
+    display: flex;
+    align-items: end;
+    gap: var(--space-3);
+  }
+  .exercise-presets label {
+    flex: 1;
+  }
+  .ui-form .exercise-presets button {
+    min-height: 34px;
+  }
+  .preset-management {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .preset-management summary {
+    padding-block: var(--space-1);
+  }
+  .preset-management > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .preset-management span {
+    flex: 1;
+    overflow-wrap: anywhere;
   }
   .exercise-storage-error {
+    margin: var(--space-3) 0;
+    padding: var(--space-3);
+    border: 1px solid var(--state-warn);
+    border-radius: var(--radius-s);
+    color: var(--state-warn);
+    font-size: 12px;
+  }
+  .exercise-dialog .ui-dialog-footer {
     flex-wrap: wrap;
+    align-items: center;
   }
-}
-@media (max-width: 420px) {
-  .exercise-workbench .exercise-grid {
-    grid-template-columns: 1fr;
+  .exercise-actions-hint {
+    flex: 1 1 200px;
+    color: var(--text-muted);
+    font-size: 12px;
   }
-  .exercise-tonic-keyboard {
-    display: none;
+  .exercise-dialog .ui-dialog-footer > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
-  .exercise-preview {
-    display: block;
+  .exercise-primary {
+    min-width: 148px;
   }
-  .exercise-preview h3 {
-    margin: 8px 0;
+  @media (max-width: 700px) {
+    .exercise-workbench-body {
+      grid-template-columns: 1fr;
+    }
+    .exercise-presets {
+      flex-wrap: wrap;
+    }
   }
-  .exercise-rhythm {
-    justify-content: space-between;
+  @media (max-width: 420px) {
+    .exercise-grid {
+      grid-template-columns: 1fr;
+    }
+    .exercise-tonic-keyboard {
+      display: none;
+    }
   }
-  .exercise-actions button {
-    flex: 1 1 140px;
-  }
-}
-
-/* Overrides of rules this stylesheet cannot outrank by specificity; resolve when the screen is redesigned. */
-@layer overrides {
-.exercise-dialog.exercise-workbench { width: min(860px, 96vw); }
 }

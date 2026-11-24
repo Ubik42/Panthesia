@@ -1,439 +1,309 @@
-.session-recovery-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  white-space: nowrap;
-}
-.session-recovery-button b {
-  min-width: 20px;
-  height: 20px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0 4px;
-  border-radius: 10px;
-  background: var(--orange-41);
-  color: var(--amber-90);
-  font-size: 11px;
-}
-.session-recovery-backdrop {
-  z-index: 1250;
-  box-sizing: border-box;
-  padding: 20px;
-}
-.session-recovery-dialog {
-  width: min(860px, 100%);
-  max-height: calc(100dvh - 40px);
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  text-align: left;
-  border: 1px solid var(--blue-50);
-  border-radius: 16px;
-  background: var(--gray-27);
-  color: var(--gray-96);
-  box-shadow: 0 24px 80px color-mix(in oklab, var(--gray-0) 60%, transparent);
-}
-.session-recovery-dialog > :not(.session-recovery-results) {
-  flex-shrink: 0;
-}
-.session-recovery-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 23px 26px 0;
-}
-.session-recovery-heading > div > span {
-  color: var(--amber-83);
-  font-size: 12px;
-}
-.session-recovery-heading h2 {
-  font-size: 25px;
-  line-height: 1.3;
-  margin: 7px 0 0;
-}
-.session-recovery-intro {
-  color: var(--gray-85);
-  line-height: 1.75;
-  font-size: 13px;
-  margin: 12px 26px 18px;
-}
-.session-recovery-tools {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 0 26px 17px;
-  border-bottom: 1px solid var(--blue-43);
-}
-.session-recovery-tools > label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 240px;
-  min-width: 160px;
-  border: 1px solid var(--blue-50);
-  border-radius: 8px;
-  background: var(--gray-24);
-  padding: 0 10px;
-}
-.session-recovery-tools input {
-  color: var(--gray-96);
-  border: 0;
-  width: 100%;
-  min-width: 0;
-  padding: 9px 0;
-  background: transparent;
-}
-.session-recovery-tools label button {
-  padding: 3px;
-  border: 0;
-  background: transparent;
-}
-.session-recovery-tools > div {
-  display: flex;
-  gap: 6px;
-}
-.session-recovery-tools > div button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-color: transparent;
-  background: transparent;
-  font-size: 12px;
-}
-.session-recovery-tools button[aria-pressed="true"] {
-  background: var(--orange-41);
-  border-color: var(--orange-56);
-  color: var(--amber-90);
-}
-.session-recovery-tools b {
-  font-size: 11px;
-  color: var(--gray-85);
-}
-.session-recovery-results {
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  flex: 1 1 auto;
-}
-.session-recovery-results > ul {
-  list-style: none;
-  margin: 0;
-  padding: 0 26px;
-}
-.session-recovery-row {
-  padding: 19px 0;
-  border-bottom: 1px solid var(--blue-43);
-}
-.session-recovery-row:last-child {
-  border-bottom: 0;
-}
-.session-recovery-row-top {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 7px 12px;
-}
-.session-recovery-row-top > span {
-  color: var(--amber-83);
-  font-size: 11px;
-  border-left: 3px solid var(--amber-77);
-  padding-left: 7px;
-}
-.severity-blocking .session-recovery-row-top > span {
-  color: var(--orange-88);
-  border-color: var(--red-78);
-}
-.severity-info .session-recovery-row-top > span {
-  color: var(--gray-82);
-  border-color: var(--green-66);
-}
-.session-recovery-row h3 {
-  margin: 0;
-  font-size: 15px;
-  color: var(--gray-96);
-  line-height: 1.6;
-}
-.session-recovery-row-top > small {
-  margin-left: auto;
-  color: var(--blue-78);
-  font-size: 11px;
-}
-.session-recovery-cause {
-  margin: 9px 0 0;
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--gray-89);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.session-recovery-cause summary {
-  cursor: pointer;
-}
-.session-recovery-cause pre {
-  margin: 9px 0 0;
-  font-family: inherit;
-  font-size: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.session-recovery-guidance {
-  color: var(--blue-82);
-  line-height: 1.8;
-  margin: 8px 0 0;
-  font-size: 12px;
-}
-.session-recovery-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 13px;
-}
-.session-recovery-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 9px;
-  font-size: 12px;
-}
-.session-recovery-actions button.primary {
-  background: var(--green-39);
-  border-color: var(--green-57);
-  color: var(--green-93);
-}
-.session-recovery-actions button.copy {
-  color: var(--gray-85);
-  background: transparent;
-  border-color: transparent;
-  margin-left: auto;
-}
-.session-recovery-working,
-.session-recovery-outcome {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 10px 13px;
-  margin: 12px 26px 0;
-  border-radius: 8px;
-  line-height: 1.7;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.session-recovery-working {
-  background: var(--blue-37);
-  color: var(--gray-89);
-}
-.session-recovery-working svg {
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.session-recovery-outcome > div {
-  min-width: 0;
-  flex: 1;
-}
-.session-recovery-outcome strong {
-  font-size: 12px;
-}
-.session-recovery-outcome p {
-  margin: 4px 0 0;
-  white-space: pre-wrap;
-}
-.session-recovery-outcome.is-success {
-  background: var(--green-39);
-  color: var(--teal-87);
-}
-.session-recovery-outcome.is-error {
-  background: var(--orange-35);
-  color: var(--orange-88);
-}
-.session-recovery-copy-notice,
-.session-recovery-copy-error {
-  font-size: 12px;
-  line-height: 1.7;
-  margin: 12px 26px 0;
-  overflow-wrap: anywhere;
-}
-.session-recovery-copy-notice {
-  color: var(--teal-87);
-}
-.session-recovery-copy-error {
-  color: var(--orange-88);
-}
-.session-recovery-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 13px;
-  padding: 40px 24px;
-  color: var(--green-83);
-}
-.session-recovery-empty strong {
-  color: var(--gray-96);
-  font-size: 16px;
-}
-.session-recovery-empty p {
-  margin: 0;
-  color: var(--blue-82);
-  font-size: 13px;
-  line-height: 1.8;
-}
-.session-recovery-diagnostics {
-  border-top: 1px solid var(--blue-43);
-  margin: 0 26px;
-  padding: 18px 0;
-}
-.session-recovery-diagnostics > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.session-recovery-diagnostics h3 {
-  margin: 0;
-  font-size: 14px;
-}
-.session-recovery-diagnostics textarea {
-  width: 100%;
-  min-height: 180px;
-  box-sizing: border-box;
-  resize: vertical;
-  margin: 12px 0;
-  font-size: 12px;
-  line-height: 1.7;
-  background: var(--gray-24);
-  color: var(--gray-89);
-}
-.session-recovery-diagnostics button {
-  font-size: 12px;
-  padding: 5px 9px;
-}
-.session-recovery-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 26px;
-  border-top: 1px solid var(--blue-43);
-  background: var(--gray-26);
-}
-.session-recovery-footer > span {
-  font-size: 11px;
-  color: var(--blue-82);
-}
-.session-recovery-footer > div {
-  display: flex;
-  gap: 8px;
-}
-.session-recovery-footer button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  padding: 6px 10px;
-}
-.session-recovery-spin {
-  animation: session-recovery-spin 1.2s linear infinite;
-}
-@keyframes session-recovery-spin {
-  to {
-    transform: rotate(360deg);
+/* Recovery and problems: the toolbar button and its dialog (SessionRecovery.tsx), inside
+   ui/Dialog. */
+@layer screens {
+  .session-recovery-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .session-recovery-spin {
-    animation: none;
+  .session-recovery-button b {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 10px;
+    background: var(--state-warn);
+    color: var(--on-accent);
+    font-size: 11px;
   }
-}
-@media (max-width: 650px) {
-  .session-recovery-backdrop {
-    padding: 10px;
+  /* Above the stage's own overlays. */
+  .ui-dialog-backdrop:has(> .session-recovery-dialog) {
+    z-index: 1250;
   }
-  .session-recovery-dialog {
-    max-height: calc(100dvh - 20px);
-  }
-  .session-recovery-heading {
-    padding: 18px 16px 0;
-  }
-  .session-recovery-intro {
-    margin-left: 16px;
-    margin-right: 16px;
+  .ui-form .session-recovery-intro {
+    margin: 0 0 var(--space-4);
+    color: var(--text-secondary);
+    font-size: 13px;
   }
   .session-recovery-tools {
-    padding-left: 16px;
-    padding-right: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .ui-form .session-recovery-tools > label {
+    display: flex;
+    flex: 1 1 240px;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 160px;
+    min-height: 0;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+  }
+  .ui-form .session-recovery-tools input {
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-2) 0;
+    border: 0;
+    background: transparent;
+  }
+  .ui-form .session-recovery-tools label button {
+    padding: 3px;
+    border: 0;
+    background: transparent;
+  }
+  .session-recovery-tools .ui-segmented button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .session-recovery-tools b {
+    color: var(--text-muted);
+    font-size: 11px;
   }
   .session-recovery-results > ul {
-    padding-left: 16px;
-    padding-right: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .session-recovery-row {
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .session-recovery-row:last-child {
+    border-bottom: 0;
+  }
+  .session-recovery-row-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-3);
+  }
+  .session-recovery-row-top > span {
+    padding-left: var(--space-2);
+    border-left: 3px solid var(--state-warn);
+    color: var(--state-warn);
+    font-size: 11px;
+  }
+  .severity-blocking .session-recovery-row-top > span {
+    border-color: var(--state-missing);
+    color: var(--state-missing);
+  }
+  .severity-info .session-recovery-row-top > span {
+    border-color: var(--state-ok);
+    color: var(--text-secondary);
+  }
+  .ui-form .session-recovery-row h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+  }
+  .session-recovery-row-top > :is(small, time) {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .session-recovery-row-top > small {
+    margin-left: auto;
+  }
+  .session-recovery-cause {
+    margin: var(--space-2) 0 0;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .session-recovery-cause pre {
+    margin: var(--space-2) 0 0;
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .ui-form .session-recovery-guidance {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+  .session-recovery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  .session-recovery-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 12px;
+  }
+  .ui-form .session-recovery-actions button.copy {
+    margin-left: auto;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-secondary);
   }
   .session-recovery-working,
-  .session-recovery-outcome,
-  .session-recovery-copy-notice,
-  .session-recovery-copy-error,
-  .session-recovery-diagnostics {
-    margin-left: 16px;
-    margin-right: 16px;
+  .session-recovery-outcome {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-s);
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
   }
-  .session-recovery-footer {
-    padding: 12px 16px;
+  .session-recovery-working {
+    background: var(--accent-soft);
+    color: var(--text-primary);
   }
-  .session-recovery-actions button.copy {
-    margin-left: 0;
+  .session-recovery-working svg {
+    flex-shrink: 0;
+    margin-top: 3px;
   }
-}
-
-.session-recovery-row-top > time {
-  font-size: 11px;
-  color: var(--blue-78);
-}
-.session-recovery-recent {
-  padding: 16px 0;
-  margin: 0 26px;
-  border-top: 1px solid var(--blue-43);
-  color: var(--gray-85);
-  font-size: 12px;
-  line-height: 1.7;
-}
-.session-recovery-recent > summary {
-  cursor: pointer;
-}
-.session-recovery-recent ol {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0 0;
-}
-.session-recovery-recent li {
-  padding: 12px 0;
-  border-top: 1px solid var(--blue-39);
-}
-.session-recovery-recent li > div {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 7px 12px;
-}
-.session-recovery-recent strong {
-  color: var(--gray-92);
-}
-.session-recovery-recent time {
-  margin-left: auto;
-  color: var(--blue-78);
-  font-size: 11px;
-}
-.session-recovery-recent p {
-  margin: 7px 0 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 650px) {
+  .session-recovery-outcome > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .session-recovery-outcome p {
+    margin: var(--space-1) 0 0;
+    white-space: pre-wrap;
+  }
+  .session-recovery-outcome.is-success {
+    border-left: 3px solid var(--state-ok);
+    background: var(--surface-panel);
+    color: var(--state-ok);
+  }
+  .session-recovery-outcome.is-error {
+    border-left: 3px solid var(--state-missing);
+    background: var(--surface-panel);
+    color: var(--state-missing);
+  }
+  .ui-form :is(.session-recovery-copy-notice, .session-recovery-copy-error) {
+    margin-top: var(--space-3);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .ui-form .session-recovery-copy-notice {
+    color: var(--state-ok);
+  }
+  .ui-form .session-recovery-copy-error {
+    color: var(--state-warn);
+  }
+  .session-recovery-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-6) var(--space-5);
+    color: var(--state-ok);
+    text-align: center;
+  }
+  .session-recovery-empty strong {
+    color: var(--text-primary);
+    font-size: 16px;
+  }
+  .ui-form .session-recovery-empty p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  .session-recovery-diagnostics,
   .session-recovery-recent {
-    margin-left: 16px;
-    margin-right: 16px;
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--line-subtle);
+  }
+  .session-recovery-diagnostics > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .ui-form .session-recovery-diagnostics h3 {
+    margin: 0;
+    font-size: 14px;
+  }
+  .ui-form .session-recovery-diagnostics textarea {
+    width: 100%;
+    min-height: 180px;
+    margin: var(--space-3) 0;
+    resize: vertical;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .session-recovery-recent {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .session-recovery-recent ol {
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .session-recovery-recent li {
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--line-subtle);
+  }
+  .session-recovery-recent li > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-3);
+  }
+  .session-recovery-recent strong {
+    color: var(--text-primary);
+  }
+  .session-recovery-recent time {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .ui-form .session-recovery-recent p {
+    margin: var(--space-2) 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .session-recovery-footnote {
+    margin-right: auto;
+    align-self: center;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .session-recovery-dialog .ui-dialog-footer {
+    flex-wrap: wrap;
+  }
+  .session-recovery-dialog .ui-dialog-footer button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .session-recovery-spin {
+    animation: session-recovery-spin 1.2s linear infinite;
+  }
+  @keyframes session-recovery-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .session-recovery-spin {
+      animation: none;
+    }
+  }
+  @media (max-width: 650px) {
+    .ui-form .session-recovery-actions button.copy {
+      margin-left: 0;
+    }
   }
 }

@@ -15,6 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { api } from "../../api";
 import {
   recoveryActionLabels,
@@ -176,35 +177,32 @@ export function SessionRecoveryDialog({
     setShowDiagnostics(true);
   };
   return (
-    <div
-      className="modal-backdrop session-recovery-backdrop"
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !opening) close();
-      }}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="session-recovery-title"
-        aria-describedby="session-recovery-intro"
-        className="session-recovery-dialog"
-      >
-        <header className="session-recovery-heading">
-          <div>
-            <span>练习室 · 状态与接续</span>
-            <h2 id="session-recovery-title">恢复与问题</h2>
-          </div>
+    <Dialog
+      title="恢复与问题"
+      subtitle="练习室 · 状态与接续"
+      close={close}
+      closeLabel="关闭恢复与问题"
+      closeDisabled={opening}
+      wide
+      className="session-recovery-dialog"
+      footer={
+        <>
+          <span className="session-recovery-footnote">完整说明包含当前曲目、设备和本机文件路径。</span>
+          <button type="button" className="ui-button" onClick={inspect}>
+            查看说明
+          </button>
           <button
             type="button"
-            className="icon-button"
-            aria-label="关闭恢复与问题"
-            disabled={opening}
-            data-dialog-close
-            onClick={close}
+            className="ui-button"
+            disabled={copying}
+            onClick={() => void copy()}
           >
-            <X size={20} />
+            <Clipboard size={14} />
+            复制完整说明
           </button>
-        </header>
+        </>
+      }
+    >
         <p id="session-recovery-intro" className="session-recovery-intro">
           {state.problems
             ? `${state.problems} 项需要处理${state.blocking ? `，其中 ${state.blocking} 项影响继续练习` : ""}。`
@@ -239,7 +237,7 @@ export function SessionRecoveryDialog({
               </button>
             )}
           </label>
-          <div role="group" aria-label="筛选练习室状态">
+          <div className="ui-segmented" role="group" aria-label="筛选练习室状态">
             <button
               type="button"
               aria-pressed={filter === "problems"}
@@ -285,7 +283,7 @@ export function SessionRecoveryDialog({
             </div>
             <button
               type="button"
-              className="icon-button"
+              className="ui-icon-button"
               aria-label="收起上次处理结果"
               onClick={store.clearOutcome}
             >
@@ -355,7 +353,7 @@ export function SessionRecoveryDialog({
                           <button
                             key={action}
                             type="button"
-                            className={index === 0 ? "primary" : ""}
+                            className={index === 0 ? "ui-button ui-button--primary" : "ui-button"}
                             disabled={
                               opening ||
                               !!operation ||
@@ -479,23 +477,6 @@ export function SessionRecoveryDialog({
             </section>
           )}
         </div>
-        <footer className="session-recovery-footer">
-          <span>完整说明包含当前曲目、设备和本机文件路径。</span>
-          <div>
-            <button type="button" onClick={inspect}>
-              查看说明
-            </button>
-            <button
-              type="button"
-              disabled={copying}
-              onClick={() => void copy()}
-            >
-              <Clipboard size={14} />
-              复制完整说明
-            </button>
-          </div>
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

@@ -1,6 +1,7 @@
 import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { useState } from "react";
-import { X, Music2, RotateCcw, Save, RefreshCw } from "lucide-react";
+import { RotateCcw, Save, RefreshCw } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { TaskActivity } from "../../engine/TaskActivity";
 import { SavedEditNotice } from "../../engine/SavedEditNotice";
 import { useExerciseCatalog } from "./useExerciseCatalog";
@@ -139,37 +140,64 @@ export function ExerciseDialog({
           ? "重试生成并打开"
           : "生成并打开";
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!unavailable) close();
-      }}
-    >
-      <section
-        className="settings-dialog exercise-dialog exercise-workbench"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="exercise-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="dialog-heading">
-          <div className="exercise-heading">
-            <Music2 size={22} />
-            <div>
-              <h2 id="exercise-title">技术练习</h2>
-              <p>选择练习内容，保留参数，随时继续</p>
-            </div>
+    <Dialog
+      title="技术练习"
+      subtitle="选择练习内容，保留参数，随时继续"
+      close={close}
+      closeLabel="关闭技术练习"
+      closeDisabled={unavailable}
+      wide
+      className="exercise-dialog"
+      footer={
+        <>
+          <span className="exercise-actions-hint">
+            {phase === "review"
+              ? "恢复时沿用原请求，保留已有生成结果。"
+              : phase === "ready"
+                ? "打开原结果，可以继续练习或调整参数。"
+                : "当前参数自动保存在本机。"}
+          </span>
+          <div>
+            {result && (
+              <button className="ui-button" disabled={unavailable} onClick={() => store.useAgain()}>
+                <RotateCcw size={15} />
+                沿用参数继续编辑
+              </button>
+            )}
+            {phase === "review" && (
+              <button
+                className="ui-button"
+                disabled={unavailable || preparation.cancelling}
+                onClick={() => void preparation.requeue()}
+              >
+                已核对结果，重新生成
+              </button>
+            )}
+            {receipt?.cancellable && (
+              <button
+                className="ui-button"
+                disabled={preparation.cancelling}
+                onClick={() => void preparation.cancel()}
+              >
+                {preparation.cancelling ? "正在取消…" : "取消当前生成"}
+              </button>
+            )}
+            <button
+              className="ui-button ui-button--primary exercise-primary"
+              disabled={
+                unavailable ||
+                preparation.cancelling ||
+                (!!invalid && !result) ||
+                (phase === "review" && !receipt)
+              }
+              onClick={() => void preparation.start()}
+            >
+              {primaryLabel}
+            </button>
           </div>
-          <button
-            autoFocus
-            data-dialog-close
-            disabled={unavailable}
-            aria-label="关闭技术练习"
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
-        </header>
+        </>
+      }
+    >
         <div className="exercise-workbench-body">
           <section className="exercise-preview" aria-label="本次技术练习">
             <span className="exercise-preview-label">本次练习</span>
@@ -422,52 +450,6 @@ export function ExerciseDialog({
             </ul>
           </div>
         )}
-        <footer className="exercise-actions">
-          <span>
-            {phase === "review"
-              ? "恢复时沿用原请求，保留已有生成结果。"
-              : phase === "ready"
-                ? "打开原结果，可以继续练习或调整参数。"
-                : "当前参数自动保存在本机。"}
-          </span>
-          <div>
-            {result && (
-              <button disabled={unavailable} onClick={() => store.useAgain()}>
-                <RotateCcw size={15} />
-                沿用参数继续编辑
-              </button>
-            )}
-            {phase === "review" && (
-              <button
-                disabled={unavailable || preparation.cancelling}
-                onClick={() => void preparation.requeue()}
-              >
-                已核对结果，重新生成
-              </button>
-            )}
-            {receipt?.cancellable && (
-              <button
-                disabled={preparation.cancelling}
-                onClick={() => void preparation.cancel()}
-              >
-                {preparation.cancelling ? "正在取消…" : "取消当前生成"}
-              </button>
-            )}
-            <button
-              className="primary-button exercise-primary"
-              disabled={
-                unavailable ||
-                preparation.cancelling ||
-                (!!invalid && !result) ||
-                (phase === "review" && !receipt)
-              }
-              onClick={() => void preparation.start()}
-            >
-              {primaryLabel}
-            </button>
-          </div>
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

@@ -1,0 +1,150 @@
+/* Score source files (ScoreSourcesDialog.tsx, ScoreSourceBatch.tsx), inside ui/Dialog. */
+@layer screens {
+  .score-sources-dialog.ui-dialog {
+    width: min(920px, 100%);
+    max-height: 90vh;
+  }
+  .score-sources-footer {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+  .score-sources-footer > span {
+    flex: 1;
+    min-width: 160px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .score-source-query {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+  }
+  .ui-form .score-source-query input {
+    flex: 1;
+    min-width: 160px;
+  }
+  .score-source-list {
+    max-height: 38vh;
+    overflow: auto;
+    border: 1px solid var(--line-subtle);
+    border-radius: var(--radius-s);
+  }
+  .score-source-list:empty {
+    border: 0;
+  }
+  .score-source-list article {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .score-source-list article:last-child {
+    border-bottom: 0;
+  }
+  .score-source-list article.selected {
+    background: var(--surface-hover);
+  }
+  .score-source-list header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .score-source-list header strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .source-updated {
+    color: var(--state-warn);
+    white-space: nowrap;
+  }
+  .source-current {
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .ui-form .source-path {
+    margin: var(--space-2) 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .score-source-preview,
+  .score-source-batch {
+    margin: var(--space-3) 0;
+    padding: var(--space-4);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--surface-panel);
+  }
+  .score-source-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .score-source-list[hidden],
+  .score-source-pagination[hidden] {
+    display: none;
+  }
+  .score-source-batch-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+  }
+  .score-source-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .score-source-choice input {
+    flex: none;
+  }
+  .score-source-batch > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .score-source-batch h3 {
+    margin: 0;
+  }
+  .score-source-batch-items {
+    max-height: 40vh;
+    overflow: auto;
+    margin: var(--space-3) 0;
+    border-block: 1px solid var(--line-subtle);
+  }
+  .score-source-batch-items article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 165px;
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .score-source-batch-items article:last-child {
+    border-bottom: 0;
+  }
+  .ui-form .score-source-batch-items select {
+    align-self: start;
+    max-width: 100%;
+  }
+  .ui-form .score-source-batch-items p {
+    margin: var(--space-1) 0;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 650px) {
+    .score-source-batch-items article {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+  }
+}

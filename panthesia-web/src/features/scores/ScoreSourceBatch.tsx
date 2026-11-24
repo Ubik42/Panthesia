@@ -319,7 +319,7 @@ export function ScoreSourceBatch({
       </div>
       <div className="dialog-actions">
         <button
-          className="primary-button"
+          className="ui-button ui-button--primary"
           disabled={busy || !actionable}
           onClick={apply}
         >

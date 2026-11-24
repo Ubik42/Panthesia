@@ -5,7 +5,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { api, pitchName, type LoadedSong, type Note } from "../../api";
 import type {
   PracticePart,
@@ -508,34 +508,65 @@ export function HandsDialog({
     });
   };
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!busy) close();
-      }}
-    >
-      <section
-        className="settings-dialog hand-editor-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="hands-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="hands-title">逐音分手</h2>
-            <p>{song.title}</p>
-          </div>
+    <Dialog
+      title="逐音分手"
+      subtitle={song.title}
+      close={close}
+      closeLabel="关闭逐音分手"
+      closeDisabled={busy}
+      className="hand-editor-dialog"
+      footer={
+        <div className="hand-editor-footer">
+          <span>
+            {filtered.length} / {rows.length} 音 · 已选择 {chosen.size} / 4096
+          </span>
           <button
-            autoFocus
-            data-dialog-close
-            disabled={busy}
-            aria-label="关闭逐音分手"
-            onClick={close}
+            disabled={locked || page <= 0}
+            onClick={() => updateDraft({ page: page - 1 })}
           >
-            <X size={18} />
+            上一页
+          </button>
+          <span>
+            {page + 1} / {Math.max(1, Math.ceil(filtered.length / 40))}
+          </span>
+          <button
+            disabled={locked || (page + 1) * 40 >= filtered.length}
+            onClick={() => updateDraft({ page: page + 1 })}
+          >
+            下一页
+          </button>
+          <button
+            className="ui-button ui-button--primary"
+            disabled={
+              editingLocked ||
+              generationStale ||
+              !proof ||
+              !chosen.size ||
+              chosen.size > 4096 ||
+              !!state.storageError
+            }
+            onClick={save}
+          >
+            保存所选分手
+          </button>
+          {contextKey && state.drafts[contextKey] && (
+            <button
+              disabled={locked}
+              onClick={() => {
+                store.clear(contextKey);
+                setProposals(null);
+                setProposalProof(null);
+              }}
+            >
+              清除这份选段输入
+            </button>
+          )}
+          <button disabled={busy} onClick={close}>
+            暂存并关闭
           </button>
         </div>
+      }
+    >
         <PracticeEditTaskActivity contentId={song.contentId} />
         <PersistentSessionRecovery
           store={store}
@@ -787,7 +818,7 @@ export function HandsDialog({
         )}
         <div className="hand-editor-toolbar">
           <button
-            className="primary-button"
+            className="ui-button ui-button--primary"
             disabled={
               editingLocked ||
               reading ||
@@ -1024,56 +1055,6 @@ export function HandsDialog({
             <p className="parameter-help">当前条件下没有音符。</p>
           )}
         </div>
-        <div className="dialog-actions">
-          <span>
-            {filtered.length} / {rows.length} 音 · 已选择 {chosen.size} / 4096
-          </span>
-          <button
-            disabled={locked || page <= 0}
-            onClick={() => updateDraft({ page: page - 1 })}
-          >
-            上一页
-          </button>
-          <span>
-            {page + 1} / {Math.max(1, Math.ceil(filtered.length / 40))}
-          </span>
-          <button
-            disabled={locked || (page + 1) * 40 >= filtered.length}
-            onClick={() => updateDraft({ page: page + 1 })}
-          >
-            下一页
-          </button>
-          <button
-            className="primary-button"
-            disabled={
-              editingLocked ||
-              generationStale ||
-              !proof ||
-              !chosen.size ||
-              chosen.size > 4096 ||
-              !!state.storageError
-            }
-            onClick={save}
-          >
-            保存所选分手
-          </button>
-          {contextKey && state.drafts[contextKey] && (
-            <button
-              disabled={locked}
-              onClick={() => {
-                store.clear(contextKey);
-                setProposals(null);
-                setProposalProof(null);
-              }}
-            >
-              清除这份选段输入
-            </button>
-          )}
-          <button disabled={busy} onClick={close}>
-            暂存并关闭
-          </button>
-        </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

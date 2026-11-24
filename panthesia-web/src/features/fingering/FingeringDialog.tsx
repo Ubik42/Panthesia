@@ -37,7 +37,9 @@ import {
   type FingeringSection,
   type FingeringWorkbenchStore,
 } from "./fingeringWorkbenchStore";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
+import "./fingeringWorkspace.css";
 import { FingerDemoControls } from "./FingerDemoControls";
 import { FingerPracticeBuilder } from "./FingerPracticeBuilder";
 import { HeldFingerPlans } from "./HeldFingerPlans";
@@ -326,7 +328,7 @@ export function FingeringDialog({
     row: FingeringDraft;
     result: Result | null;
   } | null>(null);
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const [focusPosition, setFocusPosition] = useState<{
     key: string | null;
     fingerprint: string;
@@ -1894,36 +1896,85 @@ export function FingeringDialog({
     </div>
   );
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
+    <Dialog
+      title="指法建议"
+      subtitle={song.title}
+      close={() => {
         if (!busy) close();
       }}
-    >
-      <section
-        ref={root}
-        className="settings-dialog fingering-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fingering-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="fingering-title">指法建议</h2>
-            <p>{song.title}</p>
-          </div>
+      closeLabel="关闭指法建议"
+      closeDisabled={busy}
+      className="fingering-dialog"
+      footer={
+        <>
           <button
-            autoFocus
+            className="ui-button"
+            disabled={busy || !!pendingRefresh}
+            onClick={() =>
+              void perform(async () => {
+                receiptSource.current = sourceVersion;
+                drafts.remember(buildDraft("undoing"), null);
+                setPendingRefresh("undoing");
+                await api.editPractice(song, {
+                  type: "undoFingersFor",
+                  content_id: song.contentId,
+                });
+                receiptSource.current = sourceVersion;
+                const receipt = buildDraft("undone");
+                drafts.remember(receipt, null);
+                setPendingRefresh("undone");
+                setResult(null);
+                try {
+                  await refreshActual();
+                  drafts.remove(fingeringDraftId(receipt));
+                  setPendingRefresh(null);
+                } catch (cause) {
+                  setError(
+                    `上次指法修改已撤销，但界面刷新失败：${String(cause)}。请只重试读取，不要再次撤销。`,
+                  );
+                }
+              })
+            }
+          >
+            撤销上次指法修改
+          </button>
+          <span className="menu-spacer" />
+          <button
+            className="ui-button"
             disabled={busy}
-            aria-label="关闭指法建议"
             onClick={() => {
               if (!busy) close();
             }}
           >
-            <X size={18} />
+            关闭并保留输入
           </button>
-        </div>
+          <button
+            className="ui-button ui-button--primary"
+            disabled={
+              busy ||
+              !!pendingRefresh ||
+              !result ||
+              (section === "acceptance" &&
+                (!accepted.size ||
+                  !currentAcceptance?.valid ||
+                  ((currentAcceptance.selected < currentAcceptance.total ||
+                    currentAcceptance.contextUnmarked > 0) &&
+                    !acknowledged) ||
+                  changedCount > 0))
+            }
+            onClick={() => {
+              if (section === "acceptance") void apply();
+              else setSection("acceptance");
+            }}
+          >
+            {section === "acceptance"
+              ? `接受并保存 ${accepted.size || ""}`
+              : "查看保存结果"}
+          </button>
+        </>
+      }
+    >
+      <div ref={root} className="fingering-dialog-content">
         {pair && (
           <FingerPairDialog
             song={song}
@@ -1982,7 +2033,7 @@ export function FingeringDialog({
                 </p>
                 <div className="browse-detail-actions">
                   <button
-                    className="primary"
+                    className="ui-button ui-button--primary primary"
                     disabled={locked || !rangeValid || !playable.length}
                     onClick={() => {
                       void generate();
@@ -2027,72 +2078,8 @@ export function FingeringDialog({
             ]}
           />
         </div>
-        <div className="dialog-actions">
-          <button
-            disabled={busy || !!pendingRefresh}
-            onClick={() =>
-              void perform(async () => {
-                receiptSource.current = sourceVersion;
-                drafts.remember(buildDraft("undoing"), null);
-                setPendingRefresh("undoing");
-                await api.editPractice(song, {
-                  type: "undoFingersFor",
-                  content_id: song.contentId,
-                });
-                receiptSource.current = sourceVersion;
-                const receipt = buildDraft("undone");
-                drafts.remember(receipt, null);
-                setPendingRefresh("undone");
-                setResult(null);
-                try {
-                  await refreshActual();
-                  drafts.remove(fingeringDraftId(receipt));
-                  setPendingRefresh(null);
-                } catch (cause) {
-                  setError(
-                    `上次指法修改已撤销，但界面刷新失败：${String(cause)}。请只重试读取，不要再次撤销。`,
-                  );
-                }
-              })
-            }
-          >
-            撤销上次指法修改
-          </button>
-          <span className="menu-spacer" />
-          <button
-            disabled={busy}
-            onClick={() => {
-              if (!busy) close();
-            }}
-          >
-            关闭并保留输入
-          </button>
-          <button
-            className="primary-button"
-            disabled={
-              busy ||
-              !!pendingRefresh ||
-              !result ||
-              (section === "acceptance" &&
-                (!accepted.size ||
-                  !currentAcceptance?.valid ||
-                  ((currentAcceptance.selected < currentAcceptance.total ||
-                    currentAcceptance.contextUnmarked > 0) &&
-                    !acknowledged) ||
-                  changedCount > 0))
-            }
-            onClick={() => {
-              if (section === "acceptance") void apply();
-              else setSection("acceptance");
-            }}
-          >
-            {section === "acceptance"
-              ? `接受并保存 ${accepted.size || ""}`
-              : "查看保存结果"}
-          </button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </Dialog>
   );
 }
 

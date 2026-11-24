@@ -5,7 +5,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { api, type LoadedSong, type MeterMapPreview } from "../../api";
 import { capturePracticeScope } from "../../engine/useCatalogRead";
 import { PracticeEditTaskActivity } from "../../engine/PracticeEditTaskActivity";
@@ -619,34 +620,25 @@ export function MeterDialog({
     </section>
   );
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!busy) close();
-      }}
-    >
-      <section
-        className="settings-dialog meter-map-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="meter-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="meter-title">修正小节网格</h2>
-            <p>{song.title}</p>
-          </div>
-          <button
-            autoFocus
-            data-dialog-close
-            disabled={busy}
-            aria-label="关闭小节网格"
-            onClick={close}
-          >
-            <X size={18} />
+    <Dialog
+      title="修正小节网格"
+      subtitle={song.title}
+      close={close}
+      closeLabel="关闭小节网格"
+      closeDisabled={busy}
+      wide
+      className="meter-map-dialog"
+      footer={
+        <>
+          <button className="ui-button" disabled={locked} onClick={resetNative}>
+            恢复当前已保存网格
           </button>
-        </div>
+          <button className="ui-button" disabled={busy} onClick={close}>
+            暂存并关闭
+          </button>
+        </>
+      }
+    >
         <PracticeEditTaskActivity contentId={song.contentId} />
         <PersistentSessionRecovery
           store={store}
@@ -755,7 +747,7 @@ export function MeterDialog({
                 </button>
               )}
               <button
-                className="primary-button"
+                className="ui-button ui-button--primary"
                 disabled={
                   locked ||
                   !dirty ||
@@ -799,15 +791,6 @@ export function MeterDialog({
           导航小节按演奏顺序从 1
           开始，显示编号用于对应纸谱。保存网格后会清除当前循环和本轮成绩，历史记录、音符和速度会保留。
         </p>
-        <div className="dialog-actions">
-          <button disabled={locked} onClick={resetNative}>
-            恢复当前已保存网格
-          </button>
-          <button disabled={busy} onClick={close}>
-            暂存并关闭
-          </button>
-        </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

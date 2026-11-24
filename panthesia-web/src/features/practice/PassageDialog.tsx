@@ -26,7 +26,8 @@ import { practiceDraftDirty } from "./practiceEditorStore";
 import { TaskActivity } from "../../engine/TaskActivity";
 import { useEffect, useRef, useState } from "react";
 import { TickRangeDialog } from "./TickRangeDialog";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
+import "./passageDialog.css";
 import { api, type LoadedSong, type Snapshot } from "../../api";
 import { ScoreRangeDialog } from "../scores/ScoreRangeDialog";
 import type { PassagePreset as Passage } from "../../engine/commands.generated";
@@ -200,34 +201,16 @@ export function PassageDialog({
       );
   };
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!busy) close();
-      }}
-    >
-      <section
-        className="settings-dialog passage-dialog practice-editor-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="passage-title"
-        onClick={(event) => event.stopPropagation()}
+    <>
+      <Dialog
+        title="练习段落"
+        subtitle={song.title}
+        close={close}
+        closeLabel="关闭练习段落"
+        closeDisabled={busy}
+        wide
+        className="passage-dialog"
       >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="passage-title">练习段落</h2>
-            <p>{song.title}</p>
-          </div>
-          <button
-            autoFocus
-            data-dialog-close
-            disabled={busy}
-            aria-label="关闭练习段落"
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
-        </div>
         <TaskActivity
           contentId={song.contentId}
           label={["读取练习段资料", "保存练习段资料", "打开保存的练习段"]}
@@ -369,17 +352,17 @@ export function PassageDialog({
               </article>
             ))}
             {!loaded && (
-              <p className="library-empty">
+              <p className="passage-empty">
                 {reading ? "正在读取练习段…" : "请重新读取练习段列表。"}
               </p>
             )}
             {loaded && !passages.length && (
-              <p className="library-empty">
+              <p className="passage-empty">
                 保存经常重练的段落，记下配置与练习目标。
               </p>
             )}
             {loaded && passages.length > 0 && !visible.length && (
-              <p className="library-empty">没有找到符合条件的练习段。</p>
+              <p className="passage-empty">没有找到符合条件的练习段。</p>
             )}
           </aside>
           <div className="passage-form">
@@ -538,7 +521,7 @@ export function PassageDialog({
             )}
             <div className="file-actions">
               <button
-                className="primary-button"
+                className="ui-button ui-button--primary"
                 disabled={
                   locked ||
                   reading ||
@@ -649,7 +632,7 @@ export function PassageDialog({
             </div>
           </div>
         </div>
-      </section>
+      </Dialog>
       {precise && (
         <TickRangeDialog
           expectedCatalog={precise !== "new" ? catalogRevision : undefined}
@@ -679,6 +662,6 @@ export function PassageDialog({
           changed={() => nestedChanged(review.id)}
         />
       )}
-    </div>
+    </>
   );
 }

@@ -1,4 +1,6 @@
 import { useCloseParticipant } from "../../lib/closePreparation";
+import { Dialog } from "../../ui/Dialog";
+import "./tickRangeDialog.css";
 import { CopyPracticeDraft } from "./CopyPracticeDraft";
 import type { PassageCatalog } from "./catalogTypes";
 import {
@@ -124,7 +126,6 @@ export function TickRangeDialog({
   );
   const alive = useRef(true),
     working = useRef(false),
-    section = useRef<HTMLElement>(null),
     draft = useRef(false);
   draft.current = dirty;
   working.current = busy;
@@ -281,30 +282,14 @@ export function TickRangeDialog({
     !!state.recording ||
     ["playing", "countIn"].includes(state.status);
   return (
-    <div
-      className="modal-backdrop"
-      onClick={(e) => {
-        e.stopPropagation();
-        exit();
-      }}
+    <Dialog
+      title="拍内练习段落"
+      subtitle={song.title}
+      close={exit}
+      closeLabel="关闭拍内段落"
+      closeDisabled={busy}
+      className="tick-range-dialog"
     >
-      <section
-        ref={section}
-        className="settings-dialog tick-range-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tick-range-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="tick-range-title">拍内练习段落</h2>
-            <p>{song.title}</p>
-          </div>
-          <button data-dialog-close="" disabled={busy} onClick={exit}>
-            关闭拍内段落
-          </button>
-        </div>
         <p>
           按实际演奏顺序的小节与拍位选择。1.5
           表示第一拍的后半拍；终点处的起音不计入。
@@ -530,7 +515,7 @@ export function TickRangeDialog({
             练这个范围
           </button>
           <button
-            className="primary-button"
+            className="ui-button ui-button--primary"
             disabled={
               busy ||
               catalogReading ||
@@ -577,7 +562,6 @@ export function TickRangeDialog({
           </p>
         )}
         {saved && <p role="status">拍内段落已保存。</p>}
-      </section>
-    </div>
+    </Dialog>
   );
 }

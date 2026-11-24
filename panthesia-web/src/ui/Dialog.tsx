@@ -36,7 +36,8 @@ export function Dialog({
   // Escape and Tab are handled for every dialog by the window's focus manager (useDialogFocus):
   // Escape presses the button marked data-dialog-escape, else the close button.
   useEffect(() => {
-    ref.current?.focus();
+    // A control marked data-dialog-initial-focus (a search box) takes focus, else the dialog.
+    (ref.current?.querySelector<HTMLElement>("[data-dialog-initial-focus]") ?? ref.current)?.focus();
   }, []);
   return (
     <div className="ui-dialog-backdrop" onClick={keepOnBackdrop || closeDisabled ? undefined : close}>

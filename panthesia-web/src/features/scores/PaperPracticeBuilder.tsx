@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
 import { api } from "../../api";
 import type {
   PaperPracticeReview,
@@ -109,8 +109,7 @@ export function PaperPracticeBuilder({
     [reading, setReading] = useState(false);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
-  const root = useRef<HTMLElement>(null),
-    live = useRef(true),
+  const live = useRef(true),
     epoch = useRef(0);
   const operation = useRef(false),
     closeRef = useRef(close);
@@ -297,31 +296,67 @@ export function PaperPracticeBuilder({
     }
   };
   return (
-    <div className="modal-backdrop">
-      <section
-        ref={root}
-        tabIndex={-1}
-        className="settings-dialog paper-practice-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="paper-practice-title"
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="paper-practice-title">从纸谱建立练习段</h2>
-            <p>
-              第 {review?.page ?? "—"} 页 · 第 {measure} 演奏小节
-            </p>
-          </div>
-          <button
-            autoFocus
-            disabled={busy}
-            aria-label="关闭纸谱练习段"
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog
+      title="从纸谱建立练习段"
+      subtitle={<>第 {review?.page ?? "—"} 页 · 第 {measure} 演奏小节</>}
+      close={close}
+      closeLabel="关闭纸谱练习段"
+      closeDisabled={busy}
+      keepOnBackdrop
+      className="paper-practice-dialog"
+      footer={
+        <>
+              {draft.pending ? (
+                <button
+                  className="ui-button ui-button--primary"
+                  disabled={busy}
+                  onClick={() => void reconcile()}
+                >
+                  核对保存结果
+                </button>
+              ) : draft.saved ? (
+                <>
+                  <button
+                    className="ui-button"
+                    disabled={busy}
+                    onClick={() => {
+                      session.update({ saved: null });
+                      setReview(null);
+                      setNotice(
+                        "输入继续保留，请重新核对条件后另存。原练习段继续保留。",
+                      );
+                    }}
+                  >
+                    继续编辑并另存
+                  </button>
+                  <button
+                    className="ui-button ui-button--primary"
+                    disabled={busy}
+                    onClick={() => void open()}
+                  >
+                    打开练习段
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="ui-button" disabled={busy} onClick={() => void read()}>
+                    重新核对条件
+                  </button>
+                  <button
+                    className="ui-button ui-button--primary"
+                    disabled={busy || !review || !form || !!invalid}
+                    onClick={() => void save()}
+                  >
+                    {draft.busy ? "正在保存…" : "保存练习段"}
+                  </button>
+                </>
+              )}
+              <button className="ui-button" disabled={busy} onClick={close}>
+                {draft.saved ? "完成" : "保留草稿并关闭"}
+              </button>
+        </>
+      }
+    >
         {error && (
           <p role="alert" className="dialog-error">
             {error}
@@ -466,56 +501,6 @@ export function PaperPracticeBuilder({
                 : "练习段已保存。"}
           </p>
         )}
-        <div className="dialog-actions">
-          {draft.pending ? (
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => void reconcile()}
-            >
-              核对保存结果
-            </button>
-          ) : draft.saved ? (
-            <>
-              <button
-                disabled={busy}
-                onClick={() => {
-                  session.update({ saved: null });
-                  setReview(null);
-                  setNotice(
-                    "输入继续保留，请重新核对条件后另存。原练习段继续保留。",
-                  );
-                }}
-              >
-                继续编辑并另存
-              </button>
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => void open()}
-              >
-                打开练习段
-              </button>
-            </>
-          ) : (
-            <>
-              <button disabled={busy} onClick={() => void read()}>
-                重新核对条件
-              </button>
-              <button
-                className="primary"
-                disabled={busy || !review || !form || !!invalid}
-                onClick={() => void save()}
-              >
-                {draft.busy ? "正在保存…" : "保存练习段"}
-              </button>
-            </>
-          )}
-          <button disabled={busy} onClick={close}>
-            {draft.saved ? "完成" : "保留草稿并关闭"}
-          </button>
-        </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }

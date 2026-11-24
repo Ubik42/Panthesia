@@ -8,7 +8,6 @@ import "./app/workspaces.css";
 import "./style.css";
 import "./features/practice/practiceWorkspace.css";
 import "./ui/legacy/browseDetailWorkspace.css";
-import "./features/fingering/fingeringWorkspace.css";
 import "./features/practice/pianoVisual.css";
 import "./features/practice/practiceChrome.css";
 import "./app/dailyTheme.css";

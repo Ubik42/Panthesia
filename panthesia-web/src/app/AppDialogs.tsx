@@ -1,4 +1,3 @@
-import "../ui/legacyDialog.css";
 import { useApp } from "./AppContext";
 import { SongEditorHost } from "../features/editing/SongEditorHost";
 import { AboutDialog } from "./AboutDialog";

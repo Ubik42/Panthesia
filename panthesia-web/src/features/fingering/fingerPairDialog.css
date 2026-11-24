@@ -1,0 +1,98 @@
+/* Two-hand fingering review (FingerPairDialog.tsx, FingerPairInteractions.tsx), inside
+   ui/Dialog. */
+@layer screens {
+  .ui-dialog.finger-pair-dialog {
+    width: min(1120px, 100%);
+  }
+  .finger-pair-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .finger-pair-options,
+  .finger-pair-selection,
+  .finger-pair-hand-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 12px;
+  }
+  .ui-form .finger-pair-options label {
+    display: flex;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .ui-form .finger-pair-dialog input[type="number"] {
+    width: 65px;
+  }
+  .finger-pair-hands {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+  .ui-form .finger-pair-hands > section {
+    min-width: 0;
+  }
+  .ui-form .finger-pair-hands h3 {
+    margin-right: auto;
+    font-size: 14px;
+  }
+  .finger-pair-hands table {
+    width: 100%;
+    margin: var(--space-2) 0;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .finger-pair-hands :is(th, td) {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--line-subtle);
+    text-align: left;
+  }
+  .ui-form .finger-pair-hands small {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--text-muted);
+  }
+  .finger-pair-review {
+    padding: var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    background: var(--surface-panel);
+    font-size: 12px;
+  }
+  .ui-form .finger-pair-review label {
+    display: flex;
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .finger-pair-review-list {
+    max-height: 200px;
+    overflow: auto;
+  }
+  .finger-pair-interactions {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line-subtle);
+  }
+  .ui-form .finger-pair-interactions h3 {
+    font-size: 14px;
+  }
+  .finger-pair-interactions select {
+    margin-left: var(--space-2);
+  }
+  .finger-interaction-row {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+  .ui-form .finger-interaction-row small {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--text-muted);
+  }
+  @media (max-width: 750px) {
+    .finger-pair-hands {
+      grid-template-columns: 1fr;
+    }
+  }
+}

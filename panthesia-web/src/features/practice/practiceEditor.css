@@ -5,44 +5,6 @@
   padding: 0.8rem 1rem;
   margin: 0.7rem 0;
 }
-.settings-dialog.practice-editor-dialog {
-  display: block;
-  width: min(1100px, 96vw);
-  max-height: 91vh;
-  overflow: auto;
-  padding: 24px;
-}
-.practice-editor-dialog .dialog-heading {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  padding: 12px 0;
-  background: var(--panel, var(--gray-29));
-}
-.practice-editor-dialog .dialog-heading > div {
-  min-width: 0;
-}
-.practice-editor-dialog .dialog-heading p {
-  overflow-wrap: anywhere;
-}
-.practice-editor-dialog .passage-layout {
-  grid-template-columns: minmax(230px, 0.8fr) minmax(300px, 1.2fr);
-  align-items: start;
-  overflow: visible;
-}
-.practice-editor-dialog .passage-list {
-  max-height: 63vh;
-  overflow: auto;
-  min-width: 0;
-  scrollbar-width: thin;
-  padding-right: 10px;
-}
-.practice-editor-dialog .passage-form {
-  min-width: 0;
-}
-.practice-editor-dialog .passage-select strong {
-  overflow-wrap: anywhere;
-}
 .practice-draft-strip-heading {
   display: flex;
   align-items: center;
@@ -252,24 +214,5 @@
   }
   .practice-editor-summary {
     flex-wrap: wrap;
-  }
-}
-@media (max-width: 760px) {
-  .settings-dialog.practice-editor-dialog {
-    padding: 16px;
-  }
-  .practice-editor-dialog .dialog-heading {
-    top: 0;
-  }
-  .practice-editor-dialog .passage-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
-  }
-  .practice-editor-dialog .passage-list {
-    max-height: 38vh;
-    padding-right: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--blue-39);
-    padding-bottom: 12px;
   }
 }
