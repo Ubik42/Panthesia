@@ -102,9 +102,38 @@ function at<T>(rows: readonly T[], time: number, key: (x: T) => number) {
  * base (abduction) and bends in its own plane; the last joint bends with the middle one (2/3 of
  * it, as real fingers do). Bones never change length: a target out of reach leaves the finger
  * stretched toward it. Returns the four joints, base first. */
-export function fingerChain(base: V3, target: V3, bones: readonly number[], coupling = 0.67): V3[] {
-  const dx = target.x - base.x,
+export type FingerLimit = {
+  /** The hand's forward direction and its sideways axis (toward the little finger), on the keys. */
+  forward: { x: number; y: number };
+  side: { x: number; y: number };
+  /** The finger's rest direction (radians from forward, toward the little finger positive). */
+  rest: number;
+  /** How far it may turn sideways from its rest direction (radians). */
+  splay: number;
+};
+/** Joint ranges (radians): knuckle flexion from slightly hyperextended to well bent, and the
+ * least curl a finger keeps (a straight finger never plays). */
+const KNUCKLE = [-0.3, 1.45] as const;
+const MIN_CURL = 0.12;
+
+export function fingerChain(base: V3, target: V3, bones: readonly number[], coupling = 0.67, limit?: FingerLimit): V3[] {
+  let dx = target.x - base.x,
     dy = target.y - base.y;
+  if (limit) {
+    // Sideways turn at the knuckle within the finger's range: beyond it the finger points along
+    // the limit (and reaches what it can along that line) instead of twisting.
+    const lx = dx * limit.side.x + dy * limit.side.y,
+      ly = dx * limit.forward.x + dy * limit.forward.y;
+    const angle = Math.atan2(lx, ly);
+    const clamped = Math.max(limit.rest - limit.splay, Math.min(limit.rest + limit.splay, angle));
+    if (clamped !== angle) {
+      const along = Math.hypot(lx, ly) * Math.max(0.2, Math.cos(angle - clamped));
+      const sx = Math.sin(clamped) * along,
+        sy = Math.cos(clamped) * along;
+      dx = sx * limit.side.x + sy * limit.forward.x;
+      dy = sx * limit.side.y + sy * limit.forward.y;
+    }
+  }
   const horizontal = Math.max(0.001, Math.hypot(dx, dy));
   const ux = dx / horizontal,
     uy = dy / horizontal;
@@ -120,9 +149,9 @@ export function fingerChain(base: V3, target: V3, bones: readonly number[], coup
     const t = tail(b);
     return Math.hypot(l1 + t.x, t.y);
   };
-  let lo = 0,
+  let lo = MIN_CURL,
     hi = 1.75;
-  if (reach >= span(0)) hi = 0;
+  if (reach >= span(MIN_CURL)) hi = MIN_CURL;
   else if (reach <= span(hi)) lo = hi;
   else
     for (let k = 0; k < 22; k++) {
@@ -133,7 +162,7 @@ export function fingerChain(base: V3, target: V3, bones: readonly number[], coup
   const bend = (lo + hi) / 2;
   const t = tail(bend);
   // Rotate the bent chain so its tip points at the target (angles measured downward).
-  const aim = Math.atan2(down, horizontal) - Math.atan2(t.y, l1 + t.x);
+  const aim = Math.max(KNUCKLE[0], Math.min(KNUCKLE[1], Math.atan2(down, horizontal) - Math.atan2(t.y, l1 + t.x)));
   const angles = [aim, aim + bend, aim + bend * (1 + coupling)];
   const points = [base];
   let p = base;
@@ -261,16 +290,20 @@ function aims(track: HandTrack, time: number, rate: number): Aim[] {
 const STEP = 1 / 120,
   BLOCK = 4,
   CONTEXT = 1;
-/** Wrist speed limit (millimetres and radians per second). */
-const WRIST_SPEED = 2500,
-  YAW_SPEED = 4;
+/** Wrist speed limit in real seconds (millimetres and radians per second): a pianist's hand
+ * crosses an octave in about a tenth of a second at most. Song time runs `rate` times as fast. */
+const WRIST_SPEED = 1600,
+  YAW_SPEED = 2.5;
+/** Fingertip speed limit (millimetres per real second) and smoothing time constant (seconds). */
+const TIP_SPEED = 1200,
+  TIP_TAU = 0.028;
 type Block = Float64Array; // x, y, yaw, weight per grid point; NaN where the hand is away
 const trajectories = new WeakMap<HandTrack, { layout: string; blocks: Map<number, Block> }>();
 
 /** The hand's placement at `time` from its precomputed path. Each block is computed with a
  * second of context on both sides: raw placements, a triangle smoothing window, then the speed
  * limit run forward and backward and averaged (so the hand neither lags nor leads). */
-function trajectory(track: HandTrack, layout: string, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null, time: number) {
+function trajectory(track: HandTrack, layout: string, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null, time: number, rate: number) {
   let cache = trajectories.get(track);
   if (!cache || cache.layout !== layout) {
     cache = { layout, blocks: new Map() };
@@ -279,7 +312,7 @@ function trajectory(track: HandTrack, layout: string, raw: (t: number) => { x: n
   const index = Math.floor(time / BLOCK);
   let block = cache.blocks.get(index);
   if (!block) {
-    block = computeBlock(index, raw);
+    block = computeBlock(index, raw, rate);
     if (cache.blocks.size > 64) cache.blocks.clear();
     cache.blocks.set(index, block);
   }
@@ -297,7 +330,7 @@ function trajectory(track: HandTrack, layout: string, raw: (t: number) => { x: n
   return { x: blend(a, b, u), y: blend(read(k, 1), read(k + 1, 1), u), yaw: blend(read(k, 2), read(k + 1, 2), u), weight: blend(read(k, 3), read(k + 1, 3), u) };
 }
 
-function computeBlock(index: number, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null): Block {
+function computeBlock(index: number, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null, rate: number): Block {
   const from = index * BLOCK - CONTEXT;
   const n = Math.round((BLOCK + 2 * CONTEXT) / STEP) + 2;
   const out = new Float64Array(n * 4).fill(Number.NaN);
@@ -305,8 +338,8 @@ function computeBlock(index: number, raw: (t: number) => { x: number; y: number;
     const p = raw(from + i * STEP);
     if (p) out.set([p.x, p.y, p.yaw, p.weight], i * 4);
   }
-  // Smoothing over ±50 ms (triangle weights), within each run of samples where the hand is shown.
-  const R = 6;
+  // Smoothing over ±60 ms (triangle weights), within each run of samples where the hand is shown.
+  const R = 7;
   const smoothed = new Float64Array(out);
   for (let i = 0; i < n; i++) {
     if (Number.isNaN(out[i * 4])) continue;
@@ -330,7 +363,8 @@ function computeBlock(index: number, raw: (t: number) => { x: number; y: number;
       const j = i - dir;
       if (Number.isNaN(path[i * 4]) || Number.isNaN(path[j * 4])) continue;
       for (const [c, v] of [[0, WRIST_SPEED], [1, WRIST_SPEED], [2, YAW_SPEED]] as const) {
-        const max = v * STEP;
+        // Song time runs `rate` times as fast as real time (rate is the playback speed).
+        const max = v * STEP / Math.max(0.1, rate);
         path[i * 4 + c] = path[j * 4 + c] + Math.max(-max, Math.min(max, path[i * 4 + c] - path[j * 4 + c]));
       }
     }
@@ -342,7 +376,10 @@ function computeBlock(index: number, raw: (t: number) => { x: number; y: number;
   return smoothed;
 }
 
-export function handPose(track: HandTrack, time: number, rate: number, band: KeyBand, geometry: Geometry): HandPose | null {
+/** What a hand remembers between frames: its fingertips' last targets (see `handPose`). */
+export type HandMemory = { time: number; tips: V3[] };
+
+export function handPose(track: HandTrack, time: number, rate: number, band: KeyBand, geometry: Geometry, memory?: HandMemory): HandPose | null {
   if (!track.notes.length) return null;
   const ni = at(track.notes, time, (n) => n.start),
     last = track.notes[Math.max(0, ni)],
@@ -472,7 +509,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   // The hand's path: placements on a 1/120 s grid, smoothed and speed-limited per block (see
   // `trajectory`), read here between grid points.
   const layout = `${rate}:${Math.round(keyHeight)}:${Math.round(scale * 1000)}:${Math.round((geometry(60)?.x ?? 0) / scale)}`;
-  const placed = trajectory(track, layout, raw, time);
+  const placed = trajectory(track, layout, raw, time, rate);
   if (!placed) return null;
   const weight = placed.weight;
   const wrist: V3 = { x: placed.x, y: placed.y, z: WRIST_Z };
@@ -548,12 +585,78 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     if (share > 0) shiftLateral(b, need * share);
     if (share < 1) shiftLateral(a, -need * (1 - share));
   };
-  for (let pass = 0; pass < 3; pass++) {
-    for (let i = 2; i <= 4; i++) separate(targets[i - 1], targets[i]);
-    for (let i = 4; i >= 2; i--) separate(targets[i - 1], targets[i]);
+  /** A free finger's target turned into the sideways range it can reach from its knuckle, so
+   * the finger chain never has to bend it away from where the order below put it. */
+  const reachable = (i: number, t: Target) => {
+    if (i === 0 || t.priority >= 3) return;
+    const kb = world(base(i));
+    const dx = t.target.x - kb.x,
+      dy = t.target.y - kb.y;
+    const lx = mirror * (cos * dx + sin * dy),
+      ly = -sin * dx + cos * dy;
+    const rest = Math.atan2(ANATOMY.rest[i].x, ANATOMY.rest[i].y),
+      limit = (SPLAY[i] * Math.PI) / 180;
+    const angle = Math.atan2(lx, ly);
+    const clamped = Math.max(rest - limit, Math.min(rest + limit, angle));
+    if (clamped === angle) return;
+    const r = Math.hypot(lx, ly);
+    const nx = Math.sin(clamped) * r,
+      ny = Math.cos(clamped) * r;
+    t.target = { ...t.target, x: kb.x + mirror * cos * nx - sin * ny, y: kb.y + mirror * sin * nx + cos * ny };
+  };
+  // The thumb keeps to its side of the index finger too, except while it passes under the hand.
+  const first = thumbUnder ? 2 : 1;
+  const order = (passes: number) => {
+    for (let pass = 0; pass < passes; pass++) {
+      targets.forEach((t, i) => reachable(i, t));
+      for (let i = first; i <= 4; i++) separate(targets[i - 1], targets[i]);
+      for (let i = 4; i >= first; i--) separate(targets[i - 1], targets[i]);
+    }
+    targets.forEach((t, i) => reachable(i, t));
+  };
+  order(3);
+
+  // 3. Continuous fingertips: from where each tip was on the last frame toward its target, at
+  // most TIP_SPEED and smoothed; a finger on its key lands exactly. A seek or a long gap starts over.
+  if (memory) {
+    const real = (time - memory.time) / Math.max(0.1, rate);
+    const fresh = !(real > 0 && real < 0.15) || memory.tips.length !== targets.length;
+    targets.forEach((t, i) => {
+      const before = memory.tips[i];
+      if (fresh || !before || t.pressed) return;
+      const k = 1 - Math.exp(-real / TIP_TAU);
+      let mx = (t.target.x - before.x) * k,
+        my = (t.target.y - before.y) * k,
+        mz = (t.target.z - before.z) * k;
+      const step = Math.hypot(mx, my, mz),
+        max = TIP_SPEED * real;
+      if (step > max) {
+        mx *= max / step;
+        my *= max / step;
+        mz *= max / step;
+      }
+      t.target = { x: before.x + mx, y: before.y + my, z: before.z + mz };
+    });
+    if (!fresh) {
+      // Keep the order once more after smoothing, but move no tip faster than the limit allows
+      // in this frame: a finger that slipped past its neighbour is brought back over a few frames.
+      order(2);
+      targets.forEach((t, i) => {
+        const before = memory.tips[i];
+        if (!before || t.pressed) return;
+        const mx = t.target.x - before.x,
+          my = t.target.y - before.y,
+          mz = t.target.z - before.z;
+        const step = Math.hypot(mx, my, mz),
+          max = TIP_SPEED * 1.6 * real;
+        if (step > max) t.target = { x: before.x + (mx * max) / step, y: before.y + (my * max) / step, z: before.z + (mz * max) / step };
+      });
+    }
+    memory.time = time;
+    memory.tips = targets.map((t) => ({ ...t.target }));
   }
 
-  const fingers = targets.map(({ target, pressed, substitution }, i) => {
+  const chain = (i: number, target: V3) => {
     const b = world(base(i));
     if (i === 0 && thumbUnder) {
       // Passing under the hand: the thumb's base swings toward the palm and drops.
@@ -561,14 +664,16 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       b.y += mirror * sin * crossPhase * 14;
       b.z -= crossPhase * 10;
     }
-    return {
-      finger: i + 1,
-      points: i === 0 ? thumbChain(b, target, ANATOMY.bones[0], mirror, yaw) : fingerChain(b, target, ANATOMY.bones[i], 0.67),
-      pressed,
-      substitution,
-    };
-  });
-
+    return i === 0
+      ? thumbChain(b, target, ANATOMY.bones[0], mirror, yaw)
+      : fingerChain(b, target, ANATOMY.bones[i], 0.67, {
+          forward: { x: -sin, y: cos },
+          side: { x: mirror * cos, y: mirror * sin },
+          rest: Math.atan2(ANATOMY.rest[i].x, ANATOMY.rest[i].y),
+          splay: ((SPLAY[i] + 8) * Math.PI) / 180,
+        });
+  };
+  const fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target), pressed, substitution }));
   return {
     side: track.side,
     wrist,

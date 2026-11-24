@@ -1,6 +1,6 @@
 import type { LoadedSong } from "../../engine/sessionTypes";
 import type { HandPlan } from "./virtualHandPlan";
-import { handPose, arrangeHands, type HandPose } from "./virtualHandPose";
+import { handPose, arrangeHands, type HandMemory, type HandPose } from "./virtualHandPose";
 import { HandMeshDrawing } from "./virtualHandMesh";
 import { reportDiagnostic } from "../../lib/diagnostics";
 import { api } from "../../api";
@@ -24,6 +24,8 @@ export class VirtualHands {
     private generation = 0;
     private drawing: HandMeshDrawing;
     private disposed = false;
+    /** Each hand's fingertips on the last frame, so they move continuously. */
+    private memory = new Map<string, HandMemory>();
     constructor(private canvas: HTMLCanvasElement, private wake: () => void) {
         this.drawing = new HandMeshDrawing(canvas, wake);
     }
@@ -99,6 +101,7 @@ export class VirtualHands {
         this.worker?.terminate();
         this.worker = null;
         this.plan = null;
+        this.memory.clear();
         this.song = null;
         this.rate = 0;
     }
@@ -119,7 +122,11 @@ export class VirtualHands {
             };
         }
         const poses = plan.hands
-            .map((track) => handPose(track, time, plan.rate, { top, bottom }, geometry))
+            .map((track) => {
+                let memory = this.memory.get(track.side);
+                if (!memory) this.memory.set(track.side, (memory = { time: Number.NaN, tips: [] }));
+                return handPose(track, time, plan.rate, { top, bottom }, geometry, memory);
+            })
             .filter((p): p is HandPose => !!p);
         const crossed = poses.length === 2 && poses[0].wrist.x > poses[1].wrist.x;
         const ordered = arrangeHands(poses);
