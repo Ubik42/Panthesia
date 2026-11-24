@@ -332,12 +332,14 @@ export function SongDetails({
 
       <section className="song-section" aria-labelledby="song-version-title">
         <h3 id="song-version-title">演奏</h3>
-        <PerformanceChoice
-          items={materials.find((m) => m.kind === "performance")?.items.filter((i) => i.state !== "missing" && i.state !== "found") ?? []}
-          disabled={locked}
-          choose={(item) => switchTo(item)}
-        />
-        <VariantRow song={song} disabled={locked} apply={variant} />
+        <div className="play-grid">
+          <PerformanceChoice
+            items={materials.find((m) => m.kind === "performance")?.items.filter((i) => i.state !== "missing" && i.state !== "found") ?? []}
+            disabled={locked}
+            choose={(item) => switchTo(item)}
+          />
+          <VariantRow song={song} disabled={locked} apply={variant} />
+        </div>
       </section>
 
       <section className="song-section" aria-labelledby="song-materials-title">
@@ -465,96 +467,103 @@ function MaterialColumn({ title, rows }: { title: string; rows: { key: string; i
   );
 }
 
-/** Which MIDI the stage plays: every performance of the song, inputs and generated ones alike
- * (the player's own MIDI, the transcription, the score-quantized MIDI, the practice MIDI). */
+/** Which MIDI the stage plays: every performance of the song, inputs and generated ones alike. */
 function PerformanceChoice({ items, disabled, choose }: { items: MaterialItem[]; disabled: boolean; choose: (item: MaterialItem) => void }) {
   if (items.length < 2) return null;
-  const current = items.find((i) => i.state === "current");
-  const name = (i: MaterialItem) => `${i.label ?? fileName(i.relative)}（${i.origin === "generated" ? STEP_NAMES[i.step ?? ""] ?? "生成" : "输入"}）`;
   return (
-    <div className="variant-row">
-      <span className="variant-field">
-        <span>MIDI</span>
-        <select
-          aria-label="演奏用的 MIDI"
-          disabled={disabled}
-          value={current?.path ?? ""}
-          onChange={(e) => {
-            const item = items.find((i) => i.path === e.target.value);
-            if (item && item.state !== "current") choose(item);
-          }}
-        >
-          {items.map((i) => (
-            <option key={i.path} value={i.path ?? ""} title={i.relative}>
-              {name(i)}
-            </option>
-          ))}
-        </select>
-      </span>
+    <div className="play-field play-field--wide">
+      <span className="play-label">MIDI</span>
+      <div className="play-chips" role="radiogroup" aria-label="演奏用的 MIDI">
+        {items.map((i) => (
+          <button
+            key={i.path}
+            type="button"
+            role="radio"
+            aria-checked={i.state === "current"}
+            className="play-chip"
+            title={i.relative}
+            disabled={disabled}
+            onClick={() => i.state !== "current" && choose(i)}
+          >
+            {i.label ?? fileName(i.relative).replace(/\.[^.]+$/, "")}
+            <small>{i.origin === "generated" ? (STEP_NAMES[i.step ?? ""] ?? "生成") : "输入"}</small>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
 const KEY_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
-/** The practice version in one row: transposition, the original key, quantization. Changes
- * apply at once and are saved with the song. */
+const GRIDS: [number, string][] = [
+  [0, "原始"],
+  [8, "1/8"],
+  [16, "1/16"],
+  [32, "1/32"],
+];
+/** The practice version: transposition, the original key, quantization. Changes apply at once
+ * and are saved with the song. */
 function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boolean; apply: (value: Variant) => Promise<boolean> }) {
   const info = song.practiceVariant;
-  if (!info) return <p className="material-none">这首歌没有可调整的练习版本。</p>;
+  if (!info) return null;
   const v = { transpose: 0, quantize: 0, durations: true, tonic: null, minor: null, ...info.settings };
   const change = (patch: Partial<Variant>) => void apply({ ...v, ...patch } as Variant);
   const target = (info.tonic + v.transpose + 120) % 12;
   const outside = (info.minPitch ?? 60) + v.transpose < 21 || (info.maxPitch ?? 60) + v.transpose > 108;
   return (
-    <div className="variant-row">
-      <span className="variant-field">
-        <span>转调</span>
-        <span className="variant-stepper">
-          <button className="ui-icon-button" aria-label="降低一个半音" title="降低一个半音" disabled={disabled || v.transpose <= -24} onClick={() => change({ transpose: v.transpose - 1 })}>
+    <>
+      <div className="play-field">
+        <span className="play-label">转调</span>
+        <div className="play-stepper">
+          <button type="button" aria-label="降低一个半音" disabled={disabled || v.transpose <= -24} onClick={() => change({ transpose: v.transpose - 1 })}>
             −
           </button>
-          <output title={`练习调：${KEY_NAMES[target]} ${info.minor ? "小调" : "大调"}`}>{v.transpose > 0 ? `+${v.transpose}` : v.transpose}</output>
-          <button className="ui-icon-button" aria-label="升高一个半音" title="升高一个半音" disabled={disabled || v.transpose >= 24} onClick={() => change({ transpose: v.transpose + 1 })}>
+          <output>{v.transpose > 0 ? `+${v.transpose}` : v.transpose}</output>
+          <button type="button" aria-label="升高一个半音" disabled={disabled || v.transpose >= 24} onClick={() => change({ transpose: v.transpose + 1 })}>
             +
           </button>
-        </span>
-        <small>
-          {KEY_NAMES[target]} {info.minor ? "小调" : "大调"}
-        </small>
-      </span>
-      <span className="variant-field">
-        <span>原调</span>
-        <select aria-label="原曲主音" disabled={disabled} value={info.tonic} onChange={(e) => change({ tonic: Number(e.target.value) })}>
-          {KEY_NAMES.map((n, i) => (
-            <option key={i} value={i}>
-              {n}
-            </option>
+          <span className="play-key">
+            {KEY_NAMES[target]} {info.minor ? "小调" : "大调"}
+          </span>
+        </div>
+        {outside && <small className="play-warn">部分音符超出 88 键</small>}
+      </div>
+      <div className="play-field">
+        <span className="play-label">原调</span>
+        <select
+          className="play-select"
+          aria-label="原调"
+          disabled={disabled}
+          value={`${info.tonic}:${info.minor ? 1 : 0}`}
+          onChange={(e) => {
+            const [tonic, minor] = e.target.value.split(":").map(Number);
+            change({ tonic, minor: minor === 1 });
+          }}
+        >
+          {[0, 1].flatMap((minor) =>
+            KEY_NAMES.map((n, tonic) => (
+              <option key={`${tonic}:${minor}`} value={`${tonic}:${minor}`}>
+                {n} {minor ? "小调" : "大调"}
+              </option>
+            )),
+          )}
+        </select>
+      </div>
+      <div className="play-field">
+        <span className="play-label">练习量化</span>
+        <div className="play-chips" role="radiogroup" aria-label="练习量化">
+          {GRIDS.map(([grid, label]) => (
+            <button key={grid} type="button" role="radio" aria-checked={v.quantize === grid} className="play-chip" disabled={disabled} onClick={() => change({ quantize: grid })}>
+              {label}
+            </button>
           ))}
-        </select>
-        <select aria-label="原曲调式" disabled={disabled} value={info.minor ? "minor" : "major"} onChange={(e) => change({ minor: e.target.value === "minor" })}>
-          <option value="major">大调</option>
-          <option value="minor">小调</option>
-        </select>
-      </span>
-      <span className="variant-field">
-        <span>练习量化</span>
-        <select aria-label="练习量化" title="在当前 MIDI 上对齐网格（不改文件）" disabled={disabled} value={v.quantize} onChange={(e) => change({ quantize: Number(e.target.value) })}>
-          <option value={0}>原始时值</option>
-          <option value={8}>1/8</option>
-          <option value={16}>1/16</option>
-          <option value={32}>1/32</option>
-        </select>
-        <label className="variant-check" title="音符时值也对齐到网格">
-          <input type="checkbox" disabled={disabled || !v.quantize} checked={v.durations} onChange={(e) => change({ durations: e.target.checked })} />
-          时值
-        </label>
-      </span>
-      {outside && (
-        <p className="song-message" role="alert">
-          转调后部分音符超出 88 键音域。
-        </p>
-      )}
-    </div>
+          <label className="play-switch" title="音符时值也对齐到网格">
+            <input type="checkbox" disabled={disabled || !v.quantize} checked={v.durations} onChange={(e) => change({ durations: e.target.checked })} />
+            时值
+          </label>
+        </div>
+      </div>
+    </>
   );
 }
 

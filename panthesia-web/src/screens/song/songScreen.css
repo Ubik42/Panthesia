@@ -236,7 +236,7 @@
 /* Head: the song's picture and its facts. */
 .song-head {
   display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
+  grid-template-columns: 236px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-5);
 }
@@ -248,8 +248,8 @@
 .song-cover {
   display: grid;
   place-items: center;
-  width: 148px;
-  height: 148px;
+  width: 236px;
+  height: 236px;
   overflow: hidden;
   border-radius: var(--radius-m);
   background: var(--surface-sunken);
@@ -473,4 +473,141 @@
   padding: var(--space-2) var(--space-3) var(--space-2) 1.8em;
   border-radius: var(--radius-s);
   background: var(--surface-sunken);
+}
+
+/* Facts three to a row beside the larger cover. */
+.song-details .song-head-main .song-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* The play section: labelled fields, chips for the choices. */
+.play-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: start;
+  gap: var(--space-3) var(--space-6);
+}
+.play-field {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+.play-field--wide {
+  grid-column: 1 / -1;
+}
+.play-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.play-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ui-form .play-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.ui-form .play-chip small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.ui-form .play-chip[aria-checked="true"] {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.ui-form .play-chip[aria-checked="true"] small {
+  color: inherit;
+}
+.play-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: start;
+  padding: 2px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+}
+.ui-form .play-stepper button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 16px;
+}
+.ui-form .play-stepper button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.play-stepper output {
+  min-width: 2.2em;
+  text-align: center;
+  font: 600 13px/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+.play-key {
+  padding: 0 var(--space-2) 0 var(--space-1);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.ui-form .play-select {
+  justify-self: start;
+  min-height: 32px;
+  border-radius: 999px;
+}
+.play-warn {
+  color: var(--state-warn);
+  font-size: 11px;
+}
+.ui-form .play-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  margin-left: var(--space-2);
+  font-size: 12px;
+}
+.play-switch input {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line-strong);
+  appearance: none;
+}
+.play-switch input::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  content: "";
+  transition: transform 140ms ease;
+}
+.play-switch input:checked {
+  background: var(--accent);
+}
+.play-switch input:checked::before {
+  transform: translateX(12px);
+}
+.play-switch input:disabled {
+  opacity: 0.45;
 }

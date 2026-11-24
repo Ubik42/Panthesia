@@ -35,10 +35,6 @@ export function PianoEffectsSettings({ value, change }: { value: DisplayPreferen
         </div>
       </section>
       <StageBackgroundSettings heading="舞台背景" value={value} change={change} />
-      <label>
-        <input type="checkbox" checked={value.ledStrip} onChange={(e) => change({ ledStrip: e.target.checked })} />
-        琴键上沿灯带，随发声的音符亮起
-      </label>
 
       <section aria-labelledby="appearance-keys">
         <h3 id="appearance-keys">琴键与光效</h3>

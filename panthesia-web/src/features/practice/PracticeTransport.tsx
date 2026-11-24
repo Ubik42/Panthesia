@@ -1,4 +1,3 @@
-import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import {
   ChevronRight,
   ChevronLeft,
@@ -10,7 +9,6 @@ import {
   Pause,
   Play,
   SkipBack,
-  Volume2,
   VolumeX,
 } from "lucide-react";
 import type { EngineCommand } from "../../api";
@@ -104,10 +102,6 @@ export function PracticeTransport({
             : busy
               ? "请等待当前操作完成"
               : undefined;
-  const lastVolume = useRef(state.volume > 0 ? state.volume : 0.8);
-  useEffect(() => {
-    if (state.volume > 0) lastVolume.current = state.volume;
-  }, [state.volume]);
   const speed = usePlaybackSlider({
     store,
     value: state.speed * state.bpm,
@@ -120,12 +114,6 @@ export function PracticeTransport({
           Math.min(2, value / Math.max(1, store.getSnapshot().bpm)),
         ),
       }),
-  });
-  const volume = usePlaybackSlider({
-    store,
-    value: state.volume,
-    disabled: !connected,
-    commit: (value) => adjust({ type: "volume", value }),
   });
   return (
     <div
@@ -326,59 +314,6 @@ export function PracticeTransport({
       </div>
       <div className="synthesia-tool-cluster">
         {tools}
-        <ToolbarMore
-          panel
-          label="音量"
-          icon={<Volume2 size={24} />}
-          disabled={!connected}
-        >
-          <div
-            className="practice-volume"
-            role="group"
-            aria-label="演奏主音量"
-            title={`主音量 · ${state.output}`}
-          >
-            <button
-              type="button"
-              className="volume-mute"
-              aria-label={volume.value === 0 ? "取消静音" : "静音"}
-              aria-pressed={volume.value === 0}
-              disabled={!connected || volume.pending}
-              onClick={() => {
-                if (volume.value > 0) lastVolume.current = volume.value;
-                volume.begin();
-                volume.stage(volume.value === 0 ? lastVolume.current : 0);
-                volume.apply();
-              }}
-            >
-              {volume.value === 0 ? (
-                <VolumeX size={17} aria-hidden="true" />
-              ) : (
-                <Volume2 size={17} aria-hidden="true" />
-              )}
-            </button>
-            <input
-              aria-label="主音量"
-              aria-valuetext={`${Math.round(volume.value * 100)}%`}
-              type="range"
-              min="0"
-              max="100"
-              value={volume.value * 100}
-              disabled={!connected}
-              aria-busy={volume.pending || undefined}
-              onChange={(event) =>
-                volume.stage(Number(event.target.value) / 100)
-              }
-              onPointerDown={volume.begin}
-              onKeyDown={(event) => volume.keyDown(event.key, event.repeat)}
-              onPointerUp={volume.apply}
-              onPointerCancel={volume.cancel}
-              onBlur={volume.apply}
-              onKeyUp={(event) => volume.keyUp(event.key)}
-            />
-            <output>{`${Math.round(volume.value * 100)}%`}</output>
-          </div>
-        </ToolbarMore>
         <button
           className="synthesia-app-menu"
           aria-label="应用菜单"

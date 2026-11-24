@@ -1,4 +1,4 @@
-import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, PencilLine, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, PencilLine, Piano, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageBackgroundSettings } from "../settings/StageBackgroundSettings";
 import { useOpenSongCover } from "../library/songCover";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
@@ -120,12 +120,14 @@ export function PerformanceTools({
           set({ virtualHands });
           if (virtualHands && view !== "keyboard" && view !== "combined") setView("keyboard");
         }} />
-        <Toggle optional icon={Lightbulb} label="琴键灯带" on={display.ledStrip} change={(ledStrip) => set({ ledStrip })} />
-        <Toggle optional icon={Milestone} label="段落" on={display.sections} disabled={!song?.sections?.items.length} change={(sections) => set({ sections })} />
-        <Toggle optional icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
-        <Toggle optional icon={MicVocal} label="歌词" on={display.lyrics} disabled={!song?.importedLayers.lyrics.length} change={(lyrics) => set({ lyrics })} />
-        <Toggle optional icon={Clock4} label="拍号" on={display.meterLabels} change={(meterLabels) => set({ meterLabels })} />
-        <Toggle optional icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
+        <Toggle icon={Hash} label="在瀑布上编辑指法" on={editFingers} disabled={!song} change={(on) => {
+          setEditFingers(on);
+          clearSelection();
+        }} />
+        <Toggle icon={Milestone} label="段落" on={display.sections} disabled={!song?.sections?.items.length} change={(sections) => set({ sections })} />
+        <Toggle icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
+        <Toggle icon={Clock4} label="拍号" on={display.meterLabels} change={(meterLabels) => set({ meterLabels })} />
+        <Toggle icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
       </div>
 
       <div className="stage-tools-group stage-display" aria-label="显示">
@@ -141,8 +143,32 @@ export function PerformanceTools({
       </div>
 
       <div className="stage-tools-group" aria-label="面板">
-      <ToolbarMore panel width={460} icon={<Tags size={21} />} label="标签（琴键与音符）" disabled={!startupReady}>
+      <ToolbarMore panel width={460} icon={<Tags size={21} />} label="标签与和弦" disabled={!startupReady}>
         <LabelPicker value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
+        {!!song?.harmony?.chords.length && (
+          <section aria-label="和弦">
+            <div className="stage-chords">
+              <span>和弦</span>
+              <span className="ui-segmented" role="group" aria-label="和弦显示">
+                {(
+                  [
+                    ["off", "不显示"],
+                    ["name", "和弦名"],
+                    ["degree", "级数"],
+                    ["both", "两者"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button key={value} type="button" aria-pressed={display.chordLabels === value} onClick={() => set({ chordLabels: value })}>
+                    {label}
+                  </button>
+                ))}
+              </span>
+              <button className="ui-icon-button" title="编辑和弦" aria-label="编辑和弦" disabled={busy} onClick={() => setChordsOpen(true)}>
+                <PencilLine size={16} />
+              </button>
+            </div>
+          </section>
+        )}
         <PracticeLegend song={song} display={display} />
       </ToolbarMore>
 
@@ -150,73 +176,29 @@ export function PerformanceTools({
         <StageBackgroundSettings value={display} change={set} cover={cover} />
       </ToolbarMore>
 
-      <ToolbarMore panel icon={<SlidersHorizontal size={22} />} label="显示设置" disabled={!startupReady}>
-        <section aria-label="舞台">
-          <label className="fallback-1180">
-            <input type="checkbox" aria-label="节拍器" checked={!!state.metronome} disabled={busy || !song} onChange={(event) => action({ type: "metronome", enabled: event.target.checked })} />
-            节拍器
-          </label>
-          <label className="fallback-1180">
-            <input type="checkbox" aria-label="琴键灯带" checked={display.ledStrip} onChange={(event) => set({ ledStrip: event.target.checked })} />
-            琴键灯带
-          </label>
+      <ToolbarMore panel width={420} icon={<Piano size={21} />} label="键盘范围与前方预览" disabled={!startupReady || (view !== "keyboard" && view !== "combined")}>
+        <section aria-label="键盘范围">
           <span className="fallback-1280">
             <PreviewBarsControl value={display.previewBars} change={(previewBars) => set({ previewBars })} label="前方预览" ariaLabel="预览小节数" />
           </span>
-          {(view === "keyboard" || view === "combined") && (
-            <KeyboardRangeControls
-              value={display}
-              range={keyboard.range}
-              viewport={keyboard.viewport}
-              outside={keyboard.outside}
-              change={(patch) => startupReady && set(patch)}
-            />
-          )}
+          <KeyboardRangeControls
+            value={display}
+            range={keyboard.range}
+            viewport={keyboard.viewport}
+            outside={keyboard.outside}
+            change={(patch) => startupReady && set(patch)}
+          />
         </section>
-        <section aria-label="标注">
-          <h3>标注</h3>
-          {!!song?.harmony?.chords.length && (
-            <div className="stage-chords">
-              <span>和弦</span>
-              <select aria-label="和弦显示" value={display.chordLabels} onChange={(event) => set({ chordLabels: event.target.value as DisplayPreferences["chordLabels"] })}>
-                <option value="off">不显示</option>
-                <option value="degree">级数</option>
-                <option value="name">和弦名</option>
-                <option value="both">级数与和弦名</option>
-              </select>
-              <button className="ui-icon-button" title="编辑和弦" aria-label="编辑和弦" disabled={busy} onClick={() => setChordsOpen(true)}>
-                <PencilLine size={16} />
-              </button>
-            </div>
-          )}
-          {!!song?.sections?.items.length && (
-            <label className="fallback-1180">
-              <input type="checkbox" aria-label="显示段落" checked={display.sections} onChange={(event) => set({ sections: event.target.checked })} />
-              段落
-            </label>
-          )}
-          <label className="fallback-1180">
-            <input type="checkbox" aria-label="显示拍号" checked={display.meterLabels} onChange={(event) => set({ meterLabels: event.target.checked })} />
-            拍号
-          </label>
-          {!!song?.importedLayers.lyrics.length && (
-            <label className="fallback-1180">
-              <input type="checkbox" aria-label="显示歌词" checked={display.lyrics} onChange={(event) => set({ lyrics: event.target.checked })} />
-              歌词
-            </label>
-          )}
-        </section>
-        <button className="stage-panel-link" onClick={open.settings}>
-          更多显示设置…
-        </button>
       </ToolbarMore>
 
-      <ToolbarMore panel icon={<AudioWaveform size={22} />} label={state.stems?.stems.length ? "音轨" : "音轨（这首歌没有分轨）"} disabled={!song || !startupReady || !state.stems?.stems.length}>
-        <StemControls store={playback} command={action} />
-      </ToolbarMore>
-
-      <ToolbarMore panel width={660} icon={<Blend size={22} />} label="声部" disabled={!song || !startupReady}>
+      <ToolbarMore panel width={660} icon={<Blend size={22} />} label="声部与音轨" disabled={!song || !startupReady}>
         {song && <PartsList song={song} disabled={busy || !connected} {...parts} />}
+        {!!state.stems?.stems.length && (
+          <section aria-label="音轨">
+            <h3>音轨</h3>
+            <StemControls store={playback} command={action} />
+          </section>
+        )}
       </ToolbarMore>
 
       <ToolbarMore panel icon={<Repeat size={24} />} label="循环与书签" disabled={!song || !startupReady}>
@@ -256,28 +238,6 @@ export function PerformanceTools({
           )}
         </section>
       </ToolbarMore>
-
-      <ToolbarMore panel icon={<Hash size={22} />} label="指法" disabled={!song || !startupReady}>
-        <section aria-label="指法">
-          <label>
-            <input
-              type="checkbox"
-              checked={editFingers}
-              disabled={!song}
-              onChange={(event) => {
-                setEditFingers(event.target.checked);
-                clearSelection();
-              }}
-            />
-            在瀑布上编辑指法
-          </label>
-          <button disabled={!song || busy} onClick={open.fingering}>
-            指法建议…
-          </button>
-        </section>
-      </ToolbarMore>
-
-
       </div>
     </div>
   );

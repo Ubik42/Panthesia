@@ -249,7 +249,8 @@ export function normalizeDisplayPreferences(
           ? "custom"
           : "preset:night",
     backgroundImageOpacity: size(raw.backgroundImageOpacity, 10, 100, 100),
-    ledStrip: typeof raw.ledStrip === "boolean" ? raw.ledStrip : true,
+    // The light strip along the keys is always on (no setting since 2026-11-24).
+    ledStrip: true,
     tonic:
       Number.isInteger(raw.tonic) && raw.tonic! >= 0 && raw.tonic! < 12
         ? raw.tonic!

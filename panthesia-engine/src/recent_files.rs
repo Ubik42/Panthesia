@@ -27,6 +27,13 @@ struct Store {
 fn song_key(path: &Path) -> String {
     path.with_extension("").to_string_lossy().to_lowercase()
 }
+/** The song a file belongs to: its manifest when it has one, else the file itself. */
+fn song_path(path: &Path) -> std::path::PathBuf {
+    match panthesia_core::manifest_store::locate(path) {
+        Ok(Some(found)) => found.path,
+        _ => path.to_path_buf(),
+    }
+}
 fn same(a: &Path, b: &Path) -> bool {
     song_key(a) == song_key(b)
 }
@@ -56,14 +63,16 @@ impl Engine {
     }
     pub(crate) fn recent_files(&self) -> Value {
         let store = read(&self.data);
-        // Older lists may hold one song twice (opened by its manifest and by its MIDI).
+        // One row per song: an entry for one of a song's files (its MIDI, a version such as
+        // 乐谱量化) is shown as the song's manifest, and later entries of the same song are dropped.
         let mut seen = std::collections::HashSet::new();
         Value::Array(
             store
                 .items
                 .iter()
-                .filter(|e| seen.insert(song_key(&e.path)))
-                .map(|e| json!({"path": e.path, "title": e.title, "openedAt": e.opened_at, "exists": e.path.is_file()}))
+                .map(|e| (song_path(&e.path), e))
+                .filter(|(path, _)| seen.insert(song_key(path)))
+                .map(|(path, e)| json!({"path": path, "title": e.title, "openedAt": e.opened_at, "exists": path.is_file()}))
                 .collect(),
         )
     }
