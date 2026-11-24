@@ -162,7 +162,7 @@ Song
 
 | RA 默认量化与自动分析 | 打开 MIDI 默认使用量化版本（原始时值由用户选择）；首次打开自动生成分手、指法、段落、和弦草稿并标记“待检查” | 新 MIDI 打开后清单有四个 `generated`/`draft`/`review: "pending"` 图层与量化设置；歌曲页显示“待检查” | 已完成（2026-11-22） |
 
-| RU 界面统一与架构重整 | 按 [interface-design.md](interface-design.md) 第 6 节：一个路由；设置页改为单页分区并取代显示 / 设备对话框；歌曲二级页（声部与手别、转调与量化、谱面资料）与自由演奏改用新视觉；舞台工具条合并弹出面板；删除应用菜单栏、旧皮肤、三套“未完成工作”视图与旧样式表；对话框与弹出面板各一种实现；拆分 `useAppModel`；谱面逐行渲染 | 没有界面使用旧样式表（`style.css` 旧段、`dailyTheme.css`、`synthesiaLayout.css`、`instrumentSkins.css`、`productScreens.css`）；每个全局设置只有一个修改位置；全屏缩放正确 | 基本完成（2026-11-23）：谱面逐行渲染；应用菜单栏并入命令面板；设置页单页分区并取代显示 / 设备对话框；主界面改为顶栏 + 双列卡片，歌曲详情改为主界面上的滑出面板（无“更多”）；一个路由 store 与一个对话框 store（zustand）；前端分层落实（`lib/`、`ui/legacy/`，页面不读应用 Context，见 frontend-architecture.md）；声部、逐音分手、转调与量化、自由演奏改为新设计；舞台工具条合并为三个面板；旧对话框外壳统一；删除皮肤、编辑草稿中心、欢迎页与 332 条无用样式。未做：约 20 个旧对话框逐个改写到 `ui/Dialog` 并随之删除 `style.css` 等旧样式表（旧样式表中已无死规则）；引擎会话状态仍在 `useAppModel` |
+| RU 界面统一与架构重整 | 按 [interface-design.md](interface-design.md) 第 6 节：一个路由；设置页改为单页分区并取代显示 / 设备对话框；歌曲二级页（声部与手别、转调与量化、谱面资料）与自由演奏改用新视觉；舞台工具条合并弹出面板；删除应用菜单栏、旧皮肤、三套“未完成工作”视图与旧样式表；对话框与弹出面板各一种实现；拆分 `useAppModel`；谱面逐行渲染 | 没有界面使用旧样式表（`style.css` 旧段、`dailyTheme.css`、`synthesiaLayout.css`、`instrumentSkins.css`、`productScreens.css`）；每个全局设置只有一个修改位置；全屏缩放正确 | 已完成（2026-11-23）：一个路由与对话框、练习界面 store（zustand）；前端分层（`lib/`、`ui/legacy/`，页面不读应用 Context，`useAppModel` 只是应用层组合根）；设置页单页分区；主界面顶栏 + 双列卡片，歌曲详情为滑出面板；二级页与自由演奏新设计；舞台工具条三个面板；全部对话框为 `ui/Dialog`；`main.tsx` 加载的 9 个旧样式表删除，规则归到组件旁（逐元素核对计算样式不变），共用旧工具类留在 `ui/legacy/legacyBase.css`。Keel 插件“开始练习”直达舞台（`--play`、`locate`）。未做：`legacyBase.css` 与组件旁旧规则中的调色板变量改为语义 token；`--play` 未在真实单实例下实测 |
 
 顺序：RD → RS → RK → RP → RU。RK 依赖 RS 的 `song_summary`。
 

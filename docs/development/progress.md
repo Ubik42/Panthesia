@@ -2,6 +2,21 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-23 · RU 完成：旧样式表拆散、useAppModel 拆分（提交 8004b46、4e46791 及本条）
+
+- 旧样式表：`main.tsx` 直接加载的 9 个全局样式表（`style.css`、`dailyTheme.css`、`synthesiaLayout.css`、`productScreens.css`、`workspaces.css`、`pianoVisual.css`、`practiceChrome.css`、`practiceWorkspace.css` 与 `browseDetailWorkspace.css` 的全局部分）全部拆散。
+  - 每条规则按“选择器中最后一个非状态类”找到渲染它的组件，追加到该组件的样式文件末尾（新建 26 个）；同一目录多个组件共用的归给用得最多的那个；跨目录共用的旧工具类（`.primary`、`.toggle`、`.dialog-actions` 等）与元素默认样式进 `ui/legacy/legacyBase.css`，在 `main.tsx` 中占原 `style.css` 的位置；目标类无人使用的 96 条删除。
+  - 理由：按原加载顺序一起处理，同一元素的规则通常归到同一文件，先后不变。第一次只搬 4 个表时，后加载的 `pianoVisual.css` 反过来覆盖了被搬走的规则（强调色、播放按钮、舞台背景变了），因此改为全部一起搬。
+  - 核对：在主界面、歌曲详情、舞台、设置、自由演奏、命令面板、恢复与问题七处，逐元素比较 25 项计算样式，与搬迁前一致（只有一条原本被覆盖、不生效的 `.workbench` 背景需删除）。核对脚本放在会话临时目录，没有进入仓库。
+- `useAppModel`：
+  - 练习界面状态（选中音符、指法草稿、改指法开关、纸谱修订号、提示、循环小节、最近命令、乐谱工具请求）移入 `stores/practiceUi`，`app/` 组件直接读 store；`usePracticeUiSync` 让它跟随打开的歌曲。
+  - 拆出 `useWorkspaceChange`（工作区切换与不可切换原因）、`useWindowGuards`（Esc 与离开提醒）、`windowActions`（全屏）、`useUiScale`、`useRecoverSession`。
+  - 删掉未使用的 `currentPracticeUnavailable` 计算。文件 563 → 408 行，返回字段约少 40 个。
+- 检查：`npm run build`、`cargo check`；`cargo test -p panthesia-engine -- --skip package_commands` 98 个全部通过；`cargo test -p panthesia-desktop open_requests` 通过；桌面调试版 `--window-check`（隔离数据目录）通过。
+  - 带 `--play` 时，检查失败：检查自己打开示例曲目，与前端按 `--play` 打开的文件冲突，引擎报“正在保存或恢复”。歌曲旁生成了清单，说明请求已被取走并打开。
+  - 是否进入舞台并开始播放，需要在真实单实例下确认。
+- 下一入口：RU 已完成。剩余为第 4 节“待办”与各阶段“未做”项；可选的前端清理是把 `legacyBase.css` 与组件旁旧规则中的调色板变量（`--blue-82` 等）换成语义 token，并让仍用 `.primary`、`.toggle` 的组件改用 `ui` 组件。
+
 ## 2026-11-23 · Keel 直达练习；旧对话框全部改写（提交 f1d8fe2、f1b613b、776d990 及本条）
 
 - 用户选定：插件只看信息，加“开始练习”直达舞台；修改只在 Panthesia 歌曲详情中。

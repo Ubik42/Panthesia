@@ -14,7 +14,7 @@ Panthesia 是一个打开一首歌就能练的桌面程序，界面只有四类�
 | 状态 | `src/stores` | zustand 状态：路由、对话框、会话；偏好仍由 `interfaceSettingsStore` 持久化 | engine |
 | 基础 | `src/ui`、`src/lib`、`src/engine` | 设计系统组件与 token；与界面无关的工具（快捷键、输入归属、诊断、草稿持久化、关闭准备）；引擎客户端与生成的协议类型 | 基础层内部 |
 
-`src/ui/legacy` 存放待重写的旧共用组件（工具条菜单、主从布局、分页、草稿恢复）。它们的样式留在 components 层，使 features 中的旧覆写继续生效；重写为第 2 节的组件后删除。导航编排（打开曲目、页面跳转、练习工具入口）依赖引擎会话，属于应用层，放在 `src/app`。
+`src/ui/legacy` 存放待重写的旧共用组件（工具条菜单、主从布局、分页、草稿恢复）与 `legacyBase.css`（旧的共用工具类与元素默认样式）。它们的样式留在 components 层，使 features 中的旧覆写继续生效；重写为第 2 节的组件后删除。导航编排（打开曲目、页面跳转、练习工具入口）依赖引擎会话，属于应用层，放在 `src/app`。
 
 规则：
 
@@ -46,14 +46,14 @@ Panthesia 是一个打开一首歌就能练的桌面程序，界面只有四类�
 - 选中卡片：打开曲目，右侧滑出歌曲详情（取代独立的歌曲页，没有“更多”）：练习方式与开始、钢琴卷帘与事实、资料、图层、二级入口。关闭详情回到主界面。
 - 曲目文件夹的位置与重新扫描属于全局设置，在设置页。
 
-## 4. 现状对比（2026-11-23）
+## 4. 现状对比（2026-11-23，RU 结束时）
 
 | 项 | 现状 | 目标 | 处理 |
 | --- | --- | --- | --- |
-| 应用状态 | `useAppModel` 返回约 120 个字段，放在一个 Context | 按领域的 zustand store；页面不读应用 Context | 路由、对话框已迁；页面改为 props 与 store；会话仍在 `useAppModel`（应用层组合根） |
+| 应用状态 | `useAppModel` 返回约 120 个字段，放在一个 Context | 按领域的 zustand store；页面不读应用 Context | 已完成：路由、对话框、练习界面状态（`stores/practiceUi`）为 store；页面用 props 与 store；`useAppModel` 只是 `app/` 的组合根（引擎会话、导航与命令），工作区切换、窗口守卫、界面缩放、恢复动作拆为独立 hook |
 | 路由 | `useWorkspaceNavigation` + `useProductScreens` | 一个路由 store | 已完成（`stores/route.ts`） |
-| 主界面 | 左栏三个大按钮 + 按行列出最近打开 | 顶栏 + 双列卡片（第 3 节） | 重写 |
-| 歌曲页 | 独立页面，有“更多”菜单 | 主界面上的详情面板，无“更多” | 改为 Sheet |
+| 主界面 | 左栏三个大按钮 + 按行列出最近打开 | 顶栏 + 双列卡片（第 3 节） | 已完成 |
+| 歌曲页 | 独立页面，有“更多”菜单 | 主界面上的详情面板，无“更多” | 已完成（Sheet） |
 | 组件 | 只有 CSS 类（`ui-button` 等）与少量组件 | 第 2 节的组件 | 补齐并替换页面中的类 |
-| 旧样式 | `style.css`、`dailyTheme.css`、`synthesiaLayout.css` 等仍在 | 全部删除 | 随各页面改写删除；对话框已全部改用 `ui/Dialog`（2026-11-23），`legacyDialog.css` 已删除 |
+| 旧样式 | `style.css`、`dailyTheme.css`、`synthesiaLayout.css` 等仍在 | 全部删除 | 已完成：`main.tsx` 加载的 9 个全局样式表全部删除，规则归到使用它的组件旁；跨目录共用的旧工具类与元素默认样式在 `ui/legacy/legacyBase.css`，随使用者改用 ui 组件逐步删除。对话框全部为 `ui/Dialog` |
 | 桌面约定 | 部分（系统字体、深色） | 第 1 节全部 | 全局样式补齐 |
