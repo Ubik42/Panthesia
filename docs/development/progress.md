@@ -2,7 +2,16 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
-## 2026-11-24 · 修复界面设置被整体拒绝；顶栏按宽度收放显示项；主界面直接演奏与右键菜单；详情重排（本条提交）
+## 2026-11-24 · 关闭窗口直接退出；歌曲来源链接与备注；B站 流行曲目整理为练习歌曲（本条提交）
+
+- 关闭：右上角 X 直接 `exit(0)`，不确认、不再保存（编辑在发生时已原子写入）。删除桌面关闭准备整套（`desktop_close.rs`、关闭审查与参与者登记、进度对话框、`closePreparation.ts` 及各调用处）。引擎 `storage_close.rs` 中的 `prepare_desktop_close` 等现在无人调用，`closing` 标志在引擎多处读取，留待引擎整理时删除。
+- 元数据新增 `source`（清单 `metadata.source`，来源链接，≤2000 字），曲目信息编辑器可改；详情在数据下显示来源链接（新命令 `open_web_link`，只开 http/https，用默认浏览器）与备注（最多 3 行），旁边是编辑按钮。
+- 打包脚本 `-Publish`：更新 App Paths，开始菜单与桌面上指向 `Panthesia-YYYYMMDD` 的快捷方式改指新包，更早日期的包移入回收站。上次“没打包”是开始菜单快捷方式仍指向前一天的目录。
+- B站 曲目（`D:\Music\MIDI\B站纯钢琴演奏视频转MIDI`）：爱爱爱、Love Song、Just The Two Of Us、皎洁的笑颜、不再年轻的村庄 五首各写 `song.panthesia`（标题、艺人、编配、标签、备注、`source` 为 B站 链接），用隔离数据目录的 `panthesia-service` 调引擎命令登记 `score.mid`（乐谱量化版本）、`piano.wav` / `vocals.wav`、原视频、封面（ffmpeg 取视频标题画面为 `cover.jpg`），配对 `score.musicxml`（引擎复制到歌曲目录），打开一次生成分手 / 指法 / 段落 / 和弦草稿与 1/16 量化练习版本。Look at the Sky 补来源链接与标签，Never See Me Again 补标题、艺人并生成草稿（两份清单备份在 `work/user-data-backup/*-20261124.panthesia`）。GiantMIDI 等数据集不处理。
+- 最近打开：备份为 `work/user-data-backup/recent-files-20261124.json` 后，只保留这 7 首与内置练习，移除 MAESTRO、GiantMIDI、Mutopia 条目。
+- 检查：`cargo check`、`npm run build`。
+
+## 2026-11-24 · 修复界面设置被整体拒绝；顶栏按宽度收放显示项；主界面直接演奏与右键菜单；详情重排（4af5b71）
 
 - Look at the Sky 只显示右手（虚拟手也只有右手）：清单中音轨 1 被设为“伴奏”且隐藏音符，练习的手为左手（在声部列表中被改，日志无逐项记录）。备份到 `work/user-data-backup/look-at-the-sky-20261123b.panthesia` 后恢复为右手、显示、双手。
 - 同时发现并修复：去掉五线谱视图后，保存的 `practiceView: "score"` 被规范为 `combined`，读取时“规范后与原值不同”被当作冲突，整份界面设置被拒绝（每次启动日志提示“当前版本无法采用的内容”）。读取前先迁移已知旧值。
