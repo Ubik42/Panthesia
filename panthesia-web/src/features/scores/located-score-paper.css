@@ -1,148 +1,142 @@
-.settings-dialog.located-paper-dialog {
-  width: min(900px, 94vw);
-  max-width: calc(100vw - 40px);
-  max-height: 92vh;
-  overflow: auto;
-}
+/* Locatable paper dialog (LocatedScorePaperDialog.tsx), inside ui/Dialog. The preview stays
+   white: it shows a printed page. */
+@layer screens {
+  .located-paper-dialog .ui-dialog-body > label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 14px 0;
+  }
 
-.located-paper-dialog > .dialog-heading,
-.located-paper-dialog > .dialog-actions {
-  position: sticky;
-  z-index: 2;
-  background: var(--gray-29);
-}
+  .located-paper-dialog .ui-dialog-body > label input {
+    flex: 1;
+    min-width: 0;
+  }
 
-.located-paper-dialog > .dialog-heading {
-  top: 0;
-}
+  .located-paper-summary {
+    padding: 10px 14px;
+    background: var(--surface-panel);
+    border: 1px solid var(--line-strong);
+    color: var(--text-secondary);
+    border-radius: var(--radius-s);
+  }
 
-.located-paper-dialog > .dialog-actions {
-  bottom: 0;
-  border-top: 1px solid var(--blue-39);
-  padding: 10px 0;
-}
+  .located-paper-summary p {
+    margin: 3px 0;
+  }
 
-.located-paper-dialog > label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 14px 0;
-}
+  .located-paper-preview {
+    height: min(32vh, 300px);
+    overflow: auto;
+    margin: 8px 0 12px;
+    border: 1px solid var(--line-strong);
+    background: var(--gray-100);
+  }
 
-.located-paper-dialog > label input {
-  flex: 1;
-  min-width: 0;
-}
+  .located-paper-sheet {
+    position: relative;
+  }
 
-.located-paper-summary {
-  padding: 10px 14px;
-  background: var(--gray-33);
-  border: 1px solid var(--blue-43);
-  color: var(--gray-92);
-  border-radius: 4px;
-}
+  .located-paper-svg svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
 
-.located-paper-summary p {
-  margin: 3px 0;
-}
+  .located-paper-highlight {
+    position: absolute;
+    box-sizing: border-box;
+    min-width: 10px;
+    min-height: 10px;
+    border: 2px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 19%, transparent);
+    pointer-events: none;
+  }
 
-.located-paper-preview {
-  height: min(32vh, 300px);
-  overflow: auto;
-  margin: 8px 0 12px;
-  border: 1px solid var(--border, var(--gray-85));
-  background: var(--gray-100);
-}
+  .located-paper-highlight.excluded {
+    border-color: var(--state-missing);
+    background: color-mix(in oklab, var(--state-missing) 16%, transparent);
+  }
 
-.located-paper-sheet {
-  position: relative;
-}
+  .located-paper-pages,
+  .located-paper-measures,
+  .located-paper-notes-heading,
+  .located-paper-note-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
 
-.located-paper-svg svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
+  .located-paper-pages {
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
 
-.located-paper-highlight {
-  position: absolute;
-  box-sizing: border-box;
-  min-width: 10px;
-  min-height: 10px;
-  border: 2px solid var(--blue-50-c10);
-  background: color-mix(in oklab, var(--blue-50-c10) 19%, transparent);
-  pointer-events: none;
-}
+  .located-paper-dialog .located-paper-pages input {
+    flex: none;
+    width: 4.5em;
+  }
 
-.located-paper-highlight.excluded {
-  border-color: var(--red-55);
-  background: color-mix(in oklab, var(--red-55) 16%, transparent);
-}
+  .located-paper-pages > span {
+    margin-left: auto;
+  }
 
-.located-paper-pages,
-.located-paper-measures,
-.located-paper-notes-heading,
-.located-paper-note-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+  .located-paper-measures {
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
 
-.located-paper-pages {
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
+  .located-paper-measures label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-.located-paper-pages input {
-  width: 3.5em;
-}
+  .located-paper-dialog .located-paper-measures select {
+    flex: 0 1 auto;
+    max-width: min(280px, 55vw);
+  }
 
-.located-paper-pages > span {
-  margin-left: auto;
-}
+  .located-paper-notes-heading {
+    margin-bottom: 6px;
+  }
 
-.located-paper-measures {
-  margin: 8px 0;
-  flex-wrap: wrap;
-}
+  .located-paper-notes-heading strong {
+    margin-right: auto;
+  }
 
-.located-paper-measures label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+  .located-paper-note-list {
+    max-height: 130px;
+    overflow: auto;
+    border: 1px solid var(--line-strong);
+  }
 
-.located-paper-measures select {
-  max-width: min(280px, 55vw);
-}
+  .located-paper-note-row {
+    padding: 2px 8px;
+  }
 
-.located-paper-notes-heading {
-  margin-bottom: 6px;
-}
+  .located-paper-note-row + .located-paper-note-row {
+    border-top: 1px solid var(--line-strong);
+  }
 
-.located-paper-notes-heading strong {
-  margin-right: auto;
-}
+  .located-paper-note-row button {
+    text-align: left;
+    flex: 1;
+  }
 
-.located-paper-note-list {
-  max-height: 130px;
-  overflow: auto;
-  border: 1px solid var(--border, var(--gray-85));
+  .located-paper-note-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .located-paper-note-pagination > span {
+    margin-right: auto;
+  }
+  .located-paper-note-pagination button {
+    padding: 4px 10px;
+  }
 }
-
-.located-paper-note-row {
-  padding: 2px 8px;
-}
-
-.located-paper-note-row + .located-paper-note-row {
-  border-top: 1px solid var(--border, var(--gray-85));
-}
-
-.located-paper-note-row button {
-  text-align: left;
-  flex: 1;
-}
-
-.located-paper-note-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; color: var(--gray-85); font-size: 12px; }
-.located-paper-note-pagination > span { margin-right: auto; }
-.located-paper-note-pagination button { padding: 4px 10px; }

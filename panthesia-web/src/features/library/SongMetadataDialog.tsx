@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Dialog } from "../../ui/Dialog";
+import { Button } from "../../ui/components";
+import "./songMetadataDialog.css";
 import { api, type LoadedSong } from "../../api";
 import { SongMetadataEditor } from "./SongMetadataEditor";
 import { TaskActivity } from "../../engine/TaskActivity";
@@ -91,69 +93,41 @@ export function MetadataDialog({
     };
   }, [service, revision]);
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!working) close();
-      }}
+    <Dialog
+      title="曲目信息"
+      subtitle={opened.current.title}
+      closeLabel="关闭并保留曲目信息输入"
+      close={close}
+      closeDisabled={working}
+      wide
+      className="song-metadata-dialog"
     >
-      <section
-        className="settings-dialog song-metadata-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="metadata-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="metadata-title">曲目信息</h2>
-            <p>{opened.current.title}</p>
-          </div>
-          <button
-            autoFocus
-            data-dialog-close
-            disabled={working}
-            aria-label="关闭并保留曲目信息输入"
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
+      <p className="parameter-help">关闭窗口会保留输入。保存前会再次核对资料，发现其他修改时可逐项合并。</p>
+      <TaskActivity contentId={opened.current.contentId} label={["读取曲目信息", "保存曲目信息"]} />
+      {loading && <p role="status">正在读取曲目信息…</p>}
+      {error && (
+        <div className="workspace-read-error" role="alert">
+          <span>{error}</span>
+          <Button disabled={loading} onClick={() => setRevision((previous) => previous + 1)}>
+            重新读取
+          </Button>
         </div>
-        <p className="parameter-help">
-          关闭窗口会保留输入。保存前会再次核对资料，发现其他修改时可逐项合并。
-        </p>
-        <TaskActivity
-          contentId={opened.current.contentId}
-          label={["读取曲目信息", "保存曲目信息"]}
+      )}
+      {value && (
+        <SongMetadataEditor
+          edit={{
+            path: draftPath ?? (opened.current.sourcePath || "内置技术练习"),
+            contentId: opened.current.contentId,
+            value,
+          }}
+          showHeading={false}
+          service={service}
+          draftMemory={drafts}
+          onBusy={setWorking}
+          saved={saved}
+          cancel={close}
         />
-        {loading && <p role="status">正在读取曲目信息…</p>}
-        {error && (
-          <div className="workspace-read-error" role="alert">
-            <span>{error}</span>
-            <button
-              disabled={loading}
-              onClick={() => setRevision((previous) => previous + 1)}
-            >
-              重新读取
-            </button>
-          </div>
-        )}
-        {value && (
-          <SongMetadataEditor
-            edit={{
-              path: draftPath ?? (opened.current.sourcePath || "内置技术练习"),
-              contentId: opened.current.contentId,
-              value,
-            }}
-            showHeading={false}
-            service={service}
-            draftMemory={drafts}
-            onBusy={setWorking}
-            saved={saved}
-            cancel={close}
-          />
-        )}
-      </section>
-    </div>
+      )}
+    </Dialog>
   );
 }

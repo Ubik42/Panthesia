@@ -1062,8 +1062,6 @@ fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
 
 .paper-ink-layer{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}.paper-ink-layer.active{pointer-events:auto;touch-action:none;cursor:crosshair;z-index:4}.paper-annotation-tools label{display:inline-flex;gap:5px;align-items:center}.paper-annotation-tools select{width:auto;min-width:60px}
 
-.ink-merge-dialog{width:min(780px,96vw)}.ink-merge-dialog p{line-height:1.65}.ink-merge-conflicts{max-height:52vh;overflow:auto;display:grid;gap:12px}.ink-merge-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ink-merge-options label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:1px solid var(--blue-43);padding:10px}.ink-merge-options label:has(input:checked){border-color:var(--green-81);background:color-mix(in oklab, var(--green-81) 5%, transparent)}.ink-merge-options svg{background:var(--gray-100);max-width:100%;width:100%;flex-basis:100%}.ink-merge-options p{overflow-wrap:anywhere}@media(max-width:550px){.ink-merge-options{grid-template-columns:1fr}}
-
 .finger-pair-interactions{border-top:1px solid var(--green-49);margin-top:12px;padding-top:12px}.finger-pair-interactions h3{font-size:14px}.finger-pair-interactions select{margin-left:8px}.finger-interaction-row{padding:12px 0;border-bottom:1px solid var(--blue-43)}.finger-interaction-row small{display:block;color:var(--blue-82);margin-bottom:8px}
 
 .finger-comparison {border:1px solid var(--border,var(--blue-37));border-radius:8px;padding:12px;margin:12px 0;background:var(--gray-27);}

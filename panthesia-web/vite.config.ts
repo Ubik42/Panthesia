@@ -13,9 +13,11 @@ const cascadeLayers: Plugin = {
   Once(root, { AtRule }) {
     const file = root.source?.input.file ?? "";
     if (/node_modules|[\\/]layers\.css$/.test(file)) return;
-    // Top-level `@layer overrides` and `@layer state` blocks keep their own layer.
+    // Top-level `@layer screens`, `@layer overrides` and `@layer state` blocks keep their own
+    // layer: content styles of a feature drawn inside ui components (a ui/Dialog body) declare
+    // `@layer screens` so they rank with the ui styles they refine.
     const own = root.nodes.filter(
-      (node) => node.type === "atrule" && node.name === "layer" && /^(overrides|state)$/.test(node.params),
+      (node) => node.type === "atrule" && node.name === "layer" && /^(screens|overrides|state)$/.test(node.params),
     );
     const name = /[\\/]tokens\.css$/.test(file) ? "tokens" : /[\\/]src[\\/](screens|ui)[\\/]/.test(file) && !/[\\/]ui[\\/]legacy[\\/]/.test(file) ? "screens" : "components";
     const layer = new AtRule({ name: "layer", params: name });

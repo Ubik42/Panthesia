@@ -16,14 +16,6 @@
 .workspace-read-error > div { flex: 1; min-width: 180px; }
 .workspace-read-error p { margin: 4px 0; }
 .workspace-read-error button { flex-shrink: 0; }
-.song-metadata-dialog {
-  width: min(740px, calc(100vw - 32px));
-  max-height: min(88vh, 920px);
-  overflow: auto;
-}
-.song-metadata-dialog .dialog-heading p { margin: 5px 0 0; color: var(--gray-75); }
-.song-metadata-dialog .file-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.song-metadata-dialog .file-path { overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .workspace-read-error { align-items: flex-start; }
   .workspace-read-error > span { min-width: 100%; }

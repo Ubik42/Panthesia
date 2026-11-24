@@ -1,0 +1,46 @@
+/* Ink merge review (InkMergeReview.tsx), inside ui/Dialog. */
+@layer screens {
+  .ink-merge-pages {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-block: var(--space-3);
+  }
+  .ink-merge-conflicts {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .ink-merge-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+  .ink-merge-options label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+  }
+  .ink-merge-options label:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .ink-merge-options svg {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-s);
+    background: var(--surface-sunken);
+  }
+  .ink-merge-options p {
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 550px) {
+    .ink-merge-options {
+      grid-template-columns: 1fr;
+    }
+  }
+}

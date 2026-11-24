@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, pitchName, type LoadedSong } from "../../api";
 import type { ScoreMapping } from "./ScoreNoteEditor";
 import { buildLocatedPaperPlanAsync, svgPagePng, type LocatedPaperPlan } from "./locatedScorePaper";
+import { Dialog } from "../../ui/Dialog";
+import { Button } from "../../ui/components";
 import "./located-score-paper.css";
 
 export function LocatedScorePaperDialog({
@@ -130,12 +132,12 @@ export function LocatedScorePaperDialog({
   };
 
   return (
-    <div className="modal-backdrop">
-      <section className="settings-dialog located-paper-dialog" role="dialog" aria-modal="true" aria-labelledby="located-paper-title">
-        <header className="dialog-heading">
-          <h2 id="located-paper-title">生成可定位纸谱</h2>
-          <button aria-label="关闭可定位纸谱" disabled={busy} onClick={close}>关闭</button>
-        </header>
+    <Dialog title="生成可定位纸谱" closeLabel="关闭可定位纸谱" close={close} closeDisabled={busy} keepOnBackdrop wide className="located-paper-dialog"
+      footer={<>
+        <Button disabled={committing} onClick={busy ? session.cancel : close}>{busy ? "停止制作" : saved ? "完成" : "保留输入并关闭"}</Button>
+        {saved && <Button onClick={session.startAnother}>继续制作新版本</Button>}
+        {!saved && <Button variant="primary" disabled={busy || planning || !accepted.length || accepted.length > 10000 || !name.trim()} onClick={() => void save()}>{preparedPages ? "继续制作并保存" : "采用并保存"}</Button>}
+      </>}>
         {sourceRangeLabel&&<p>制作范围：{sourceRangeLabel}。</p>}
         <p>软件会用当前已核对的关联乐谱生成本机谱页。请逐页查看音符位置；您可以在保存前跳过需要重新核对的音符。原有 PDF、图片和手工标记会保留。</p>
         <label>谱面名称 <input aria-label="可定位谱面名称" value={name} maxLength={80} disabled={busy || !!saved} onChange={(event) => setName(event.target.value)} /></label>
@@ -211,12 +213,6 @@ export function LocatedScorePaperDialog({
         </div>}
         {progress && <p role="status">{progress}</p>}
         {error && <p className="dialog-error" role="alert">{error}</p>}
-        <footer className="dialog-actions">
-          <button disabled={committing} onClick={busy ? session.cancel : close}>{busy ? "停止制作" : saved ? "完成" : "保留输入并关闭"}</button>
-          {saved && <button type="button" onClick={session.startAnother}>继续制作新版本</button>}
-          {!saved && <button disabled={busy || planning || !accepted.length || accepted.length > 10000 || !name.trim()} onClick={() => void save()}>{preparedPages ? "继续制作并保存" : "采用并保存"}</button>}
-        </footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }

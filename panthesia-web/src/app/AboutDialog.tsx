@@ -1,5 +1,7 @@
 import { product } from "../product.generated";
-import { Copy, FolderOpen, Info, RefreshCw, X } from "lucide-react";
+import { Copy, FolderOpen, Info, RefreshCw } from "lucide-react";
+import { Dialog } from "../ui/Dialog";
+import { Button } from "../ui/components";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import {
@@ -104,28 +106,7 @@ export function AboutDialog({ close }: { close: () => void }) {
     }
   };
   return (
-    <div className="modal-backdrop" onClick={close}>
-      <section
-        className="settings-dialog about-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="about-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="dialog-heading">
-          <div>
-            <h2 id="about-title">关于 {product.name}</h2>
-            <p>本机钢琴练习室</p>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="关闭版本信息"
-            data-dialog-close
-            onClick={close}
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog title={`关于 ${product.name}`} subtitle="本机钢琴练习室" closeLabel="关闭版本信息" close={close} className="about-dialog">
         <div className="about-version">
           <span>
             <Info size={24} aria-hidden="true" />
@@ -161,10 +142,9 @@ export function AboutDialog({ close }: { close: () => void }) {
         {error && (
           <div className="about-warning" role="alert">
             <p>{error}</p>
-            <button disabled={reading} onClick={() => void read()}>
-              <RefreshCw size={14} />
+            <Button icon={RefreshCw} disabled={reading} onClick={() => void read()}>
               重新读取
-            </button>
+            </Button>
           </div>
         )}
         <dl className="about-facts">
@@ -201,23 +181,17 @@ export function AboutDialog({ close }: { close: () => void }) {
           </div>
         </dl>
         <div className="about-actions">
-          <button
-            className="primary"
-            disabled={copying || reading}
-            onClick={() => void copy()}
-          >
-            <Copy size={15} />
+          <Button variant="primary" icon={Copy} disabled={copying || reading} onClick={() => void copy()}>
             {copying
               ? "正在复制…"
               : error && !report
                 ? "复制已有信息与错误"
                 : "复制版本信息"}
-          </button>
+          </Button>
           {api.desktop && (
-            <button disabled={openingFolder} onClick={() => void openFolder()}>
-              <FolderOpen size={15} />
+            <Button icon={FolderOpen} disabled={openingFolder} onClick={() => void openFolder()}>
               {openingFolder ? "正在打开…" : "打开资料文件夹"}
-            </button>
+            </Button>
           )}
         </div>
         {actionError && (
@@ -252,7 +226,6 @@ export function AboutDialog({ close }: { close: () => void }) {
               : "移动软件时请保留完整运行包及随包音源。重新读取版本信息后可查看练习资料的位置。"
             : "练习记录与计划由本机音乐服务保存。关闭浏览器后，下次连接同一服务可继续使用。"}
         </p>
-      </section>
-    </div>
+    </Dialog>
   );
 }

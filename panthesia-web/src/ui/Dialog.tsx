@@ -1,53 +1,60 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { isComposingKey, ownsInputLayer } from "../lib/inputOwnership";
 import "./controls.css";
 import "./forms.css";
 import "./dialog.css";
 
 /** The application's one dialog (interface-design.md §6): title, close button, content drawn
- * with the shared form styles. Escape and a click outside close it. */
+ * with the shared form styles. Escape closes it (see below); so does a click outside unless the dialog holds
+ * choices that would be lost (`keepOnBackdrop`). */
 export function Dialog({
   title,
+  subtitle,
   close,
+  closeLabel = "关闭",
   children,
   footer,
   wide = false,
+  keepOnBackdrop = false,
+  closeDisabled = false,
+  className,
 }: {
   title: string;
+  subtitle?: ReactNode;
   close: () => void;
+  closeLabel?: string;
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  keepOnBackdrop?: boolean;
+  /** While true (saving), neither the close button, Escape nor the backdrop closes it. */
+  closeDisabled?: boolean;
+  /** Extra class on the dialog, for its own content styles. */
+  className?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
-  const dismiss = useRef(close);
-  dismiss.current = close;
+  // Escape and Tab are handled for every dialog by the window's focus manager (useDialogFocus):
+  // Escape presses the button marked data-dialog-escape, else the close button.
   useEffect(() => {
     ref.current?.focus();
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented && !isComposingKey(event) && ownsInputLayer(ref.current)) {
-        event.preventDefault();
-        dismiss.current();
-      }
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
   }, []);
   return (
-    <div className="ui-dialog-backdrop" onClick={close}>
+    <div className="ui-dialog-backdrop" onClick={keepOnBackdrop || closeDisabled ? undefined : close}>
       <section
         ref={ref}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`ui-dialog${wide ? " ui-dialog--wide" : ""}`}
+        className={["ui-dialog", wide && "ui-dialog--wide", className].filter(Boolean).join(" ")}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="ui-dialog-header">
-          <h2>{title}</h2>
-          <button className="ui-icon-button" aria-label="关闭" onClick={close}>
+          <div className="ui-dialog-title">
+            <h2>{title}</h2>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+          <button className="ui-icon-button" aria-label={closeLabel} data-dialog-close disabled={closeDisabled} onClick={close}>
             <X />
           </button>
         </header>
