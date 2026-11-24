@@ -129,7 +129,7 @@
 .stage-views button {
   padding: 0 var(--space-2);
 }
-@media (min-width: 1600px) {
+@container stagebar (min-width: 1700px) {
   .stage-views button > span {
     display: inline;
   }
@@ -172,11 +172,7 @@
 .stage-toggles {
   gap: 2px;
 }
-@media (max-width: 1180px) {
-  .stage-toggle[data-optional] {
-    display: none;
-  }
-}
+
 /* Practice mode and hands in one switch: the hands sit inside it, after the wait mode. */
 .stage-practice .stage-hand {
   min-width: 26px;
@@ -229,4 +225,79 @@
 .synthesia-transport .practice-speed > .synthesia-tempo-step {
   width: 32px;
   height: 32px;
+}
+/* Display controls on the bar: label choices, the preview length and the stage colour. */
+.stage-display {
+  gap: var(--space-1);
+}
+.stage-select {
+  max-width: 88px;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: 12px/1 var(--font-ui);
+}
+.stage-preview {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+}
+.stage-preview .ui-icon-button {
+  width: 22px;
+  height: 28px;
+}
+.stage-preview output {
+  min-width: 22px;
+  text-align: center;
+  font: 600 12px/1 var(--font-numeric);
+}
+.stage-color {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: none;
+}
+/* The bar gives up its least used controls as it narrows (a container query: the bar's own
+   width, which the interface zoom does not distort); the display settings panel, inside the
+   bar, then shows them (fallback-*), and only then. */
+.synthesia-transport {
+  container: stagebar / inline-size;
+}
+@container stagebar (min-width: 1420px) {
+  .toolbar-more-actions.stage-panel .fallback-1360 {
+    display: none;
+  }
+}
+@container stagebar (max-width: 1419px) {
+  .bar-1360 {
+    display: none;
+  }
+}
+@container stagebar (min-width: 1230px) {
+  .toolbar-more-actions.stage-panel .fallback-1280 {
+    display: none;
+  }
+}
+@container stagebar (max-width: 1229px) {
+  .bar-1280,
+  .stage-display {
+    display: none;
+  }
+}
+@container stagebar (min-width: 1120px) {
+  .toolbar-more-actions.stage-panel .fallback-1180 {
+    display: none;
+  }
+}
+@container stagebar (max-width: 1119px) {
+  .stage-toggle[data-optional] {
+    display: none;
+  }
 }

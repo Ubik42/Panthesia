@@ -1,4 +1,4 @@
-import { AudioLines, Blend, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageColorPicker } from "../settings/StageColorPicker";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
 import { useState, type ComponentType, type Dispatch, type SetStateAction, type RefObject } from "react";
@@ -6,11 +6,12 @@ import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
 import { shortcutLabel } from "../../lib/shortcuts";
-import { LabelSettings } from "../settings/LabelSettings";
+import { LabelSelect, LabelSettings } from "../settings/LabelSettings";
 import { KeyboardRangeControls } from "./KeyboardRangeControls";
 import type { KeyboardRange, KeyboardViewport } from "./keyboardViewport";
 import { PracticeLegend } from "./PracticeLegend";
 import { PreviewBarsControl } from "./PreviewBarsControl";
+import { previewBarsLabel } from "./keyboardViewport";
 import { PracticeRangeControls } from "./PracticeRangeControls";
 import { SongBookmarks, type BookmarkNavigation } from "./SongBookmarks";
 import { MetronomeIcon } from "./SynthesiaToolbarIcons";
@@ -124,14 +125,29 @@ export function PerformanceTools({
         <Toggle icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
       </div>
 
+      <div className="stage-tools-group stage-display" aria-label="显示">
+        <LabelSelect compact target="key" className="stage-select bar-1360" value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
+        <LabelSelect compact target="note" className="stage-select bar-1360" value={display} change={set} context={{ tonic: song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic, minor: song?.practiceVariant?.minor, fifths: song?.practiceVariant?.effectiveFifths }} />
+        <span className="stage-preview bar-1280" title={`前方预览 ${previewBarsLabel(display.previewBars)}`}>
+          <button className="ui-icon-button" aria-label="减少前方预览" disabled={display.previewBars <= 0.5} onClick={() => set({ previewBars: Math.max(0.5, display.previewBars >= 2 ? display.previewBars - 1 : display.previewBars - 0.5) })}>
+            <ChevronLeft size={16} />
+          </button>
+          <output aria-label="前方预览小节数">{display.previewBars}</output>
+          <button className="ui-icon-button" aria-label="增加前方预览" disabled={display.previewBars >= 16} onClick={() => set({ previewBars: Math.min(16, display.previewBars >= 1 ? display.previewBars + 1 : display.previewBars + 0.5) })}>
+            <ChevronRight size={16} />
+          </button>
+        </span>
+        <input type="color" className="stage-color bar-1280" title="舞台背景色" aria-label="舞台背景色" value={display.stageColor} onChange={(e) => set({ stageColor: e.target.value })} />
+      </div>
+
       <div className="stage-tools-group" aria-label="面板">
       <ToolbarMore panel icon={<SlidersHorizontal size={22} />} label="显示设置" disabled={!startupReady}>
         <section aria-label="舞台">
-          <label>
+          <label className="fallback-1280">
             <span>背景色</span>
             <StageColorPicker value={display.stageColor} change={(stageColor) => set({ stageColor })} />
           </label>
-          <label>
+          <label className="fallback-1180">
             <input type="checkbox" aria-label="琴键灯带" checked={display.ledStrip} onChange={(event) => set({ ledStrip: event.target.checked })} />
             琴键灯带
           </label>
@@ -142,7 +158,9 @@ export function PerformanceTools({
               <output>{display.backgroundOpacity}%</output>
             </span>
           </label>
-          <PreviewBarsControl value={display.previewBars} change={(previewBars) => set({ previewBars })} label="前方预览" ariaLabel="预览小节数" />
+          <span className="fallback-1280">
+            <PreviewBarsControl value={display.previewBars} change={(previewBars) => set({ previewBars })} label="前方预览" ariaLabel="预览小节数" />
+          </span>
           {(view === "keyboard" || view === "combined") && (
             <KeyboardRangeControls
               value={display}
@@ -173,24 +191,19 @@ export function PerformanceTools({
               </span>
             </div>
           )}
-          {!!song?.sections?.items.length && (
-            <label>
-              <input type="checkbox" aria-label="显示段落" checked={display.sections} onChange={(event) => set({ sections: event.target.checked })} />
-              段落{song.sections.origin === "generated" && <small>（自动分析）</small>}
-            </label>
-          )}
-          <label>
+          <label className="fallback-1180">
             <input type="checkbox" aria-label="显示拍号" checked={display.meterLabels} onChange={(event) => set({ meterLabels: event.target.checked })} />
             拍号
           </label>
           {!!song?.importedLayers.lyrics.length && (
-            <label>
+            <label className="fallback-1180">
               <input type="checkbox" aria-label="显示歌词" checked={display.lyrics} onChange={(event) => set({ lyrics: event.target.checked })} />
               歌词
             </label>
           )}
           <LabelSettings
             value={display}
+            selectsClass="fallback-1360"
             tonic={song?.practiceVariant?.effectiveTonic ?? song?.practiceVariant?.tonic}
             minor={song?.practiceVariant?.minor}
             fifths={song?.practiceVariant?.effectiveFifths}

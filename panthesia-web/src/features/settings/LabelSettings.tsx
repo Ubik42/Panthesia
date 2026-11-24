@@ -17,57 +17,87 @@ const modes: [LabelMode, string][] = [
   ["legacy", "沿用已有标签设置"],
 ];
 
+type LabelContext = { tonic?: number; minor?: boolean; fifths?: number };
+
+/** One label choice (keys or falling notes), each option with its example for middle C. With
+ * `compact` it has no row name (the stage bar: the name is in the tooltip). */
+export function LabelSelect({
+  target,
+  value,
+  change,
+  context = {},
+  compact = false,
+  className,
+}: {
+  target: "key" | "note";
+  value: DisplayPreferences;
+  change: (patch: Partial<DisplayPreferences>) => void;
+  context?: LabelContext;
+  compact?: boolean;
+  className?: string;
+}) {
+  const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
+  const name = target === "key" ? "琴键标签" : "音符标签";
+  const select = (
+    <select
+      aria-label={`${name}内容`}
+      title={compact ? name : undefined}
+      className={compact ? className : undefined}
+      value={mode}
+      onChange={(e) => {
+        const id = e.target.value as LabelMode;
+        change(target === "key" ? { keyLabelMode: id } : { noteLabelMode: id });
+      }}
+    >
+      {modes
+        .filter(([id]) => id !== "legacy" || mode === "legacy")
+        .map(([id, label]) => {
+          const example = productLabel(
+            60,
+            target,
+            { ...value, ...(target === "key" ? { keyLabelMode: id, keyLabelsOwnOnly: false } : { noteLabelMode: id, noteLabelsOwnOnly: false }) },
+            { own: true, tonic: context.tonic, minor: context.minor ?? false, fifths: context.fifths, finger: 1 },
+          );
+          return (
+            <option key={id} value={id}>
+              {compact ? `${target === "key" ? "键" : "音"} · ${label}` : example && id !== "none" ? `${label} · ${example}` : label}
+            </option>
+          );
+        })}
+    </select>
+  );
+  if (compact) return select;
+  return (
+    <label className={className}>
+      <span>{name}</span>
+      {select}
+    </label>
+  );
+}
+
 /** What the keys and the falling notes are labelled with: one row per place, an example of each
- * choice for middle C in the list. Used on the settings page and in the stage's label panel. */
+ * choice for middle C in the list. Used on the settings page and in the stage's label panel.
+ * `selectsClass` marks the two choices (the stage shows them only when the bar has no room). */
 export function LabelSettings({
   value,
   change,
   tonic,
   minor = false,
   fifths,
+  selectsClass,
 }: {
   value: DisplayPreferences;
   change: (patch: Partial<DisplayPreferences>) => void;
   tonic?: number;
   minor?: boolean;
   fifths?: number;
+  selectsClass?: string;
 }) {
-  const choice = (target: "key" | "note") => {
-    const mode = target === "key" ? value.keyLabelMode : value.noteLabelMode;
-    return (
-      <label>
-        <span>{target === "key" ? "琴键标签" : "音符标签"}</span>
-        <select
-          aria-label={target === "key" ? "琴键标签内容" : "音符标签内容"}
-          value={mode}
-          onChange={(e) => {
-            const id = e.target.value as LabelMode;
-            change(target === "key" ? { keyLabelMode: id } : { noteLabelMode: id });
-          }}
-        >
-          {modes
-            .filter(([id]) => id !== "legacy" || mode === "legacy")
-            .map(([id, name]) => {
-              const example = productLabel(
-                60,
-                target,
-                { ...value, ...(target === "key" ? { keyLabelMode: id, keyLabelsOwnOnly: false } : { noteLabelMode: id, noteLabelsOwnOnly: false }) },
-                { own: true, tonic, minor, fifths, finger: 1 },
-              );
-              return (
-                <option key={id} value={id}>
-                  {example && id !== "none" ? `${name} · ${example}` : name}
-                </option>
-              );
-            })}
-        </select>
-      </label>
-    );
-  };
+  const context = { tonic, minor, fifths };
   return (
     <div className="label-settings" onClick={(e) => e.stopPropagation()}>
-      {choice("key")}
-      {choice("note")}
+      <LabelSelect target="key" value={value} change={change} context={context} className={selectsClass} />
+      <LabelSelect target="note" value={value} change={change} context={context} className={selectsClass} />
       <label>
         <input
           type="checkbox"

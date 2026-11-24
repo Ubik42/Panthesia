@@ -84,6 +84,8 @@ function decodePreferences(raw: string | null): DisplayPreferences {
   }
   if (!settingsObject(value))
     throw new Error("保存的界面设置格式无法读取，原文已保留。");
+  // Values an older version wrote that this one reads differently on purpose (not a conflict).
+  if (value.practiceView === "score") value.practiceView = "combined";
   const result = normalizeDisplayPreferences(value);
   for (const key of Object.keys(
     displayDefaults,

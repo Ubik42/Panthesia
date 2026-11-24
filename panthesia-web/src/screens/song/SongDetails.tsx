@@ -189,7 +189,7 @@ export function SongDetails({
   const facts = summary?.facts;
   const title = facts?.title ?? song.title;
   const startLabel = mode === "listen" ? "开始播放" : "开始练习";
-  const summaryText = `${mode === "listen" ? "连续播放" : "等待按键"} · ${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}`;
+  const summaryText = `按上次的方式开始：${mode === "listen" ? "连续播放" : `等待按键 · ${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}`}`;
   const materials = summary?.materials ?? [];
   const cover = useSongCover(materials.find((m) => m.kind === "cover")?.items.find((i) => i.state !== "missing")?.path);
   const busyGenerating = (g: Generator) => running.has(g.id) || pending === `generate:${g.id}`;
@@ -241,15 +241,6 @@ export function SongDetails({
       subtitle={facts?.artist ?? undefined}
       close={back}
       className="song-details"
-      footer={
-        <>
-          <span className="song-start-note">{summaryText}（在演奏界面调整）</span>
-          <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} onClick={() => void launch()}>
-            {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
-            {pending === "start" ? "正在准备…" : startLabel}
-          </button>
-        </>
-      }
     >
       {(loadError || message || failure) && (
         <p className="song-message" role="alert">
@@ -261,6 +252,11 @@ export function SongDetails({
         <div className="song-cover" data-empty={!cover || undefined}>
           {cover ? <img src={cover} alt="" /> : <Music aria-hidden="true" />}
         </div>
+        <div className="song-head-main">
+          <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} title={summaryText} onClick={() => void launch()}>
+            {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
+            {pending === "start" ? "正在准备…" : startLabel}
+          </button>
         <dl className="song-facts">
           <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
           <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
@@ -270,6 +266,7 @@ export function SongDetails({
           <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
           <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
         </dl>
+        </div>
       </section>
 
       <section className="song-section" aria-labelledby="song-version-title">
@@ -293,54 +290,48 @@ export function SongDetails({
         </div>
         {!summary && !loadError && <p className="song-loading">正在读取资料…</p>}
         {summary && (
-          <table className="material-table">
-            <thead>
-              <tr>
-                <th scope="col">类型</th>
-                <th scope="col">输入文件</th>
-                <th scope="col">生成文件</th>
-                <th scope="col" aria-label="操作" />
-              </tr>
-            </thead>
-            <tbody>
-              {materials.map((material) => {
-                const input = material.items.filter((i) => i.origin !== "generated");
-                const made = material.items.filter((i) => i.origin === "generated");
-                const has = material.items.some((i) => i.state !== "missing" && i.state !== "found");
-                return (
-                  <tr key={material.kind} data-has={has || undefined}>
-                    <th scope="row">
-                      <span className="material-kind">
-                        {ICONS[material.kind]}
-                        {material.label}
-                      </span>
-                    </th>
-                    <td>{files(material, input)}</td>
-                    <td>{files(material, made)}</td>
-                    <td className="material-row-actions">
-                      {material.generators.map((generator) => (
-                        <button
-                          key={generator.id}
-                          className="ui-icon-button"
-                          disabled={locked || busyGenerating(generator) || !generator.available || readOnly}
-                          title={`${generator.label}${generator.reason ? `（${generator.reason}）` : ""}`}
-                          aria-label={generator.label}
-                          onClick={() => generate(generator)}
-                        >
-                          {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
-                        </button>
-                      ))}
-                      {ATTACH[material.kind] && (
-                        <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
-                          <Plus />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="material-columns">
+            <MaterialColumn
+              title="输入"
+              rows={materials
+                .filter((m) => INPUT_KINDS.has(m.kind) || m.items.some((i) => i.origin !== "generated"))
+                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin !== "generated") }))
+                .filter((r) => INPUT_KINDS.has(r.material.kind) || r.items.length)}
+              render={(material, items) => (
+                <>
+                  {files(material, items)}
+                  {ATTACH[material.kind] && INPUT_KINDS.has(material.kind) && (
+                    <button className="ui-icon-button" title={`关联${material.label}文件…`} aria-label={`关联${material.label}文件`} disabled={locked || readOnly} onClick={() => void attach(material)}>
+                      <Plus />
+                    </button>
+                  )}
+                </>
+              )}
+            />
+            <MaterialColumn
+              title="生成"
+              rows={materials
+                .filter((m) => !INPUT_KINDS.has(m.kind) || m.items.some((i) => i.origin === "generated"))
+                .map((m) => ({ material: m, items: m.items.filter((i) => i.origin === "generated") }))}
+              render={(material, items) => (
+                <>
+                  {files(material, items)}
+                  {material.generators.map((generator) => (
+                    <button
+                      key={generator.id}
+                      className="ui-icon-button"
+                      disabled={locked || busyGenerating(generator) || !generator.available || readOnly}
+                      title={`${generator.label}${generator.reason ? `（${generator.reason}）` : ""}`}
+                      aria-label={generator.label}
+                      onClick={() => generate(generator)}
+                    >
+                      {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
+                    </button>
+                  ))}
+                </>
+              )}
+            />
+          </div>
         )}
       </section>
 
@@ -358,6 +349,30 @@ export function SongDetails({
         <PianoRoll song={song} />
       </section>
     </Dialog>
+  );
+}
+
+/** Kinds the player brings (the rest are made from them): the performance, the recording, paper
+ * pages, the picture. A transcribed MIDI or a player's own MusicXML shows in both columns. */
+const INPUT_KINDS = new Set(["performance", "source", "paper", "cover", "stems"]);
+
+/** One column of the materials: a row per kind, its files and its actions. */
+function MaterialColumn({ title, rows, render }: { title: string; rows: { material: Material; items: MaterialItem[] }[]; render: (material: Material, items: MaterialItem[]) => ReactNode }) {
+  return (
+    <div className="material-column">
+      <h4>{title}</h4>
+      <ul className="material-rows">
+        {rows.map(({ material, items }) => (
+          <li key={material.kind} className="material-row" data-has={items.some((i) => i.state !== "missing" && i.state !== "found") || undefined}>
+            <span className="material-kind">
+              {ICONS[material.kind]}
+              {material.label}
+            </span>
+            <span className="material-cell">{render(material, items)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

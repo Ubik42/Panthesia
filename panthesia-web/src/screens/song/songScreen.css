@@ -104,42 +104,67 @@
   font-size: 12px;
 }
 
-/* Materials: the song model's kinds as rows, input and generated files as columns. */
-.material-table {
-  width: 100%;
+/* Materials: what the player brings on the left, what is made from it on the right; a row per
+   kind, its files and its actions. */
+.material-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
   margin-top: var(--space-2);
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 13px;
 }
-.material-table th,
-.material-table td {
-  padding: 5px var(--space-2);
-  border-top: 1px solid var(--line-subtle);
-  text-align: left;
-  vertical-align: middle;
-}
-.material-table thead th {
-  border-top: 0;
+.material-column h4 {
+  margin: 0 0 var(--space-1);
   color: var(--text-muted);
   font: 500 11px/1.4 var(--font-ui);
 }
-.material-table thead th:nth-child(1) {
-  width: 132px;
-}
-.material-table thead th:nth-child(4) {
-  width: 72px;
-}
-.material-table tbody th {
-  font-weight: 400;
-}
-.material-table tr:not([data-has]) .material-kind {
-  color: var(--text-muted);
-}
-.material-table ul {
+.material-rows {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.material-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  border-top: 1px solid var(--line-subtle);
+}
+.material-row:first-child {
+  border-top: 0;
+}
+.material-row:not([data-has]) .material-kind {
+  color: var(--text-muted);
+}
+.material-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.material-cell > ul {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.material-cell > .material-empty {
+  flex: 1;
+}
+.material-cell > .ui-icon-button {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.material-cell > .ui-icon-button svg,
+.material-actions .ui-icon-button svg {
+  width: 15px;
+  height: 15px;
+}
+.material-actions .ui-icon-button {
+  width: 26px;
+  height: 26px;
 }
 .material-kind {
   display: inline-flex;
@@ -164,6 +189,7 @@
 }
 .material-name {
   overflow: hidden;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
   user-select: text;
@@ -206,31 +232,24 @@
 .material-actions:focus-within {
   opacity: 1;
 }
-.material-table :is(.material-actions, .material-row-actions) .ui-icon-button {
-  width: 26px;
-  height: 26px;
-}
-.material-table :is(.material-actions, .material-row-actions) .ui-icon-button svg {
-  width: 15px;
-  height: 15px;
-}
-.material-row-actions {
-  text-align: right;
-  white-space: nowrap;
-}
 
 /* Head: the song's picture and its facts. */
 .song-head {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 148px minmax(0, 1fr);
   align-items: center;
+  gap: var(--space-5);
+}
+.song-head-main {
+  display: grid;
   gap: var(--space-4);
+  justify-items: start;
 }
 .song-cover {
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 96px;
+  width: 148px;
+  height: 148px;
   overflow: hidden;
   border-radius: var(--radius-m);
   background: var(--surface-sunken);
@@ -242,8 +261,8 @@
   object-fit: cover;
 }
 .song-cover svg {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 
 /* Layers. */
@@ -303,12 +322,6 @@
   font-weight: 400;
 }
 
-/* Footer: the start button and what it starts with. */
-.song-start-note {
-  margin-right: auto;
-  color: var(--text-muted);
-  font-size: 12px;
-}
 .song-details .spin {
   animation: song-spin 900ms linear infinite;
 }
@@ -323,6 +336,11 @@
   }
 }
 
-.song-details .ui-dialog-footer {
-  align-items: center;
+@media (max-width: 760px) {
+  .material-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.song-head-main .song-facts {
+  width: 100%;
 }

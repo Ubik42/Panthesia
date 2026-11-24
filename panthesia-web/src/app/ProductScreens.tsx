@@ -61,6 +61,7 @@ export function ProductScreens() {
           disabled={!!workspaceUnavailable || !connected}
           chooseFile={chooseFile}
           open={openPath}
+          play={async (path) => (await openPath(path, "performance")) && (await run({ type: "play" }))}
           forget={forgetRecent}
           freePlay={() => void openFreePlay()}
           settings={() => productScreens.settings()}

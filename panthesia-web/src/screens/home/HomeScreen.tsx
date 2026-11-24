@@ -1,4 +1,4 @@
-import { FolderOpen, Keyboard, LayoutGrid, Music, Rows3, Search, Settings, SearchX, Grid3x3 } from "lucide-react";
+import { FolderOpen, FolderSearch, Keyboard, LayoutGrid, Music, Play, Rows3, Search, Settings, SearchX, Grid3x3, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api";
 import { product } from "../../product.generated";
@@ -54,6 +54,7 @@ export function HomeScreen({
   disabled,
   chooseFile,
   open,
+  play,
   forget,
   freePlay,
   settings,
@@ -65,6 +66,8 @@ export function HomeScreen({
   disabled: boolean;
   chooseFile: () => Promise<unknown>;
   open: (path: string) => Promise<boolean>;
+  /** Open the song and start playing it at once (the stage). */
+  play: (path: string) => Promise<boolean>;
   forget: (path: string) => void;
   freePlay: () => void;
   settings: () => void;
@@ -129,15 +132,30 @@ export function HomeScreen({
       current = false;
     };
   }, [paths, disabled]);
-  const choose = async (path: string) => {
+  const choose = async (path: string, start = false) => {
     if (busy) return;
     setPending(path);
     try {
-      await open(path);
+      await (start ? play(path) : open(path));
     } finally {
       setPending(null);
     }
   };
+  /** The card menu (right click): where the file is, or forget it. */
+  const [menu, setMenu] = useState<{ x: number; y: number; file: RecentFile } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", key);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("blur", close);
+    };
+  }, [menu]);
   const searching = found !== null;
   return (
     <main className="home-screen ui-screen" aria-label="主页">
@@ -178,7 +196,9 @@ export function HomeScreen({
           <Button variant="primary" icon={FolderOpen} disabled={busy} onClick={() => void chooseFile()}>
             打开文件…
           </Button>
-          <IconButton label="自由演奏" icon={Keyboard} disabled={busy} onClick={freePlay} />
+          <Button icon={Keyboard} disabled={busy} onClick={freePlay}>
+            自由演奏
+          </Button>
           <IconButton label="设置" icon={Settings} onClick={settings} />
         </div>
       </header>
@@ -199,6 +219,7 @@ export function HomeScreen({
                     disabled={busy}
                     marks={FOUND_MARKS.map(([key, label]) => [label, item.materials.includes(key)])}
                     open={choose}
+                    play={(path) => choose(path, true)}
                   />
                 </li>
               ))
@@ -223,15 +244,33 @@ export function HomeScreen({
                       time={ago(file.openedAt)}
                       cover={brief?.cover}
                       open={choose}
-                      forget={() => {
-                        if (!file.exists || window.confirm(`从最近打开中移除“${file.title}”？文件本身不受影响。`)) forget(file.path);
+                      play={(path) => choose(path, true)}
+                      menu={(x, y) => {
+                        // Pointer coordinates are in window pixels; the page is zoomed.
+                        const zoom = Number.parseFloat(document.documentElement.style.zoom) || 1;
+                        setMenu({ x: x / zoom, y: y / zoom, file });
                       }}
+                      forget={() => forget(file.path)}
                     />
                   </li>
                 );
               })}
         </ul>
       </section>
+      {menu && (
+        <div className="home-menu ui-card" role="menu" style={{ left: menu.x, top: menu.y }} onPointerDown={(e) => e.stopPropagation()}>
+          {api.desktop && menu.file.exists && (
+            <button role="menuitem" onClick={() => { void api.revealFile(menu.file.path); setMenu(null); }}>
+              <FolderSearch />
+              打开文件所在位置
+            </button>
+          )}
+          <button role="menuitem" onClick={() => { forget(menu.file.path); setMenu(null); }}>
+            <Trash2 />
+            从最近打开中移除
+          </button>
+        </div>
+      )}
       {details}
     </main>
   );
@@ -249,6 +288,8 @@ function SongCard({
   pending,
   disabled,
   open,
+  play,
+  menu,
   forget,
   asking,
   ask,
@@ -266,6 +307,9 @@ function SongCard({
   pending: boolean;
   disabled: boolean;
   open: (path: string) => void;
+  play: (path: string) => void;
+  /** The card menu at the pointer (right click). */
+  menu?: (x: number, y: number) => void;
   forget?: () => void;
   asking?: boolean;
   ask?: () => void;
@@ -293,42 +337,46 @@ function SongCard({
       </div>
     );
   return (
-    <button
+    <div
       className="home-card ui-card"
       data-missing={missing || undefined}
       aria-current={active || undefined}
       aria-busy={pending || undefined}
-      disabled={disabled}
-      title={path}
-      onClick={() => (missing ? ask?.() : open(path))}
       onContextMenu={
-        forget
+        menu
           ? (event) => {
               event.preventDefault();
-              forget();
+              menu(event.clientX, event.clientY);
             }
           : undefined
       }
     >
-      <span className="home-card-cover" data-empty={!picture || undefined} aria-hidden="true">
-        {picture ? <img src={picture} alt="" /> : <Music />}
-      </span>
-      <span className="home-card-main">
-        <strong>{title}</strong>
-        <small>{place}</small>
-      </span>
-      <span className="home-card-meta">
-        <span className="home-card-marks" aria-label="资料">
-          {marks
-            .filter(([, on]) => on)
-            .map(([label]) => (
-              <Badge key={label} tone="accent">
-                {label}
-              </Badge>
-            ))}
+      <button className="home-card-open" disabled={disabled} title={path} onClick={() => (missing ? ask?.() : open(path))}>
+        <span className="home-card-cover" data-empty={!picture || undefined} aria-hidden="true">
+          {picture ? <img src={picture} alt="" /> : <Music />}
         </span>
-        <span className="home-card-facts">{[facts, time].filter(Boolean).join(" · ")}</span>
-      </span>
-    </button>
+        <span className="home-card-main">
+          <strong>{title}</strong>
+          <small>{place}</small>
+        </span>
+        <span className="home-card-meta">
+          <span className="home-card-marks" aria-label="资料">
+            {marks
+              .filter(([, on]) => on)
+              .map(([label]) => (
+                <Badge key={label} tone="accent">
+                  {label}
+                </Badge>
+              ))}
+          </span>
+          <span className="home-card-facts">{[facts, time].filter(Boolean).join(" · ")}</span>
+        </span>
+      </button>
+      {!missing && (
+        <button className="home-card-play ui-icon-button" title="直接演奏" aria-label={`演奏${title}`} disabled={disabled} onClick={() => play(path)}>
+          <Play />
+        </button>
+      )}
+    </div>
   );
 }

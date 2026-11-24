@@ -94,44 +94,13 @@
 .home-grid[data-size="roomy"] {
   --home-card-min: 440px;
 }
-.home-grid[data-size="compact"] .home-card {
-  min-height: 76px;
-  padding: var(--space-3);
-}
-.home-density button {
-  display: grid;
-  place-items: center;
-  padding-inline: var(--space-2);
-}
-.home-density svg {
-  width: 16px;
-  height: 16px;
-}
-.home-card-ask {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.home-card[data-asking] {
-  border-color: var(--state-warn);
-}
 .home-card {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  grid-template-areas: "cover main" "cover meta";
-  column-gap: var(--space-3);
-  align-content: space-between;
-  justify-content: stretch;
-  gap: var(--space-3);
-  width: 100%;
-  min-height: 92px;
-  padding: var(--space-4);
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-  text-align: left;
+  position: relative;
+  padding: 0;
+  overflow: hidden;
   transition: background 140ms var(--ease-out), border-color 140ms var(--ease-out);
 }
-.home-card:hover:not(:disabled) {
+.home-card:hover {
   border-color: var(--line-strong);
   background: var(--surface-raised);
 }
@@ -139,21 +108,79 @@
   border-color: var(--accent);
   background: color-mix(in oklch, var(--accent) 8%, var(--surface-panel));
 }
-.home-card:focus-visible {
-  outline: 2px solid var(--accent-strong);
-  outline-offset: 1px;
-}
-.home-card:disabled:not([aria-busy]),
 .home-card[data-missing]:not([data-asking]) {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 .home-card[aria-busy] {
   opacity: 0.75;
 }
+/* The card's body opens the song details; the play button starts it at once. */
+.home-card-open {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-areas: "cover main" "cover meta";
+  align-content: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
+  width: 100%;
+  min-height: 96px;
+  padding: var(--space-3);
+  padding-right: 52px;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  text-align: left;
+}
+.home-card-open:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+.home-card-play {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  transform: translateY(-50%);
+}
+.home-card-play:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.home-card-play svg {
+  width: 17px;
+  height: 17px;
+}
+.home-card-cover {
+  grid-area: cover;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+.home-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.home-card-cover svg {
+  width: 24px;
+  height: 24px;
+}
 .home-card-main {
+  grid-area: main;
   display: grid;
   gap: 3px;
   min-width: 0;
+  align-self: end;
 }
 .home-card-main strong,
 .home-card-main small {
@@ -170,11 +197,13 @@
   font-size: 12px;
 }
 .home-card-meta {
+  grid-area: meta;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   min-width: 0;
+  align-self: start;
 }
 .home-card-marks {
   display: flex;
@@ -187,6 +216,78 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Compact cards: the title and the play button only. */
+.home-grid[data-size="compact"] .home-card-open {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "main";
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  padding-right: 48px;
+}
+.home-grid[data-size="compact"] :is(.home-card-cover, .home-card-meta, .home-card-main small) {
+  display: none;
+}
+.home-grid[data-size="compact"] .home-card-main {
+  align-self: center;
+}
+.home-grid[data-size="compact"] .home-card-main strong {
+  font-size: 13px;
+}
+.home-grid[data-size="compact"] .home-card-play {
+  width: 30px;
+  height: 30px;
+}
+/* Roomy cards: a larger picture. */
+.home-grid[data-size="roomy"] .home-card-open {
+  grid-template-columns: 112px minmax(0, 1fr);
+  min-height: 136px;
+}
+.home-grid[data-size="roomy"] .home-card-cover {
+  width: 112px;
+  height: 112px;
+}
+/* A missing file's card asks what to do. */
+.home-card[data-asking] {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-color: var(--state-warn);
+}
+.home-card-ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* The card menu at the pointer. */
+.home-menu {
+  position: fixed;
+  z-index: 70;
+  display: grid;
+  min-width: 180px;
+  padding: var(--space-1);
+  box-shadow: var(--shadow-raised);
+}
+.home-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--text-primary);
+  font: 13px/1 var(--font-ui);
+  text-align: left;
+}
+.home-menu button:hover {
+  background: var(--surface-hover);
+}
+.home-menu svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+}
 @media (max-width: 860px) {
   .home-bar {
     grid-template-columns: auto minmax(0, 1fr);
@@ -195,47 +296,12 @@
     grid-column: 1 / -1;
     grid-row: 2;
   }
-}
-
-/* The song's picture on its card (a note glyph when it has none). */
-.home-card-cover {
-  grid-area: cover;
+}.home-density button {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  align-self: center;
-  overflow: hidden;
-  border-radius: var(--radius-s);
-  background: var(--surface-sunken);
-  color: var(--text-muted);
+  padding-inline: var(--space-2);
 }
-.home-card-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.home-card-cover svg {
-  width: 22px;
-  height: 22px;
-}
-.home-card-main {
-  grid-area: main;
-}
-.home-card-meta {
-  grid-area: meta;
-}
-.home-card[data-asking] {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "main" "meta";
-}
-.home-card-ask {
-  grid-area: meta;
-}
-.home-grid[data-size="compact"] .home-card {
-  grid-template-columns: 40px minmax(0, 1fr);
-}
-.home-grid[data-size="compact"] .home-card-cover {
-  width: 40px;
-  height: 40px;
+.home-density svg {
+  width: 16px;
+  height: 16px;
 }
