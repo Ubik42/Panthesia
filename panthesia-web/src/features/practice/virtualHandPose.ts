@@ -13,6 +13,8 @@ export type FingerPose = {
 export type HandPose = {
   side: "left" | "right";
   wrist: V3;
+  /** Turn of the hand about the vertical (radians, counter-clockwise seen from above). */
+  yaw: number;
   /** Base of each finger's metacarpal (index to little), fixed in the hand. */
   metacarpals: V3[];
   fingers: FingerPose[];
@@ -172,7 +174,7 @@ function twoBone(base: V3, target: V3, l1: number, l2: number): V3[] {
 /** The thumb: its metacarpal turns at the CMC joint beside the wrist, within the thumb's range,
  * so that the two phalanges reach `target` comfortably bent; then the phalanges reach it. Seen
  * from above this keeps the web between thumb and index finger open. */
-export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror: number): V3[] {
+export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror: number, yaw = 0): V3[] {
   const [l0, l1, l2] = bones;
   const [low, high] = ANATOMY.thumbSpread;
   const drop = 0.18;
@@ -180,9 +182,12 @@ export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror
     score = Infinity;
   for (let deg = low; deg <= high; deg += 1.5) {
     const a = (deg * Math.PI) / 180;
+    // The metacarpal's direction in the hand, turned with the hand.
+    const hx = -mirror * Math.sin(a),
+      hy = Math.cos(a);
     const m = {
-      x: cmc.x - mirror * Math.sin(a) * l0 * Math.cos(drop),
-      y: cmc.y + Math.cos(a) * l0 * Math.cos(drop),
+      x: cmc.x + (Math.cos(yaw) * hx - Math.sin(yaw) * hy) * l0 * Math.cos(drop),
+      y: cmc.y + (Math.sin(yaw) * hx + Math.cos(yaw) * hy) * l0 * Math.cos(drop),
       z: cmc.z - l0 * Math.sin(drop),
     };
     const d = Math.hypot(target.x - m.x, target.y - m.y, target.z - m.z);
@@ -198,6 +203,141 @@ export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror
 /** The hand of `track` at `time`: where the wrist is and where each fingertip goes. */
 const isBlack = (pitch: number) => [1, 3, 6, 8, 10].includes(pitch % 12);
 
+/** How far a fingertip can be from its base, horizontally, at a drop of `down` millimetres:
+ * from curled to almost straight (rigid bones, see `fingerChain`). */
+function reachRange(finger: number, down: number) {
+  const length = ANATOMY.bones[finger].reduce((s, b) => s + b, 0) * (finger === 0 ? 0.92 : 0.97);
+  const max = Math.sqrt(Math.max(0, length * length - down * down));
+  return { min: Math.min(max, length * 0.42), max };
+}
+/** Sideways range of a finger (degrees from the hand's forward direction, toward the little
+ * finger positive) beyond its rest direction. */
+const SPLAY = [0, 20, 14, 14, 20];
+const YAW_LIMIT = (20 * Math.PI) / 180;
+const FINGER_GAP = 12;
+
+type Placement = { x: number; y: number; yaw: number; weight: number; forward: number };
+type Aim = {
+  contact: Contact | undefined;
+  prev: Contact | undefined;
+  future: Contact | undefined;
+  held: boolean;
+  /** When the finger leaves `prev`: its end, or earlier when the same finger plays another key
+   * next and needs time to get there (the sound goes on; only the finger moves). */
+  release: number;
+  need: number;
+};
+/** Approximate key distance in millimetres from the pitch difference (7 white keys an octave). */
+const keyDistance = (a: number, b: number) => (Math.abs(a - b) * 7 * WHITE_KEY_MM) / 12;
+
+/** Each finger's current or coming key at `time`, and how much it should shape the hand. */
+function aims(track: HandTrack, time: number, rate: number): Aim[] {
+  return track.fingers.map((rows) => {
+    const index = at(rows, time, (n) => n.start),
+      prev = rows[index],
+      future = rows[index + 1];
+    let release = prev ? prev.end : -Infinity;
+    if (prev && future && future.pitch !== prev.pitch) {
+      const travel = Math.max(0.06, keyDistance(prev.pitch, future.pitch) / 1500) * rate;
+      release = Math.max(prev.start + 0.03 * rate, Math.min(prev.end, future.start - travel));
+    }
+    const held = !!prev && time < release;
+    const nextReady = !!future && future.start - time < 0.34 * rate;
+    const contact = held ? prev : nextReady ? future : prev && time - release < 0.55 * rate ? prev : undefined;
+    // A key held long ago (often sustained by the pedal) barely shapes the hand.
+    const heldNeed = held ? (time - prev!.start > 0.6 * rate ? 0.3 : 3) : 0;
+    const releasedNeed = prev && !held ? 3 * (1 - smooth((time - release) / (0.22 * rate))) : 0;
+    const comingNeed = future ? 3 * smooth(1 - (future.start - time) / (0.34 * rate)) : 0;
+    const need = contact === future ? Math.max(comingNeed, heldNeed) : Math.max(heldNeed, releasedNeed, comingNeed * 0.5);
+    return { contact, prev, future, held, release, need };
+  });
+}
+
+/** Grid step, block length and the context computed around each block, in song seconds. */
+const STEP = 1 / 120,
+  BLOCK = 4,
+  CONTEXT = 1;
+/** Wrist speed limit (millimetres and radians per second). */
+const WRIST_SPEED = 2500,
+  YAW_SPEED = 4;
+type Block = Float64Array; // x, y, yaw, weight per grid point; NaN where the hand is away
+const trajectories = new WeakMap<HandTrack, { layout: string; blocks: Map<number, Block> }>();
+
+/** The hand's placement at `time` from its precomputed path. Each block is computed with a
+ * second of context on both sides: raw placements, a triangle smoothing window, then the speed
+ * limit run forward and backward and averaged (so the hand neither lags nor leads). */
+function trajectory(track: HandTrack, layout: string, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null, time: number) {
+  let cache = trajectories.get(track);
+  if (!cache || cache.layout !== layout) {
+    cache = { layout, blocks: new Map() };
+    trajectories.set(track, cache);
+  }
+  const index = Math.floor(time / BLOCK);
+  let block = cache.blocks.get(index);
+  if (!block) {
+    block = computeBlock(index, raw);
+    if (cache.blocks.size > 64) cache.blocks.clear();
+    cache.blocks.set(index, block);
+  }
+  const from = index * BLOCK - CONTEXT;
+  const f = (time - from) / STEP,
+    k = Math.floor(f),
+    u = f - k;
+  const read = (j: number, c: number) => block![j * 4 + c];
+  if (k < 0 || (k + 1) * 4 + 3 >= block.length) return null;
+  const a = read(k, 0),
+    b = read(k + 1, 0);
+  if (Number.isNaN(a) && Number.isNaN(b)) return null;
+  const j = Number.isNaN(a) ? k + 1 : Number.isNaN(b) ? k : -1;
+  if (j >= 0) return { x: read(j, 0), y: read(j, 1), yaw: read(j, 2), weight: read(j, 3) };
+  return { x: blend(a, b, u), y: blend(read(k, 1), read(k + 1, 1), u), yaw: blend(read(k, 2), read(k + 1, 2), u), weight: blend(read(k, 3), read(k + 1, 3), u) };
+}
+
+function computeBlock(index: number, raw: (t: number) => { x: number; y: number; yaw: number; weight: number } | null): Block {
+  const from = index * BLOCK - CONTEXT;
+  const n = Math.round((BLOCK + 2 * CONTEXT) / STEP) + 2;
+  const out = new Float64Array(n * 4).fill(Number.NaN);
+  for (let i = 0; i < n; i++) {
+    const p = raw(from + i * STEP);
+    if (p) out.set([p.x, p.y, p.yaw, p.weight], i * 4);
+  }
+  // Smoothing over ±50 ms (triangle weights), within each run of samples where the hand is shown.
+  const R = 6;
+  const smoothed = new Float64Array(out);
+  for (let i = 0; i < n; i++) {
+    if (Number.isNaN(out[i * 4])) continue;
+    let sx = 0, sy = 0, syaw = 0, sw = 0;
+    for (let k = -R; k <= R; k++) {
+      const j = i + k;
+      if (j < 0 || j >= n || Number.isNaN(out[j * 4])) continue;
+      const w = (R + 1 - Math.abs(k)) * Math.min(1, out[j * 4 + 3]);
+      sx += out[j * 4] * w;
+      sy += out[j * 4 + 1] * w;
+      syaw += out[j * 4 + 2] * w;
+      sw += w;
+    }
+    if (sw > 0) smoothed.set([sx / sw, sy / sw, syaw / sw], i * 4);
+  }
+  // Speed limit, forward and backward, averaged.
+  const limit = (dir: 1 | -1) => {
+    const path = new Float64Array(smoothed);
+    const start = dir === 1 ? 1 : n - 2;
+    for (let i = start; dir === 1 ? i < n : i >= 0; i += dir) {
+      const j = i - dir;
+      if (Number.isNaN(path[i * 4]) || Number.isNaN(path[j * 4])) continue;
+      for (const [c, v] of [[0, WRIST_SPEED], [1, WRIST_SPEED], [2, YAW_SPEED]] as const) {
+        const max = v * STEP;
+        path[i * 4 + c] = path[j * 4 + c] + Math.max(-max, Math.min(max, path[i * 4 + c] - path[j * 4 + c]));
+      }
+    }
+    return path;
+  };
+  const forward = limit(1),
+    backward = limit(-1);
+  for (let i = 0; i < n * 4; i++) if ((i & 3) !== 3 && !Number.isNaN(smoothed[i])) smoothed[i] = (forward[i] + backward[i]) / 2;
+  return smoothed;
+}
+
 export function handPose(track: HandTrack, time: number, rate: number, band: KeyBand, geometry: Geometry): HandPose | null {
   if (!track.notes.length) return null;
   const ni = at(track.notes, time, (n) => n.start),
@@ -211,8 +351,8 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   if (!keyPx) return null;
   const scale = keyPx / WHITE_KEY_MM;
   const keyHeight = (band.bottom - band.top) / scale;
-  /** Where a fingertip presses a key, in millimetres. */
-  // The thumb plays near the front of a white key; the other fingers further in.
+  /** Where a fingertip presses a key, in millimetres. The thumb plays near the front of a white
+   * key; the other fingers further in. */
   const keyPoint = (pitch: number, finger = 2): V3 | null => {
     const g = geometry(pitch);
     if (!g) return null;
@@ -220,79 +360,205 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.55 : white, z: 0 };
   };
   const base = (i: number) => ANATOMY.bases[i];
-  const restTip = (i: number) => ({ x: base(i).x + ANATOMY.rest[i].x, y: base(i).y + ANATOMY.rest[i].y });
+  const restTip = (i: number) => ({ x: mirror * (base(i).x + ANATOMY.rest[i].x), y: base(i).y + ANATOMY.rest[i].y });
 
-  // Wrist position along the keys: each finger's current and coming key pulls the hand so that
-  // finger lands where it rests in the hand.
-  const pulls: { x: number; weight: number; forward: number }[] = [];
-  const chosen = track.fingers.map((rows, i) => {
-    const index = at(rows, time, (n) => n.start),
-      prev = rows[index],
-      future = rows[index + 1],
-      held = !!prev && time < prev.end;
-    const nextReady = future && future.start - time < 0.34 * rate;
-    const contact: Contact | undefined = held ? prev : nextReady ? future : prev && time - prev.end < 0.55 * rate ? prev : undefined;
-    const pull = (c: Contact | undefined, weight: number) => {
-      const k = c && keyPoint(c.pitch, i + 1);
-      // A thumb on a black key brings the whole hand in toward the fallboard.
-      const forward = c && isBlack(c.pitch) ? (i === 0 ? 34 : 8) : 0;
-      if (k && weight > 0.0001) pulls.push({ x: k.x - mirror * restTip(i).x, weight, forward });
-    };
-    // A key held long ago (often sustained by the pedal) barely pulls the wrist.
-    pull(prev, prev ? (held ? (time - prev.start > 0.6 * rate ? 0.3 : 3) : 3 * (1 - smooth((time - prev.end) / (0.22 * rate)))) : 0);
-    pull(future, future ? 3 * smooth(1 - (future.start - time) / (0.34 * rate)) : 0);
-    return { prev, future, held, contact };
-  });
-  const resting = keyPoint(last.pitch);
-  if (resting) pulls.push({ x: resting.x - mirror * restTip(last.finger - 1).x, weight: 0.06, forward: 0 });
-  if (!pulls.length) return null;
-  const weight = pulls.reduce((s, p) => s + p.weight, 0);
-  const wrist: V3 = {
-    x: pulls.reduce((s, p) => s + p.x * p.weight, 0) / weight,
-    y: WRIST_Y + pulls.reduce((s, p) => s + p.forward * p.weight, 0) / weight,
-    z: WRIST_Z,
+  const goalsOf = (rows: Aim[]) => rows.map((a, i) => (a.contact ? keyPoint(a.contact.pitch, i + 1) : null));
+  // Keys the fingers must reach: held ones (fresh ones most), and ones about to be struck.
+  const mustOf = (rows: Aim[], goals: (V3 | null)[], t: number) =>
+    rows.map((a, i) => {
+      if (!goals[i] || !a.contact) return 0;
+      // A fresh key holds the hand firmly; an older one (often kept by the pedal) gives way.
+      if (a.held) return blend(20, 0.5, smooth((t - a.contact.start - 0.12 * rate) / (0.5 * rate)));
+      // Rises to the held weight as the strike comes, so nothing jumps at the strike.
+      if (a.contact === a.future) return 10 * smooth(1 - (a.future.start - t) / (0.25 * rate));
+      return 0;
+    });
+  /** Key fix: move the hand (damped steps) until every finger that must reach its key can,
+   * within its reach and sideways range. */
+  const fix = (w: { x: number; y: number }, yaw: number, goals: (V3 | null)[], must: number[], iterations: number) => {
+    const cos = Math.cos(yaw),
+      sin = Math.sin(yaw);
+    for (let iteration = 0; iteration < iterations; iteration++) {
+    let dx = 0,
+      dy = 0,
+      total = 0;
+    goals.forEach((_, i) => {
+      const g = goals[i];
+      if (!g || must[i] <= 0) return;
+      const r = base(i);
+      const b = { x: w.x + cos * mirror * r.x - sin * r.y, y: w.y + sin * mirror * r.x + cos * r.y, z: WRIST_Z + r.z };
+      const ox = g.x - b.x,
+        oy = g.y - b.y;
+      const d = Math.hypot(ox, oy) || 0.001;
+      const { min, max } = reachRange(i, b.z - g.z);
+      let cx = 0,
+        cy = 0;
+      if (d > max) {
+        cx = (ox / d) * (d - max);
+        cy = (oy / d) * (d - max);
+      } else if (d < min) {
+        cx = (ox / d) * (d - min);
+        cy = (oy / d) * (d - min);
+      }
+      if (i > 0) {
+        // Sideways reach: the angle from the hand's forward direction, beyond the finger's range.
+        const local = Math.atan2(cos * ox + sin * oy, -sin * ox + cos * oy);
+        const off = mirror * local - Math.atan2(ANATOMY.rest[i].x, ANATOMY.rest[i].y);
+        const limit = (SPLAY[i] * Math.PI) / 180;
+        if (Math.abs(off) > limit) {
+          const excess = (Math.abs(off) - limit) * Math.sign(off);
+          // Move sideways (along the hand's own x axis) by the arc the finger cannot cover.
+          const side = excess * d * mirror;
+          cx += cos * side;
+          cy += sin * side;
+        }
+      }
+      dx += cx * must[i];
+      dy += cy * must[i];
+      total += must[i];
+    });
+    if (!total) break;
+    const ux = dx / total,
+      uy = dy / total;
+    if (Math.hypot(ux, uy) < 0.2) break;
+    w.x += ux * 0.85;
+    w.y += Math.max(-25, Math.min(25, uy * 0.85));
+  }
+    w.y = Math.max(WRIST_Y - 20, Math.min(WRIST_Y + 45, w.y));
   };
-  const world = (p: V3): V3 => ({ x: wrist.x + mirror * p.x, y: wrist.y + p.y, z: wrist.z + p.z });
+  /** The hand's place at time `t` before smoothing: the rigid fit (weighted Procrustes) of the
+   * fingers' rest tips onto their keys; the turn is held near straight when few keys pull. */
+  const raw = (t: number): Placement | null => {
+    const rows = aims(track, t, rate);
+    const pts: { r: { x: number; y: number }; k: { x: number; y: number }; w: number; forward: number }[] = [];
+    rows.forEach((a, i) => {
+      const k = a.contact && keyPoint(a.contact.pitch, i + 1);
+      // A thumb on a black key brings the whole hand in toward the fallboard.
+      if (k && a.need > 0.0001) pts.push({ r: restTip(i), k, w: a.need, forward: isBlack(a.contact!.pitch) ? (i === 0 ? 34 : 8) : 0 });
+    });
+    const li = at(track.notes, t, (n) => n.start),
+      resting = track.notes[Math.max(0, li)],
+      rk = resting && keyPoint(resting.pitch);
+    if (rk) pts.push({ r: restTip(resting.finger - 1), k: rk, w: 0.06, forward: 0 });
+    if (!pts.length) return null;
+    const W = pts.reduce((s, p) => s + p.w, 0);
+    const rc = { x: pts.reduce((s, p) => s + p.r.x * p.w, 0) / W, y: pts.reduce((s, p) => s + p.r.y * p.w, 0) / W };
+    const kc = { x: pts.reduce((s, p) => s + p.k.x * p.w, 0) / W, y: pts.reduce((s, p) => s + p.k.y * p.w, 0) / W };
+    let S = 0,
+      C = 0;
+    for (const p of pts) {
+      const ax = p.r.x - rc.x,
+        ay = p.r.y - rc.y,
+        bx = p.k.x - kc.x,
+        by = p.k.y - kc.y;
+      S += p.w * (ax * by - ay * bx);
+      C += p.w * (ax * bx + ay * by);
+    }
+    // The prior keeps the hand straight when the keys hardly decide its turn.
+    const yaw = Math.max(-YAW_LIMIT, Math.min(YAW_LIMIT, Math.atan2(S, C + 600 * W)));
+    const c = Math.cos(yaw),
+      s = Math.sin(yaw);
+    const forward = pts.reduce((sum, p) => sum + p.forward * p.w, 0) / W;
+    const place = { x: kc.x - (c * rc.x - s * rc.y), y: WRIST_Y + forward };
+    const goals = goalsOf(rows);
+    fix(place, yaw, goals, mustOf(rows, goals, t), 8);
+    return { ...place, yaw, weight: W, forward };
+  };
+  // The hand's path: placements on a 1/120 s grid, smoothed and speed-limited per block (see
+  // `trajectory`), read here between grid points.
+  const layout = `${rate}:${Math.round(keyHeight)}:${Math.round(scale * 1000)}:${Math.round((geometry(60)?.x ?? 0) / scale)}`;
+  const placed = trajectory(track, layout, raw, time);
+  if (!placed) return null;
+  const weight = placed.weight;
+  const wrist: V3 = { x: placed.x, y: placed.y, z: WRIST_Z };
+  const yaw = placed.yaw;
+  const cos = Math.cos(yaw),
+    sin = Math.sin(yaw);
+  /** Hand frame (millimetres from the wrist, right-hand coordinates) to the keyboard. */
+  const world = (p: V3): V3 => ({
+    x: wrist.x + cos * mirror * p.x - sin * p.y,
+    y: wrist.y + sin * mirror * p.x + cos * p.y,
+    z: wrist.z + p.z,
+  });
+
+  const rows = aims(track, time, rate);
+  const goals = goalsOf(rows);
+  // No key fix here: the path already carries it, and a fix after smoothing makes the hand jump.
+  const must = mustOf(rows, goals, time);
 
   const ci = at(track.crossings, time, (c) => c.start),
     cross = track.crossings[ci];
   const thumbUnder = !!cross && time < cross.end;
   const crossPhase = thumbUnder ? Math.sin((Math.PI * (time - cross.start)) / (cross.end - cross.start)) : 0;
 
-  const fingers = chosen.map(({ prev, future, held, contact }, i) => {
+  // Each finger's target: its key when it can reach it, else its rest place in the hand.
+  /** `priority`: who yields when two fingers would cross (pressed 3, striking soon up to 2). */
+  type Target = { target: V3; pressed: boolean; substitution: boolean; priority: number };
+  const targets: Target[] = rows.map(({ prev, future, held, contact, release }, i) => {
+    const b = world(base(i));
+    const rest = world({ x: restTip(i).x * mirror, y: restTip(i).y, z: base(i).z + ANATOMY.rest[i].z });
+    const goal = goals[i];
+    if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0 };
+    const { max } = reachRange(i, b.z);
+    // Out of reach even after the key fix: the finger lets the key go (the pedal keeps it
+    // sounding) and returns to its place in the hand, smoothly as the distance grows.
+    const away = smooth((Math.hypot(goal.x - b.x, goal.y - b.y) - max) / 25) * (1 - smooth((must[i] - 3) / 7));
+    if (away >= 0.999) return { target: rest, pressed: false, substitution: false, priority: 0 };
+    let target: V3 = { ...goal };
+    let pressed = held && away < 0.5;
+    if (!held && future === contact) {
+      // Travel to the coming key in an arc and come down on it.
+      const start = Math.max(prev ? release : -Infinity, contact.start - 0.34 * rate);
+      const u = smooth((time - start) / Math.max(0.001, contact.start - start));
+      // From the previous key while the finger is still near it, else from its rest place.
+      const fromKey = prev && start - release < 0.3 * rate ? keyPoint(prev.pitch, i + 1) : null;
+      const from = fromKey ?? rest;
+      target = from
+        ? { x: blend(from.x, goal.x, u), y: blend(from.y, goal.y, u), z: Math.sin(Math.PI * u) * LIFT + (1 - u) * 2 }
+        : { ...goal, z: LIFT * (1 - u) };
+      if (contact.substitution) target.z = Math.max(0, (contact.start - time) / (0.12 * rate)) * 4;
+    } else if (!held && prev === contact) {
+      // Lift off the released key, then drift back to the rest place before the hand lets go.
+      const since = time - release;
+      target.z = smooth(since / (0.16 * rate)) * LIFT;
+      const back = smooth((since - 0.12 * rate) / (0.4 * rate));
+      if (back > 0) target = { x: blend(target.x, rest.x, back), y: blend(target.y, rest.y, back), z: blend(target.z, rest.z, back) };
+      pressed = false;
+    }
+    if (away > 0) target = { x: blend(target.x, rest.x, away), y: blend(target.y, rest.y, away), z: blend(target.z, rest.z, away) };
+    return { target, pressed, substitution: contact.substitution, priority: pressed ? 3 : Math.min(2, must[i] / 5) };
+  });
+
+  // Fingers 2-5 keep their order across the hand with room between them: free fingers make way
+  // for the ones on keys and lift a little when pushed.
+  const lateral = (p: V3) => mirror * (cos * (p.x - wrist.x) + sin * (p.y - wrist.y));
+  const shiftLateral = (t: Target, by: number) => {
+    t.target = { ...t.target, x: t.target.x + mirror * cos * by, y: t.target.y + mirror * sin * by, z: t.target.z + Math.min(8, Math.abs(by) * 0.5) };
+  };
+  const separate = (a: Target, b: Target) => {
+    const need = FINGER_GAP - (lateral(b.target) - lateral(a.target));
+    if (need <= 0) return;
+    if (a.priority >= 3 && b.priority >= 3) return; // both on keys: the fingering's own crossing
+    const share = b.priority === a.priority ? 0.5 : b.priority < a.priority ? 1 : 0;
+    if (share > 0) shiftLateral(b, need * share);
+    if (share < 1) shiftLateral(a, -need * (1 - share));
+  };
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 2; i <= 4; i++) separate(targets[i - 1], targets[i]);
+    for (let i = 4; i >= 2; i--) separate(targets[i - 1], targets[i]);
+  }
+
+  const fingers = targets.map(({ target, pressed, substitution }, i) => {
     const b = world(base(i));
     if (i === 0 && thumbUnder) {
       // Passing under the hand: the thumb's base swings toward the palm and drops.
-      b.x += mirror * crossPhase * 14;
+      b.x += mirror * cos * crossPhase * 14;
+      b.y += mirror * sin * crossPhase * 14;
       b.z -= crossPhase * 10;
-    }
-    const rest = world({ x: restTip(i).x, y: restTip(i).y, z: base(i).z + ANATOMY.rest[i].z });
-    let target: V3 = rest;
-    let pressed = false,
-      substitution = false;
-    const goal = contact && keyPoint(contact.pitch, i + 1);
-    // A key beyond this finger's reach from where the hand is stays with the pedal.
-    const reachable = !!goal && Math.abs(goal.x - rest.x) < (i === 0 ? 70 : 45);
-    if (contact && goal && reachable) {
-      target = { ...goal };
-      pressed = held;
-      substitution = contact.substitution;
-      if (!held && future === contact) {
-        // Travel to the coming key in an arc and come down on it.
-        const start = Math.max(prev?.end ?? -Infinity, contact.start - 0.34 * rate);
-        const u = smooth((time - start) / Math.max(0.001, contact.start - start));
-        const from = prev ? keyPoint(prev.pitch, i + 1) : null;
-        target = from
-          ? { x: blend(from.x, goal.x, u), y: blend(from.y, goal.y, u), z: Math.sin(Math.PI * u) * LIFT + (1 - u) * 2 }
-          : { ...goal, z: LIFT * (1 - u) };
-        if (contact.substitution) target.z = Math.max(0, (contact.start - time) / (0.12 * rate)) * 4;
-      } else if (!held && prev === contact) {
-        target.z = smooth((time - contact.end) / (0.16 * rate)) * LIFT;
-      }
     }
     return {
       finger: i + 1,
-      points: i === 0 ? thumbChain(b, target, ANATOMY.bones[0], mirror) : fingerChain(b, target, ANATOMY.bones[i], 0.67),
+      points: i === 0 ? thumbChain(b, target, ANATOMY.bones[0], mirror, yaw) : fingerChain(b, target, ANATOMY.bones[i], 0.67),
       pressed,
       substitution,
     };
@@ -301,6 +567,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   return {
     side: track.side,
     wrist,
+    yaw,
     metacarpals: ANATOMY.metacarpals.map(world),
     fingers,
     thumbUnder,

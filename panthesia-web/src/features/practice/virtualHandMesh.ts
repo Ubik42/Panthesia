@@ -166,8 +166,13 @@ export class HandMeshDrawing {
     const R = AXES[pose.side];
     const w = model.wrist;
     // Keyboard millimetres to model metres: the inverse of R (its transpose), about the wrist.
+    // The hand's turn is applied to the whole model (below), so joints are placed unturned.
+    const c = Math.cos(pose.yaw),
+      sn = Math.sin(pose.yaw);
     const toModel = (p: V3) => {
-      const d = [p.x - pose.wrist.x, p.y - pose.wrist.y, p.z - pose.wrist.z];
+      const ex = p.x - pose.wrist.x,
+        ey = p.y - pose.wrist.y;
+      const d = [c * ex + sn * ey, -sn * ex + c * ey, p.z - pose.wrist.z];
       return new THREE.Vector3(
         w.x + (R[0][0] * d[0] + R[1][0] * d[1] + R[2][0] * d[2]) / 1000,
         w.y + (R[0][1] * d[0] + R[1][1] * d[1] + R[2][1] * d[2]) / 1000,
@@ -202,13 +207,14 @@ export class HandMeshDrawing {
         joint.bone.quaternion.copy(turn).multiply(joint.restQuat);
       }
     }
-    // Model metres to keyboard millimetres: key = wrist + 1000 R (m - w).
+    // Model metres to keyboard millimetres: key = wrist + Rz(yaw) 1000 R (m - w).
     const m = new THREE.Matrix4().set(
       R[0][0] * 1000, R[0][1] * 1000, R[0][2] * 1000, 0,
       R[1][0] * 1000, R[1][1] * 1000, R[1][2] * 1000, 0,
       R[2][0] * 1000, R[2][1] * 1000, R[2][2] * 1000, 0,
       0, 0, 0, 1,
     );
+    m.premultiply(new THREE.Matrix4().makeRotationZ(pose.yaw));
     const shift = new THREE.Vector3(-w.x, -w.y, -w.z).applyMatrix4(m);
     m.setPosition(pose.wrist.x + shift.x, pose.wrist.y + shift.y, pose.wrist.z + shift.z);
     model.root.matrix.copy(m);
