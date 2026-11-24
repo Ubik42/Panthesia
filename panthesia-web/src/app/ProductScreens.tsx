@@ -1,5 +1,5 @@
 import { useApp } from "./AppContext";
-import { topInputScope, topPopup } from "./inputOwnership";
+import { topInputScope, topPopup } from "../lib/inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
 import { SongDetails } from "../screens/song/SongDetails";
 import { HandSplitScreen } from "../screens/song/HandSplitScreen";
@@ -14,6 +14,7 @@ const normalize = pathKey;
 
 /** Home, settings, song setup, track and hand split screens, and free play. */
 export function ProductScreens() {
+  const app = useApp();
   const {
     setCommandsOpen,
     clearLiveNotes,
@@ -49,7 +50,7 @@ export function ProductScreens() {
     openingActive,
     goHome,
     openFreePlay,
-  } = useApp();
+  } = app;
   return (
     <>
       {/* The start page; with a song open, its details slide in over it. */}
@@ -95,7 +96,20 @@ export function ProductScreens() {
           }
         />
       )}
-      {startupReady && productScreens.screen === "settings" && <SettingsScreen />}
+      {startupReady && productScreens.screen === "settings" && (
+        <SettingsScreen
+          state={state}
+          playback={playback}
+          progressEngineId={progressEngineId}
+          busy={busy}
+          connected={connected}
+          startupReady={startupReady}
+          actionError={app.health.getMessages().action}
+          run={run}
+          refreshSession={app.refreshSession}
+          setError={setError}
+        />
+      )}
 
       {workspace === "practice" &&
         productScreens.screen === "parts" &&
@@ -139,7 +153,21 @@ export function ProductScreens() {
             command={(value) => run(value, true)}
           />
         )}
-      {workspace === "practice" && productScreens.screen === "freePlay" && <FreePlayScreen />}
+      {workspace === "practice" && productScreens.screen === "freePlay" && (
+        <FreePlayScreen
+          state={state}
+          busy={busy}
+          connected={connected}
+          run={run}
+          goHome={goHome}
+          openDevices={() => openSettings("devices")}
+          playback={playback}
+          pointerNote={pointerNote}
+          keyboardPaused={keyboardContext}
+          pianoRange={pianoRange}
+          pianoViewport={pianoViewport}
+        />
+      )}
     </>
   );
 }

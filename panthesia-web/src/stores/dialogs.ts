@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { MediaExportKind } from "../engine/commands.generated";
 import type { MediaExportSource } from "../features/exports/mediaExportStore";
-import type { DeviceObject } from "../features/screens/MusicDeviceList";
+import type { DeviceObject } from "../features/devices/MusicDeviceList";
 
 type Dialogs = {
   commandsOpen: boolean;

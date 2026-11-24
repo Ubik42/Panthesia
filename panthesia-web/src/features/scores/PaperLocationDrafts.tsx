@@ -1,4 +1,4 @@
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { useState, useSyncExternalStore } from "react";
 import type {
   PaperLocationDraft,

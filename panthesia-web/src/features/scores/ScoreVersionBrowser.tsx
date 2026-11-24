@@ -4,7 +4,7 @@ import {
   ScoreRoutePreview,
   type ScoreRouteEvidence,
 } from "./ScoreRoutePreview";
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { PaperListPager } from "./PaperListPager";
 import type {
   ScoreManagerDraftSession,

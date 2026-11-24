@@ -1,4 +1,4 @@
-import { createPersistentSession } from "../../app/createPersistentSession";
+import { createPersistentSession } from "../../lib/createPersistentSession";
 import {
   decodeInterfaceBackup,
   type InterfaceBackup,

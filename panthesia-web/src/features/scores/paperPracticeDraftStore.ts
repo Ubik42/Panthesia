@@ -1,4 +1,4 @@
-import { createPersistentSession } from "../../app/createPersistentSession";
+import { createPersistentSession } from "../../lib/createPersistentSession";
 import type { PaperPracticeRequest } from "../../engine/commands.generated";
 
 export interface PaperPracticeForm {

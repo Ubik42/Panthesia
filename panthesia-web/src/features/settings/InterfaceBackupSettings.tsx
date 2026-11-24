@@ -18,7 +18,7 @@ import {
   type Group,
 } from "./interfaceBackupModel";
 import { codeLabel } from "./displayPreferences";
-import { shortcutActions, shortcutLabel } from "../../app/shortcuts";
+import { shortcutActions, shortcutLabel } from "../../lib/shortcuts";
 const labels: Record<string, string> = {
   practiceFocus: "专注演奏布局",
   practiceView: "练习视图", practiceSplitAxis: "组合排列", practiceSplitRatio: "组合谱面比例",

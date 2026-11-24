@@ -1,4 +1,4 @@
-import { createPersistentSession } from "../../app/createPersistentSession";
+import { createPersistentSession } from "../../lib/createPersistentSession";
 import { api, type LoadedSong, type MeterMap } from "../../api";
 import { capturePracticeScope } from "../../engine/useCatalogRead";
 import { practiceScopeKey } from "./practiceEditorStore";

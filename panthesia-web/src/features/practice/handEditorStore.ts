@@ -1,4 +1,4 @@
-import { createPersistentSession } from "../../app/createPersistentSession";
+import { createPersistentSession } from "../../lib/createPersistentSession";
 import { api, type LoadedSong, type PracticeEditCommand } from "../../api";
 import { practiceScopeKey } from "./practiceEditorStore";
 import { activitySignal } from "../activity/activitySignal";

@@ -23,10 +23,10 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
-import { BrowseDetailWorkspace } from "../../app/BrowseDetailWorkspace";
-import { useBrowseScroll } from "../../app/useBrowseScroll";
+import { BrowseDetailWorkspace } from "../../ui/legacy/BrowseDetailWorkspace";
+import { useBrowseScroll } from "../../ui/legacy/useBrowseScroll";
 import {
   createFingeringWorkbenchStore,
   fingeringDraftId,

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { BrowsePagination } from "../../app/BrowsePagination";
+import { BrowsePagination } from "../../ui/legacy/BrowsePagination";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import {
   fingeringDraftId,

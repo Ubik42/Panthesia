@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { KeyboardMusic, Palette, Volume2, VolumeX } from "lucide-react";
 import type { LoadedSong, EngineCommand } from "../../api";
 import type { PracticePart } from "../../engine/commands.generated";
-import { trackColors } from "../../features/screens/partPalette";
+import { trackColors } from "./partPalette";
 import { Dialog } from "../../ui/Dialog";
 import { PageHeader } from "../../ui/PageHeader";
 import { usePartSettings } from "./usePartSettings";

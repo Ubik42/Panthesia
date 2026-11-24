@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { DesktopCloseStatus, DesktopCloseIssue, DesktopCloseReport, DesktopCloseReview } from "../engine/commands.generated";
-import { prepareFrontendClose } from "./closePreparation";
+import { prepareFrontendClose } from "../lib/closePreparation";
 
 interface State { status: DesktopCloseStatus | null; issues: DesktopCloseIssue[]; error: string; returning: boolean }
 let state: State = { status: null, issues: [], error: "", returning: false };

@@ -1,4 +1,4 @@
-import type { DeviceObject } from "../screens/MusicDeviceList";
+import type { DeviceObject } from "./MusicDeviceList";
 import {
 Cable,
 KeyboardMusic,

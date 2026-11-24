@@ -1,7 +1,9 @@
 import { ArrowLeft, FolderSearch, Info, Keyboard, KeyRound, LayoutGrid, Music4, Palette, Save, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useApp } from "../../app/AppContext";
-import { api } from "../../api";
+import { api, type EngineCommand } from "../../api";
+import { dialogs, useDialogs } from "../../stores/dialogs";
+import { setDisplay, useDisplay } from "../../features/settings/interfaceSettingsStore";
+import type { ControlSnapshot, PlaybackStore } from "../../features/practice/playbackStore";
 import { product } from "../../product.generated";
 import { route, useRoute, type SettingsSection } from "../../stores/route";
 import { DeviceSettingsPanel } from "../../features/devices/DeviceSettingsPanel";
@@ -29,9 +31,31 @@ const SECTIONS: { id: SettingsSection; label: string; hint: string; icon: Lucide
 ];
 
 /** The settings page (interface-design.md §6): every global setting, one section at a time. */
-export function SettingsScreen() {
-  const app = useApp();
-  const { display, setDisplay, state, playback, progressEngineId, busy, connected, startupReady, run, refreshSession, setError, setAboutOpen } = app;
+export function SettingsScreen({
+  state,
+  playback,
+  progressEngineId,
+  busy,
+  connected,
+  startupReady,
+  actionError,
+  run,
+  refreshSession,
+  setError,
+}: {
+  state: ControlSnapshot;
+  playback: PlaybackStore;
+  progressEngineId?: string;
+  busy: boolean;
+  connected: boolean;
+  startupReady: boolean;
+  actionError: string;
+  run: (command: EngineCommand) => Promise<boolean>;
+  refreshSession: () => Promise<void>;
+  setError: (message: string) => void;
+}) {
+  const display = useDisplay();
+  const settingsDevice = useDialogs((s) => s.settingsDevice);
   const workbench = getInterfaceWorkbench();
   const workbenchError = useSyncExternalStore(workbench.subscribe, workbench.getSnapshot).storageError;
   const section = useRoute((s) => s.settingsSection);
@@ -72,13 +96,13 @@ export function SettingsScreen() {
           {section === "devices" && (
             <>
               <DeviceSettingsPanel
-                selectedDevice={app.settingsDevice}
+                selectedDevice={settingsDevice}
                 store={playback}
                 state={state}
                 engineId={progressEngineId}
                 unavailable={unavailable}
                 busy={busy}
-                error={app.health.getMessages().action}
+                error={actionError}
                 command={run}
                 synchronize={refreshSession}
                 reportError={setError}
@@ -107,7 +131,7 @@ export function SettingsScreen() {
                 <button className="ui-button" onClick={() => void api.openLogs().catch((e) => setError(String(e)))}>
                   打开日志文件夹
                 </button>
-                <button className="ui-button" onClick={() => setAboutOpen(true)}>
+                <button className="ui-button" onClick={() => dialogs.setAboutOpen(true)}>
                   版本、来源与许可…
                 </button>
               </div>

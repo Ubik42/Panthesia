@@ -1,4 +1,4 @@
-import { reportDiagnostic } from "./diagnostics";
+import { reportDiagnostic } from "../lib/diagnostics";
 import { useEffect, useSyncExternalStore } from "react";
 import { CheckCircle2, LifeBuoy, LoaderCircle, X } from "lucide-react";
 import {

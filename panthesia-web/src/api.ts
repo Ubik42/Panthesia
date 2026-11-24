@@ -1,4 +1,4 @@
-import { reportDiagnostic } from "./app/diagnostics";
+import { reportDiagnostic } from "./lib/diagnostics";
 
 import { readDesktopBuildReport, type DesktopBuildReport } from "./engine/buildIdentity";
 import { readDeviceSnapshot, type DeviceScanTarget } from "./engine/deviceCatalog";

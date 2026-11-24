@@ -1,4 +1,4 @@
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 import { CopyPracticeDraft } from "../practice/CopyPracticeDraft";
 import type { PassageCatalog } from "../practice/catalogTypes";
 import {

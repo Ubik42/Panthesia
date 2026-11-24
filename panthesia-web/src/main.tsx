@@ -7,7 +7,7 @@ import App from "./App";
 import "./app/workspaces.css";
 import "./style.css";
 import "./features/practice/practiceWorkspace.css";
-import "./app/browseDetailWorkspace.css";
+import "./ui/legacy/browseDetailWorkspace.css";
 import "./features/fingering/fingeringWorkspace.css";
 import "./features/practice/pianoVisual.css";
 import "./features/practice/practiceChrome.css";
@@ -16,4 +16,4 @@ createRoot(document.getElementById("root")!).render(<App />);
 
 import "./features/practice/synthesiaLayout.css";
 
-import "./features/screens/productScreens.css";
+import "./app/productScreens.css";

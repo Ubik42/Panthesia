@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api";
 import { product } from "../../product.generated";
 import { Badge, Button, Empty, IconButton } from "../../ui/components";
-import { formatDuration, keyLabel, type SongFacts } from "../song/songSummary";
+import { formatDuration, keyLabel, type SongFacts } from "../../features/library/songSummary";
 import "../../ui/controls.css";
 import "./homeScreen.css";
 

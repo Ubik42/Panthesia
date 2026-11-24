@@ -1,5 +1,5 @@
-import { route, screenOf, useRoute } from "../../stores/route";
-export type { SettingsSection } from "../../stores/route";
+import { route, screenOf, useRoute } from "../stores/route";
+export type { SettingsSection } from "../stores/route";
 
 /** The route store seen as one object, for components that take it as a prop. New code reads
  * `useRoute` / `route` from stores/route directly. */

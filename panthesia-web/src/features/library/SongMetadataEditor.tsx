@@ -8,7 +8,7 @@ import {
 } from "../editing/editDraftStore";
 import { EditDraftStatus } from "../editing/EditDraftStatus";
 import { requireValue } from "../../engine/requireValue";
-import { topInputScope } from "../../app/inputOwnership";
+import { topInputScope } from "../../lib/inputOwnership";
 import type {
   Metadata,
   MetadataDraft,

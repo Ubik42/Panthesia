@@ -14,7 +14,7 @@ import { pendingScoreManagerDrafts, flushScoreManagerDrafts } from "../features/
 import { pendingPracticeEditorDrafts, flushPracticeEditorDrafts } from "../features/practice/practiceEditorStore";
 import { pendingMeterEditors, flushMeterEditors } from "../features/practice/meterEditorStore";
 import { pendingHandEditors, flushHandEditors } from "../features/practice/handEditorStore";
-import { registerCloseParticipant } from "./closePreparation";
+import { registerCloseParticipant } from "../lib/closePreparation";
 import { useDesktopClose } from "./useDesktopClose";
 import { useEffect, useState } from "react";
 

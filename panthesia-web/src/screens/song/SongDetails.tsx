@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api";
-import { reportDiagnostic } from "../../app/diagnostics";
+import { reportDiagnostic } from "../../lib/diagnostics";
 import type { LoadedSong } from "../../api";
 import type { PlaybackStore } from "../../features/practice/playbackStore";
 import { useTasks } from "../../engine/taskStore";
@@ -38,7 +38,7 @@ import {
   type Layer,
   type Material,
   type MaterialItem,
-} from "./songSummary";
+} from "../../features/library/songSummary";
 import "../../ui/controls.css";
 import { Sheet } from "../../ui/components";
 import "./songScreen.css";

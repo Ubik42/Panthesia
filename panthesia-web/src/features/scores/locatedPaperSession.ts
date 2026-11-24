@@ -1,6 +1,6 @@
 import { activitySignal } from "../activity/activitySignal";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { registerCloseParticipant } from "../../app/closePreparation";
+import { registerCloseParticipant } from "../../lib/closePreparation";
 import type { LocatedPaperSaved } from "../../engine/commands.generated";
 
 export interface LocatedPaperSource { contentId: string; title?: string; engineId?: string | null; path?: string }

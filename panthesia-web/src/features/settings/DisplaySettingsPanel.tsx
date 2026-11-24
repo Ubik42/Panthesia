@@ -1,17 +1,17 @@
-import { LabelSettings } from "../screens/LabelSettings";
+import { LabelSettings } from "./LabelSettings";
 import { PreviewBarsControl } from "../practice/PreviewBarsControl";
 import { KeyboardRangeSettings } from "./KeyboardRangeSettings";
 import { InterfaceDisplayPreview } from "./InterfaceDisplayPreview";
 import { PianoEffectsSettings } from "./PianoEffectsSettings";
 import { PianoAppearancePreview } from "./PianoAppearancePreview";
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { getInterfaceWorkbench } from "./interfaceWorkbenchStore";
 import { InterfaceStorageNotice } from "./InterfaceStorageNotice";
 import "./interfaceSettings.css";
 import { InterfaceBackupSettings } from "./InterfaceBackupSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { isComposingKey, ownsInputLayer } from "../../app/inputOwnership";
+import { isComposingKey, ownsInputLayer } from "../../lib/inputOwnership";
 import { pitchName } from "../../api";
 import {
   asdfCodes,

@@ -1,4 +1,4 @@
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 import { useRequestScope } from "../../engine/useRequestScope";
 import { fingeringApi } from "../../engine/fingeringApi";
 import { HandSpanProfileValues, type HandSpanProfile, type PlanRequest, type PairPart, type Proposal, type PlanResult, type PairReview as Review } from "../../engine/commands.generated";

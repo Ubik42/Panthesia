@@ -1,10 +1,10 @@
 import { Eye, Hand } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
-import { ToolbarMore } from "../../app/ToolbarMore";
+import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
-import { shortcutLabel } from "../../app/shortcuts";
-import { LabelSettings } from "../screens/LabelSettings";
+import { shortcutLabel } from "../../lib/shortcuts";
+import { LabelSettings } from "../settings/LabelSettings";
 import { KeyboardRangeControls } from "./KeyboardRangeControls";
 import type { KeyboardRange, KeyboardViewport } from "./keyboardViewport";
 import { PracticeLegend } from "./PracticeLegend";

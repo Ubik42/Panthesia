@@ -3,7 +3,7 @@ import {
   normalizeShortcuts,
   shortcutDefaults,
   type Shortcuts,
-} from "../../app/shortcuts";
+} from "../../lib/shortcuts";
 import { pitchName, keyPitchName } from "../../engine/musicFormatting";
 export type LabelMode = "none" | "octaves" | "finger" | "mapping" | "english" | "degree" | "fixed" | "movable" | "simple" | "legacy";
 export const labelModes: LabelMode[] = ["none", "octaves", "finger", "mapping", "english", "degree", "fixed", "movable", "simple", "legacy"];

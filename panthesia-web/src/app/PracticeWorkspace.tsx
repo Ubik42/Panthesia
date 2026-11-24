@@ -1,6 +1,6 @@
 import { useApp } from "./AppContext";
 import { PerformanceTools } from "../features/practice/PerformanceTools";
-import { topInputScope,topPopup } from "./inputOwnership";
+import { topInputScope,topPopup } from "../lib/inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
 import { usePlaybackFields } from "../features/practice/usePlaybackFields";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -14,7 +14,7 @@ import { PracticeTimeline } from "../features/practice/PracticeTimeline";
 import { Notation } from "../features/scores/Notation";
 import { PaperScore } from "../features/scores/PaperScore";
 import { Piano } from "../stage/Piano";
-import { shortcutLabel } from "./shortcuts";
+import { shortcutLabel } from "../lib/shortcuts";
 const normalize = pathKey;
 
 /** The practice workspace: stage, notation, paper scores and transport. */

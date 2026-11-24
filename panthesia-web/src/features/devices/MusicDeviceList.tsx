@@ -1,4 +1,4 @@
-import { useDeviceCatalog } from "../devices/useDeviceCatalog";
+import { useDeviceCatalog } from "./useDeviceCatalog";
 import type { Snapshot } from "../../api";
 export type DeviceObject = {
   kind: "input" | "output";

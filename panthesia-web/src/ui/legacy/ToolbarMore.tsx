@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import "./toolbarMore.css";
-import { dismissInputPopup, isComposingKey, isTextEntry, ownsInputLayer } from "./inputOwnership";
+import { dismissInputPopup, isComposingKey, isTextEntry, ownsInputLayer } from "../../lib/inputOwnership";
 
 /** Secondary actions remain in the toolbar's tab order and use ordinary buttons. */
 export function ToolbarMore({

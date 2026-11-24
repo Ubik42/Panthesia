@@ -6,7 +6,7 @@ import type { PaperAnnotation } from "./PaperAnnotations";
 import { moveInk, eraseInk } from "./paperInkEditing";
 import "./paperInkEditing.css";
 import { paperPoint } from "./PaperGeometry";
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 const colors: Record<string, string> = {
   yellow: "#c69a20",
   blue: "#3679b9",

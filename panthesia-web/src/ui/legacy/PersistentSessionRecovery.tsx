@@ -3,7 +3,7 @@ import { Clipboard, Copy, RefreshCw } from "lucide-react";
 import type {
   PersistentSessionRecovery as RecoveryStore,
   PreservedSessionCopy,
-} from "./createPersistentSession";
+} from "../../lib/createPersistentSession";
 import "./persistentSessionRecovery.css";
 
 export function PersistentSessionRecovery({

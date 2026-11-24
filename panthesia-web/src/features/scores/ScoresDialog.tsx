@@ -23,7 +23,7 @@ import { PdfConversionPanel } from "./PdfConversionPanel";
 import { recognitionPdf } from "./recognitionPdf";
 import { X } from "lucide-react";
 import { readScoreCatalog } from "./scoreCatalog";
-import { BrowseDetailWorkspace } from "../../app/BrowseDetailWorkspace";
+import { BrowseDetailWorkspace } from "../../ui/legacy/BrowseDetailWorkspace";
 import {
   scoreManagerDraftSession,
   type ScoreNameDraft,

@@ -1,4 +1,4 @@
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { useState } from "react";
 import { X, Music2, RotateCcw, Save, RefreshCw } from "lucide-react";
 import { TaskActivity } from "../../engine/TaskActivity";

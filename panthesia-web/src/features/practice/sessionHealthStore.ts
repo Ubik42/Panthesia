@@ -1,4 +1,4 @@
-import { reportDiagnostic } from "../../app/diagnostics";
+import { reportDiagnostic } from "../../lib/diagnostics";
 export type SessionIssueKind = "action" | "session";
 export interface SessionIssue {
   kind: SessionIssueKind;

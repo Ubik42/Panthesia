@@ -4,7 +4,7 @@ import {
   type DisplayPreferences,
 } from "./displayPreferences";
 import { layoutKeys, extractLayout, type SavedLayout } from "./layoutModel";
-import { normalizeShortcuts, shortcutActions } from "../../app/shortcuts";
+import { normalizeShortcuts, shortcutActions } from "../../lib/shortcuts";
 import { canonicalSetting } from "./layoutModel";
 export const settingsGroups = {
   display: [

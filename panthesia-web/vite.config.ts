@@ -6,7 +6,8 @@ import type { Plugin } from "postcss";
 /** Every stylesheet goes into one cascade layer, so a later layer (state) can override any
  * component rule without !important. Order: tokens, components, screens, overrides, state
  * (src/layers.css). The redesigned screens (`src/screens`, `src/ui`) form their own layer above
- * the older component styles, so global legacy rules never reach them. */
+ * the older component styles, so global legacy rules never reach them. `src/ui/legacy` holds old
+ * shared components awaiting a rewrite; their styles stay in the components layer. */
 const cascadeLayers: Plugin = {
   postcssPlugin: "panthesia-cascade-layers",
   Once(root, { AtRule }) {
@@ -16,7 +17,7 @@ const cascadeLayers: Plugin = {
     const own = root.nodes.filter(
       (node) => node.type === "atrule" && node.name === "layer" && /^(overrides|state)$/.test(node.params),
     );
-    const name = /[\\/]tokens\.css$/.test(file) ? "tokens" : /[\\/]src[\\/](screens|ui)[\\/]/.test(file) ? "screens" : "components";
+    const name = /[\\/]tokens\.css$/.test(file) ? "tokens" : /[\\/]src[\\/](screens|ui)[\\/]/.test(file) && !/[\\/]ui[\\/]legacy[\\/]/.test(file) ? "screens" : "components";
     const layer = new AtRule({ name: "layer", params: name });
     layer.append(root.nodes.filter((node) => !own.includes(node)));
     root.removeAll();

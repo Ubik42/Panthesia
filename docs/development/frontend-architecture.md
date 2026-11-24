@@ -12,7 +12,9 @@ Panthesia 是一个打开一首歌就能练的桌面程序，界面只有四类�
 | 页面 | `src/screens/<页面>` | 一个页面的布局与组合：`home`、`song`（详情与二级页）、`settings`、`freeplay` | features、stores、ui、engine |
 | 领域 | `src/features/<领域>` | 领域逻辑与领域组件：乐谱、指法、练习、设备、导出 | stores、ui、engine |
 | 状态 | `src/stores` | zustand 状态：路由、对话框、会话；偏好仍由 `interfaceSettingsStore` 持久化 | engine |
-| 基础 | `src/ui`、`src/engine` | 设计系统组件与 token；引擎客户端与生成的协议类型 | 无 |
+| 基础 | `src/ui`、`src/lib`、`src/engine` | 设计系统组件与 token；与界面无关的工具（快捷键、输入归属、诊断、草稿持久化、关闭准备）；引擎客户端与生成的协议类型 | 基础层内部 |
+
+`src/ui/legacy` 存放待重写的旧共用组件（工具条菜单、主从布局、分页、草稿恢复）。它们的样式留在 components 层，使 features 中的旧覆写继续生效；重写为第 2 节的组件后删除。导航编排（打开曲目、页面跳转、练习工具入口）依赖引擎会话，属于应用层，放在 `src/app`。
 
 规则：
 
@@ -48,8 +50,8 @@ Panthesia 是一个打开一首歌就能练的桌面程序，界面只有四类�
 
 | 项 | 现状 | 目标 | 处理 |
 | --- | --- | --- | --- |
-| 应用状态 | `useAppModel` 返回约 120 个字段，放在一个 Context | 按领域的 zustand store | 先迁路由与对话框；会话随后 |
-| 路由 | `useWorkspaceNavigation`（引擎工作区）+ `useProductScreens`（页面） | 一个路由 store；工作区切换作为它的动作 | 合并 |
+| 应用状态 | `useAppModel` 返回约 120 个字段，放在一个 Context | 按领域的 zustand store；页面不读应用 Context | 路由、对话框已迁；页面改为 props 与 store；会话仍在 `useAppModel`（应用层组合根） |
+| 路由 | `useWorkspaceNavigation` + `useProductScreens` | 一个路由 store | 已完成（`stores/route.ts`） |
 | 主界面 | 左栏三个大按钮 + 按行列出最近打开 | 顶栏 + 双列卡片（第 3 节） | 重写 |
 | 歌曲页 | 独立页面，有“更多”菜单 | 主界面上的详情面板，无“更多” | 改为 Sheet |
 | 组件 | 只有 CSS 类（`ui-button` 等）与少量组件 | 第 2 节的组件 | 补齐并替换页面中的类 |

@@ -9,8 +9,8 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { api, type LoadedSong, type MeterMapPreview } from "../../api";
 import { capturePracticeScope } from "../../engine/useCatalogRead";
 import { PracticeEditTaskActivity } from "../../engine/PracticeEditTaskActivity";
-import { BrowseDetailWorkspace } from "../../app/BrowseDetailWorkspace";
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { BrowseDetailWorkspace } from "../../ui/legacy/BrowseDetailWorkspace";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { CopyPracticeDraft } from "./CopyPracticeDraft";
 import { practiceScopeKey } from "./practiceEditorStore";
 import {

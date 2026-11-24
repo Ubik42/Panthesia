@@ -1,4 +1,4 @@
-import { ToolbarMore } from "../../app/ToolbarMore";
+import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import { NotationTimeIndex } from "./notationTimeIndex";
 import { emptyScorePages, type ScorePages, type ScoreLine, type ScoreLines, renderScore } from "./scoreRenderCache";
 import "./notationWorkspace.css";

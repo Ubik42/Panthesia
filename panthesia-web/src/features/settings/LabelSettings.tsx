@@ -2,7 +2,7 @@ import {
   productLabel,
   type LabelMode,
   type DisplayPreferences,
-} from "../settings/displayPreferences";
+} from "./displayPreferences";
 
 const modes: [LabelMode, string][] = [
   ["none", "不显示"],

@@ -19,7 +19,7 @@ import type {
 import { capturePracticeScope } from "../../engine/useCatalogRead";
 import { useRequestScope } from "../../engine/useRequestScope";
 import { PracticeEditTaskActivity } from "../../engine/PracticeEditTaskActivity";
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import { CopyPracticeDraft } from "./CopyPracticeDraft";
 import { practiceScopeKey } from "./practiceEditorStore";
 import {

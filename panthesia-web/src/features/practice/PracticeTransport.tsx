@@ -1,4 +1,4 @@
-import { ToolbarMore } from "../../app/ToolbarMore";
+import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import {
   ChevronRight,
   ChevronLeft,

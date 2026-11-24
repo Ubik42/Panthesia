@@ -1,10 +1,11 @@
+import { useSyncExternalStore } from "react";
 import {
   displayStorage,
   displayDefaults,
   normalizeDisplayPreferences,
   type DisplayPreferences,
 } from "./displayPreferences";
-import { shortcutActions } from "../../app/shortcuts";
+import { shortcutActions } from "../../lib/shortcuts";
 import {
   canonicalSetting,
   decodeLayouts,
@@ -762,3 +763,10 @@ function createStore() {
 let instance: ReturnType<typeof createStore> | undefined;
 export const getInterfaceSettings = () => (instance ??= createStore());
 export type InterfaceSettingsStore = ReturnType<typeof getInterfaceSettings>;
+
+/** The display preferences, for components that read them directly. */
+export function useDisplay() {
+  const store = getInterfaceSettings();
+  return useSyncExternalStore(store.subscribe, store.getPreferences);
+}
+export const setDisplay: InterfaceSettingsStore["setPreferences"] = (value) => getInterfaceSettings().setPreferences(value);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { inputScopeSelector as dialogSelector, popupSelector, dialogTabStops, dismissInputPopup, isVisibleInput as visible, visibleInputScopes as visibleDialogs, visiblePopups, topPopup, isComposingKey, focusReturnKey, findReturnFocus } from "./inputOwnership";
+import { inputScopeSelector as dialogSelector, popupSelector, dialogTabStops, dismissInputPopup, isVisibleInput as visible, visibleInputScopes as visibleDialogs, visiblePopups, topPopup, isComposingKey, focusReturnKey, findReturnFocus } from "../lib/inputOwnership";
 interface Frame {
   returnTo: HTMLElement | null;
   last: HTMLElement | null;

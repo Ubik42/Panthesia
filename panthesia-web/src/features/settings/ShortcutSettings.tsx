@@ -1,6 +1,6 @@
 import { getInterfaceWorkbench } from "./interfaceWorkbenchStore";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { isComposingKey, ownsInputLayer } from "../../app/inputOwnership";
+import { isComposingKey, ownsInputLayer } from "../../lib/inputOwnership";
 import {
   shortcutActions,
   shortcutDefaults,
@@ -8,7 +8,7 @@ import {
   shortcutError,
   shortcutLabel,
   type ShortcutAction,
-} from "../../app/shortcuts";
+} from "../../lib/shortcuts";
 import type { DisplayPreferences } from "./displayPreferences";
 const shortcutGroups: {
   id: string;

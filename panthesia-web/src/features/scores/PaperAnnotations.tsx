@@ -1,4 +1,4 @@
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 import { usePaperInk } from "./PaperInk";
 import { paperPoint as rotate, paperAnnotationBox } from "./PaperGeometry";
 export { paperAnnotationBox } from "./PaperGeometry";

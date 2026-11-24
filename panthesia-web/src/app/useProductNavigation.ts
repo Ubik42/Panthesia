@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import type { EngineCommand } from "../../api";
-import type { Workspace } from "../../stores/route";
+import type { EngineCommand } from "../api";
+import type { Workspace } from "../stores/route";
 import type { useProductScreens } from "./useProductScreens";
 /** Guarded engine transitions and page transitions form one navigation operation. */
 export function useProductNavigation(options: {

@@ -5,7 +5,7 @@ import type { PaperAttachment, PaperView } from "./paperTypes";
 import { annotatedBookPdf } from "./PaperBookExport";
 import { annotatedRasterPng } from "./annotatedRaster";
 import { createPaperExportFeedback } from "./PaperExportFeedback";
-import { useCloseParticipant } from "../../app/closePreparation";
+import { useCloseParticipant } from "../../lib/closePreparation";
 
 const exportName = (name: string, suffix: string) => {
   const stem = name

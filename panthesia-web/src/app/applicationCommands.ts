@@ -28,7 +28,7 @@ import {
   VolumeX,
   type LucideIcon,
 } from "lucide-react";
-import type { Shortcuts, ShortcutAction } from "./shortcuts";
+import type { Shortcuts, ShortcutAction } from "../lib/shortcuts";
 
 export type CommandRequirement =
   "engine" | "idle" | "loaded" | "song" | "score";

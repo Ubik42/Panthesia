@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { isComposingKey, ownsInputLayer } from "../app/inputOwnership";
+import { isComposingKey, ownsInputLayer } from "../lib/inputOwnership";
 import "./controls.css";
 import "./forms.css";
 import "./dialog.css";

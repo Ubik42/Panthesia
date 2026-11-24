@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Workspace } from "../../stores/route";
-import type { PlaybackStore } from "../practice/playbackStore";
-import type { EngineCommand } from "../../api";
-import { samePlaybackSource } from "../practice/playbackCommands";
+import type { Workspace } from "../stores/route";
+import type { PlaybackStore } from "../features/practice/playbackStore";
+import type { EngineCommand } from "../api";
+import { samePlaybackSource } from "../features/practice/playbackCommands";
 /** Opening an editor never adopts a late result from a different performance. */
 export function usePracticeToolNavigation({
   toolContext,

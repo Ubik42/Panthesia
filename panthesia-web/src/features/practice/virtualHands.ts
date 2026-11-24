@@ -2,7 +2,7 @@ import type { LoadedSong } from "../../engine/sessionTypes";
 import type { HandPlan } from "./virtualHandPlan";
 import { handPose, arrangeHands, type HandPose } from "./virtualHandPose";
 import { HandMeshDrawing } from "./virtualHandMesh";
-import { reportDiagnostic } from "../../app/diagnostics";
+import { reportDiagnostic } from "../../lib/diagnostics";
 import { api } from "../../api";
 import type { PlannedFinger } from "../../engine/commands.generated";
 

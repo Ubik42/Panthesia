@@ -12,7 +12,7 @@ import {
 import type { LoadedSong, PracticeEditScope } from "../../api";
 import type { PassagePreset } from "../../engine/commands.generated";
 import type { ReactNode } from "react";
-import { PersistentSessionRecovery } from "../../app/PersistentSessionRecovery";
+import { PersistentSessionRecovery } from "../../ui/legacy/PersistentSessionRecovery";
 import {
   getPracticeEditor,
   practiceScopeKey,

@@ -15,7 +15,7 @@ type LoadedSong,
 } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
 import { keyboardMap } from "../settings/displayPreferences";
-import { eventShortcut,shortcutActions } from "../../app/shortcuts";
+import { eventShortcut,shortcutActions } from "../../lib/shortcuts";
 import {
 isCapturingKeys,
 isComposingKey,
@@ -23,7 +23,7 @@ isTextEntry,
 visibleDialogs,
 topInputScope,
 topPopup,
-} from "../../app/inputOwnership";
+} from "../../lib/inputOwnership";
 import { capturePlaybackSource,samePlaybackSource } from "./playbackCommands";
 import {
 normalizePreviewBars,
