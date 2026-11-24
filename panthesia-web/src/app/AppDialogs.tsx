@@ -1,3 +1,6 @@
+import type { ApplicationCommandId } from "./applicationCommands";
+import { practiceUi, usePracticeUi } from "../stores/practiceUi";
+import { setDisplay } from "../features/settings/interfaceSettingsStore";
 import { useApp } from "./AppContext";
 import { SongEditorHost } from "../features/editing/SongEditorHost";
 import { AboutDialog } from "./AboutDialog";
@@ -18,13 +21,12 @@ const normalize = pathKey;
 
 /** Song editors and the application's dialogs. */
 export function AppDialogs() {
-  const {
+    const {
     workspaceSessions,
     workspace,
     productScreens,
     openSettings,
     display,
-    setDisplay,
     setView,
     playback,
     getBoundSong,
@@ -58,29 +60,18 @@ export function AppDialogs() {
     setAboutOpen,
     metadataDraftPath,
     setMetadataDraftPath,
-    recentCommands,
-    setRecentCommands,
-    selectedNote,
-    setSelectedNote,
     exerciseDialog,
     setExerciseDialog,
     metadata,
     setMetadata,
-    fingeringDraft,
-    setFingeringDraft,
     passageDialog,
     setPassageDialog,
     progressOpen,
     setProgressOpen,
     recoveryOpen,
     setRecoveryOpen,
-    setPaperRevision,
     mediaExport,
     setMediaExport,
-    loopStart,
-    setLoopStart,
-    loopEnd,
-    setLoopEnd,
     requestBusy,
     run,
     action,
@@ -93,6 +84,12 @@ export function AppDialogs() {
     openingActive,
     resumePractice,
   } = useApp();
+  const recentCommands = usePracticeUi((s) => s.recentCommands);
+  const selectedNote = usePracticeUi((s) => s.selectedNote);
+  const fingeringDraft = usePracticeUi((s) => s.fingeringDraft);
+  const loopStart = usePracticeUi((s) => s.loopStart);
+  const loopEnd = usePracticeUi((s) => s.loopEnd);
+  const { setRecentCommands, setSelectedNote, setFingeringDraft, setPaperRevision, setLoopStart, setLoopEnd } = practiceUi;
   return (
     <>
       <input
@@ -251,7 +248,7 @@ export function AppDialogs() {
       {commandsOpen && (
         <ActionSearch
           actions={commandActions}
-          recent={recentCommands}
+          recent={recentCommands as ApplicationCommandId[]}
           context={`${workspace === "home" ? "主页" : "练习"} · ${song ? `当前练习：${song.title}` : "还未选择练习曲目"}`}
           shortcut={display.shortcuts.commands}
           close={() => setCommandsOpen(false)}

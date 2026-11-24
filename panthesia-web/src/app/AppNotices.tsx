@@ -1,3 +1,4 @@
+import { practiceUi, usePracticeUi } from "../stores/practiceUi";
 import { useApp } from "./AppContext";
 import { DesktopCloseProgress } from "./DesktopCloseProgress";
 import { SessionStatus } from "./SessionStatus";
@@ -10,7 +11,7 @@ const normalize = pathKey;
 
 /** Close progress, startup and session notices, and the busy indicator. */
 export function AppNotices() {
-  const {
+    const {
     workspaceSessions,
     state,
     connected,
@@ -21,12 +22,12 @@ export function AppNotices() {
     startupReady,
     busy,
     exerciseDialog,
-    notice,
-    setNotice,
     action,
     openRecovery,
     recoverSession,
   } = useApp();
+  const notice = usePracticeUi((s) => s.notice);
+  const { setNotice } = practiceUi;
   return (
     <>
       <DesktopCloseProgress {...workspaceSessions.desktopClose} />

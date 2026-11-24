@@ -1,3 +1,5 @@
+import { practiceUi, usePracticeUi } from "../stores/practiceUi";
+import { setDisplay } from "../features/settings/interfaceSettingsStore";
 import { useApp } from "./AppContext";
 import { PerformanceTools } from "../features/practice/PerformanceTools";
 import { topInputScope,topPopup } from "../lib/inputOwnership";
@@ -20,7 +22,7 @@ const normalize = pathKey;
 
 /** The practice workspace: stage, notation, paper scores and transport. */
 export function PracticeWorkspace() {
-  const {
+    const {
     setCommandsOpen,
     clearLiveNotes,
     workspace,
@@ -28,7 +30,6 @@ export function PracticeWorkspace() {
     setSongSetup,
     bookmarkNavigation,
     display,
-    setDisplay,
     openSettings,
     performanceSize,
     view,
@@ -49,16 +50,9 @@ export function PracticeWorkspace() {
     onNote,
     pointerNote,
     startupReady,
-    scoreToolRequest,
-    clearScoreToolRequest,
     busy,
     openSoundSettings,
-    editFingers,
-    setEditFingers,
-    selectedNote,
-    setSelectedNote,
     setExerciseDialog,
-    paperRevision,
     pianoViewport,
     pianoRange,
     changePianoViewport,
@@ -75,6 +69,11 @@ export function PracticeWorkspace() {
     keyboardContext,
     openingActive,
   } = useApp();
+  const scoreToolRequest = usePracticeUi((s) => s.scoreToolRequest);
+  const editFingers = usePracticeUi((s) => s.editFingers);
+  const selectedNote = usePracticeUi((s) => s.selectedNote);
+  const paperRevision = usePracticeUi((s) => s.paperRevision);
+  const { clearScoreToolRequest, setEditFingers, setSelectedNote } = practiceUi;
   return (
     <>
       <div

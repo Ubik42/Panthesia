@@ -1,3 +1,4 @@
+import { setDisplay } from "../features/settings/interfaceSettingsStore";
 import { useApp } from "./AppContext";
 import { topInputScope, topPopup } from "../lib/inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
@@ -22,7 +23,6 @@ export function ProductScreens() {
     productScreens,
     songSetup,
     display,
-    setDisplay,
     playback,
     state,
     song,
