@@ -1,4 +1,7 @@
 import {
+  ArrowUpDown,
+  Grid3x3,
+  KeyRound,
   AudioLines,
   FileMusic,
   FileText,
@@ -472,7 +475,10 @@ function PerformanceChoice({ items, disabled, choose }: { items: MaterialItem[];
   if (items.length < 2) return null;
   return (
     <div className="play-field play-field--wide">
-      <span className="play-label">MIDI</span>
+      <span className="play-label">
+        <FileMusic aria-hidden="true" />
+        演奏用的 MIDI
+      </span>
       <div className="play-chips" role="radiogroup" aria-label="演奏用的 MIDI">
         {items.map((i) => (
           <button
@@ -513,7 +519,10 @@ function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boo
   return (
     <>
       <div className="play-field">
-        <span className="play-label">转调</span>
+        <span className="play-label">
+          <ArrowUpDown aria-hidden="true" />
+          转调
+        </span>
         <div className="play-stepper">
           <button type="button" aria-label="降低一个半音" disabled={disabled || v.transpose <= -24} onClick={() => change({ transpose: v.transpose - 1 })}>
             −
@@ -529,7 +538,10 @@ function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boo
         {outside && <small className="play-warn">部分音符超出 88 键</small>}
       </div>
       <div className="play-field">
-        <span className="play-label">原调</span>
+        <span className="play-label">
+          <KeyRound aria-hidden="true" />
+          原调
+        </span>
         <select
           className="play-select"
           aria-label="原调"
@@ -550,7 +562,10 @@ function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boo
         </select>
       </div>
       <div className="play-field">
-        <span className="play-label">练习量化</span>
+        <span className="play-label">
+          <Grid3x3 aria-hidden="true" />
+          练习量化
+        </span>
         <div className="play-chips" role="radiogroup" aria-label="练习量化">
           {GRIDS.map(([grid, label]) => (
             <button key={grid} type="button" role="radio" aria-checked={v.quantize === grid} className="play-chip" disabled={disabled} onClick={() => change({ quantize: grid })}>

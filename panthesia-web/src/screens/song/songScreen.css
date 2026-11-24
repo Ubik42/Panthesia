@@ -480,95 +480,139 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* The play section: labelled fields, chips for the choices. */
+/* The play section (2026-11-24 redesign): a tinted card; each field a raised tile with a
+   coloured icon; choices in a recessed rail, the chosen one a glowing gradient pill. */
 .play-grid {
+  --play-glow: color-mix(in oklch, var(--accent) 38%, transparent);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, auto));
-  justify-content: start;
-  gap: var(--space-3) var(--space-6);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.5fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in oklch, var(--accent) 18%, var(--line-subtle));
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(90% 120% at 100% 100%, color-mix(in oklch, var(--accent-strong) 10%, transparent), transparent 65%),
+    var(--surface-sunken);
 }
 .play-field {
   display: grid;
   align-content: start;
-  gap: 6px;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border: 1px solid color-mix(in oklch, var(--surface-raised) 70%, var(--line-subtle));
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--surface-raised), color-mix(in oklch, var(--surface-raised) 86%, var(--accent-soft)));
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--surface-raised) 60%, transparent) inset, 0 8px 22px -12px color-mix(in oklch, var(--text-primary) 35%, transparent);
 }
 .play-field--wide {
   grid-column: 1 / -1;
 }
 .play-label {
-  color: var(--text-muted);
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font: 600 12px/1 var(--font-ui);
   letter-spacing: 0.04em;
 }
+.play-label svg {
+  width: 22px;
+  height: 22px;
+  padding: 4px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: var(--surface-raised);
+  box-shadow: 0 4px 10px -4px var(--play-glow);
+}
+/* The rail of choices. */
 .play-chips {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  justify-self: start;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--text-primary) 14%, transparent) inset;
 }
 .ui-form .play-chip {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   min-height: 30px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--line-subtle);
+  padding: 0 14px;
+  border: 0;
   border-radius: 999px;
-  background: var(--surface-sunken);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 500 13px/1 var(--font-ui);
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.ui-form .play-chip:hover:not(:disabled):not([aria-checked="true"]) {
+  background: color-mix(in oklch, var(--surface-raised) 80%, transparent);
   color: var(--text-primary);
-  font-size: 13px;
 }
 .ui-form .play-chip small {
   color: var(--text-muted);
-  font-size: 11px;
+  font: 11px/1 var(--font-ui);
 }
 .ui-form .play-chip[aria-checked="true"] {
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: var(--surface-raised);
+  box-shadow: 0 6px 16px -6px var(--play-glow), 0 1px 0 color-mix(in oklch, var(--surface-raised) 35%, transparent) inset;
 }
 .ui-form .play-chip[aria-checked="true"] small {
-  color: inherit;
+  color: color-mix(in oklch, var(--surface-raised) 80%, transparent);
 }
+/* Transposition: round buttons around the value, the key it lands in beside. */
 .play-stepper {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
   justify-self: start;
-  padding: 2px;
-  border: 1px solid var(--line-subtle);
-  border-radius: 999px;
-  background: var(--surface-sunken);
+  gap: 10px;
 }
 .ui-form .play-stepper button {
   display: grid;
   place-items: center;
-  width: 28px;
-  min-height: 26px;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
   padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: transparent;
-  font-size: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: var(--surface-raised);
+  font: 600 17px/1 var(--font-ui);
+  box-shadow: 0 6px 14px -6px var(--play-glow);
 }
-.ui-form .play-stepper button:hover:not(:disabled) {
-  background: var(--surface-hover);
+.ui-form .play-stepper button:disabled {
+  opacity: 0.35;
 }
 .play-stepper output {
-  min-width: 2.2em;
+  min-width: 2em;
+  color: var(--text-primary);
   text-align: center;
-  font: 600 13px/1 var(--font-numeric);
+  font: 700 20px/1 var(--font-numeric);
   font-variant-numeric: tabular-nums;
 }
 .play-key {
-  padding: 0 var(--space-2) 0 var(--space-1);
-  color: var(--text-muted);
-  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font: 600 12px/1 var(--font-ui);
 }
 .ui-form .play-select {
-  justify-self: start;
-  min-height: 32px;
-  border-radius: 999px;
+  justify-self: stretch;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, var(--line-subtle));
+  border-radius: 12px;
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: 600 14px/1 var(--font-ui);
 }
 .play-warn {
   color: var(--state-warn);
@@ -577,37 +621,48 @@
 .ui-form .play-switch {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 0;
-  margin-left: var(--space-2);
-  font-size: 12px;
+  margin: 0 6px 0 8px;
+  color: var(--text-secondary);
+  font: 500 12px/1 var(--font-ui);
 }
 .play-switch input {
   position: relative;
-  width: 28px;
-  height: 16px;
+  flex: none;
+  width: 34px;
+  height: 20px;
   margin: 0;
   border-radius: 999px;
-  background: var(--line-strong);
+  background: color-mix(in oklch, var(--text-muted) 40%, transparent);
   appearance: none;
+  transition: background-color 140ms ease;
 }
 .play-switch input::before {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--surface-raised);
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--text-primary) 35%, transparent);
   content: "";
   transition: transform 140ms ease;
 }
 .play-switch input:checked {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
 }
 .play-switch input:checked::before {
-  transform: translateX(12px);
+  transform: translateX(14px);
 }
 .play-switch input:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-form .play-chip,
+  .play-switch input,
+  .play-switch input::before {
+    transition: none;
+  }
 }
