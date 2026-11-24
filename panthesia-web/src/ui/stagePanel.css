@@ -94,7 +94,8 @@
 }
 .stage-tools {
   flex: 1;
-  justify-content: space-between;
+  /* Equal room between the practice switches, the views and the panels. */
+  justify-content: space-evenly;
   gap: var(--space-3);
   min-width: 0;
 }
@@ -109,9 +110,11 @@
 .stage-inline button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-width: 34px;
   min-height: 32px;
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-2);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -133,4 +136,31 @@
   .stage-views button {
     padding: 0 var(--space-3);
   }
+}
+/* Compact controls on the bar so everything fits a 1000 px window. */
+.synthesia-transport .stage-tools :is(.stage-tool-button, .toolbar-more > summary) {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+.synthesia-transport .stage-tools :is(.stage-tool-button, .toolbar-more > summary) svg {
+  width: 20px;
+  height: 20px;
+}
+.synthesia-transport .synthesia-tempo-step {
+  width: 32px;
+  min-width: 0;
+}
+.stage-tools-group:last-child {
+  gap: 0;
+}
+.stage-inline button {
+  min-width: 30px;
+  padding: 0 6px;
+}
+.stage-tools {
+  gap: var(--space-2);
+}
+.synthesia-tool-cluster:has(> .stage-tools) {
+  margin-left: var(--space-2);
 }

@@ -59,6 +59,7 @@ export function Piano({
   display = displayDefaults,
   canInteract,
   practiceRange,
+  hideNotes = false,
 }: {
   song: LoadedSong | null;
   state: Snapshot;
@@ -73,8 +74,13 @@ export function Piano({
   onSelect?: (note: LoadedSong["notes"][number]) => void;
   canInteract?: () => boolean;
   practiceRange?: PracticeRange | null;
+  /** Keys and grid only: the score views draw the music above the keys instead. */
+  hideNotes?: boolean;
 }) {
   const backgroundImage = useStageBackground();
+  const hideNotesRef = useRef(hideNotes);
+  hideNotesRef.current = hideNotes;
+  const lastBaseline = useRef(-1);
   const viewport = useMemo(
     () => keyboardViewport ?? viewportFromRange(keyboardRange),
     [keyboardViewport, keyboardRange.low, keyboardRange.high],
@@ -175,6 +181,7 @@ export function Piano({
     lyrics,
   });
   const requestPaint = useRef<() => void>(() => {});
+  useEffect(() => requestPaint.current(), [hideNotes]);
   const hitSource = useRef<LoadedSong | null>(null);
   const held = useRef(new Map<number, number>());
   const hitNotes = useRef<
@@ -336,6 +343,11 @@ export function Piano({
         keyboardHeight = keyLength(display, keyWidth, height),
         bay = handBay(display, keyWidth, height),
         baseline = height - keyboardHeight - bay;
+      // Score layers above the keys size themselves to the waterfall (practiceStage.css).
+      if (baseline !== lastBaseline.current) {
+        lastBaseline.current = baseline;
+        canvas.current?.closest<HTMLElement>(".practice-stage")?.style.setProperty("--waterfall-height", `${baseline}px`);
+      }
       const position = clock.current.sample(now);
       layer.begin(width, height, baseline, dpr, {
         ...stageBackdrop,
@@ -508,7 +520,7 @@ export function Piano({
             : note.part === "left"
               ? palette.left
               : palette.right;
-      if (song) {
+      if (song && !hideNotesRef.current) {
         timeline.visit(tick, Math.min(tick + span, loopEnd), (note) => {
           if (!keyLayout.has(note.pitch)) return;
           if (

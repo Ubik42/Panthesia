@@ -136,11 +136,11 @@ export function PracticeTransport({
     >
       <button
         className="synthesia-back"
-        aria-label="返回歌曲设置"
+        aria-label="返回歌曲详情"
+        title="返回歌曲详情"
         onClick={back}
       >
         <ChevronLeft size={23} />
-        返回
       </button>
       <div className="practice-transport-main">
         <button

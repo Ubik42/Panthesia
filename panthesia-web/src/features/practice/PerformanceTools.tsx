@@ -1,4 +1,4 @@
-import { Eye, FileMusic, Hand, KeyboardMusic, Repeat, Rows2, ScrollText, Tags } from "lucide-react";
+import { AudioLines, Eye, FileMusic, Hand, Hourglass, KeyboardMusic, Repeat, Rows2, ScrollText, Tags } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
@@ -78,21 +78,21 @@ export function PerformanceTools({
 
       <div className="stage-tools-group" aria-label="练习">
         <div className="ui-segmented stage-inline" role="group" aria-label="练习方式">
-          <button aria-pressed={state.mode === "wait"} disabled={locked || !song} title="弹对后音乐才继续" onClick={() => action({ type: "mode", value: "wait" })}>
-            等待
+          <button aria-pressed={state.mode === "wait"} aria-label="等待按键" disabled={locked || !song} title="等待按键：弹对后音乐才继续" onClick={() => action({ type: "mode", value: "wait" })}>
+            <Hourglass size={17} aria-hidden="true" />
           </button>
-          <button aria-pressed={state.mode === "listen"} disabled={locked || !song} title="音乐连续播放" onClick={() => action({ type: "mode", value: "listen" })}>
-            连续
+          <button aria-pressed={state.mode === "listen"} aria-label="连续播放" disabled={locked || !song} title="连续播放：音乐不等待" onClick={() => action({ type: "mode", value: "listen" })}>
+            <AudioLines size={17} aria-hidden="true" />
           </button>
         </div>
         <div className="ui-segmented stage-inline" role="group" aria-label="练习的手">
           {[
-            ["left", "左手"],
-            ["both", "双手"],
-            ["right", "右手"],
-          ].map(([value, label]) => (
-            <button key={value} aria-pressed={state.hands === value} disabled={busy || state.recording || !song} onClick={() => action({ type: "hands", value })}>
-              {label}
+            ["left", "左", "只练左手"],
+            ["both", "双", "双手练习"],
+            ["right", "右", "只练右手"],
+          ].map(([value, short, label]) => (
+            <button key={value} aria-pressed={state.hands === value} aria-label={label} title={label} disabled={busy || state.recording || !song} onClick={() => action({ type: "hands", value })}>
+              {short}
             </button>
           ))}
         </div>

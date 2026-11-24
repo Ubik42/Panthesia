@@ -6,7 +6,7 @@ import type { ScoreToolRequest } from "./scoreToolRequest";
 import type { ScoreMappingRequest } from "./mappingTypes";
 import type { PracticeRange } from "../practice/usePracticeRange";
 import { TaskActivity } from "../../engine/TaskActivity";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo, useLayoutEffect } from "react";
 import type { PlaybackStore } from "../practice/playbackStore";
 import { usePlaybackFields } from "../practice/usePlaybackFields";
 import {
@@ -93,7 +93,8 @@ export function Notation({
     [loading, setLoading] = useState(true),
     [renderStage, setRenderStage] = useState("正在读取乐谱…"),
     [ambiguities, setAmbiguities] = useState(0);
-  const [showFingers, setShowFingers] = useState(true),
+  // Finger numbers on the staff are off unless asked for (the toolbar toggle).
+  const [showFingers, setShowFingers] = useState(false),
     [selected, setSelected] = useState<Mapping | null>(null),
     [selectionError, setSelectionError] = useState("");
   useEffect(() => {
@@ -230,7 +231,12 @@ export function Notation({
     }, 180);
     return () => window.clearTimeout(timer);
   }, [scoreLines, pageWidth, lines]);
-  // The current line's markup; the next one is prepared while this one is read.
+  // Line markup by line index for the current layout. The lines around the current one are
+  // fetched ahead, so turning to the next line shows markup already in hand (no wait for the
+  // renderer at the turn); a line not fetched yet keeps the previous markup until it arrives.
+  const lineCache = useRef<{ lines: readonly ScoreLine[]; svgs: Map<number, string>; wanted: Set<number> }>({ lines: [], svgs: new Map(), wanted: new Set() });
+  const [cacheTick, setCacheTick] = useState(0);
+  if (lineCache.current.lines !== lines) lineCache.current = { lines, svgs: new Map(), wanted: new Set() };
   useEffect(() => {
     if (!scoreLines || !lines.length) {
       setLineSvg("");
@@ -241,23 +247,37 @@ export function Notation({
       setLine(index);
       return;
     }
+    const cache = lineCache.current;
     let current = true;
     setLineError("");
-    scoreLines
-      .get(index)
-      .then((svg) => {
-        if (!current) return;
-        setLineSvg(svg);
-        const height = Number(svg.match(/viewBox="[\d.\s-]+?\s([\d.]+)"/)?.[1]);
-        // Adopt the measured line height once it differs clearly (avoids re-breaking on noise).
-        if (height > 40) setLineUnits((old) => (Math.abs(old - height) / old > 0.15 ? height : old));
-        if (index + 1 < lines.length) void scoreLines.get(index + 1).catch(() => {});
-      })
-      .catch((cause) => current && setLineError(cause instanceof Error ? cause.message : String(cause)));
+    for (const k of [index, index + 1, index + 2, index - 1]) {
+      if (k < 0 || k >= lines.length || cache.wanted.has(k)) continue;
+      cache.wanted.add(k);
+      scoreLines
+        .get(k)
+        .then((svg) => {
+          if (lineCache.current !== cache) return;
+          cache.svgs.set(k, svg);
+          setCacheTick((t) => t + 1);
+        })
+        .catch((cause) => {
+          cache.wanted.delete(k);
+          if (current && k === index) setLineError(cause instanceof Error ? cause.message : String(cause));
+        });
+    }
     return () => {
       current = false;
     };
   }, [scoreLines, lines, line]);
+  // Show the current line as soon as its markup is in the cache (synchronously on a turn).
+  useLayoutEffect(() => {
+    const svg = lineCache.current.svgs.get(Math.min(line, lines.length - 1));
+    if (svg === undefined) return;
+    setLineSvg((old) => (old === svg ? old : svg));
+    const height = Number(svg.match(/viewBox="[\d.\s-]+?\s([\d.]+)"/)?.[1]);
+    // Adopt the measured line height once it differs clearly (avoids re-breaking on noise).
+    if (height > 40) setLineUnits((old) => (Math.abs(old - height) / old > 0.15 ? height : old));
+  }, [line, lines, cacheTick]);
   const important = useMemo(() => {
     const keep = new Set<string>();
     for (const a of song.fingerActions ?? []) keep.add(`${a.track}:${a.index}`);

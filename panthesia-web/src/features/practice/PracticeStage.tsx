@@ -21,25 +21,22 @@ export function PracticeStage({
   children: ReactNode;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [automatic, setAutomatic] = useState<"rows" | "columns">("columns");
   const [draft, setDraft] = useState(ratio);
   const drag = useRef<{ pointer: number; value: number } | null>(null);
   useEffect(() => {
     if (!drag.current) setDraft(ratio);
   }, [ratio]);
-  useEffect(() => {
-    const node = root.current!;
-    const observer = new ResizeObserver(() =>
-      setAutomatic(
-        node.clientWidth > node.clientHeight * 1.7 ? "columns" : "rows",
-      ),
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-  const direction = axis === "auto" ? automatic : axis;
+  void axis;
   const clamp = (value: number) =>
-    Math.max(25, Math.min(75, Math.round(value)));
+    Math.max(15, Math.min(75, Math.round(value)));
+  /** The pointer's height as a share of the waterfall (the space above the keys). */
+  const shareAt = (clientY: number) => {
+    const node = root.current!;
+    const rect = node.getBoundingClientRect();
+    const css = Number.parseFloat(getComputedStyle(node).getPropertyValue("--waterfall-height")) || node.offsetHeight * 0.6;
+    const pixels = css * (rect.height / Math.max(1, node.offsetHeight));
+    return (100 * (clientY - rect.top)) / Math.max(1, pixels);
+  };
   const commit = (value: number) => {
     setDraft(value);
     changeRatio(value);
@@ -49,8 +46,7 @@ export function PracticeStage({
       ref={root}
       className="piano-stage practice-stage"
       data-combined={combined}
-      data-axis={direction}
-      style={{ "--score-share": `${draft}%` } as CSSProperties}
+      style={{ "--score-share-ratio": String(draft / 100) } as CSSProperties}
     >
       {children}
       {combined && (
@@ -59,8 +55,8 @@ export function PracticeStage({
           role="separator"
           tabIndex={0}
           aria-label="谱面与瀑布分隔条"
-          aria-orientation={direction === "columns" ? "vertical" : "horizontal"}
-          aria-valuemin={25}
+          aria-orientation="horizontal"
+          aria-valuemin={15}
           aria-valuemax={75}
           aria-valuenow={draft}
           aria-valuetext={`谱面占 ${draft}%`}
@@ -74,13 +70,7 @@ export function PracticeStage({
           }}
           onPointerMove={(event) => {
             if (drag.current?.pointer !== event.pointerId) return;
-            const rect = root.current!.getBoundingClientRect();
-            const value = clamp(
-              100 *
-                (direction === "columns"
-                  ? (event.clientX - rect.left) / rect.width
-                  : (event.clientY - rect.top) / rect.height),
-            );
+            const value = clamp(shareAt(event.clientY));
             drag.current.value = value;
             setDraft(value);
           }}
@@ -107,7 +97,7 @@ export function PracticeStage({
               ArrowUp: draft - step,
               ArrowRight: draft + step,
               ArrowDown: draft + step,
-              Home: 25,
+              Home: 15,
               End: 75,
             };
             if (event.key === "Escape" && drag.current) {

@@ -217,13 +217,12 @@ export function PracticeWorkspace() {
           >
             <div
               className="practice-stage-keyboard"
-              hidden={view !== "keyboard" && view !== "combined"}
               role="region"
               aria-label="瀑布与琴键区域"
             >
-              {productScreens.screen === "performance" &&
-                (view === "keyboard" || view === "combined") && (
+              {productScreens.screen === "performance" && (
                   <Piano
+                    hideNotes={view === "score" || view === "paper"}
                     song={song}
                     state={playback.getSnapshot()}
                     store={playback}
@@ -262,6 +261,7 @@ export function PracticeWorkspace() {
             </div>
             <div
               className="practice-stage-notation"
+              data-view={view}
               hidden={view !== "score" && view !== "combined"}
               role="region"
               aria-label="五线谱区域"
@@ -310,6 +310,7 @@ export function PracticeWorkspace() {
               view === "paper" &&
               song && (
                 state.contentId === song.contentId && (
+<div className="practice-stage-paper">
 <FollowingPaperScore
                       store={playback}
                       engineId={song.engineId ?? undefined}
@@ -319,6 +320,7 @@ export function PracticeWorkspace() {
                         song.meterMap ?? song.meterCorrection,
                       )}
                     />
+</div>
                 )
               )}
             {selectedNote &&

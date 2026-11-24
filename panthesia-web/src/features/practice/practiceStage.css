@@ -1,85 +1,91 @@
+/* The stage (PracticeStage.tsx): the waterfall and keys fill it in every view; the score is
+   drawn over the waterfall with no background of its own and never covers the keys. Piano sets
+   --waterfall-height to the height above the keys. Views: keyboard (waterfall), combined (one
+   score line over the top of the waterfall, the falling notes below it), score and paper (the
+   music fills the space above the keys; the falling notes are hidden). */
 .practice-stage {
   min-width: 0;
 }
-.practice-stage > .practice-stage-keyboard,
-.practice-stage > .practice-stage-notation {
+.practice-stage > .practice-stage-keyboard {
   position: absolute;
   inset: 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
+.practice-stage > .practice-stage-notation,
+.practice-stage > .practice-stage-paper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--waterfall-height, 60%);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: none;
+}
+.practice-stage > .practice-stage-notation[data-view="combined"] {
+  height: calc(var(--waterfall-height, 60%) * var(--score-share-ratio, 0.3));
+}
+.practice-stage > .practice-stage-notation :is(.notation-line, .score-paper, button, select, input, label, summary, .toolbar-more-actions),
+.practice-stage > .practice-stage-paper > * {
+  pointer-events: auto;
+}
 .practice-stage .practice-stage-notation > .notation-pane {
   inset: 0;
+  background: transparent;
 }
-.practice-stage[data-combined="true"] {
-  display: grid;
-  gap: 0;
-  overflow: hidden;
+/* On the stage the score has no toolbar band: its controls float at the top right, faint until
+   pointed at. Measure numbers are left out (the stage shows the measure in the timeline). */
+.practice-stage .practice-stage-notation .notation-pane > .notation-toolbar {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  z-index: 2;
+  width: auto;
+  padding: 2px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: color-mix(in oklab, var(--surface-panel) 80%, transparent);
+  opacity: 0.25;
+  transition: opacity 140ms var(--ease-out);
 }
-.practice-stage[data-combined="true"]
-  > :is(.practice-stage-keyboard, .practice-stage-notation) {
-  position: relative;
-  inset: auto;
-  width: 100%;
-  height: 100%;
+.practice-stage .practice-stage-notation:hover .notation-pane > .notation-toolbar,
+.practice-stage .practice-stage-notation .notation-pane > .notation-toolbar:focus-within {
+  opacity: 1;
 }
-.practice-stage[data-combined="true"][data-axis="columns"] {
-  grid-template-columns: minmax(0, var(--score-share)) 8px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-}
-.practice-stage[data-combined="true"][data-axis="columns"]
-  > .practice-stage-notation {
-  grid-area: 1 / 1;
-}
-.practice-stage[data-combined="true"][data-axis="columns"]
-  > .practice-stage-divider {
-  grid-area: 1 / 2;
-  cursor: col-resize;
-}
-.practice-stage[data-combined="true"][data-axis="columns"]
-  > .practice-stage-keyboard {
-  grid-area: 1 / 3;
-}
-.practice-stage[data-combined="true"][data-axis="rows"] {
-  grid-template-rows: minmax(0, var(--score-share)) 8px minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr);
-}
-.practice-stage[data-combined="true"][data-axis="rows"]
-  > .practice-stage-notation {
-  grid-area: 1 / 1;
-}
-.practice-stage[data-combined="true"][data-axis="rows"]
-  > .practice-stage-divider {
-  grid-area: 2 / 1;
-  cursor: row-resize;
-}
-.practice-stage[data-combined="true"][data-axis="rows"]
-  > .practice-stage-keyboard {
-  grid-area: 3 / 1;
+.practice-stage .practice-stage-notation .score-paper g.mNum {
+  display: none;
 }
 .practice-stage-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--waterfall-height, 60%) * var(--score-share-ratio, 0.3) - 4px);
+  height: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--instrument-line, var(--gray-92));
+  background: transparent;
+  cursor: row-resize;
   touch-action: none;
   z-index: 4;
   outline-offset: -2px;
 }
 .practice-stage-divider span {
-  width: 3px;
-  height: 34px;
-  border-radius: 3px;
-  background: var(--instrument-muted, var(--blue-60));
-}
-.practice-stage[data-axis="rows"] > .practice-stage-divider span {
   width: 34px;
   height: 3px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  opacity: 0;
+  transition: opacity 140ms var(--ease-out);
 }
-.practice-stage-divider:hover,
-.practice-stage-divider:focus-visible {
-  background: var(--instrument-accent, var(--indigo-60));
+.practice-stage-divider:hover span,
+.practice-stage-divider:focus-visible span {
+  opacity: 1;
+  background: var(--accent);
 }
 .practice-split-arrangement {
   display: flex;
