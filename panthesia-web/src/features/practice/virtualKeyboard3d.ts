@@ -60,10 +60,10 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
     group.add(mesh);
     keys.set(pitch, { mesh, material, base: (isB ? black : white).clone(), black: isB });
   }
-  // The piano around the keys and the room around the piano (seen in the free view): an upright
-  // piano in black lacquer with the keys 72 cm above a wooden floor, a bench, a rug, walls with
-  // wainscoting and a window.
-  const lacquer = new THREE.MeshPhysicalMaterial({ color: 0x0f0e10, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.15 });
+  // A digital piano in a room (seen in the free view): a slim body with a flat top behind the keys
+  // (nothing in front of the hands), side panels to the floor, the keys 72 cm up; on the top a
+  // vase of flowers and a photograph of the sea; a bench and a rug; sunlight through the windows.
+  const satin = new THREE.MeshPhysicalMaterial({ color: 0x17161a, roughness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.4 });
   const box = (w: number, d: number, h: number, x: number, y: number, z: number, material: Three.Material, shadow = true) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, d, h), material);
     mesh.position.set(x, y, z);
@@ -73,21 +73,24 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
     return mesh;
   };
   const FLOOR = -720;
-  const left = -45,
-    wide = right + 90,
+  const left = -40,
+    wide = right + 80,
     mid = right / 2;
-  // Key bed, the cheeks at both ends, the upper case with its fallboard, the lower panel.
-  box(wide, keyHeight + 40, 40, mid, keyHeight / 2 + 5, -WHITE_DEPTH - 20, lacquer);
-  box(45, keyHeight + 50, 95, left + 22, keyHeight / 2 + 10, -20, lacquer);
-  box(45, keyHeight + 50, 95, right + 23, keyHeight / 2 + 10, -20, lacquer);
-  box(wide, 280, 1010, mid, keyHeight + 160, 445, lacquer);
-  const fallboard = box(wide - 90, 40, 120, mid, keyHeight + 28, 40, lacquer);
-  fallboard.rotation.x = -0.25;
-  box(wide, 50, -FLOOR - 70, mid, keyHeight + 40, (FLOOR - 70) / 2 + 0, lacquer);
-  box(wide, 280, 30, mid, keyHeight + 160, FLOOR + 15, lacquer);
-  // A brass strip under the keys (the lock rail's trim).
-  const brass = new THREE.MeshPhysicalMaterial({ color: 0xb8903f, metalness: 0.9, roughness: 0.3 });
-  box(wide - 120, 6, 6, mid, -18, -WHITE_DEPTH - 4, brass, false);
+  const TOP = 38; // the body's flat top, above the white keys
+  const backEdge = keyHeight + 170;
+  // Key bed under the keys, the cheeks at both ends, the flat top behind the keys.
+  box(wide, keyHeight + 30, 34, mid, keyHeight / 2 + 2, -WHITE_DEPTH - 17, satin);
+  box(40, backEdge + 20, 70, left + 20, backEdge / 2 - 10, TOP - 35, satin);
+  box(40, backEdge + 20, 70, right + 20, backEdge / 2 - 10, TOP - 35, satin);
+  box(wide, backEdge - keyHeight + 10, 66, mid, (keyHeight + backEdge) / 2 + 5, TOP - 33, satin);
+  // Felt strip where the keys meet the body.
+  box(right, 6, 8, mid, keyHeight + 3, 4, new THREE.MeshStandardMaterial({ color: 0x5a1d24, roughness: 1 }), false);
+  // Side panels and a back panel down to the floor, a pedal bar with three pedals.
+  for (const x of [left + 15, right + 25]) box(30, backEdge - 40, -FLOOR - 40, x, backEdge / 2 + 20, (FLOOR - 40) / 2, satin);
+  box(wide, 20, 560, mid, backEdge - 10, FLOOR + 380, satin);
+  box(wide - 60, 260, 40, mid, backEdge - 160, FLOOR + 20, satin);
+  const brass = new THREE.MeshPhysicalMaterial({ color: 0xc9a253, metalness: 0.9, roughness: 0.28 });
+  for (const dx of [-70, 0, 70]) box(36, 150, 12, mid + dx, backEdge - 300, FLOOR + 48, brass);
 
   // Floor.
   const tile = woodTile();
@@ -155,6 +158,132 @@ export function buildKeyboard(THREE: typeof Three, geometry: Geometry, scale: nu
     box(800, 22, 1200, wx, backY - 34, FLOOR + 1650, glow, false);
     box(800, 26, 24, wx, backY - 40, FLOOR + 1650, windowFrame, false);
     box(24, 26, 1200, wx, backY - 40, FLOOR + 1650, windowFrame, false);
+  }
+
+  // On the piano: a vase of flowers and a framed photograph of the sea.
+  const vaseX = mid + Math.min(520, right * 0.33),
+    topZ = TOP;
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0xcfe6ef, roughness: 0.05, transmission: 0.85, thickness: 6, ior: 1.45, transparent: true, opacity: 0.6 });
+  const vase = new THREE.Mesh(new THREE.CylinderGeometry(38, 30, 190, 32, 1, false), glass);
+  vase.rotation.x = Math.PI / 2;
+  vase.position.set(vaseX, keyHeight + 95, topZ + 95);
+  group.add(vase);
+  const stem = new THREE.MeshStandardMaterial({ color: 0x3f6b33, roughness: 0.8 });
+  const petals = [0xf2c4ce, 0xffffff, 0xf5d36b, 0xe86f7e, 0xf2c4ce, 0xb58bd8, 0xffffff];
+  const rnd = (k: number) => (Math.sin(k * 12.9898) * 43758.5453) % 1;
+  petals.forEach((color, k) => {
+    const a = (k / petals.length) * Math.PI * 2,
+      lean = 0.18 + Math.abs(rnd(k + 1)) * 0.25,
+      length = 260 + Math.abs(rnd(k + 3)) * 140;
+    const end = new THREE.Vector3(vaseX + Math.cos(a) * Math.sin(lean) * length, keyHeight + 95 + Math.sin(a) * Math.sin(lean) * length, topZ + 190 + Math.cos(lean) * length * 0.75);
+    const start = new THREE.Vector3(vaseX, keyHeight + 95, topZ + 120);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, start.distanceTo(end), 6), stem);
+    rod.position.copy(start).add(end).multiplyScalar(0.5);
+    rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+    group.add(rod);
+    const bloom = new THREE.Mesh(new THREE.SphereGeometry(34 + Math.abs(rnd(k + 7)) * 16, 16, 12), new THREE.MeshStandardMaterial({ color, roughness: 0.75 }));
+    bloom.scale.set(1, 1, 0.7);
+    bloom.position.copy(end);
+    bloom.castShadow = true;
+    group.add(bloom);
+    const centre = new THREE.Mesh(new THREE.SphereGeometry(10, 10, 8), new THREE.MeshStandardMaterial({ color: 0xe0a030, roughness: 0.8 }));
+    centre.position.copy(end).add(new THREE.Vector3(0, -12, 18));
+    group.add(centre);
+  });
+  for (let k = 0; k < 5; k++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(30, 10, 8), stem);
+    leaf.scale.set(1.6, 0.35, 0.6);
+    const a = k * 1.3;
+    leaf.position.set(vaseX + Math.cos(a) * 60, keyHeight + 95 + Math.sin(a) * 50, topZ + 230 + k * 18);
+    leaf.rotation.z = a;
+    group.add(leaf);
+  }
+  // The photograph: the sea at evening, drawn into the frame.
+  const photo = document.createElement("canvas");
+  photo.width = 320;
+  photo.height = 240;
+  const pc = photo.getContext("2d")!;
+  const sky = pc.createLinearGradient(0, 0, 0, 140);
+  sky.addColorStop(0, "#5f8fc9");
+  sky.addColorStop(0.6, "#f2b27a");
+  sky.addColorStop(1, "#f7d9a6");
+  pc.fillStyle = sky;
+  pc.fillRect(0, 0, 320, 140);
+  pc.fillStyle = "#fff2c8";
+  pc.beginPath();
+  pc.arc(205, 128, 20, 0, Math.PI * 2);
+  pc.fill();
+  const sea = pc.createLinearGradient(0, 132, 0, 240);
+  sea.addColorStop(0, "#3d78a8");
+  sea.addColorStop(1, "#173e63");
+  pc.fillStyle = sea;
+  pc.fillRect(0, 132, 320, 108);
+  pc.fillStyle = "rgba(255,236,190,0.75)";
+  for (let k = 0; k < 14; k++) pc.fillRect(190 - k * 2 + ((k * 37) % 23), 136 + k * 6, 30 - k, 2);
+  pc.strokeStyle = "rgba(255,255,255,0.35)";
+  for (let k = 0; k < 10; k++) {
+    pc.beginPath();
+    const y = 150 + k * 9;
+    pc.moveTo(0, y);
+    for (let x = 0; x <= 320; x += 20) pc.lineTo(x, y + Math.sin(x * 0.05 + k) * 1.5);
+    pc.stroke();
+  }
+  pc.fillStyle = "#e9d6b0";
+  pc.beginPath();
+  pc.moveTo(0, 240);
+  pc.quadraticCurveTo(110, 205, 320, 228);
+  pc.lineTo(320, 240);
+  pc.fill();
+  const photoTexture = new THREE.CanvasTexture(photo);
+  photoTexture.colorSpace = THREE.SRGBColorSpace;
+  const frameX = mid - Math.min(520, right * 0.33);
+  const frame = new THREE.Group();
+  const wood = new THREE.MeshPhysicalMaterial({ color: 0x6b4428, roughness: 0.4, clearcoat: 0.4 });
+  const border = new THREE.Mesh(new THREE.BoxGeometry(250, 14, 196), wood);
+  const picture = new THREE.Mesh(new THREE.PlaneGeometry(214, 160), new THREE.MeshStandardMaterial({ map: photoTexture, roughness: 0.35 }));
+  picture.rotation.x = Math.PI / 2;
+  picture.position.y = -7.5;
+  frame.add(border, picture);
+  border.castShadow = true;
+  frame.position.set(frameX, keyHeight + 110, topZ + 98);
+  frame.rotation.x = -0.18;
+  frame.rotation.z = 0.12;
+  group.add(frame);
+
+  // Sunlight through the windows: a warm sun casting long light, beams in the air and bright
+  // patches on the floor.
+  const sun = new THREE.DirectionalLight(0xffd9a0, 1.4);
+  sun.position.set(mid + 900, backY + 1400, FLOOR + 2600);
+  sun.target.position.set(mid - 200, -900, FLOOR);
+  group.add(sun, sun.target);
+  const beamCanvas = document.createElement("canvas");
+  beamCanvas.width = 4;
+  beamCanvas.height = 128;
+  const bc = beamCanvas.getContext("2d")!;
+  const beamFade = bc.createLinearGradient(0, 0, 0, 128);
+  beamFade.addColorStop(0, "rgba(255,226,170,0.55)");
+  beamFade.addColorStop(1, "rgba(255,226,170,0)");
+  bc.fillStyle = beamFade;
+  bc.fillRect(0, 0, 4, 128);
+  const beamTexture = new THREE.CanvasTexture(beamCanvas);
+  const beamMaterial = new THREE.MeshBasicMaterial({ map: beamTexture, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, opacity: 0.55 });
+  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending });
+  for (const dx of [-1, 1]) {
+    const wx = mid + dx * Math.max(900, right * 0.45);
+    const from = new THREE.Vector3(wx, backY - 40, FLOOR + 1650),
+      to = new THREE.Vector3(wx - 350, backY - 1900, FLOOR + 2);
+    for (const spread of [-280, 0, 280]) {
+      const a = from.clone().add(new THREE.Vector3(spread, 0, 0)),
+        b = to.clone().add(new THREE.Vector3(spread * 1.2, 0, 0));
+      const beam = new THREE.Mesh(new THREE.PlaneGeometry(220, a.distanceTo(b)), beamMaterial);
+      beam.position.copy(a).add(b).multiplyScalar(0.5);
+      beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().sub(b).normalize());
+      group.add(beam);
+    }
+    const patch = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1300), patchMaterial);
+    patch.position.set(wx - 350, backY - 1900, FLOOR + 3);
+    patch.rotation.z = 0.2;
+    group.add(patch);
   }
   return { group, keys, layout, width: right, depth: keyHeight };
 }
