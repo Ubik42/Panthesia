@@ -636,38 +636,34 @@ fn chord_shape_cost(
     hand: FingeringHand,
     profile: HandSpanProfile,
 ) -> i32 {
-    let low_pitch = notes[pitch_order[0]].pitch;
-    let span = i32::from(
-        notes[pitch_order[pitch_order.len() - 1]]
-            .pitch
-            .saturating_sub(low_pitch),
-    )
-    .max(1);
+    // Each finger pair of the chord against what that pair spans comfortably (the same
+    // Parncutt/Jacobs table as melodic steps), plus the finger preference: a third takes 1-3 or
+    // 2-4, an octave 1-5; the hand is not spread across all five fingers for a small chord.
     let mut cost = 0;
-
     for index in pitch_order {
-        let pitch_offset = i32::from(notes[*index].pitch.saturating_sub(low_pitch));
-        let physical_position = match fingers[*index] {
-            finger @ 1..=5 => i32::from(finger - 1),
-            _ => return INFINITY,
-        };
-        let physical_position = match hand {
-            FingeringHand::Right => physical_position,
-            FingeringHand::Left => 4 - physical_position,
-        };
-        cost += (physical_position * span - pitch_offset * 4).abs();
-        cost += static_key_cost(notes[*index].pitch, fingers[*index]);
+        let finger = fingers[*index];
+        if !(1..=5).contains(&finger) {
+            return INFINITY;
+        }
+        // In a chord the shape decides; the outer fingers on the outer notes are the normal shape,
+        // so only the ring finger keeps a slight cost (a tie-break toward 1-3-5).
+        if finger == 4 {
+            cost += 1;
+        }
+        cost += static_key_cost(notes[*index].pitch, finger);
     }
-
     for first in 0..pitch_order.len() {
         for second in (first + 1)..pitch_order.len() {
-            let low = pitch_order[first];
-            let high = pitch_order[second];
-            let distance = i32::from(notes[high].pitch - notes[low].pitch);
-            let finger_gap = usize::from(fingers[low].abs_diff(fingers[high]));
-            let comfortable = profile.comfortable_spans()[finger_gap];
-            cost += (distance - comfortable).max(0) * 8;
+            let (a, b) = (pitch_order[first], pitch_order[second]);
+            cost += hand_model::chord_pair_cost(notes[a].pitch, fingers[a], notes[b].pitch, fingers[b], hand, profile);
         }
+    }
+    // Evenness: the hand lies over the chord about one white key (two semitones) per finger, so
+    // neighbouring chord notes use fingers as far apart as their interval asks.
+    for pair in pitch_order.windows(2) {
+        let d = i32::from(notes[pair[1]].pitch) - i32::from(notes[pair[0]].pitch);
+        let gap = i32::from(fingers[pair[0]].abs_diff(fingers[pair[1]]));
+        cost += (d - 2 * gap).abs();
     }
     cost
 }
@@ -1123,7 +1119,9 @@ mod tests {
             .map(|suggestion| suggestion.unwrap().finger)
             .collect();
 
-        assert_eq!(fingers, [1, 3, 5, 1, 3, 5]);
+        // C-E-G then C-E-A: C and E stay under the same fingers (1, 2); since 2026-11-24 chords are
+        // scored by relaxed pair spans and evenness, and C-E-A takes its usual 1-2-5.
+        assert_eq!(fingers, [1, 2, 4, 1, 2, 5]);
         assert_eq!(
             suggestions[3].unwrap().reason,
             FingeringReason::ChordConnection
@@ -1156,7 +1154,8 @@ mod tests {
             .map(|suggestion| suggestion.unwrap().finger)
             .collect();
 
-        assert_eq!(fingers, [1, 3, 5, 1, 3, 5]);
+        // E-G-C (first inversion, its usual 1-2-5) then D-G-B: G stays under finger 2.
+        assert_eq!(fingers, [1, 2, 5, 1, 2, 4]);
         assert_eq!(
             connected[4].unwrap().reason,
             FingeringReason::ChordConnection

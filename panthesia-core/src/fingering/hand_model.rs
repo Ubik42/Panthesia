@@ -38,6 +38,9 @@ pub(crate) fn spans(i: u8, j: u8, profile: HandSpanProfile) -> [i32; 6] {
     s
 }
 
+/// Cost of using each finger (thumb to little finger): the order players prefer.
+pub(crate) const FINGER_USE: [i32; 5] = [0, 0, 1, 3, 5];
+
 /// Extra cost of a real crossing: the thumb passing under (or a finger over it) while the first
 /// key is still held. Fingers then pass through each other's place, which the hands never do
 /// (2026-11-24 user decision); with the first key released it is an ordinary change of position.
@@ -76,14 +79,9 @@ pub(crate) fn pair_cost(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand, pro
     // Small and large span: 1 point per semitone outside the relaxed range, 2 without the thumb.
     let weight = if i == 1 { 1 } else { 2 };
     cost += weight * ((min_rel - d).max(0) + (d - max_rel).max(0));
-    // Weak finger: players lead with the thumb, index and middle finger and bring in the ring
-    // and little finger when the hand needs them (2026-11-24: stronger than Parncutt's 1 point;
-    // the little finger less, as the hand's outer edge often needs it).
-    if f2 == 4 {
-        cost += 5;
-    } else if f2 == 5 {
-        cost += 3;
-    }
+    // Finger preference (2026-11-24 user decision, a clear order): thumb and index first, the
+    // middle finger nearly as readily, then the ring finger, the little finger last.
+    cost += FINGER_USE[usize::from(f2.clamp(1, 5)) - 1];
     // Three-to-four, and four on black next to three on white.
     if (f1, f2) == (3, 4) || (f1, f2) == (4, 3) {
         cost += 1;
@@ -113,6 +111,24 @@ pub(crate) fn pair_cost(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand, pro
             (true, false) => 4,
             (true, true) => 2,
         };
+    }
+    cost
+}
+
+/// Cost of holding `p1` with `f1` and `p2` with `f2` at once: 3 points a semitone outside the
+/// pair's relaxed span, beyond what the hand can do 25 + 6 a semitone (a chord's notes are all down together, so no position change can help).
+pub(crate) fn chord_pair_cost(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand, profile: HandSpanProfile) -> i32 {
+    if f1 == f2 {
+        return 1000;
+    }
+    let (i, j, d) = oriented(p1, f1, p2, f2, hand);
+    let [min_prac, min_comf, min_rel, max_rel, max_comf, max_prac] = spans(i, j, profile);
+    let impossible = (d - max_prac).max(0) + (min_prac - d).max(0);
+    let _ = (min_comf, max_comf);
+    // Held together, the fingers sit in their relaxed spans: 3 points a semitone outside them.
+    let mut cost = 3 * ((min_rel - d).max(0) + (d - max_rel).max(0));
+    if impossible > 0 {
+        cost += 25 + 6 * impossible;
     }
     cost
 }
