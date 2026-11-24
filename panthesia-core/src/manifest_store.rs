@@ -37,8 +37,9 @@ pub fn write(located: &Located) -> Result<(), String> {
     atomic_file::write(&located.path, &bytes).map_err(|e| format!("歌曲清单保存失败：{e}"))
 }
 
-/// Lookup order (current-plan 3.7): ① same-name manifest beside the file; ② a `song.panthesia`
-/// in the same folder or up to two levels above that references the file. Unreadable manifests
+/// Lookup order (current-plan 3.7): ① same-name manifest beside the file; ② another manifest in
+/// the same folder that references the file (a song's versions in the standard layout); ③ a
+/// `song.panthesia` in the same folder or up to two levels above that references the file. Unreadable manifests
 /// are reported as errors rather than skipped, so a damaged file is never silently replaced.
 pub fn locate(music: &Path) -> Result<Option<Located>, String> {
     if music.extension().is_some_and(|e| e.eq_ignore_ascii_case(manifest::EXTENSION)) {
@@ -49,6 +50,22 @@ pub fn locate(music: &Path) -> Result<Option<Located>, String> {
     let sibling = dir.join(manifest::sibling_name(name));
     if sibling.is_file() {
         return read(&sibling).map(Some);
+    }
+    // ② Standard layout: another file of the song (a version, `歌名（乐谱量化）.mid`) beside a
+    // `歌名.panthesia` that references it.
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        let mut manifests: Vec<PathBuf> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case(manifest::EXTENSION)) && p.is_file())
+            .collect();
+        manifests.sort();
+        for candidate in manifests {
+            let Ok(located) = read(&candidate) else { continue };
+            if located.manifest.references(name) {
+                return Ok(Some(located));
+            }
+        }
     }
     let mut folder = Some(dir);
     for _ in 0..=PARENT_LEVELS {
