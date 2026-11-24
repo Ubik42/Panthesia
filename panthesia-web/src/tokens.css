@@ -115,9 +115,120 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --scheme: dark;
   --font-ui: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
   --font-numeric: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Light theme (the default; settings → 舞台外观 → 界面主题). The palette above is used directly
+   by older component styles written for dark surfaces; in the light theme its lightness is
+   turned over (dark surfaces become near-white, light inks dark), so those styles follow. */
+:root[data-theme="light"] {
+  --gray-0: oklch(99.5% 0.000 0);
+  --gray-18: oklch(97.8% 0.010 259);
+  --gray-21: oklch(96.5% 0.010 265);
+  --gray-24: oklch(95.7% 0.012 255);
+  --gray-26: oklch(95.0% 0.013 254);
+  --gray-27: oklch(94.5% 0.011 251);
+  --gray-29: oklch(93.9% 0.013 249);
+  --gray-30: oklch(93.6% 0.014 153);
+  --gray-31: oklch(93.1% 0.010 70);
+  --gray-33: oklch(92.2% 0.010 252);
+  --gray-75: oklch(37.7% 0.026 249);
+  --gray-82: oklch(30.9% 0.022 126);
+  --gray-85: oklch(28.3% 0.026 247);
+  --gray-89: oklch(24.5% 0.023 245);
+  --gray-92: oklch(21.2% 0.017 253);
+  --gray-96: oklch(17.9% 0.006 235);
+  --gray-100: oklch(14.0% 0.000 90);
+  --red-55: oklch(52.1% 0.148 35);
+  --red-57: oklch(50.7% 0.084 19);
+  --red-78: oklch(34.3% 0.116 28);
+  --orange-35: oklch(91.6% 0.019 57);
+  --orange-41: oklch(61.2% 0.060 69);
+  --orange-56: oklch(51.4% 0.077 67);
+  --orange-62: oklch(47.5% 0.144 62);
+  --orange-71: oklch(41.1% 0.103 44);
+  --orange-88: oklch(25.5% 0.077 70);
+  --amber-49: oklch(55.7% 0.061 73);
+  --amber-67: oklch(44.2% 0.101 79);
+  --amber-77: oklch(35.6% 0.116 75);
+  --amber-83: oklch(29.6% 0.101 78);
+  --amber-90: oklch(23.1% 0.054 79);
+  --green-25: oklch(95.1% 0.019 137);
+  --green-39: oklch(90.2% 0.027 147);
+  --green-49: oklch(56.1% 0.052 142);
+  --green-57: oklch(51.0% 0.077 143);
+  --green-62: oklch(47.1% 0.236 142);
+  --green-66: oklch(44.5% 0.109 146);
+  --green-75: oklch(37.7% 0.164 131);
+  --green-80: oklch(32.3% 0.121 131);
+  --green-81: oklch(31.4% 0.153 130);
+  --green-83: oklch(29.9% 0.067 136);
+  --green-84: oklch(28.7% 0.170 131);
+  --green-86: oklch(26.9% 0.130 130);
+  --green-87: oklch(26.0% 0.081 130);
+  --green-93: oklch(20.7% 0.061 128);
+  --teal-34: oklch(92.0% 0.020 162);
+  --teal-76: oklch(36.8% 0.097 180);
+  --teal-80: oklch(32.8% 0.138 172);
+  --teal-84: oklch(29.2% 0.107 172);
+  --teal-87: oklch(25.9% 0.047 163);
+  --teal-91: oklch(22.7% 0.098 167);
+  --teal-96: oklch(17.4% 0.041 168);
+  --cyan-84: oklch(28.8% 0.093 214);
+  --blue-32: oklch(92.9% 0.020 257);
+  --blue-33: oklch(92.4% 0.031 264);
+  --blue-37: oklch(91.1% 0.015 252);
+  --blue-39: oklch(90.2% 0.015 250);
+  --blue-41: oklch(61.6% 0.053 241);
+  --blue-43: oklch(59.9% 0.031 248);
+  --blue-46: oklch(58.3% 0.038 244);
+  --blue-50: oklch(55.5% 0.040 251);
+  --blue-50-c10: oklch(55.2% 0.117 239);
+  --blue-55: oklch(51.7% 0.053 260);
+  --blue-57: oklch(50.4% 0.123 237);
+  --blue-60: oklch(48.8% 0.044 260);
+  --blue-63: oklch(46.6% 0.062 255);
+  --blue-66: oklch(44.5% 0.135 238);
+  --blue-67: oklch(44.1% 0.045 256);
+  --blue-71: oklch(41.3% 0.033 248);
+  --blue-75: oklch(37.1% 0.103 243);
+  --blue-78: oklch(34.2% 0.031 249);
+  --blue-82: oklch(31.0% 0.030 247);
+  --blue-86: oklch(27.0% 0.072 261);
+  --indigo-26: oklch(95.0% 0.028 267);
+  --indigo-53: oklch(53.3% 0.155 272);
+  --indigo-58: oklch(50.0% 0.176 276);
+  --indigo-60: oklch(48.4% 0.164 272);
+  --indigo-67: oklch(43.9% 0.139 275);
+  --violet-61: oklch(48.2% 0.125 298);
+  --violet-77: oklch(35.5% 0.121 297);
+}
+:root[data-theme="light"] {
+  --scheme: light;
+  --surface-base: oklch(97.6% 0.004 262);
+  --surface-panel: oklch(100% 0 0);
+  --surface-raised: oklch(100% 0 0);
+  --surface-hover: oklch(94.6% 0.008 262);
+  --surface-sunken: oklch(95% 0.005 262);
+  --text-primary: oklch(23% 0.02 262);
+  --text-secondary: oklch(40% 0.02 262);
+  --text-muted: oklch(55% 0.016 262);
+  --line-subtle: oklch(25% 0.02 262 / 0.09);
+  --line-strong: oklch(25% 0.02 262 / 0.17);
+  --accent: oklch(55% 0.17 274);
+  --accent-strong: oklch(47% 0.18 274);
+  --accent-soft: oklch(55% 0.17 274 / 0.11);
+  --on-accent: oklch(99% 0 0);
+  --state-ok: oklch(54% 0.13 160);
+  --state-warn: oklch(60% 0.15 70);
+  --state-missing: oklch(54% 0.18 25);
+  --state-generated: oklch(50% 0.15 305);
+  --hand-left: oklch(57% 0.15 242);
+  --hand-right: oklch(60% 0.16 140);
+  --shadow-raised: 0 1px 2px oklch(0% 0 0 / 0.06), 0 10px 28px oklch(25% 0.02 262 / 0.12);
 }
 
 /* Variables of the older component styles, mapped onto the semantic tokens (dark surfaces).

@@ -174,7 +174,8 @@ export function Notation({
   /** Verovio page width (its units) for lines as wide, relative to their height, as the pane:
    * a line is about 0.4 × the page width wide in SVG units. A pane too low for a readable staff
    * gets wider lines, scaled down to its height. */
-  const aspect = pane.height ? Math.max(2.5, Math.min(14, pane.width / Math.max(90, pane.height - 12))) : 0;
+  // The line's content box (the pane less its 12 px side and 6 px top and bottom padding).
+  const aspect = pane.height ? Math.max(2.5, Math.min(14, (pane.width - 24) / Math.max(90, pane.height - 12))) : 0;
   const pageWidth = pane.width ? Math.max(1200, Math.min(12000, Math.round((lineUnits * aspect) / 0.4 / 100) * 100)) : 0;
   const scroll = useRef<HTMLDivElement>(null);
   const [scoreLines, setScoreLines] = useState<ScoreLines | null>(null),

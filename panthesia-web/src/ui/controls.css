@@ -1,6 +1,6 @@
 /* Shared controls for the redesigned screens (interface-design.md section 2). Semantic tokens only. */
 .ui-screen {
-  color-scheme: dark;
+  color-scheme: var(--scheme);
   font-family: var(--font-ui);
   color: var(--text-primary);
   background:

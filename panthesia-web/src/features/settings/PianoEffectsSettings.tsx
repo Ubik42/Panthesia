@@ -1,5 +1,6 @@
 import type { DisplayPreferences } from "./displayPreferences";
 import { chooseStageBackground, clearStageBackground, useStageBackground } from "../../stage/stageBackground";
+import { StageColorPicker } from "./StageColorPicker";
 
 type Change = (patch: Partial<DisplayPreferences>) => void;
 
@@ -21,8 +22,26 @@ export function PianoEffectsSettings({ value, change }: { value: DisplayPreferen
   const image = useStageBackground();
   return (
     <>
+      <section aria-labelledby="appearance-theme">
+        <h3 id="appearance-theme">界面</h3>
+        <div className="ui-row">
+          <span>主题</span>
+          <span className="ui-segmented" role="group" aria-label="界面主题">
+            <button type="button" aria-pressed={value.theme === "light"} onClick={() => change({ theme: "light" })}>
+              浅色
+            </button>
+            <button type="button" aria-pressed={value.theme === "dark"} onClick={() => change({ theme: "dark" })}>
+              深色
+            </button>
+          </span>
+        </div>
+      </section>
       <section aria-labelledby="appearance-backdrop">
         <h3 id="appearance-backdrop">舞台背景</h3>
+        <div className="ui-row">
+          <span>背景色</span>
+          <StageColorPicker value={value.stageColor} change={(stageColor) => change({ stageColor })} />
+        </div>
         <Percent label="背景不透明度" value={value.backgroundOpacity} change={(backgroundOpacity) => change({ backgroundOpacity })} />
         <div className="ui-row">
           <span>背景图片</span>

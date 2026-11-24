@@ -12,7 +12,7 @@
   box-shadow: var(--shadow-raised);
   overflow: auto;
   backdrop-filter: blur(12px);
-  color-scheme: dark;
+  color-scheme: var(--scheme);
 }
 .stage-panel-title {
   margin: 0;
@@ -163,4 +163,17 @@
 }
 .synthesia-tool-cluster:has(> .stage-tools) {
   margin-left: var(--space-2);
+}
+/* Icon toggles on the bar: on is the accent colour on a soft ground. */
+.stage-toggle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.stage-toggles {
+  gap: 2px;
+}
+@media (max-width: 1180px) {
+  .stage-toggle[data-optional] {
+    display: none;
+  }
 }

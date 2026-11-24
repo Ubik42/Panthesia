@@ -215,7 +215,7 @@
   box-shadow: var(--shadow-raised);
   padding: 8px;
   font: 13px/1.4 var(--font-ui);
-  color-scheme: dark;
+  color-scheme: var(--scheme);
 }
 .synthesia-layout .synthesia-transport .toolbar-more-actions button {
   color: var(--text-primary);

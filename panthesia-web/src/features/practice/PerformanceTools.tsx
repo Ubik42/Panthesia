@@ -1,5 +1,6 @@
-import { AudioLines, Eye, FileMusic, Hand, Hourglass, KeyboardMusic, Repeat, Rows2, ScrollText, Tags } from "lucide-react";
-import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
+import { AudioLines, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Repeat, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { StageColorPicker } from "../settings/StageColorPicker";
+import { useState, type ComponentType, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
 import type { DisplayPreferences } from "../settings/displayPreferences";
@@ -18,7 +19,7 @@ import { usePlaybackFields } from "./usePlaybackFields";
 import { ChordsDialog } from "./ChordsDialog";
 import "../../ui/stagePanel.css";
 
-const VIEWS: [string, string, boolean, typeof Eye][] = [
+const VIEWS: [string, string, boolean, LucideIcon][] = [
   ["keyboard", "瀑布", false, KeyboardMusic],
   ["combined", "谱面 + 瀑布", true, Rows2],
   ["score", "五线谱", false, FileMusic],
@@ -107,28 +108,32 @@ export function PerformanceTools({
         ))}
       </div>
 
+      <div className="stage-tools-group stage-toggles" aria-label="显示开关">
+        <Toggle icon={Hand} label="虚拟双手" on={display.virtualHands} change={(virtualHands) => {
+          set({ virtualHands });
+          if (virtualHands && view !== "keyboard" && view !== "combined") setView("keyboard");
+        }} />
+        <Toggle optional icon={Lightbulb} label="琴键灯带" on={display.ledStrip} change={(ledStrip) => set({ ledStrip })} />
+        <Toggle icon={Milestone} label="段落" on={display.sections} disabled={!song?.sections?.items.length} change={(sections) => set({ sections })} />
+        <Toggle icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
+        <Toggle optional icon={MicVocal} label="歌词" on={display.lyrics} disabled={!song?.importedLayers.lyrics.length} change={(lyrics) => set({ lyrics })} />
+        <Toggle optional icon={Clock4} label="拍号" on={display.meterLabels} change={(meterLabels) => set({ meterLabels })} />
+        <Toggle icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
+      </div>
+
       <div className="stage-tools-group" aria-label="面板">
-      <ToolbarMore panel icon={<Eye size={24} />} label="舞台" disabled={!startupReady}>
+      <ToolbarMore panel icon={<SlidersHorizontal size={22} />} label="显示设置" disabled={!startupReady}>
         <section aria-label="舞台">
-          <h3>舞台</h3>
           <label>
-            <input
-              type="checkbox"
-              aria-label="虚拟双手演示"
-              checked={display.virtualHands}
-              onChange={(event) => {
-                set({ virtualHands: event.target.checked });
-                if (event.target.checked && view !== "keyboard" && view !== "combined") setView("keyboard");
-              }}
-            />
-            虚拟双手
+            <span>背景色</span>
+            <StageColorPicker value={display.stageColor} change={(stageColor) => set({ stageColor })} />
           </label>
           <label>
             <input type="checkbox" aria-label="琴键灯带" checked={display.ledStrip} onChange={(event) => set({ ledStrip: event.target.checked })} />
             琴键灯带
           </label>
-          <label>
-            <span>背景</span>
+          <label title="瀑布底色盖住背景图片的程度">
+            <span>背景图片</span>
             <span className="settings-range">
               <input type="range" aria-label="背景不透明度" min={0} max={100} value={display.backgroundOpacity} onChange={(event) => set({ backgroundOpacity: Number(event.target.value) })} />
               <output>{display.backgroundOpacity}%</output>
@@ -145,12 +150,6 @@ export function PerformanceTools({
             />
           )}
         </section>
-        <button className="stage-panel-link" onClick={open.settings}>
-          更多舞台设置…
-        </button>
-      </ToolbarMore>
-
-      <ToolbarMore panel icon={<Tags size={24} />} label="标注" disabled={!startupReady}>
         <section aria-label="标注">
           <h3>标注</h3>
           {!!song?.harmony?.chords.length && (
@@ -239,9 +238,8 @@ export function PerformanceTools({
         </section>
       </ToolbarMore>
 
-      <ToolbarMore panel icon={<Hand size={24} />} label="指法" disabled={!song || !startupReady}>
+      <ToolbarMore panel icon={<Hash size={22} />} label="指法" disabled={!song || !startupReady}>
         <section aria-label="指法">
-          <h3>指法</h3>
           <label>
             <input
               type="checkbox"
@@ -260,17 +258,17 @@ export function PerformanceTools({
         </section>
       </ToolbarMore>
 
-      <button
-        className="stage-tool-button"
-        title="节拍器"
-        aria-label="节拍器"
-        aria-pressed={state.metronome}
-        disabled={busy || !song}
-        onClick={() => action({ type: "metronome", enabled: !state.metronome })}
-      >
-        <MetronomeIcon size={24} />
-      </button>
+
       </div>
     </div>
+  );
+}
+
+/** An icon toggle on the stage bar (name in the tooltip). */
+function Toggle({ icon: Icon, label, on, change, disabled, optional }: { icon: ComponentType<{ size?: number }>; label: string; on: boolean; change: (on: boolean) => void; disabled?: boolean; /** Left off the bar in a narrow window (the display settings panel has it too). */ optional?: boolean }) {
+  return (
+    <button className="stage-tool-button stage-toggle" data-optional={optional || undefined} title={label} aria-label={label} aria-pressed={on} disabled={disabled} onClick={() => change(!on)}>
+      <Icon size={20} />
+    </button>
   );
 }

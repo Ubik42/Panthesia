@@ -7,7 +7,7 @@ import { HandSplitScreen } from "../screens/song/HandSplitScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { FreePlayScreen } from "../screens/freeplay/FreePlayScreen";
 import { SettingsScreen } from "../screens/settings/SettingsScreen";
-import { PartsScreen } from "../screens/song/PartsScreen";
+import { applyPracticeVariant } from "./practiceVariant";
 
 import { api } from "../api";
 import { Piano } from "../stage/Piano";
@@ -74,14 +74,22 @@ export function ProductScreens() {
             back={() => {
               void goHome();
             }}
-            parts={() => productScreens.show("parts")}
-            options={() => setSongOptions(true)}
+            parts={{
+              builtin: !state.outputId,
+              pianoOnly: /default\.sf2$/i.test(state.soundfont ?? ""),
+              custom: (track) => {
+                const t = song.tracks.find((t) => t.id === track);
+                if (t && !t.visible)
+                  void run({ type: "track", id: t.id, mode: t.mode, part: t.part, visible: true }, true).then((ok) => ok && productScreens.split(track));
+                else productScreens.split(track);
+              },
+              command: (value) => run(value, true),
+            }}
+            variant={(value) => applyPracticeVariant(run, song, value)}
             scores={() => setScoresDialog(true)}
-            sound={() => openSoundSettings()}
             tools={() => openSettings("tools")}
             editLayer={(name) => {
-              if (name === "hands") productScreens.show("parts");
-              else if (name === "fingering") setFingeringDialog(true);
+              if (name === "fingering") setFingeringDialog(true);
             }}
             openVersion={(path) => run({ type: "openFile", path }, true)}
             start={async (mode, hands) => {
@@ -112,35 +120,6 @@ export function ProductScreens() {
       )}
 
       {workspace === "practice" &&
-        productScreens.screen === "parts" &&
-        song && (
-          <PartsScreen
-            song={song}
-            disabled={busy || openingActive || !connected}
-            builtin={!state.outputId}
-            pianoOnly={/default\.sf2$/i.test(state.soundfont ?? "")}
-            back={() => productScreens.show("setup")}
-            custom={(track) => {
-              const t = song.tracks.find((t) => t.id === track);
-              if (t && !t.visible) {
-                void run(
-                  {
-                    type: "track",
-                    id: t.id,
-                    mode: t.mode,
-                    part: t.part,
-                    visible: true,
-                  },
-                  true,
-                ).then((ok) => {
-                  if (ok) productScreens.split(track);
-                });
-              } else productScreens.split(track);
-            }}
-            command={(value) => run(value, true)}
-          />
-        )}
-      {workspace === "practice" &&
         productScreens.screen === "split" &&
         song &&
         productScreens.splitTrack !== null && (
@@ -149,7 +128,7 @@ export function ProductScreens() {
             song={song}
             trackId={productScreens.splitTrack}
             disabled={busy || openingActive || !connected}
-            back={() => productScreens.show("parts")}
+            back={() => productScreens.show("setup")}
             command={(value) => run(value, true)}
           />
         )}

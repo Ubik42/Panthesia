@@ -16,7 +16,7 @@ import type { PracticeRange } from "../features/practice/usePracticeRange";
 import { WaterfallClock } from "../features/practice/waterfallClock";
 import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
-import { pitchColors, stageAtmospheres, stageBackdrop, stageInk } from "../features/practice/stageTheme";
+import { applyStageInk, backdropFor, luminance, pitchColors, stageAtmospheres, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -349,9 +349,11 @@ export function Piano({
         canvas.current?.closest<HTMLElement>(".practice-stage")?.style.setProperty("--waterfall-height", `${baseline}px`);
       }
       const position = clock.current.sample(now);
+      applyStageInk(display.stageColor);
       layer.begin(width, height, baseline, dpr, {
-        ...stageBackdrop,
-        atmosphere: stageAtmospheres[display.effectsPalette],
+        ...backdropFor(display.stageColor),
+        // The glow from the keys is a dark tint: only on dark backgrounds.
+        atmosphere: luminance(display.stageColor) > 0.4 ? "#00000000" : stageAtmospheres[display.effectsPalette],
         opacity: display.backgroundOpacity / 100,
       });
       for (const pitch of white) {
@@ -424,7 +426,7 @@ export function Piano({
             if (to <= from) return;
             const top = baseline - (to + window.offset - tick) * pixels,
               bottom = baseline - (from + window.offset - tick) * pixels;
-            layer.rect(0, top, width, bottom - top, colors[i], 0.12);
+            layer.rect(0, top, width, bottom - top, colors[i], luminance(display.stageColor) > 0.4 ? 0.05 : 0.12);
             layer.rect(0, top, 4, bottom - top, colors[i], 0.75);
           });
       }

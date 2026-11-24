@@ -1,13 +1,12 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { KeyboardMusic, Palette, Volume2, VolumeX } from "lucide-react";
+import { KeyboardMusic, Palette, RotateCcw, Volume2, VolumeX, Wand2 } from "lucide-react";
 import type { LoadedSong, EngineCommand } from "../../api";
 import type { PracticePart } from "../../engine/commands.generated";
 import { trackColors } from "./partPalette";
 import { Dialog } from "../../ui/Dialog";
-import { PageHeader } from "../../ui/PageHeader";
 import { usePartSettings } from "./usePartSettings";
 import "../../ui/forms.css";
-import "./partsScreen.css";
+import "./partsList.css";
 
 const groups = ["钢琴", "半音打击乐", "风琴", "吉他", "贝斯", "弦乐", "合奏", "铜管", "簧管", "长笛", "合成主音", "合成音垫", "合成效果", "民族乐器", "打击乐", "音效"];
 const HANDS: [PracticePart, "left" | "right" | "other", string][] = [
@@ -16,27 +15,21 @@ const HANDS: [PracticePart, "left" | "right" | "other", string][] = [
   ["Other", "other", "伴奏"],
 ];
 
-/** Parts of the song (song page → 声部与手别): for each track its hand, note colour, sound and
- * instrument, set in place; hand by hand note splitting opens the split page. */
-export function PartsScreen({
-  song,
-  disabled,
-  builtin,
-  pianoOnly,
-  back,
-  custom,
-  command,
-}: {
+export type PartsListProps = {
   song: LoadedSong;
   disabled: boolean;
   /** The built-in synthesizer plays the song (instruments can be chosen). */
   builtin: boolean;
   /** Only the piano sound bank is installed. */
   pianoOnly: boolean;
-  back: () => void;
+  /** Split this track's notes between the hands (the split page). */
   custom: (track: number) => void;
   command: (value: EngineCommand) => Promise<boolean>;
-}) {
+};
+
+/** The song's parts (in the song details): for each track its hand, note colour, sound and
+ * instrument, set in place; note by note hand splitting opens the split page. */
+export function PartsList({ song, disabled, builtin, pianoOnly, custom, command }: PartsListProps) {
   const parts = usePartSettings(song, disabled, command);
   const { picker, setPicker, pickerTrack, pending } = parts;
   const locked = disabled || pending;
@@ -46,16 +39,15 @@ export function PartsScreen({
   };
   const tracks = song.tracks.filter((t) => t.notes > 0);
   return (
-    <main className="ui-screen ui-page parts-screen">
-      <PageHeader title="声部与手别" subtitle={`${tracks.length} 个声部 · 手别决定谁弹、谁伴奏`} back={back} backLabel="歌曲" backDisabled={pending}>
-        <button className="ui-button" disabled={locked} onClick={() => void parts.autoColor()}>
-          自动配色
+    <div className="parts-panel">
+      <div className="parts-tools">
+        <button className="ui-icon-button" title="自动配色" aria-label="自动配色" disabled={locked} onClick={() => void parts.autoColor()}>
+          <Wand2 />
         </button>
-        <button className="ui-button" disabled={locked} onClick={() => void parts.resetAll()}>
-          全部恢复默认
+        <button className="ui-icon-button" title="全部恢复默认" aria-label="全部恢复默认" disabled={locked} onClick={() => void parts.resetAll()}>
+          <RotateCcw />
         </button>
-      </PageHeader>
-      <div className="ui-page-body">
+      </div>
         {parts.error && (
           <p className="parts-error" role="alert">
             {parts.error}
@@ -67,15 +59,13 @@ export function PartsScreen({
             const color = t.color ?? (t.part === "left" ? "var(--hand-left)" : t.part === "right" ? "var(--hand-right)" : "var(--text-muted)");
             const sound = parts.soundOf(t);
             return (
-              <li key={t.id} className="parts-row ui-card" style={{ "--part-color": color } as CSSProperties} data-hidden={!t.visible || undefined}>
+              <li key={t.id} className="parts-row" style={{ "--part-color": color } as CSSProperties} data-hidden={!t.visible || undefined}>
                 <button className="parts-swatch" aria-label={`${t.name}音符颜色`} disabled={locked} onClick={() => setPicker({ track: t.id, kind: "color" })}>
                   <Palette aria-hidden="true" />
                 </button>
-                <div className="parts-name">
+                <div className="parts-name" title={`${t.notes.toLocaleString()} 个音符${!t.visible ? " · 音符已隐藏" : ""}`}>
                   <strong>{t.name}</strong>
-                  <small>
-                    {t.notes.toLocaleString()} 个音符{!t.visible ? " · 音符已隐藏" : ""}
-                  </small>
+                  <small>{t.notes.toLocaleString()}</small>
                 </div>
                 <div className="ui-segmented parts-hand" role="group" aria-label={`${t.name}手别`}>
                   {HANDS.map(([part, id, label]) => (
@@ -84,7 +74,7 @@ export function PartsScreen({
                     </button>
                   ))}
                   <button aria-pressed={custom_} disabled={locked} onClick={() => custom(t.id)} title="按音符分配左右手">
-                    逐音…
+                    逐音
                   </button>
                 </div>
                 <button
@@ -108,7 +98,6 @@ export function PartsScreen({
             );
           })}
         </ul>
-      </div>
       {picker && pickerTrack && (
         <Dialog
           title={picker.kind === "color" ? `${pickerTrack.name} · 音符颜色` : `${pickerTrack.name} · 乐器`}
@@ -176,7 +165,7 @@ export function PartsScreen({
             ))}
         </Dialog>
       )}
-    </main>
+    </div>
   );
 }
 

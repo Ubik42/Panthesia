@@ -27,3 +27,10 @@ export function useUiScale(percent: number) {
     };
   }, [percent]);
 }
+
+/** The interface theme on the document root (tokens.css `:root[data-theme]`). */
+export function useTheme(theme: "light" | "dark") {
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+}

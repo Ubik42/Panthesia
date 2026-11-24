@@ -57,21 +57,16 @@ const TimelineMarks = memo(function TimelineMarks({
   }, [sections, start, end, width]);
   return (
     <svg ref={root} viewBox={`0 0 ${width} 20`} preserveAspectRatio="none" aria-hidden="true">
+      {/* Sections: a thin bar of rounded segments above the ticks (names on hover). */}
       {spans.map(({ s, x1, x2, color }) => (
-        <g key={`${s.tick}:${s.label}`} className="time-ruler-section">
-          <rect x={x1} y={0} width={x2 - x1} height={20} fill={color} opacity={0.16} />
-          <rect x={x1} y={0} width={Math.min(3, x2 - x1)} height={20} fill={color} opacity={0.8} />
-          {x2 - x1 > s.label.length * 12 + 10 && (
-            <text x={x1 + 6} y={9} style={{ fill: color, fontSize: 9, fontWeight: 600 }}>
-              {s.label}
-            </text>
-          )}
-        </g>
+        <rect key={`${s.tick}:${s.label}`} className="time-ruler-section" x={x1 + 1} y={0} width={Math.max(1, x2 - x1 - 2)} height={4} rx={2} fill={color}>
+          <title>{s.label}</title>
+        </rect>
       ))}
       {marks.map(({measure:m,x,label,text}) => {
         return (
           <g key={m.number}>
-            <line x1={x} x2={x} y1={0} y2={m.number % 4 === 1 ? 11 : 5} />
+            <line x1={x} x2={x} y1={sections ? 6 : 0} y2={(sections ? 6 : 0) + (m.number % 4 === 1 ? 8 : 4)} />
             {label && (
               <text x={x + 3} y={19}>
                 {text}

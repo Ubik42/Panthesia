@@ -1,3 +1,4 @@
+import { applyStageInk, stageInk } from "../practice/stageTheme";
 import { productLabel } from "./displayPreferences";
 import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
@@ -40,13 +41,15 @@ export function PianoAppearancePreview({ value }: { value: DisplayPreferences })
         el.width = Math.ceil(width * ratio); el.height = Math.ceil(height * ratio);
       }
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      const background = "#131e2a";
+      // The chosen stage background, with grid ink that reads on it (as on the stage).
+      const background = value.stageColor;
+      applyStageInk(background);
       ctx.fillStyle = background; ctx.fillRect(0, 0, width, height);
       const baseline = height - 78;
       for (let index = 0; index < value.gridSubdivision; index++) {
         const beat = index % (value.gridSubdivision / 4) === 0;
         ctx.globalAlpha = (index === 0 ? value.barOpacity : beat ? value.beatOpacity : value.subdivisionOpacity) / 100;
-        ctx.strokeStyle = "#c9d3e8"; ctx.lineWidth = index === 0 ? 1.5 : .7;
+        ctx.strokeStyle = stageInk.grid; ctx.lineWidth = index === 0 ? 1.5 : .7;
         ctx.setLineDash(beat ? [] : [3, 5]);
         const y = index * (baseline - 10) / value.gridSubdivision;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();

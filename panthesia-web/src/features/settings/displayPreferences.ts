@@ -21,6 +21,10 @@ export type DisplayPreferences = {
   scorePaper: "transparent" | "paper";
   /** Card size of the start page grid (the number of columns follows the window). */
   homeGrid: "compact" | "normal" | "roomy";
+  /** Interface theme. */
+  theme: "light" | "dark";
+  /** Background colour of the waterfall (hex). */
+  stageColor: string;
   pianoMaterial: "ivory" | "porcelain" | "glass";
   effectStyle: "bloom" | "ripple" | "comet";
   barOpacity: number;
@@ -108,7 +112,7 @@ export const displayDefaults: DisplayPreferences = {
   keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
-  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal",
+  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff",
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
@@ -207,6 +211,8 @@ export function normalizeDisplayPreferences(
     practiceSplitRatio: size(raw.practiceSplitRatio, 25, 75, 55),
     scorePaper: raw.scorePaper === "paper" ? "paper" : "transparent",
     homeGrid: raw.homeGrid === "compact" || raw.homeGrid === "roomy" ? raw.homeGrid : "normal",
+    theme: raw.theme === "dark" ? "dark" : "light",
+    stageColor: typeof raw.stageColor === "string" && /^#[0-9a-f]{6}$/i.test(raw.stageColor) ? raw.stageColor : "#ffffff",
     keyCodes: keys,
     uiScale: size(raw.uiScale, 80, 150, 100),
     shortcuts: normalizeShortcuts(raw.shortcuts, keys),

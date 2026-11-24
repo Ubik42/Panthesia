@@ -15,7 +15,7 @@ import { useWorkspaceChange } from "./useWorkspaceChange";
 import { useWindowGuards } from "./useWindowGuards";
 import { toggleFullscreen } from "./windowActions";
 import { usePracticeUiSync } from "../features/practice/usePracticeUiSync";
-import { useUiScale } from "../features/settings/useUiScale";
+import { useTheme, useUiScale } from "../features/settings/useUiScale";
 import { practiceUi, usePracticeUi } from "../stores/practiceUi";
 import { useDialogFocus } from "./useDialogFocus";
 import { useWorkspaceSessions } from "./useWorkspaceSessions";
@@ -70,6 +70,7 @@ export function useAppModel() {
   const interfaceSettings = getInterfaceSettings();
   const display = useDisplay();
   useUiScale(display.uiScale);
+  useTheme(display.theme);
   const performanceSize=usePerformanceSize();
   const productActions=useRef<{browse:(signal?:AbortSignal)=>Promise<boolean>;resume:(signal?:AbortSignal)=>Promise<boolean>}>({browse:async()=>false,resume:async()=>false});
   const view = display.practiceView;

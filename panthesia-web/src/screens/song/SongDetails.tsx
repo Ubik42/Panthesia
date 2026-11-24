@@ -1,23 +1,18 @@
 import {
   AudioLines,
-
-  ChevronRight,
-
   FileMusic,
   FileText,
   FolderOpen,
-  Hand,
   Layers,
+  Library,
   Link2,
   LoaderCircle,
   Mic,
   Music,
-  Piano as PianoIcon,
   Play,
   Plus,
   Repeat,
   Settings2,
-  SlidersHorizontal,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -39,8 +34,10 @@ import {
   type Material,
   type MaterialItem,
 } from "../../features/library/songSummary";
+import type { Variant } from "../../engine/commands.generated";
 import "../../ui/controls.css";
-import { Sheet } from "../../ui/components";
+import { Dialog } from "../../ui/Dialog";
+import { PartsList, type PartsListProps } from "./PartsList";
 import "./songScreen.css";
 
 type Mode = "listen" | "wait";
@@ -71,8 +68,11 @@ const TOOL_TASKS: Record<string, string> = { transcribe: "从原曲转录 MIDI",
 
 const fileName = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 
-/** Song details (interface-design.md 3.2, frontend-architecture.md §3): a sheet over the library
- * with the way to start, the song's facts, materials and layers. */
+/** Song details (interface-design.md 3.2, frontend-architecture.md §3): a dialog over the
+ * library with everything that belongs to this song, set in place: its parts, its practice
+ * version (transposition, quantization), its materials (input and generated files) and layers,
+ * and an overview of the music. Practice mode and hands are chosen on the stage; starting uses
+ * the last ones. Global settings (keyboard, sound) stay on the settings page. */
 export function SongDetails({
   song,
   store,
@@ -80,9 +80,8 @@ export function SongDetails({
   engineId,
   back,
   parts,
-  options,
+  variant,
   scores,
-  sound,
   tools,
   editLayer,
   openVersion,
@@ -93,10 +92,11 @@ export function SongDetails({
   disabled: boolean;
   engineId?: string;
   back: () => void;
-  parts: () => void;
-  options: () => void;
+  /** The parts list's own props (sound and track commands). */
+  parts: Omit<PartsListProps, "song" | "disabled">;
+  variant: (value: Variant) => Promise<boolean>;
+  /** The score manager (score files, paper pages, sources). */
   scores: () => void;
-  sound: () => void;
   /** Open the settings page where the transcription tool is chosen. */
   tools: () => void;
   editLayer: (name: string) => void;
@@ -104,11 +104,12 @@ export function SongDetails({
   start: (mode: Mode, hands: HandChoice) => Promise<boolean>;
 }) {
   const { summary, error: loadError, reload } = useSongSummary(`${song.contentId}:${song.annotationRevision ?? 0}`);
-  const [mode, setMode] = useState<Mode>(() => (store.getSnapshot().mode === "listen" ? "listen" : "wait"));
-  const [hand, setHand] = useState<HandChoice>(() => {
+  // Mode and hands are the stage's last ones; they are changed on the stage.
+  const mode: Mode = store.getSnapshot().mode === "listen" ? "listen" : "wait";
+  const hand: HandChoice = (() => {
     const value = store.getSnapshot().hands;
     return value === "left" || value === "right" ? value : "both";
-  });
+  })();
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const locked = disabled || pending !== null;
@@ -186,139 +187,238 @@ export function SongDetails({
 
   const facts = summary?.facts;
   const title = facts?.title ?? song.title;
-  const startLabel = mode === "listen" ? "开始播放" : `开始${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}练习`;
+  const startLabel = mode === "listen" ? "开始播放" : "开始练习";
+  const summaryText = `${mode === "listen" ? "连续播放" : "等待按键"} · ${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}`;
+  const materials = summary?.materials ?? [];
+  const items = materials.flatMap((m) => m.items.map((item) => ({ material: m, item })));
+  const inputs = items.filter(({ item }) => item.origin !== "generated");
+  const generated = items.filter(({ item }) => item.origin === "generated");
+  // One button per generator, named by what it makes (separation makes vocals and accompaniment).
+  const generators = [...new Map(materials.flatMap((m) => m.generators.map((g) => [g.id, { generator: g, makes: materials.filter((x) => x.generators.some((y) => y.id === g.id)).map((x) => x.label) }] as const))).values()];
+  const missingAttach = materials.filter((m) => ATTACH[m.kind] && !m.items.some((i) => i.state !== "missing" && i.state !== "found"));
+  const busyGenerating = (g: Generator) => running.has(g.id) || pending === `generate:${g.id}`;
+  const fileRow = ({ material, item }: { material: Material; item: MaterialItem }) => (
+    <li key={`${material.kind}:${item.id ?? ""}:${item.path ?? item.relative}`} className="material-row" data-state={item.state}>
+      <span className="material-kind" title={material.label}>
+        {ICONS[material.kind]}
+        <span>{material.label}</span>
+      </span>
+      <span className="material-name" title={item.path ?? item.relative}>
+        {fileName(item.relative)}
+      </span>
+      <span className="material-tags">
+        {item.state === "current" && <em>当前</em>}
+        {item.paired && <em>谱面</em>}
+        {item.state === "missing" && <em data-state="missing">缺失</em>}
+        {item.state === "found" && <em data-state="found">未登记</em>}
+      </span>
+      <span className="material-actions">
+        {item.state === "found" && (
+          <button className="ui-icon-button" title="登记到歌曲清单" aria-label="登记到歌曲清单" disabled={locked || !!summary?.manifest?.readOnly} onClick={() => void register(item)}>
+            <Plus />
+          </button>
+        )}
+        {material.kind === "performance" && item.state === "present" && (
+          <button className="ui-icon-button" title="切换到这个版本" aria-label="切换到这个版本" disabled={locked} onClick={() => void switchTo(item)}>
+            <Repeat />
+          </button>
+        )}
+        {material.kind === "musicxml" && summary?.kind === "midi" && item.state === "present" && !item.paired && (
+          <button className="ui-icon-button" title="用作谱面" aria-label="用作谱面" disabled={locked} onClick={() => void pair(item)}>
+            <Link2 />
+          </button>
+        )}
+        {api.desktop && item.path && item.state !== "missing" && (
+          <button className="ui-icon-button" title="在资源管理器中显示" aria-label="在资源管理器中显示" onClick={() => void api.revealFile(item.path!)}>
+            <FolderOpen />
+          </button>
+        )}
+        {item.id && item.state !== "current" && item.state !== "found" && (
+          <button className="ui-icon-button" title="从清单移除" aria-label="从清单移除" disabled={locked || !!summary?.manifest?.readOnly} onClick={() => unregister(item)}>
+            <Trash2 />
+          </button>
+        )}
+      </span>
+    </li>
+  );
 
   return (
-    <Sheet
-      width={620}
+    <Dialog
+      title={title}
+      subtitle={facts?.artist ?? undefined}
       close={back}
-      title={
-        <div className="song-title">
-          <h1 title={title}>{title}</h1>
-          {facts?.artist && <p>{facts.artist}</p>}
-        </div>
-      }
-    >
-      <div className="song-body">
-        <section className="song-practice ui-card" aria-label="练习">
-          <h2 className="ui-section-title">练习</h2>
-          <div className="song-practice-group">
-            <span>方式</span>
-            <div className="ui-segmented" role="group" aria-label="练习方式">
-              <button aria-pressed={mode === "listen"} disabled={locked} onClick={() => setMode("listen")}>连续播放</button>
-              <button aria-pressed={mode === "wait"} disabled={locked} onClick={() => setMode("wait")}>等待按键</button>
-            </div>
-            <p>{mode === "listen" ? "音乐连续播放，跟着弹或只是听。" : "弹下所需的琴键后，音乐才继续。"}</p>
-          </div>
-          <div className="song-practice-group">
-            <span>手</span>
-            <div className="ui-segmented" role="group" aria-label="练习的手">
-              {(
-                [
-                  ["left", "左手"],
-                  ["right", "右手"],
-                  ["both", "双手"],
-                ] as const
-              ).map(([value, label]) => (
-                <button key={value} aria-pressed={hand === value} data-hand={value} disabled={locked} onClick={() => setHand(value)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+      className="song-details"
+      footer={
+        <>
+          <span className="song-start-note">{summaryText}（在演奏界面调整）</span>
           <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} onClick={() => void launch()}>
             {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
             {pending === "start" ? "正在准备…" : startLabel}
           </button>
-          <nav className="song-practice-links" aria-label="练习设置">
-            <button className="ui-link-row" disabled={locked} onClick={parts}>
-              <Hand />
-              <span>声部、手别与乐器</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={options}>
-              <SlidersHorizontal />
-              <span>转调与量化</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={scores}>
-              <Music />
-              <span>谱面</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={sound}>
-              <PianoIcon />
-              <span>键盘与音源</span>
-              <ChevronRight />
-            </button>
-          </nav>
-        </section>
-        <div className="song-main">
-          <section className="song-hero ui-card" aria-label="歌曲概览">
-            <PianoRoll song={song} />
-            <dl className="song-facts">
-              <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
-              <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
-              <Fact name="拍号" value={facts?.timeSignature ?? "—"} />
-              <Fact name="调" value={keyLabel(facts?.key) ?? "—"} note={facts && facts.keySource !== "midi" ? SOURCE_NAMES[facts.keySource] : undefined} />
-              <Fact name="音域" value={facts?.pitchRange ? `${noteName(facts.pitchRange[0])}–${noteName(facts.pitchRange[1])}` : "—"} />
-              <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
-              <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
-            </dl>
-          </section>
+        </>
+      }
+    >
+      {(loadError || message || failure) && (
+        <p className="song-message" role="alert">
+          {message || loadError || `${failure?.label}失败：${failure?.error}`}
+        </p>
+      )}
 
-          <section aria-labelledby="song-materials-title">
-            <div className="song-section-head">
-              <h2 id="song-materials-title" className="ui-section-title">资料</h2>
-              {summary && !summary.tool.available && (
-                <button className="ui-button ui-button--ghost" disabled={locked} onClick={tools}>
-                  <Settings2 />
-                  指定转录工具…
-                </button>
+      <section className="song-section" aria-labelledby="song-parts-title">
+        <h3 id="song-parts-title">声部</h3>
+        <PartsList song={song} disabled={locked} {...parts} />
+      </section>
+
+      <section className="song-section" aria-labelledby="song-version-title">
+        <h3 id="song-version-title">练习版本</h3>
+        <VariantRow song={song} disabled={locked} apply={variant} />
+      </section>
+
+      <section className="song-section" aria-labelledby="song-materials-title">
+        <div className="song-section-head">
+          <h3 id="song-materials-title">资料</h3>
+          <span className="song-section-actions">
+            <button className="ui-icon-button" title="谱面管理（谱页、原谱来源）" aria-label="谱面管理" disabled={locked} onClick={scores}>
+              <Library />
+            </button>
+            {summary && !summary.tool.available && (
+              <button className="ui-icon-button" title="指定转录工具" aria-label="指定转录工具" disabled={locked} onClick={tools}>
+                <Settings2 />
+              </button>
+            )}
+          </span>
+        </div>
+        {!summary && !loadError && <p className="song-loading">正在读取资料…</p>}
+        {summary && (
+          <div className="song-materials">
+            <div className="material-column">
+              <h4>输入文件</h4>
+              <ul className="material-list">{inputs.map(fileRow)}</ul>
+              {missingAttach.length > 0 && (
+                <div className="material-add">
+                  {missingAttach.map((m) => (
+                    <button key={m.kind} className="ui-button ui-button--ghost" disabled={locked || !!summary.manifest?.readOnly} title={`关联${m.label}文件`} onClick={() => void attach(m)}>
+                      <Plus />
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            {(loadError || message || failure) && (
-              <p className="song-message" role="alert">
-                {message || loadError || `${failure?.label}失败：${failure?.error}`}
-              </p>
-            )}
-            <div className="song-materials">
-              {(summary?.materials ?? []).map((material) => (
-                <MaterialCard
-                  key={material.kind}
-                  material={material}
-                  running={material.generators.some((g) => running.has(g.id))}
-                  locked={locked}
-                  pending={pending}
-                  readOnly={!!summary?.manifest?.readOnly}
-                  generate={generate}
-                  attach={() => void attach(material)}
-                  register={(item) => void register(item)}
-                  unregister={unregister}
-                  pair={material.kind === "musicxml" && summary?.kind === "midi" ? (item) => void pair(item) : undefined}
-                  switchTo={(item) => void switchTo(item)}
-                />
-              ))}
-              {!summary && !loadError && <p className="song-loading">正在读取资料…</p>}
+            <div className="material-column">
+              <h4>生成文件</h4>
+              {generated.length > 0 ? <ul className="material-list">{generated.map(fileRow)}</ul> : <p className="material-none">还没有生成的文件</p>}
+              {generators.length > 0 && (
+                <div className="material-add">
+                  {generators.map(({ generator, makes }) => (
+                    <button
+                      key={generator.id}
+                      className="ui-button"
+                      disabled={locked || busyGenerating(generator) || !generator.available || !!summary.manifest?.readOnly}
+                      title={`${generator.label}：${makes.join("、")}${generator.reason ? `（${generator.reason}）` : ""}`}
+                      onClick={() => generate(generator)}
+                    >
+                      {busyGenerating(generator) ? <LoaderCircle className="spin" /> : <Sparkles />}
+                      {makes.join(" + ")}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </section>
+          </div>
+        )}
+      </section>
 
-          <section aria-labelledby="song-layers-title">
-            <h2 id="song-layers-title" className="ui-section-title">图层</h2>
-            <div className="song-layers">
-              {(summary?.layers ?? []).map((layer) => (
-                <LayerChip key={layer.name} layer={layer} edit={EDITABLE.has(layer.name) ? () => editLayer(layer.name) : undefined} disabled={locked} />
-              ))}
-            </div>
-          </section>
+      <section className="song-section" aria-labelledby="song-layers-title">
+        <h3 id="song-layers-title">图层</h3>
+        <div className="song-layers">
+          {(summary?.layers ?? []).map((layer) => (
+            <LayerChip key={layer.name} layer={layer} edit={EDITABLE.has(layer.name) ? () => editLayer(layer.name) : undefined} disabled={locked} />
+          ))}
         </div>
+      </section>
 
-      </div>
-    </Sheet>
+      <section className="song-section song-overview" aria-label="MIDI 总览">
+        <h3>MIDI 总览</h3>
+        <PianoRoll song={song} />
+        <dl className="song-facts">
+          <Fact name="时长" value={formatDuration(facts?.durationSeconds ?? song.duration)} />
+          <Fact name="速度" value={facts?.bpm ? `${Math.round(facts.bpm)} BPM` : "—"} note={facts && facts.bpmSource !== "midi" ? SOURCE_NAMES[facts.bpmSource] : undefined} />
+          <Fact name="拍号" value={facts?.timeSignature ?? "—"} />
+          <Fact name="调" value={keyLabel(facts?.key) ?? "—"} note={facts && facts.keySource !== "midi" ? SOURCE_NAMES[facts.keySource] : undefined} />
+          <Fact name="音域" value={facts?.pitchRange ? `${noteName(facts.pitchRange[0])}–${noteName(facts.pitchRange[1])}` : "—"} />
+          <Fact name="小节" value={facts ? String(facts.measures) : "—"} />
+          <Fact name="轨道 · 音符" value={facts ? `${facts.tracks} · ${facts.notes}` : "—"} />
+        </dl>
+      </section>
+    </Dialog>
   );
 }
 
-const EDITABLE = new Set(["hands", "fingering"]);
+const KEY_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+/** The practice version in one row: transposition, the original key, quantization. Changes
+ * apply at once and are saved with the song. */
+function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boolean; apply: (value: Variant) => Promise<boolean> }) {
+  const info = song.practiceVariant;
+  if (!info) return <p className="material-none">这首歌没有可调整的练习版本。</p>;
+  const v = { transpose: 0, quantize: 0, durations: true, tonic: null, minor: null, ...info.settings };
+  const change = (patch: Partial<Variant>) => void apply({ ...v, ...patch } as Variant);
+  const target = (info.tonic + v.transpose + 120) % 12;
+  const outside = (info.minPitch ?? 60) + v.transpose < 21 || (info.maxPitch ?? 60) + v.transpose > 108;
+  return (
+    <div className="variant-row">
+      <span className="variant-field">
+        <span>转调</span>
+        <span className="variant-stepper">
+          <button className="ui-icon-button" aria-label="降低一个半音" title="降低一个半音" disabled={disabled || v.transpose <= -24} onClick={() => change({ transpose: v.transpose - 1 })}>
+            −
+          </button>
+          <output title={`练习调：${KEY_NAMES[target]} ${info.minor ? "小调" : "大调"}`}>{v.transpose > 0 ? `+${v.transpose}` : v.transpose}</output>
+          <button className="ui-icon-button" aria-label="升高一个半音" title="升高一个半音" disabled={disabled || v.transpose >= 24} onClick={() => change({ transpose: v.transpose + 1 })}>
+            +
+          </button>
+        </span>
+        <small>
+          {KEY_NAMES[target]} {info.minor ? "小调" : "大调"}
+        </small>
+      </span>
+      <span className="variant-field">
+        <span>原调</span>
+        <select aria-label="原曲主音" disabled={disabled} value={info.tonic} onChange={(e) => change({ tonic: Number(e.target.value) })}>
+          {KEY_NAMES.map((n, i) => (
+            <option key={i} value={i}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <select aria-label="原曲调式" disabled={disabled} value={info.minor ? "minor" : "major"} onChange={(e) => change({ minor: e.target.value === "minor" })}>
+          <option value="major">大调</option>
+          <option value="minor">小调</option>
+        </select>
+      </span>
+      <span className="variant-field">
+        <span>量化</span>
+        <select aria-label="练习量化" disabled={disabled} value={v.quantize} onChange={(e) => change({ quantize: Number(e.target.value) })}>
+          <option value={0}>原始时值</option>
+          <option value={8}>1/8</option>
+          <option value={16}>1/16</option>
+          <option value={32}>1/32</option>
+        </select>
+        <label className="variant-check" title="音符时值也对齐到网格">
+          <input type="checkbox" disabled={disabled || !v.quantize} checked={v.durations} onChange={(e) => change({ durations: e.target.checked })} />
+          时值
+        </label>
+      </span>
+      {outside && (
+        <p className="song-message" role="alert">
+          转调后部分音符超出 88 键音域。
+        </p>
+      )}
+    </div>
+  );
+}
+
+const EDITABLE = new Set(["fingering"]);
 const EMPTY: Record<string, string> = {
   musicxml: "没有五线谱文件",
   abc: "没有 ABC 文件",
@@ -337,132 +437,6 @@ function Fact({ name, value, note }: { name: string; value: string; note?: strin
         {note && <small>{note}</small>}
       </dd>
     </div>
-  );
-}
-
-function stateOf(material: Material): { tone: string; text: string } {
-  const items = material.items;
-  if (items.some((i) => i.state !== "found" && i.state !== "missing")) return { tone: items.some((i) => i.origin === "generated") ? "generated" : "ok", text: "有" };
-  if (items.some((i) => i.state === "missing")) return { tone: "missing", text: "文件缺失" };
-  if (items.length) return { tone: "warn", text: "发现未登记的文件" };
-  return { tone: "none", text: "没有" };
-}
-
-function MaterialCard({
-  material,
-  running,
-  locked,
-  pending,
-  readOnly,
-  generate,
-  attach,
-  register,
-  unregister,
-  pair,
-  switchTo,
-}: {
-  material: Material;
-  running: boolean;
-  locked: boolean;
-  pending: string | null;
-  readOnly: boolean;
-  generate: (generator: Generator) => void;
-  attach: () => void;
-  register: (item: MaterialItem) => void;
-  unregister: (item: MaterialItem) => void;
-  pair?: (item: MaterialItem) => void;
-  switchTo: (item: MaterialItem) => void;
-}) {
-  const status = stateOf(material);
-  const busy = running || material.generators.some((g) => pending === `generate:${g.id}`);
-  return (
-    <article className="material-card" data-kind={material.kind} data-tone={status.tone}>
-      <header>
-        <span className="material-icon">{ICONS[material.kind]}</span>
-        <h3>{material.label}</h3>
-        <span className="material-status">
-          <span className="ui-dot" data-tone={status.tone} />
-          {status.text}
-        </span>
-      </header>
-      {material.items.length === 0 && <p className="material-empty">{EMPTY[material.kind] ?? "没有文件"}</p>}
-      {material.items.length > 0 && (
-        <ul className="material-items">
-          {material.items.map((item) => (
-            <li key={`${item.id ?? ""}:${item.path ?? item.relative}`} data-state={item.state}>
-              <div className="material-file">
-                <span title={item.path ?? item.relative}>{fileName(item.relative)}</span>
-                <small>
-                  {item.label && <em>{item.label}</em>}
-                  {item.state === "current" && <em>当前</em>}
-                  {item.origin && item.origin !== "human" && <em data-origin={item.origin}>{ORIGIN_NAMES[item.origin]}</em>}
-                  {item.paired && <em>用作谱面</em>}
-                  {item.state === "missing" && <em data-state="missing">找不到文件</em>}
-                  {item.state === "found" && <em>{item.reason ?? "同名文件"}</em>}
-                </small>
-              </div>
-              <div className="material-item-actions">
-                {item.state === "found" && (
-                  <button className="ui-button" disabled={locked || readOnly} onClick={() => register(item)}>
-                    <Plus />
-                    登记
-                  </button>
-                )}
-                {material.kind === "performance" && item.state === "present" && (
-                  <button className="ui-icon-button" title="切换到这个版本" aria-label="切换到这个版本" disabled={locked} onClick={() => switchTo(item)}>
-                    <Repeat />
-                  </button>
-                )}
-                {pair && item.state === "present" && !item.paired && (
-                  <button className="ui-icon-button" title="用作谱面" aria-label="用作谱面" disabled={locked} onClick={() => pair(item)}>
-                    <Link2 />
-                  </button>
-                )}
-                {api.desktop && item.path && item.state !== "missing" && (
-                  <button className="ui-icon-button" title="在资源管理器中显示" aria-label="在资源管理器中显示" onClick={() => void api.revealFile(item.path!)}>
-                    <FolderOpen />
-                  </button>
-                )}
-                {item.id && item.state !== "current" && item.state !== "found" && (
-                  <button className="ui-icon-button" title="从清单移除" aria-label="从清单移除" disabled={locked || readOnly} onClick={() => unregister(item)}>
-                    <Trash2 />
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {busy && (
-        <p className="material-progress" role="status">
-          <LoaderCircle className="spin" />
-          {running ? "正在后台生成，可以先去练习…" : "正在生成…"}
-        </p>
-      )}
-      <footer>
-        {material.generators.map((generator) => (
-          <button
-            key={generator.id}
-            className="ui-button"
-            disabled={locked || busy || !generator.available || readOnly}
-            title={generator.reason ?? undefined}
-            onClick={() => generate(generator)}
-          >
-            <Sparkles />
-            {generator.label}
-          </button>
-        ))}
-        {ATTACH[material.kind] && (
-          <button className="ui-button ui-button--ghost" disabled={locked || readOnly} onClick={attach}>
-            <Plus />
-            关联文件…
-          </button>
-        )}
-        {material.generators.some((g) => !g.available && g.reason) && (
-          <small className="material-hint">{material.generators.find((g) => !g.available)?.reason}</small>
-        )}
-      </footer>
-    </article>
   );
 }
 

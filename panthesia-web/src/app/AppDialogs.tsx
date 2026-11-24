@@ -2,6 +2,7 @@ import type { ApplicationCommandId } from "./applicationCommands";
 import { practiceUi, usePracticeUi } from "../stores/practiceUi";
 import { setDisplay } from "../features/settings/interfaceSettingsStore";
 import { useApp } from "./AppContext";
+import { applyPracticeVariant } from "./practiceVariant";
 import { SongEditorHost } from "../features/editing/SongEditorHost";
 import { AboutDialog } from "./AboutDialog";
 import { ActionSearch } from "./ActionSearch";
@@ -134,31 +135,7 @@ export function AppDialogs() {
         }}
         loopStart={loopStart}
         loopEnd={loopEnd}
-        applyVariant={async (value) => {
-          if (!song) return false;
-          const ok = await run(
-            {
-              type: "practiceVariant",
-              content_id: song.contentId,
-              score_revision: song.scoreRevision,
-              value,
-            },
-            true,
-          );
-          if (ok)
-            setDisplay((previous) => ({
-              ...previous,
-              ...(value.quantize
-                ? { gridSubdivision: value.quantize as 8 | 16 | 32 }
-                : {}),
-              tonic:
-                ((value.tonic ?? song.practiceVariant?.tonic ?? 0) +
-                  (value.transpose ?? 0) +
-                  120) %
-                12,
-            }));
-          return ok;
-        }}
+        applyVariant={(value) => applyPracticeVariant(run, song, value)}
         execute={(command) => run(command, true)}
       />
       {mediaExport && (

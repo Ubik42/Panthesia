@@ -201,7 +201,7 @@ export function PracticeWorkspace() {
             }
             ratio={
               display.practiceSplitAxis === "auto"
-                ? 25
+                ? 40
                 : display.practiceSplitRatio
             }
             changeRatio={(value) =>
@@ -293,7 +293,7 @@ export function PracticeWorkspace() {
                         }}
                         assignHands={() => {
                           void run({ type: "pause" }).then((ok) => {
-                            if (ok) productScreens.show("parts");
+                            if (ok) productScreens.show("setup");
                           });
                         }}
                         edit={editFingers}

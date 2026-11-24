@@ -1,7 +1,51 @@
 import type { DisplayPreferences } from "../settings/displayPreferences";
 
-/** Colors of the waterfall area. Canvas and WebGL read them from here, not from inline literals. */
-export const stageBackdrop = { top: "#0a111e", middle: "#101d2a", bottom: "#162d36" } as const;
+/* Colors of the waterfall area. Canvas and WebGL read them from here, not from inline literals. */
+
+const hex2 = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, "0");
+/** `color` moved toward black (amount < 0) or white (amount > 0), 0..1. */
+function shade(color: string, amount: number) {
+  const [r, g, b] = rgba(color);
+  const t = amount < 0 ? 0 : 1,
+    a = Math.abs(amount);
+  return `#${hex2((r + (t - r) * a) * 255)}${hex2((g + (t - g) * a) * 255)}${hex2((b + (t - b) * a) * 255)}`;
+}
+/** Relative luminance (sRGB) of a colour, 0..1. */
+export function luminance(color: string) {
+  const [r, g, b] = rgba(color).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+/** The waterfall's gradient for a chosen background colour: the colour at the top, a little
+ * deeper toward the keys. */
+export function backdropFor(color: string) {
+  const light = luminance(color) > 0.4;
+  return { top: color, middle: shade(color, light ? -0.03 : 0.04), bottom: shade(color, light ? -0.07 : 0.09) };
+}
+const darkInk = {
+  grid: "#ccd7ea",
+  keyColumn: "#a6b9d2",
+  measureLabel: "#aab8cc",
+  chord: "#c9d7ff",
+  currentChord: "#f4f7ff",
+  lyric: "#aebbd3",
+  lyricSung: "#ffe7a3",
+};
+const lightInk = {
+  grid: "#5d6b82",
+  keyColumn: "#7f8da3",
+  measureLabel: "#5a6678",
+  chord: "#3d4f8f",
+  currentChord: "#16204a",
+  lyric: "#4e5a70",
+  lyricSung: "#8a5a00",
+};
+let inkFor = "";
+/** Grid, labels, chords and lyrics in ink that reads on the chosen background. */
+export function applyStageInk(background: string) {
+  if (background === inkFor) return;
+  inkFor = background;
+  Object.assign(stageInk, luminance(background) > 0.4 ? lightInk : darkInk);
+}
 
 /** One colour per pitch class (C, C#, … B) for the "按音高" note palette: a colour wheel around
  * the circle of fifths, so neighbouring keys of a scale stay distinct. */

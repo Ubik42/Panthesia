@@ -23,7 +23,7 @@
   font-family: var(--font-ui);
   box-shadow: var(--shadow-raised);
   outline: none;
-  color-scheme: dark;
+  color-scheme: var(--scheme);
 }
 .ui-dialog--wide {
   width: min(880px, 100%);
