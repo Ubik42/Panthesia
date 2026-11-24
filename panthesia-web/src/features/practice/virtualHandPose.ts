@@ -38,7 +38,7 @@ export const BLACK_KEY_TOP = 10;
  * 2.5 points of strikes in the hand benchmark). The mesh is drawn at the same scale. */
 export const HAND_SCALE = 0.94;
 /** How far the wrist may come in toward the fallboard (black keys with the short fingers). */
-const WRIST_IN = 110;
+const WRIST_IN = 110 * HAND_SCALE;
 
 /** A right hand at rest, palm down, wrist at the origin, thumb toward -X, millimetres. The
  * joints are those of the WebXR `generic-hand` model (immersive-web/webxr-input-profiles, W3C
@@ -78,9 +78,6 @@ const MODEL = {
     { x: 14, y: 74, z: -16 },
     { x: 14, y: 60, z: -13 },
   ],
-  /** The thumb metacarpal turns outward between these angles (degrees from straight ahead). */
-  thumbSpread: [26, 76] as const,
-  thumbRestSpread: 46,
 };
 const scaled = (p: { x: number; y: number; z: number }) => ({ x: p.x * HAND_SCALE, y: p.y * HAND_SCALE, z: p.z * HAND_SCALE });
 const ANATOMY = {
@@ -200,82 +197,167 @@ export function fingerChain(base: V3, target: V3, bones: readonly number[], coup
   return points;
 }
 
-/** Two rigid bones from `base` to `target`; the joint between them rises above the line. */
-function twoBone(base: V3, target: V3, l1: number, l2: number): V3[] {
-  const dx = target.x - base.x,
-    dy = target.y - base.y,
-    dz = target.z - base.z;
-  const d = Math.max(0.001, Math.hypot(dx, dy, dz));
-  const reach = Math.min(d, l1 + l2 - 0.001);
-  const u = { x: dx / d, y: dy / d, z: dz / d };
-  // Angle at the base between the line to the target and the first bone.
-  const cos = Math.max(-1, Math.min(1, (l1 * l1 + reach * reach - l2 * l2) / (2 * l1 * reach)));
-  const angle = Math.acos(cos);
-  // "Up", perpendicular to the line in the vertical plane through it.
-  const h = Math.hypot(u.x, u.y) || 1;
-  const up = { x: (-u.z * u.x) / h, y: (-u.z * u.y) / h, z: h };
-  const joint = {
-    x: base.x + l1 * (Math.cos(angle) * u.x + Math.sin(angle) * up.x),
-    y: base.y + l1 * (Math.cos(angle) * u.y + Math.sin(angle) * up.y),
-    z: base.z + l1 * (Math.cos(angle) * u.z + Math.sin(angle) * up.z),
-  };
-  const len = Math.hypot(target.x - joint.x, target.y - joint.y, target.z - joint.z) || 1;
-  const tip = {
-    x: joint.x + ((target.x - joint.x) / len) * l2,
-    y: joint.y + ((target.y - joint.y) / len) * l2,
-    z: joint.z + ((target.z - joint.z) / len) * l2,
-  };
-  return [base, joint, tip];
+/** The thumb's joint angles (radians): the metacarpal's spread at the CMC joint (from straight
+ * ahead toward the thumb's side) and its drop below the hand's plane, then the MCP and IP
+ * flexion (negative: bent backward). */
+export type ThumbState = { spread: number; drop: number; mcp: number; ip: number };
+type ThumbKey = keyof ThumbState;
+const THUMB_KEYS: ThumbKey[] = ["spread", "drop", "mcp", "ip"];
+const deg = (d: number) => (d * Math.PI) / 180;
+/** Joint limits while playing (radians): the CMC within the hand's usual opening, the MCP and IP
+ * barely past straight backward (hyperextension) and well bent forward. */
+const THUMB_LIMITS: Record<ThumbKey, readonly [number, number]> = {
+  // CMC: radial abduction about 63 deg from beside the index (Barakat 2013), so up to about 80
+  // deg from straight ahead; palmar abduction (drop) about 61 deg, retroposition a little.
+  spread: [deg(22), deg(80)],
+  drop: [deg(0), deg(45)],
+  // MCP: flexion about 60, extension 8 +- 4 deg; IP: flexion 80-90, extension 12 +- 9 deg.
+  mcp: [deg(-6), deg(58)],
+  ip: [deg(-4), deg(80)],
+};
+/** How far inside the spread limit the thumb's tip direction must stay (its curl) before the
+ * hand moves outward for a key (see `fix`). */
+const THUMB_OPEN_MARGIN = deg(8);
+/** The relaxed thumb over the keys, and how far from it each joint goes comfortably (one
+ * standard deviation): the solver prefers postures near it. */
+// Pianists strike with the thumb mostly by turning it at the CMC and bending the MCP; the IP
+// stays steady (Winges & Furuya 2014): the CMC ranges widely, the IP little. Relaxed MCP and IP
+// are nearly straight (Ingram 2008: 4 and 5 deg).
+const THUMB_NEUTRAL: ThumbState = { spread: deg(46), drop: deg(18), mcp: deg(8), ip: deg(10) };
+const THUMB_COMFORT: ThumbState = { spread: deg(20), drop: deg(14), mcp: deg(16), ip: deg(10) };
+/** The plane the thumb's MCP and IP bend in, turned from straight down toward the fingers: the
+ * pad comes down on the key on its side, the tip curling in under the hand. */
+const THUMB_FLEX_TURN = deg(35);
+/** How fast a thumb joint moves without effort (radians per real second): continuity holds each
+ * joint near its last angle on this scale, so the thumb never leaps between postures. */
+const THUMB_EASE = 6;
+/** Relative weights: tip on target (per mm), comfort (per standard deviation), continuity. */
+const THUMB_W = { comfort: 0.35, stay: 6 };
+
+/** Joints of the thumb (CMC, MCP, IP, tip) for angles `s`, with the hand turned by `yaw`. */
+function thumbPoints(cmc: V3, s: ThumbState, bones: readonly number[], mirror: number, yaw: number): V3[] {
+  const [l0, l1, l2] = bones;
+  // In the right hand's own frame: x across toward the little finger, y forward, z up.
+  const m = { x: -Math.sin(s.spread) * Math.cos(s.drop), y: Math.cos(s.spread) * Math.cos(s.drop), z: -Math.sin(s.drop) };
+  const q = { x: Math.sin(THUMB_FLEX_TURN), y: 0, z: -Math.cos(THUMB_FLEX_TURN) };
+  const qm = q.x * m.x + q.y * m.y + q.z * m.z;
+  let f = { x: q.x - qm * m.x, y: q.y - qm * m.y, z: q.z - qm * m.z };
+  const fl = Math.hypot(f.x, f.y, f.z) || 1;
+  f = { x: f.x / fl, y: f.y / fl, z: f.z / fl };
+  const along = (a: number) => ({ x: Math.cos(a) * m.x + Math.sin(a) * f.x, y: Math.cos(a) * m.y + Math.sin(a) * f.y, z: Math.cos(a) * m.z + Math.sin(a) * f.z });
+  const u1 = along(s.mcp),
+    u2 = along(s.mcp + s.ip);
+  const c = Math.cos(yaw),
+    sn = Math.sin(yaw);
+  const world = (v: V3): V3 => ({ x: c * mirror * v.x - sn * v.y, y: sn * mirror * v.x + c * v.y, z: v.z });
+  const a = world(m),
+    b = world(u1),
+    d = world(u2);
+  const p1 = { x: cmc.x + a.x * l0, y: cmc.y + a.y * l0, z: cmc.z + a.z * l0 };
+  const p2 = { x: p1.x + b.x * l1, y: p1.y + b.y * l1, z: p1.z + b.z * l1 };
+  const tip = { x: p2.x + d.x * l2, y: p2.y + d.y * l2, z: p2.z + d.z * l2 };
+  return [cmc, p1, p2, tip];
 }
 
-/** The thumb: its metacarpal turns at the CMC joint beside the wrist, within the thumb's range,
- * so that the two phalanges reach `target` comfortably bent; then the phalanges reach it. Seen
- * from above this keeps the web between thumb and index finger open. */
-/** The thumb metacarpal's turn (degrees) and drop (radians) last chosen (see `thumbChain`). */
-export type ThumbState = { deg: number; drop: number };
-export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror: number, yaw = 0, prev?: ThumbState): { points: V3[]; state: ThumbState } {
-  const [l0, l1, l2] = bones;
-  const [low, high] = ANATOMY.thumbSpread;
-  const elevation = (a: V3, b: V3) => (Math.atan2(b.z - a.z, Math.hypot(b.x - a.x, b.y - a.y)) * 180) / Math.PI;
-  let best: V3[] = [cmc, ...twoBone(cmc, target, l1, l2)],
-    score = Infinity,
-    state: ThumbState = { deg: ANATOMY.thumbRestSpread, drop: 0.34 };
-  const pose = (deg: number, drop: number) => {
-    const a = (deg * Math.PI) / 180;
-    const hx = -mirror * Math.sin(a),
-      hy = Math.cos(a);
-    const m = {
-      x: cmc.x + (Math.cos(yaw) * hx - Math.sin(yaw) * hy) * l0 * Math.cos(drop),
-      y: cmc.y + (Math.sin(yaw) * hx + Math.cos(yaw) * hy) * l0 * Math.cos(drop),
-      z: cmc.z - l0 * Math.sin(drop),
-    };
-    const [, joint, tip] = twoBone(m, target, l1, l2);
-    return [cmc, m, joint, tip];
+/** The thumb reaching `target`: joint angles found by damped least squares (Levenberg-Marquardt)
+ * on the tip's distance from the target, the distance from the relaxed posture and, given the
+ * last frame's angles `prev` and the time since (`dt`, real seconds), the change from them.
+ * Within the joint limits, so it never bends backward past them; warm-started from `prev`, so
+ * it moves continuously instead of jumping between equally good postures. */
+export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror: number, yaw = 0, prev?: ThumbState, dt = 1 / 60, exact = false): { points: V3[]; state: ThumbState } {
+  // A thumb on its key lands on it: the tip counts far more than comfort and continuity.
+  const tipWeight = exact ? 12 : 1;
+  const clampState = (s: ThumbState): ThumbState => {
+    const out = { ...s };
+    for (const k of THUMB_KEYS) out[k] = Math.max(THUMB_LIMITS[k][0], Math.min(THUMB_LIMITS[k][1], s[k]));
+    return out;
   };
-  // The metacarpal's turn outward (the web between thumb and index) and its drop; the phalanges
-  // then reach the key. A thumb never bends backward: the proximal phalanx may not rise above
-  // the metacarpal's line (MCP hyperextension) nor the tip above the proximal's (IP), and the
-  // IP joint bends at most 40 degrees.
-  // The search covers the metacarpal's range finely; the choice also stays near the last one
-  // (a joint does not leap between frames).
-  for (let drop = 0.18; drop <= 0.501; drop += 0.04) {
-    for (let deg = low; deg <= high; deg += 1) {
-      const [, m, joint, tip] = pose(deg, drop);
-      const d = Math.hypot(target.x - m.x, target.y - m.y, target.z - m.z);
-      const e1 = elevation(cmc, m),
-        e2 = elevation(m, joint),
-        e3 = elevation(joint, tip);
-      const backward = Math.max(0, e2 - e1 - 4) + Math.max(0, e3 - e2 - 2) + Math.max(0, e2 - e3 - 40);
-      const stay = prev ? 0.6 * Math.abs(deg - prev.deg) + 40 * Math.abs(drop - prev.drop) : 0;
-      const s = Math.abs(d - (l1 + l2) * 0.93) + 0.2 * Math.abs(deg - ANATOMY.thumbRestSpread) + 10 * backward + stay;
-      if (s < score) {
-        score = s;
-        state = { deg, drop };
+  const stay = prev ? 1 / Math.max(0.01, THUMB_EASE * dt) : 0;
+  const residuals = (s: ThumbState) => {
+    const tip = thumbPoints(cmc, s, bones, mirror, yaw)[3];
+    const r = [(tip.x - target.x) * tipWeight, (tip.y - target.y) * tipWeight, (tip.z - target.z) * tipWeight];
+    for (const k of THUMB_KEYS) r.push((THUMB_W.comfort * (s[k] - THUMB_NEUTRAL[k])) / THUMB_COMFORT[k]);
+    if (prev) for (const k of THUMB_KEYS) r.push(THUMB_W.stay * stay * (s[k] - prev[k]));
+    return r;
+  };
+  const cost = (r: number[]) => r.reduce((sum, x) => sum + x * x, 0);
+  const solve = (start: ThumbState) => {
+    let s = clampState(start),
+      r = residuals(s),
+      e = cost(r),
+      mu = 1e-2;
+    for (let iteration = 0; iteration < 40; iteration++) {
+      // Jacobian by central differences.
+      const J = THUMB_KEYS.map((k) => {
+        const h = 1e-5;
+        const plus = residuals({ ...s, [k]: s[k] + h }),
+          minus = residuals({ ...s, [k]: s[k] - h });
+        return plus.map((x, i) => (x - minus[i]) / (2 * h));
+      });
+      // (J'J + mu diag(J'J)) delta = -J'r, four unknowns.
+      const A = THUMB_KEYS.map((_, a) => THUMB_KEYS.map((_, b) => J[a].reduce((sum, x, i) => sum + x * J[b][i], 0)));
+      const g = THUMB_KEYS.map((_, a) => J[a].reduce((sum, x, i) => sum + x * r[i], 0));
+      let improved = false;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const M = A.map((row, a) => row.map((x, b) => x + (a === b ? mu * (x + 1e-9) : 0)));
+        const delta = solve4(M, g.map((x) => -x));
+        if (!delta) break;
+        const next = clampState(Object.fromEntries(THUMB_KEYS.map((k, i) => [k, s[k] + delta[i]])) as ThumbState);
+        const nr = residuals(next),
+          ne = cost(nr);
+        if (ne < e) {
+          const step = Math.max(...THUMB_KEYS.map((k) => Math.abs(next[k] - s[k])));
+          s = next;
+          r = nr;
+          e = ne;
+          mu = Math.max(1e-7, mu * 0.3);
+          improved = step > 1e-7;
+          break;
+        }
+        mu *= 10;
       }
+      if (!improved) break;
+    }
+    return { s, e };
+  };
+  let best = solve(prev ?? THUMB_NEUTRAL);
+  const miss = (s: ThumbState) => {
+    const tip = thumbPoints(cmc, s, bones, mirror, yaw)[3];
+    return Math.hypot(tip.x - target.x, tip.y - target.y, tip.z - target.z);
+  };
+  // Without a last posture, or when the warm start misses the target, other starts are tried;
+  // the continuity term still counts, so a far posture wins only when it truly reaches better.
+  if (!prev || miss(best.s) > 1.5) {
+    for (const spread of [deg(32), deg(46), deg(62)])
+      for (const drop of [deg(10), deg(25)]) {
+        const tried = solve({ ...THUMB_NEUTRAL, spread, drop });
+        if (tried.e < best.e) best = tried;
+      }
+  }
+  return { points: thumbPoints(cmc, best.s, bones, mirror, yaw), state: best.s };
+}
+
+/** Solves the 4x4 system M x = b by Gaussian elimination with partial pivoting. */
+function solve4(M: number[][], b: number[]): number[] | null {
+  const n = b.length;
+  const a = M.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r;
+    if (Math.abs(a[p][c]) < 1e-14) return null;
+    [a[c], a[p]] = [a[p], a[c]];
+    for (let r = c + 1; r < n; r++) {
+      const f = a[r][c] / a[c][c];
+      for (let k = c; k <= n; k++) a[r][k] -= f * a[c][k];
     }
   }
-  best = pose(state.deg, state.drop);
-  return { points: best, state };
+  const x = new Array<number>(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {
+    let s = a[r][n];
+    for (let k = r + 1; k < n; k++) s -= a[r][k] * x[k];
+    x[r] = s / a[r][r];
+  }
+  return x;
 }
 
 /** The hand of `track` at `time`: where the wrist is and where each fingertip goes. */
@@ -304,10 +386,14 @@ const RELAX = 0.6;
 /** Sideways range of a finger (degrees from the hand's forward direction, toward the little
  * finger positive) beyond its rest direction. */
 const SPLAY = [0, 20, 14, 14, 20];
+/** How much the last joint (DIP) bends with the middle one (PIP), per finger: about 0.77 for the
+ * index, 0.75 for the middle and ring fingers, 0.57 for the little finger (Mentzel 2011, as
+ * gathered by Roda-Sales 2022). */
+const DIP_COUPLING = [0, 0.77, 0.75, 0.75, 0.57];
 const YAW_LIMIT = (20 * Math.PI) / 180;
-const FINGER_GAP = 12;
+const FINGER_GAP = 12 * HAND_SCALE;
 /** How far the thumb's key stays outside the index finger's resting tip, across the hand (mm). */
-const THUMB_CLEAR = 22;
+const THUMB_CLEAR = 22 * HAND_SCALE;
 
 type Placement = { x: number; y: number; yaw: number; weight: number; forward: number };
 type Aim = {
@@ -633,6 +719,15 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
           cx += cos * side;
           cy += sin * side;
         }
+        // Nor further out to the side than the thumb opens (the CMC's spread limit, less the
+        // curl of the bent phalanges): beyond it the hand moves toward the key.
+        const out = Math.atan2(-mirror * (cos * ox + sin * oy), -sin * ox + cos * oy);
+        const widest = THUMB_LIMITS.spread[1] - THUMB_OPEN_MARGIN;
+        if (out > widest) {
+          const side = -(out - widest) * d * mirror;
+          cx += cos * side;
+          cy += sin * side;
+        }
       }
       if (i > 0) {
         // Sideways reach: the angle from the hand's forward direction, beyond the finger's range.
@@ -946,7 +1041,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   // The thumb's metacarpal continues from where it was (unless this is a seek or a long gap).
   const thumbPrev = memory && memory.thumb && elapsed > 0 && elapsed < 0.15 ? memory.thumb : undefined;
   let thumbState: ThumbState | undefined;
-  const chain = (i: number, target: V3, loose = false) => {
+  const chain = (i: number, target: V3, loose = false, pressed = false) => {
     const b = world(base(i));
     if (i === 0 && thumbUnder) {
       // Passing under the hand: the thumb's base swings toward the palm and drops.
@@ -956,18 +1051,18 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     }
     return i === 0
       ? (() => {
-          const r = thumbChain(b, target, ANATOMY.bones[0], mirror, yaw, thumbPrev);
+          const r = thumbChain(b, target, ANATOMY.bones[0], mirror, yaw, thumbPrev, thumbPrev ? elapsed : undefined, pressed);
           thumbState = r.state;
           return r.points;
         })()
-      : fingerChain(b, target, ANATOMY.bones[i], 0.67, {
+      : fingerChain(b, target, ANATOMY.bones[i], DIP_COUPLING[i], {
           forward: { x: -sin, y: cos },
           side: { x: mirror * cos, y: mirror * sin },
           rest: Math.atan2(ANATOMY.rest[i].x, ANATOMY.rest[i].y),
           splay: ((SPLAY[i] + (loose ? 30 : 8)) * Math.PI) / 180,
         });
   };
-  let fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target), pressed, substitution }));
+  let fingers = targets.map(({ target, pressed, substitution }, i) => ({ finger: i + 1, points: chain(i, target, false, pressed), pressed, substitution }));
   // The same order on the real fingertips (a finger's own limits can bend it off its target):
   // the same projection, and a finger moved by it reaches its new place with a looser sideways
   // range. Fingers never pass through each other.
@@ -982,7 +1077,8 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   fingers = fingers.map((f, i) => {
     const q = placedTips[i];
     if (Math.hypot(q.x - tips[i].x, q.y - tips[i].y, q.z - tips[i].z) < 0.3) return f;
-    return { ...f, points: chain(i, q, true) };
+    // The thumb takes its ordered place exactly (its continuity must not keep it on the wrong side).
+    return { ...f, points: chain(i, q, true, i === 0) };
   });
   if (memory) {
     memory.tips = targets.map((t) => toHand(t.target));

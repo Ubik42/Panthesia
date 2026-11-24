@@ -159,6 +159,7 @@ function measure(hands, song) {
     cross: 0, thumbBack: 0, fingerUp: 0, folded: 0, pressed: 0,
     wristSpeeds: [], wristAccels: [], wristJerks: [], yawRates: [], jolts: 0, tipAccels: [], tipJolts: 0,
     jointRates: [], jointAccels: [], jointSpikes: 0, ms: 0,
+    thumbRates: [], thumbAccels: [], thumbSpikes: 0, thumbMcp: [], thumbFrames: 0,
   };
   for (const track of plan.hands) {
     const mirror = track.side === "right" ? 1 : -1;
@@ -181,6 +182,16 @@ function measure(hands, song) {
         m.notes++;
         const f = pose?.fingers[n.finger - 1];
         if (f?.pressed && onKey(f.points.at(-1), n.pitch)) m.strikeHit++;
+        else if (process.env.HAND_BENCH_DEBUG) {
+          const why = !f ? "无手" : !f.pressed ? "未按" : "偏离";
+          (m.missBy ??= {})[`${n.finger}${why}`] = (m.missBy[`${n.finger}${why}`] ?? 0) + 1;
+          if (n.finger === 1 && f && (m.thumbShown = (m.thumbShown ?? 0) + 1) <= 12) {
+            const g = geometry(n.pitch), tip = f.points.at(-1), c = f.points[0];
+            const yc = Math.cos(pose.yaw), ys = Math.sin(pose.yaw), mir = track.side === "right" ? 1 : -1;
+            const loc = (p) => ({ x: +(mir * (yc * (p.x - c.x) + ys * (p.y - c.y))).toFixed(0), y: +(-ys * (p.x - c.x) + yc * (p.y - c.y)).toFixed(0), z: +(p.z - c.z).toFixed(0) });
+            console.log("拇指未中", track.side, t.toFixed(2), black(n.pitch) ? "黑" : "白", "横偏", (tip.x - (g.x + g.w / 2)).toFixed(1), "高", (tip.z - (black(n.pitch) ? 10 : 0)).toFixed(1), "指尖(拇根系)", JSON.stringify(loc(tip)), "按住", pose.fingers.map((q) => (q.pressed ? 1 : 0)).join(""));
+          }
+        }
       }
       if (!pose) {
         hist = [];
@@ -208,6 +219,8 @@ function measure(hands, song) {
         e2 = elevation(th[1], th[2]),
         e3 = elevation(th[2], th[3]);
       if (e2 - e1 > 0.175 || e3 - e2 > 0.175) m.thumbBack++;
+      // The thumb's MCP extension (positive: the proximal phalanx above the metacarpal's line).
+      m.thumbMcp.push(((e2 - e1) * 180) / Math.PI);
       let up = false;
       pose.fingers.forEach((f, i) => {
         if (i === 0) return;
@@ -255,6 +268,18 @@ function measure(hands, song) {
             if (process.env.HAND_BENCH_DEBUG) (m.spikeJoints ??= {})[i] = (m.spikeJoints[i] ?? 0) + 1;
           }
         });
+        // The thumb, pressing or not (unless it starts or stops pressing within the three frames).
+        if (d.free[0] === b.free[0] && b.free[0] === a.free[0]) {
+          m.thumbFrames++;
+          let thumbSpike = false;
+          for (let i = 0; i < 4; i++) {
+            const rate = Math.abs(d.joints[i] - b.joints[i]) * FPS;
+            m.thumbRates.push(rate);
+            m.thumbAccels.push(Math.abs(d.joints[i] - 2 * b.joints[i] + a.joints[i]) * FPS * FPS);
+            if (rate > 10) thumbSpike = true;
+          }
+          if (thumbSpike) m.thumbSpikes++;
+        }
         if (tipJolt) m.tipJolts++;
         if (spike) m.jointSpikes++;
       }
@@ -284,6 +309,10 @@ const ROWS = [
   ["关节角速度 p99 rad/s", (m) => quantile(m.jointRates, 0.99), 2, "down"],
   ["关节角加速度 均值 rad/s²", (m) => mean(m.jointAccels), 0, "down"],
   ["关节突变 ‰（>20 rad/s）", (m) => (1000 * m.jointSpikes) / m.frames, 1, "down"],
+  ["拇指角速度 p99 rad/s", (m) => quantile(m.thumbRates, 0.99), 2, "down"],
+  ["拇指角加速度 均值 rad/s²", (m) => mean(m.thumbAccels), 0, "down"],
+  ["拇指突变 ‰（>10 rad/s）", (m) => (1000 * m.thumbSpikes) / m.thumbFrames, 1, "down"],
+  ["拇指 MCP 过伸 p99 °", (m) => quantile(m.thumbMcp, 0.99), 1, "down"],
   ["每帧耗时 ms", (m) => m.ms / m.frames, 3, "down"],
 ];
 
@@ -304,6 +333,7 @@ for (const name of songs) {
     const m = measure(v, song);
     const times = m.joltTimes ?? [];
     const phase = times.map((t) => t % 4);
+    console.log(v.label, "未命中（手指+原因）", JSON.stringify(m.missBy));
     console.log(v.label, "关节突变分布（手指×[侧摆,抬起,近节,远节]）", JSON.stringify(m.spikeJoints));
     console.log(v.label, "突变帧", times.length, "块边界±0.05s", phase.filter((p) => p < 0.05 || p > 3.95).length, times.slice(0, 30).join(" "));
   });
