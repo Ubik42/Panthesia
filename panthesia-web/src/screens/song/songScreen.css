@@ -395,3 +395,13 @@
   background: var(--surface-sunken);
   color: var(--text-muted);
 }
+
+/* What the chosen MIDI and quantization mean on the stage. */
+.play-notes {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+  color: var(--text-muted);
+  font-size: 12px;
+}

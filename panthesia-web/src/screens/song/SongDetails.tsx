@@ -312,8 +312,19 @@ export function SongDetails({
       </section>
 
       <section className="song-section" aria-labelledby="song-version-title">
-        <h3 id="song-version-title">练习版本</h3>
+        <h3 id="song-version-title">演奏</h3>
+        <PerformanceChoice
+          items={materials.find((m) => m.kind === "performance")?.items.filter((i) => i.state !== "missing" && i.state !== "found") ?? []}
+          disabled={locked}
+          choose={(item) => switchTo(item)}
+        />
         <VariantRow song={song} disabled={locked} apply={variant} />
+        <PlayNotes
+          current={materials.find((m) => m.kind === "performance")?.items.find((i) => i.state === "current")}
+          quantized={!!song.practiceVariant?.settings?.quantize}
+          paired={materials.some((m) => m.kind === "musicxml" && m.items.some((i) => i.paired))}
+          audio={materials.some((m) => (m.kind === "vocals" || m.kind === "accompaniment") && m.items.some((i) => i.state !== "missing" && i.state !== "found"))}
+        />
       </section>
 
       <section className="song-section" aria-labelledby="song-materials-title">
@@ -426,6 +437,53 @@ function MaterialColumn({ title, rows, render }: { title: string; rows: { materi
   );
 }
 
+/** Which MIDI the stage plays: every performance of the song, inputs and generated ones alike
+ * (the player's own MIDI, the transcription, the score-quantized MIDI, the practice MIDI). */
+function PerformanceChoice({ items, disabled, choose }: { items: MaterialItem[]; disabled: boolean; choose: (item: MaterialItem) => void }) {
+  if (items.length < 2) return null;
+  const current = items.find((i) => i.state === "current");
+  const name = (i: MaterialItem) => `${i.label ?? fileName(i.relative)}（${i.origin === "generated" ? STEP_NAMES[i.step ?? ""] ?? "生成" : "输入"}）`;
+  return (
+    <div className="variant-row">
+      <span className="variant-field">
+        <span>MIDI</span>
+        <select
+          aria-label="演奏用的 MIDI"
+          disabled={disabled}
+          value={current?.path ?? ""}
+          onChange={(e) => {
+            const item = items.find((i) => i.path === e.target.value);
+            if (item && item.state !== "current") choose(item);
+          }}
+        >
+          {items.map((i) => (
+            <option key={i.path} value={i.path ?? ""} title={i.relative}>
+              {name(i)}
+            </option>
+          ))}
+        </select>
+      </span>
+    </div>
+  );
+}
+
+/** What the current choice means on the stage (song-pipeline.md, "演奏"). */
+function PlayNotes({ current, quantized, paired, audio }: { current?: MaterialItem; quantized: boolean; paired: boolean; audio: boolean }) {
+  const notes: string[] = [];
+  if (current?.step === "transcribe")
+    notes.push("转录 MIDI 保留原曲的时间与力度，没有真实的拍子：小节线、节拍器和段落只作参考；需要准确小节时选“乐谱量化”。");
+  if (quantized && audio) notes.push("练习量化会挪动音符时间，人声与伴奏可能和音符对不齐；跟原曲一起弹时用原始时值。");
+  if (!quantized && !paired) notes.push("没有配对的乐谱：谱面按原始时值自动排版，节奏可能零碎；可选“乐谱量化”或配对 MusicXML。");
+  if (!notes.length) return null;
+  return (
+    <ul className="play-notes">
+      {notes.map((n) => (
+        <li key={n}>{n}</li>
+      ))}
+    </ul>
+  );
+}
+
 const KEY_NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
 /** The practice version in one row: transposition, the original key, quantization. Changes
  * apply at once and are saved with the song. */
@@ -468,8 +526,8 @@ function VariantRow({ song, disabled, apply }: { song: LoadedSong; disabled: boo
         </select>
       </span>
       <span className="variant-field">
-        <span>量化</span>
-        <select aria-label="练习量化" disabled={disabled} value={v.quantize} onChange={(e) => change({ quantize: Number(e.target.value) })}>
+        <span>练习量化</span>
+        <select aria-label="练习量化" title="在当前 MIDI 上对齐网格（不改文件）" disabled={disabled} value={v.quantize} onChange={(e) => change({ quantize: Number(e.target.value) })}>
           <option value={0}>原始时值</option>
           <option value={8}>1/8</option>
           <option value={16}>1/16</option>

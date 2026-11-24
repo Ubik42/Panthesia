@@ -105,7 +105,12 @@ impl Player {
             return Ok(());
         }
         let cid = file.content_id.clone();
-        if !self.preferences.variants.contains_key(&cid) && !on_grid(&file) {
+        let located = manifest_store::locate(&music)?;
+        // A song with its recording (source audio or stems) plays in the recording's own timing
+        // so the vocals and accompaniment stay with the notes; the player can still choose a
+        // quantized practice version or the score-quantized MIDI in the song details.
+        let with_audio = located.as_ref().is_some_and(|found| found.manifest.files.iter().any(|f| f.role == "source" || f.role == "stem"));
+        if !with_audio && !self.preferences.variants.contains_key(&cid) && !on_grid(&file) {
             for grid in [16, 32] {
                 let variant = Variant { quantize: grid, ..Default::default() };
                 if crate::practice_variant::transform(&file, &variant).is_ok() {
@@ -115,7 +120,6 @@ impl Player {
             }
         }
 
-        let located = manifest_store::locate(&music)?;
         let layer = |name: &str| {
             located.as_ref().and_then(|found| {
                 let performance = manifest_store::performance_of(found, &music).unwrap_or_else(|| found.manifest.default.performance.clone());
