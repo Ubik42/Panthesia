@@ -229,7 +229,21 @@ function measure(hands, song) {
         const length = norm(sub(j, b)) + norm(sub(f.points[2], j)) + norm(sub(q, f.points[2]));
         if (f.pressed) {
           m.pressed++;
-          if (Math.hypot(q.x - b.x, q.y - b.y) / length < 0.5) m.folded++;
+          if (Math.hypot(q.x - b.x, q.y - b.y) / length < 0.5) {
+            m.folded++;
+            if (process.env.HAND_BENCH_DEBUG) {
+              // Why: the span of the keys the hand holds, and where the wrist is.
+              const held = pose.fingers.map((g, k) => (g.pressed ? track.fingers[k].find((c) => c.start <= t && t < c.end)?.pitch : undefined)).filter((x) => x !== undefined);
+              const span = held.length ? Math.max(...held) - Math.min(...held) : 0;
+              const key = `${span >= 10 ? "宽" : span >= 6 ? "中" : "窄"}${black(track.fingers[i].find((c) => c.start <= t && t < c.end)?.pitch ?? 60) ? "黑" : "白"}指${i + 1}`;
+              (m.foldBy ??= {})[key] = (m.foldBy[key] ?? 0) + 1;
+              if (process.env.HAND_BENCH_FOLD && Math.random() < 0.02) {
+                const keys = track.fingers.map((rows) => rows.find((c) => c.start <= t && t < c.end)).map((c, k) => (c ? `${k + 1}:${c.pitch}${black(c.pitch) ? "b" : ""}${pose.fingers[k].pressed ? "" : "(放)"}` : "")).filter(Boolean);
+                const rest = track.fingers.map((rows) => rows.find((c) => c.start > t && c.start < t + 0.35)).map((c, k) => (c ? `${k + 1}→${c.pitch}${black(c.pitch) ? "b" : ""}` : "")).filter(Boolean);
+                console.log("蜷缩例", track.side, t.toFixed(2), key, "腕y", pose.wrist.y.toFixed(0), "根y", b.y.toFixed(0), "尖y", q.y.toFixed(0), "按", keys.join(" "), "将按", rest.join(" "));
+              }
+            }
+          }
         } else if (q.z > b.z + 2 || q.y > KEY_DEPTH * 0.98 || elevation(b, j) > 0.14) up = true;
       });
       if (up) m.fingerUp++;
@@ -333,6 +347,7 @@ for (const name of songs) {
     const m = measure(v, song);
     const times = m.joltTimes ?? [];
     const phase = times.map((t) => t % 4);
+    console.log(v.label, "蜷缩（跨度+键色+手指）", JSON.stringify(Object.entries(m.foldBy ?? {}).sort((a, b) => b[1] - a[1])));
     console.log(v.label, "未命中（手指+原因）", JSON.stringify(m.missBy));
     console.log(v.label, "关节突变分布（手指×[侧摆,抬起,近节,远节]）", JSON.stringify(m.spikeJoints));
     console.log(v.label, "突变帧", times.length, "块边界±0.05s", phase.filter((p) => p < 0.05 || p > 3.95).length, times.slice(0, 30).join(" "));

@@ -390,6 +390,14 @@ const SPLAY = [0, 20, 14, 14, 20];
  * index, 0.75 for the middle and ring fingers, 0.57 for the little finger (Mentzel 2011, as
  * gathered by Roda-Sales 2022). */
 const DIP_COUPLING = [0, 0.77, 0.75, 0.75, 0.57];
+/** How much a free finger (row) follows the height change of an active one (column). */
+const ENSLAVE = [
+  [0, 0, 0, 0, 0],
+  [0, 0, 0.08, 0.03, 0],
+  [0, 0.08, 0, 0.12, 0.04],
+  [0, 0.03, 0.15, 0, 0.15],
+  [0, 0, 0.05, 0.25, 0],
+];
 const YAW_LIMIT = (20 * Math.PI) / 180;
 const FINGER_GAP = 12 * HAND_SCALE;
 /** How far the thumb's key stays outside the index finger's resting tip, across the hand (mm). */
@@ -612,6 +620,8 @@ function minimumJerk(values: Float64Array, weights: Float64Array, lambda: number
 }
 
 /** What a hand remembers between frames: its fingertips' last targets (see `handPose`). */
+/** A key's point for a fingertip, and the range along the key it may move to (see `keyPoint`). */
+type Goal = V3 & { lo: number; hi: number };
 export type HandMemory = { time: number; tips: V3[]; velocity?: V3[]; thumb?: ThumbState };
 
 /** Weighted isotonic regression with minimum gaps (pool adjacent violators): the positions
@@ -650,20 +660,46 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   if (!keyPx) return null;
   const scale = keyPx / WHITE_KEY_MM;
   const keyHeight = (band.bottom - band.top) / scale;
-  /** Where a fingertip presses a key, in millimetres. The thumb plays near the front of a white
-   * key; the other fingers further in. */
-  const keyPoint = (pitch: number, finger = 2): V3 | null => {
+  /** Where a fingertip presses a key, in millimetres, and how far along the key (`lo` to `hi`,
+   * from the front edge) it may press instead. The thumb plays near the front of a white key; the
+   * other fingers further in, and on a white key as far in as its narrow part between the black
+   * keys when the hand is in (a thumb on a black key brings it in). */
+  const keyPoint = (pitch: number, finger = 2): Goal | null => {
     const g = geometry(pitch);
     if (!g) return null;
+    const black = isBlack(pitch);
     // Fingers land well onto the key (toward the fallboard), the thumb nearer the front.
     const white = finger === 1 ? Math.min(keyHeight * 0.2, 28) : Math.min(keyHeight * 0.52, 78);
+    // Only further in than the usual point: the usual point anchors the hand front to back.
+    const [lo, hi] = black ? [keyHeight * 0.7, keyHeight * 0.86] : finger === 1 ? [white, white] : [white, keyHeight * 0.88];
     // Black keys stand BLACK_KEY_TOP above the white keys' surface.
-    return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.7 : white, z: isBlack(pitch) ? BLACK_KEY_TOP : 0 };
+    return { x: (g.x + g.w / 2) / scale, y: black ? keyHeight * 0.7 : white, z: black ? BLACK_KEY_TOP : 0, lo, hi };
+  };
+  /** Where along its key a finger (not the thumb) with its knuckle at `b` presses: at its relaxed
+   * reach straight ahead of the hand (turned by `yaw`), within the key's range. */
+  const slide = (i: number, g: Goal, b: V3, yaw: number): Goal => {
+    if (i === 0) return g;
+    // The whole reach (ahead and across) stays the relaxed one.
+    const relaxed = relaxedReach(i, b.z - g.z) * 0.95,
+      across = g.x - b.x;
+    const ahead = Math.sqrt(Math.max(0, relaxed * relaxed - across * across));
+    return { ...g, y: Math.max(g.lo, Math.min(g.hi, b.y + Math.cos(yaw) * ahead)) };
   };
   const base = (i: number) => ANATOMY.bases[i];
   const restTip = (i: number) => ({ x: mirror * (base(i).x + ANATOMY.rest[i].x), y: base(i).y + ANATOMY.rest[i].y });
 
   const goalsOf = (rows: Aim[]) => rows.map((a, i) => (a.contact ? keyPoint(a.contact.pitch, i + 1) : null));
+  /** A contact's point with the hand as it will be when the key is struck (the path at that
+   * moment): fixed for the whole press, so a held finger never slides along its key. */
+  const contactPoint = (c: Contact, i: number): Goal | null => {
+    const g = keyPoint(c.pitch, i + 1);
+    if (!g || i === 0) return g;
+    const at = trajectory(track, layout, raw, reach, c.start, rate);
+    if (!at) return g;
+    const r = base(i);
+    const b = { x: at.x + Math.cos(at.yaw) * mirror * r.x - Math.sin(at.yaw) * r.y, y: at.y + Math.sin(at.yaw) * mirror * r.x + Math.cos(at.yaw) * r.y, z: WRIST_Z + r.z };
+    return slide(i, g, b, at.yaw);
+  };
   // Keys the fingers must reach: held ones (fresh ones most), and ones about to be struck.
   const mustOf = (rows: Aim[], goals: (V3 | null)[], t: number) =>
     rows.map((a, i) => {
@@ -677,7 +713,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     });
   /** Key fix: move the hand (damped steps) until every finger that must reach its key can,
    * within its reach and sideways range. */
-  const fix = (w: { x: number; y: number }, yaw: number, goals: (V3 | null)[], must: number[], iterations: number, relax = true) => {
+  const fix = (w: { x: number; y: number }, yaw: number, goals: (Goal | null)[], must: number[], iterations: number, relax = true) => {
     const cos = Math.cos(yaw),
       sin = Math.sin(yaw);
     for (let iteration = 0; iteration < iterations; iteration++) {
@@ -685,10 +721,12 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       dy = 0,
       total = 0;
     goals.forEach((_, i) => {
-      const g = goals[i];
-      if (!g || must[i] <= 0) return;
       const r = base(i);
       const b = { x: w.x + cos * mirror * r.x - sin * r.y, y: w.y + sin * mirror * r.x + cos * r.y, z: WRIST_Z + r.z };
+      // The hand is placed for the keys' usual points (they anchor it front to back); the
+      // fingers then press further in where the hand is in (see `contactPoint`).
+      const g = goals[i];
+      if (!g || must[i] <= 0) return;
       const ox = g.x - b.x,
         oy = g.y - b.y;
       const d = Math.hypot(ox, oy) || 0.001;
@@ -852,7 +890,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     let rest = { ...restAt, z: restAt.y > keyHeight * 0.37 ? BLACK_KEY_TOP + 4 : HOVER };
     // A finger whose next key comes within PREPARE seconds moves over it early, hovering, as
     // pianists place the hand ahead (the strike itself starts 0.34 s before, see below).
-    const coming = future && !held && keyPoint(future.pitch, i + 1);
+    const coming = future && !held && contactPoint(future, i);
     if (coming) {
       const ahead = (future.start - time) / rate;
       const ready = PREPARE_REACH * smooth((PREPARE - ahead) / (PREPARE - 0.34));
@@ -865,7 +903,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
         rest = { x: blend(rest.x, over.x, k), y: blend(rest.y, over.y, k), z: blend(rest.z, over.z, k) };
       }
     }
-    const goal = goals[i];
+    const goal = contact && goals[i] ? contactPoint(contact, i) : null;
     if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0, since: -Infinity };
     const { max } = reachRange(i, b.z);
     // Out of reach even after the key fix: the finger lets the key go (the pedal keeps it
@@ -881,7 +919,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       const linear = Math.max(0, Math.min(1, (time - start) / Math.max(0.001, contact.start - start)));
       const u = 0.7 * linear + 0.3 * smooth(linear);
       // From the previous key while the finger is still near it, else from its rest place.
-      const fromKey = prev && start - release < 0.3 * rate ? keyPoint(prev.pitch, i + 1) : null;
+      const fromKey = prev && start - release < 0.3 * rate ? contactPoint(prev, i) : null;
       const from = fromKey ?? rest;
       target = from
         ? { x: blend(from.x, goal.x, u), y: blend(from.y, goal.y, u), z: Math.sin(Math.PI * u) * LIFT + (1 - u) * 2 }
@@ -971,6 +1009,18 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       return { ...moveLateral(p, by), z: p.z + lift };
     });
   };
+  // Neighbours move along a little: a free finger follows the height change of a finger beside it
+  // that strikes or lifts (the ring and little fingers most). Fingers are not fully independent
+  // (Häger-Ross & Schieber 2000: the little finger moves about 30% with the ring finger);
+  // pianists keep this small (Furuya 2011), so about half of it.
+  const levelAt = (p: V3) => (p.y > keyHeight * 0.37 ? BLACK_KEY_TOP + 4 : HOVER);
+  const changes = targets.map((t) => t.target.z - levelAt(t.target));
+  targets.forEach((t, i) => {
+    if (t.priority > 0 || t.pressed) return;
+    let dz = 0;
+    for (let j = 0; j < 5; j++) if (j !== i && (targets[j].priority > 0 || targets[j].pressed)) dz += ENSLAVE[i][j] * changes[j];
+    if (dz) t.target = { ...t.target, z: Math.max(1, t.target.z + dz) };
+  });
   const weightOf = (t: Target) => 1 + 20 * t.priority;
   const orderTargets = (lifting: boolean) => {
     targets.forEach((t, i) => reachable(i, t));
