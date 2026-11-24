@@ -207,7 +207,7 @@
 .synthesia-layout .synthesia-transport .toolbar-more-actions {
   gap: 2px;
   min-width: 240px;
-  max-height: 80vh;
+  max-height: calc(80 * var(--vh));
   color: var(--text-primary);
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);

@@ -19,6 +19,8 @@ export type DisplayPreferences = {
   practiceSplitRatio: number;
   /** Score background on the stage: none (ink in the interface text colour) or a white page. */
   scorePaper: "transparent" | "paper";
+  /** Card size of the start page grid (the number of columns follows the window). */
+  homeGrid: "compact" | "normal" | "roomy";
   pianoMaterial: "ivory" | "porcelain" | "glass";
   effectStyle: "bloom" | "ripple" | "comet";
   barOpacity: number;
@@ -106,7 +108,7 @@ export const displayDefaults: DisplayPreferences = {
   keyLabelMode: "octaves", noteLabelMode: "finger", keyLabelsOwnOnly: false, noteLabelsOwnOnly: false,
   practiceLayoutVersion: 3,
   practiceFocus: false,
-  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent",
+  practiceView: "score", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal",
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
   virtualHands: false, virtualHandOpacity: 100,
@@ -204,6 +206,7 @@ export function normalizeDisplayPreferences(
     practiceSplitAxis: raw.practiceSplitAxis === "rows" || raw.practiceSplitAxis === "columns" ? raw.practiceSplitAxis : "auto",
     practiceSplitRatio: size(raw.practiceSplitRatio, 25, 75, 55),
     scorePaper: raw.scorePaper === "paper" ? "paper" : "transparent",
+    homeGrid: raw.homeGrid === "compact" || raw.homeGrid === "roomy" ? raw.homeGrid : "normal",
     keyCodes: keys,
     uiScale: size(raw.uiScale, 80, 150, 100),
     shortcuts: normalizeShortcuts(raw.shortcuts, keys),

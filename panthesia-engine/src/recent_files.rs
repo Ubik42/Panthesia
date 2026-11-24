@@ -22,8 +22,13 @@ struct Store {
     items: Vec<Entry>,
 }
 
+/// One song, however it was opened: its manifest `X.panthesia` and the music files `X.mid`,
+/// `X.musicxml` beside it share folder and name.
+fn song_key(path: &Path) -> String {
+    path.with_extension("").to_string_lossy().to_lowercase()
+}
 fn same(a: &Path, b: &Path) -> bool {
-    a.to_string_lossy().eq_ignore_ascii_case(&b.to_string_lossy())
+    song_key(a) == song_key(b)
 }
 fn read(data: &Path) -> Store {
     panthesia_core::utils::atomic_file::read(&data.join(FILE))
@@ -51,10 +56,13 @@ impl Engine {
     }
     pub(crate) fn recent_files(&self) -> Value {
         let store = read(&self.data);
+        // Older lists may hold one song twice (opened by its manifest and by its MIDI).
+        let mut seen = std::collections::HashSet::new();
         Value::Array(
             store
                 .items
                 .iter()
+                .filter(|e| seen.insert(song_key(&e.path)))
                 .map(|e| json!({"path": e.path, "title": e.title, "openedAt": e.opened_at, "exists": e.path.is_file()}))
                 .collect(),
         )

@@ -28,7 +28,7 @@
   display: block;
   width: 100%;
   min-height: 150px;
-  max-height: 25vh;
+  max-height: calc(25 * var(--vh));
   resize: vertical;
   font:
     11px/1.5 Consolas,

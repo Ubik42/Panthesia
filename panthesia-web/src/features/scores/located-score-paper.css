@@ -26,7 +26,7 @@
   }
 
   .located-paper-preview {
-    height: min(32vh, 300px);
+    height: min(calc(32 * var(--vh)), 300px);
     overflow: auto;
     margin: 8px 0 12px;
     border: 1px solid var(--line-strong);
@@ -94,7 +94,7 @@
 
   .located-paper-dialog .located-paper-measures select {
     flex: 0 1 auto;
-    max-width: min(280px, 55vw);
+    max-width: min(280px, calc(55 * var(--vw)));
   }
 
   .located-paper-notes-heading {

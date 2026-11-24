@@ -18,7 +18,7 @@ import { WaterfallLabels } from "../features/practice/waterfallLabels";
 import { createWaterfallLayer } from "../features/practice/waterfallLayer";
 import { pitchColors, stageAtmospheres, stageBackdrop, stageInk } from "../features/practice/stageTheme";
 import { useStageBackground } from "./stageBackground";
-import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels } from "./songLayers";
+import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
 import { effectPalettes, PianoEffects } from "../features/practice/pianoEffects";
 import {
@@ -401,6 +401,21 @@ export function Piano({
           offset: loopEnd - loopStart,
           next: true,
         });
+      // Sections: a faint band in the section's colour behind the grid, a stronger edge at the left.
+      const bands = display.sections && song?.sections?.items.length ? song.sections.items : null;
+      if (bands) {
+        const colors = sectionColors(bands);
+        for (const window of windows)
+          bands.forEach((section, i) => {
+            const from = Math.max(section.tick, window.start),
+              to = Math.min(bands[i + 1]?.tick ?? Infinity, window.end);
+            if (to <= from) return;
+            const top = baseline - (to + window.offset - tick) * pixels,
+              bottom = baseline - (from + window.offset - tick) * pixels;
+            layer.rect(0, top, width, bottom - top, colors[i], 0.12);
+            layer.rect(0, top, 4, bottom - top, colors[i], 0.75);
+          });
+      }
       // The next cycle reuses the source grid and an offset, never the following song measures.
       for (let kind = 2; kind >= 0; kind--) {
         const opacity =

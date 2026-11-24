@@ -1,6 +1,6 @@
 import type { LoadedSong } from "../engine/sessionTypes";
 import type { DisplayPreferences } from "../features/settings/displayPreferences";
-import { stageInk } from "../features/practice/stageTheme";
+import { sectionPalette, stageInk } from "../features/practice/stageTheme";
 
 type Chord = NonNullable<LoadedSong["harmony"]>["chords"][number];
 type Syllable = { tick: number; text: string };
@@ -178,4 +178,21 @@ function pill(ctx: CanvasRenderingContext2D, label: string, right: number, basel
   ctx.textAlign = "center";
   ctx.fillText(label, right - width / 2, baselineY);
   ctx.textAlign = "right";
+}
+
+/** The kind of a section: its label without numbers, primes and spaces ("副歌 2" → "副歌"). */
+const sectionKind = (label: string) => label.replace(/[\s\d'’′]+$/u, "").trim().toLowerCase() || label;
+const sectionColorCache = new WeakMap<readonly Section[], string[]>();
+/** One colour per section (sectionPalette), the same for sections of the same kind. */
+export function sectionColors(sections: readonly Section[]): string[] {
+  const cached = sectionColorCache.get(sections);
+  if (cached) return cached;
+  const kinds = new Map<string, number>();
+  const colors = sections.map((s) => {
+    const kind = sectionKind(s.label);
+    if (!kinds.has(kind)) kinds.set(kind, kinds.size);
+    return sectionPalette[kinds.get(kind)! % sectionPalette.length];
+  });
+  sectionColorCache.set(sections, colors);
+  return colors;
 }

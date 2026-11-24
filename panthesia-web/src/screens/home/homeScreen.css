@@ -1,5 +1,6 @@
-/* Start page (frontend-architecture.md §3): top bar, then song cards in two columns. The song
-   details sheet is positioned against this page. */
+/* Start page (frontend-architecture.md §3): top bar, then a grid of song cards whose columns
+   follow the window (card size chosen in the bar). The song details sheet is positioned against
+   this page. */
 .home-screen {
   position: relative;
   display: flex;
@@ -79,12 +80,40 @@
   overflow: auto;
 }
 .home-grid {
+  --home-card-min: 300px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--home-card-min), 100%), 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.home-grid[data-size="compact"] {
+  --home-card-min: 220px;
+}
+.home-grid[data-size="roomy"] {
+  --home-card-min: 440px;
+}
+.home-grid[data-size="compact"] .home-card {
+  min-height: 76px;
+  padding: var(--space-3);
+}
+.home-density button {
+  display: grid;
+  place-items: center;
+  padding-inline: var(--space-2);
+}
+.home-density svg {
+  width: 16px;
+  height: 16px;
+}
+.home-card-ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.home-card[data-asking] {
+  border-color: var(--state-warn);
 }
 .home-card {
   display: grid;
@@ -112,7 +141,8 @@
   outline: 2px solid var(--accent-strong);
   outline-offset: 1px;
 }
-.home-card:disabled:not([aria-busy]) {
+.home-card:disabled:not([aria-busy]),
+.home-card[data-missing]:not([data-asking]) {
   opacity: 0.5;
 }
 .home-card[aria-busy] {
@@ -162,8 +192,5 @@
   .home-search {
     grid-column: 1 / -1;
     grid-row: 2;
-  }
-  .home-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 }

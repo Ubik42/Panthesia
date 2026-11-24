@@ -64,6 +64,15 @@
   min-height: 0;
   overflow: auto;
 }
+/* Heading and body share one centred column, so a wide window does not leave the content in
+   its top-left corner. */
+.settings-heading,
+.settings-body {
+  width: 100%;
+  max-width: 1040px;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
 .settings-heading {
   position: sticky;
   top: 0;
@@ -85,10 +94,7 @@
   font-size: 13px;
 }
 .settings-body {
-  width: 100%;
-  max-width: 880px;
   padding: 0 var(--space-6) var(--space-6);
-  box-sizing: border-box;
 }
 .settings-about strong {
   color: var(--text-primary);

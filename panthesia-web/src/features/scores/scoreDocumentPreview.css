@@ -32,7 +32,7 @@
   min-height: 32px;
 }
 .score-document-viewport {
-  max-height: min(52vh, 560px);
+  max-height: min(calc(52 * var(--vh)), 560px);
   overflow: auto;
   overscroll-behavior: contain;
   background: var(--gray-82);

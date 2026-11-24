@@ -5,7 +5,7 @@ import { rangeTime } from "./PracticeRangeControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 import type { PracticeRangeController } from "./usePracticeRange";
-import { measureCaption } from "../../stage/songLayers";
+import { measureCaption, sectionColors } from "../../stage/songLayers";
 import "./practiceTimeline.css";
 const fields = [
   "practiceMs",
@@ -46,8 +46,28 @@ const TimelineMarks = memo(function TimelineMarks({
       return {measure:m,x,label,text};
     });
   }, [song?.measures, start, end,width]);
+  const sections = song?.sections?.items.length ? song.sections.items : null;
+  const spans = useMemo(() => {
+    if (!sections) return [];
+    const colors = sectionColors(sections);
+    const at = (s: number) => ((s - start) / Math.max(0.01, end - start)) * width;
+    return sections
+      .map((s, i) => ({ s, x1: Math.max(0, at(s.seconds)), x2: Math.min(width, at(sections[i + 1]?.seconds ?? Infinity)), color: colors[i] }))
+      .filter((v) => v.x2 > v.x1);
+  }, [sections, start, end, width]);
   return (
     <svg ref={root} viewBox={`0 0 ${width} 20`} preserveAspectRatio="none" aria-hidden="true">
+      {spans.map(({ s, x1, x2, color }) => (
+        <g key={`${s.tick}:${s.label}`} className="time-ruler-section">
+          <rect x={x1} y={0} width={x2 - x1} height={20} fill={color} opacity={0.16} />
+          <rect x={x1} y={0} width={Math.min(3, x2 - x1)} height={20} fill={color} opacity={0.8} />
+          {x2 - x1 > s.label.length * 12 + 10 && (
+            <text x={x1 + 6} y={9} style={{ fill: color, fontSize: 9, fontWeight: 600 }}>
+              {s.label}
+            </text>
+          )}
+        </g>
+      ))}
       {marks.map(({measure:m,x,label,text}) => {
         return (
           <g key={m.number}>

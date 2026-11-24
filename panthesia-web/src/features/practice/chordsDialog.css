@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: min(560px, 92vw);
+  width: min(560px, calc(92 * var(--vw)));
 }
 .chords-source {
   margin: 0;
@@ -18,7 +18,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 50vh;
+  max-height: calc(50 * var(--vh));
   overflow: auto;
   display: flex;
   flex-direction: column;

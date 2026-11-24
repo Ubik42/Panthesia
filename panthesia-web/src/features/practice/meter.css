@@ -15,7 +15,7 @@
     overflow-x: auto;
   }
   .meter-map-dialog section[aria-label="小节网格预览"] .meter-table-wrap {
-    max-height: 32dvh;
+    max-height: calc(32 * var(--vh));
   }
   .meter-map-table {
     width: 100%;

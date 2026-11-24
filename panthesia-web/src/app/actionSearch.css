@@ -5,7 +5,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: min(11vh, 100px) 20px 24px;
+  padding: min(calc(11 * var(--vh)), 100px) 20px 24px;
   background: color-mix(in oklab, var(--gray-18) 72%, transparent);
   backdrop-filter: blur(5px);
   overscroll-behavior: contain;
@@ -14,8 +14,8 @@
   display: flex;
   flex-direction: column;
   width: min(650px, 100%);
-  max-height: min(750px, calc(89vh - 24px));
-  max-height: min(750px, calc(89dvh - 24px));
+  max-height: min(750px, calc(calc(89 * var(--vh)) - 24px));
+  max-height: min(750px, calc(calc(89 * var(--vh)) - 24px));
   min-height: 0;
   color: var(--gray-96);
   border: 1px solid var(--green-49);
@@ -290,8 +290,8 @@
     padding: 16px 8px;
   }
   .action-search {
-    max-height: calc(100vh - 32px);
-    max-height: calc(100dvh - 32px);
+    max-height: calc(calc(100 * var(--vh)) - 32px);
+    max-height: calc(calc(100 * var(--vh)) - 32px);
     border-radius: 10px;
   }
   .action-search-heading {

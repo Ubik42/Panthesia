@@ -14,7 +14,7 @@
   }
   .passage-list {
     min-width: 0;
-    max-height: 63vh;
+    max-height: calc(63 * var(--vh));
     overflow: auto;
     padding-right: var(--space-2);
     scrollbar-width: thin;

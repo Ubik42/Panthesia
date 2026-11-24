@@ -2,14 +2,16 @@
     [Parameter(Mandatory)][string]$Destination,
     [ValidateSet('Debug', 'Release')][string]$Configuration = 'Release',
     [switch]$Offline,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    # Same-day rebuild: replace an existing package at the destination once the new one is ready.
+    [switch]$Replace
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'practice-build.psm1') -Force
 $repository = Get-PracticeRepository
 $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination).TrimEnd('\', '/')
-if (Test-Path -LiteralPath $Destination) { throw '运行包目录已存在，请使用新的目录；已有内容继续保留。' }
+if ((Test-Path -LiteralPath $Destination) -and -not $Replace) { throw '运行包目录已存在：同一天重新打包请加 -Replace，否则使用新的目录；已有内容继续保留。' }
 $parent = Split-Path $Destination -Parent
 if (-not $parent) { throw '请为运行包指定完整目录位置。' }
 [void][IO.Directory]::CreateDirectory($parent)
@@ -79,7 +81,15 @@ try {
     $null = Read-PracticePackage $stage
     if ((Get-PracticeSource Desktop).fingerprint -ne $source.fingerprint) { throw '复制运行包期间源码发生变化，本次暂存目录继续保留。' }
     if (-not [string]::Equals((Split-Path ([IO.Path]::GetFullPath($Destination)) -Parent), $parent, [StringComparison]::OrdinalIgnoreCase)) { throw '运行包发布位置发生变化。' }
-    [IO.Directory]::Move($stage, $Destination)
+    if (Test-Path -LiteralPath $Destination) {
+        # The old package moves aside first; a running copy keeps it locked, and then nothing changes.
+        $old = Join-Path $parent ('.' + [IO.Path]::GetFileName($Destination) + '.old-' + [Guid]::NewGuid().ToString('N'))
+        try { [IO.Directory]::Move($Destination, $old) } catch { throw "旧运行包正在使用（请先退出 Panthesia），新包保留在暂存目录 $stage。" }
+        [IO.Directory]::Move($stage, $Destination)
+        Remove-Item -LiteralPath $old -Recurse -Force
+    } else {
+        [IO.Directory]::Move($stage, $Destination)
+    }
     Write-Output "运行包已生成：$Destination"
     Write-Output "直接打开：$(Join-Path $Destination 'Panthesia.exe')"
 } catch {

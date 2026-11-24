@@ -20,7 +20,7 @@
 }
 .paper-annotation-navigation input {
   min-width: 0;
-  width: min(260px, 60vw);
+  width: min(260px, calc(60 * var(--vw)));
 }
 .paper-annotation-navigation-list {
   display: grid;
@@ -67,7 +67,7 @@
 .paper-reading-error { flex-basis: 100%; color: var(--warning, var(--orange-88)); }
 .paper-list-pager, .paper-anchor-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .paper-list-pager { font-size: 12px; }
-.paper-anchor-filter input { min-width: 0; width: min(240px, 60vw); }
+.paper-anchor-filter input { min-width: 0; width: min(240px, calc(60 * var(--vw))); }
 .paper-reading-status { min-inline-size: 7em; color: var(--blue-82); font-size: 12px; white-space: nowrap; }
 
 /* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
@@ -91,6 +91,6 @@
 .paper-anchor-add input {width:72px;}
 .paper-anchor-row > span {min-width:175px;}
 fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
-.paper-updates-dialog .paper-source-preview .paper-reader{height:42vh;min-height:260px;display:flex;flex-direction:column;overflow:hidden}
+.paper-updates-dialog .paper-source-preview .paper-reader{height:calc(42 * var(--vh));min-height:260px;display:flex;flex-direction:column;overflow:hidden}
 .paper-updates-dialog .paper-source-preview .paper-sheet-scroll{min-height:120px;flex:1}
 .paper-updates-dialog .paper-source-preview .paper-controls{flex-shrink:0}

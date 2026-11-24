@@ -26,7 +26,7 @@
   width: 74px;
 }
 .paper-note-editor-controls select {
-  max-width: min(440px, 75vw);
+  max-width: min(440px, calc(75 * var(--vw)));
 }
 .paper-note-anchor-row {
   color: var(--gray-89);

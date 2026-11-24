@@ -131,3 +131,10 @@
   --instrument-selected: var(--surface-hover);
   --instrument-accent: var(--accent);
 }
+
+/* Viewport units under the interface zoom (features/settings/useUiScale.ts): the document is
+   zoomed, which scales vh and vw as well, so sizes relative to the window use these instead. */
+:root {
+  --vh: calc(1dvh / var(--ui-scale, 1));
+  --vw: calc(1vw / var(--ui-scale, 1));
+}

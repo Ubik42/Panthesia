@@ -101,7 +101,7 @@ button.icon-button {
   background: transparent;
 }
 .workbench {
-  height: 100dvh;
+  height: calc(100 * var(--vh));
   min-height: 480px;
   display: flex;
   flex-direction: column;
@@ -198,7 +198,7 @@ button.icon-button {
 .fingering-table-wrap {
   overflow: auto;
   min-height: 120px;
-  max-height: 48vh;
+  max-height: calc(48 * var(--vh));
   border: 1px solid var(--blue-37);
 }
 .fingering-table {

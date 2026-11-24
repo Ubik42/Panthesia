@@ -1,23 +1,57 @@
-
-/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
-.app-notice {
-  position: static;
-  flex: none;
-  min-width: 0;
-  max-height: 24vh;
-  overflow: auto;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
-  background: var(--teal-34);
-  border: 1px solid var(--green-57);
-  font-size: 12px;
-  line-height: 1.5;
+/* Application notices (AppNotices.tsx): a floating stack at the bottom right, over the page. */
+@layer screens {
+  .app-toasts {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+    max-width: min(420px, calc(calc(100 * var(--vw)) - 2 * var(--space-4)));
+    pointer-events: none;
+  }
+  .app-toasts:empty {
+    display: none;
+  }
+  .app-toasts > *,
+  .app-toasts .session-status-stack > * {
+    pointer-events: auto;
+  }
+  .app-toasts :is(.app-notice, .task-activity, .session-status-stack > *) {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-raised);
+    font-size: 12px;
+  }
+  .app-toasts .session-status-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .app-toasts .app-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    max-height: calc(24 * var(--vh));
+    overflow: auto;
+  }
+  .app-toasts .app-notice span {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* In the floating stack the progress is one line: the task and its cancel button. */
+  .app-toasts .task-activity > div {
+    margin: 0;
+  }
+  .app-toasts .task-activity > p,
+  .app-toasts .task-activity > button {
+    display: none;
+  }
 }
-.app-notice span {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.app-notice button { flex: none; }

@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   width: min(520px, 100%);
-  max-height: min(86vh, 900px);
+  max-height: min(calc(86 * var(--vh)), 900px);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-l);
   background: var(--surface-raised);

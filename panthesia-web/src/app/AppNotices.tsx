@@ -3,11 +3,9 @@ import { useApp } from "./AppContext";
 import { DesktopCloseProgress } from "./DesktopCloseProgress";
 import { SessionStatus } from "./SessionStatus";
 import { StartupNotice } from "./StartupNotice";
-import { pathKey } from "../engine/pathIdentity";
 import { TaskActivity } from "../engine/TaskActivity";
+import { useEffect, useState, type ReactNode } from "react";
 import "./appNotices.css";
-
-const normalize = pathKey;
 
 /** Close progress, startup and session notices, and the busy indicator. */
 export function AppNotices() {
@@ -39,22 +37,40 @@ export function AppNotices() {
         openRecovery={openRecovery}
         error={health.getMessages().action || health.getMessages().session}
       />
-      {notice && (
-        <div className="app-notice" role="status">
-          <span>{notice}</span>
-          <button aria-label="关闭导入提示" onClick={() => setNotice("")}>
-            关闭
-          </button>
-        </div>
-      )}
-      {startupReady && (
-        <SessionStatus
-          store={sessionRecovery}
-          act={recoverSession}
-          openRecovery={openRecovery}
-        />
-      )}
-      {busy && !fingeringDialog && !exerciseDialog && <TaskActivity />}
+      {/* Notices float over the page (bottom right) so they never move its layout. */}
+      <div className="app-toasts">
+        {notice && (
+          <div className="app-notice" role="status">
+            <span>{notice}</span>
+            <button aria-label="关闭导入提示" onClick={() => setNotice("")}>
+              关闭
+            </button>
+          </div>
+        )}
+        {startupReady && (
+          <SessionStatus
+            store={sessionRecovery}
+            act={recoverSession}
+            openRecovery={openRecovery}
+          />
+        )}
+        {busy && !fingeringDialog && !exerciseDialog && (
+          <Delayed ms={400}>
+            <TaskActivity />
+          </Delayed>
+        )}
+      </div>
     </>
   );
+}
+
+/** Shows its content only when it is still wanted after `ms` (desktop convention: short work
+ * shows no progress). */
+function Delayed({ ms, children }: { ms: number; children: ReactNode }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(true), ms);
+    return () => window.clearTimeout(timer);
+  }, [ms]);
+  return shown ? <>{children}</> : null;
 }

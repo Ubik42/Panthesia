@@ -42,6 +42,10 @@ export const stageInk = {
   fingerOnWhite: "#294432",
 };
 
+/** Section colours on the waterfall and the timeline: sections of the same kind (副歌, 副歌 2,
+ * Chorus') share one, in order of first appearance. */
+export const sectionPalette = ["#6c8cff", "#ff9f5a", "#5fd0a0", "#e07ad8", "#f2cf5b", "#5ec4e8"] as const;
+
 /** Fallboard and rail above the keys. */
 export const keyboardFrame = { fallboard: "#303544", edge: "#777b91" } as const;
 

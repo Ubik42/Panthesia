@@ -133,6 +133,6 @@
     grid-template-rows: minmax(180px, 1fr) auto;
   }
   .paper-reader-tools {
-    max-height: min(32vh, 240px);
+    max-height: min(calc(32 * var(--vh)), 240px);
   }
 }

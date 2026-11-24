@@ -10,8 +10,8 @@
   /* Shell: a tall dialog whose tab content scrolls between the masthead and the footer. */
   .ui-dialog.fingering-dialog {
     width: min(1120px, 100%);
-    height: min(920px, 92vh);
-    max-height: 92vh;
+    height: min(920px, calc(92 * var(--vh)));
+    max-height: calc(92 * var(--vh));
   }
   .ui-dialog.fingering-dialog > .ui-dialog-body {
     display: flex;
@@ -163,7 +163,7 @@
   /* Note table. */
   .fingering-dialog .fingering-table-wrap {
     min-height: 90px;
-    max-height: 52vh;
+    max-height: calc(52 * var(--vh));
     border-color: var(--line-subtle);
   }
   .fingering-dialog .fingering-table :is(th, td) {

@@ -2,7 +2,7 @@
 /* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
 .paper-manager-tabs,.paper-selector,.paper-controls,.paper-version-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .paper-score{position:relative;display:flex;flex-direction:column;gap:10px;min-height:0;height:100%;background:var(--gray-24)}
-.paper-manage{height:min(65vh,660px);background:transparent}
+.paper-manage{height:min(calc(65 * var(--vh)),660px);background:transparent}
 .paper-selector{flex-shrink:0;padding:8px}
 .paper-selector label{display:flex;align-items:center;gap:8px}
 .paper-selector select{min-width:200px;max-width:420px}
@@ -15,4 +15,4 @@
 .piano-stage:has(>.paper-score)>.paper-score{min-height:0}
 @media(max-width:850px){.paper-selector select{max-width:240px}}
 @media(max-width:850px){.paper-manage{height:60vh}}
-.piano-stage:has(>.paper-score){grid-template-rows:min(var(--paper-preview-height,150px),35vh) minmax(200px,1fr)}
+.piano-stage:has(>.paper-score){grid-template-rows:min(var(--paper-preview-height,150px),calc(35 * var(--vh))) minmax(200px,1fr)}

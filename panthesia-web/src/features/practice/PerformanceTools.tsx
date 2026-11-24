@@ -1,4 +1,4 @@
-import { Eye, Hand } from "lucide-react";
+import { Eye, FileMusic, Hand, KeyboardMusic, Repeat, Rows2, ScrollText, Tags } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction, type RefObject } from "react";
 import { ToolbarMore } from "../../ui/legacy/ToolbarMore";
 import type { EngineCommand, LoadedSong } from "../../api";
@@ -18,15 +18,17 @@ import { usePlaybackFields } from "./usePlaybackFields";
 import { ChordsDialog } from "./ChordsDialog";
 import "../../ui/stagePanel.css";
 
-const VIEWS: [string, string, boolean][] = [
-  ["keyboard", "瀑布", false],
-  ["combined", "谱面 + 瀑布", true],
-  ["score", "五线谱", false],
-  ["paper", "谱页", true],
+const VIEWS: [string, string, boolean, typeof Eye][] = [
+  ["keyboard", "瀑布", false, KeyboardMusic],
+  ["combined", "谱面 + 瀑布", true, Rows2],
+  ["score", "五线谱", false, FileMusic],
+  ["paper", "谱页", true, ScrollText],
 ];
 
-/** The stage's panels (interface-design.md §4.4, §6): what is shown, how to practise, and the
- * metronome. Global settings are one link away, on the settings page. */
+/** The stage's tools (interface-design.md §4.4, §6), spread along the bar: how to practise
+ * (mode and hands) and the view directly on the bar, then one panel each for the stage, the
+ * labels, loop and bookmarks, and fingering, and the metronome. Global settings are one link
+ * away, on the settings page. */
 export function PerformanceTools({
   song,
   playback,
@@ -74,16 +76,39 @@ export function PerformanceTools({
     <div className="stage-tools">
       {chordsOpen && song && <ChordsDialog song={song} close={() => setChordsOpen(false)} run={run} />}
 
-      <ToolbarMore panel icon={<Eye size={24} />} label="显示" scale={display.uiScale / 100} disabled={!startupReady}>
-        <section aria-label="视图">
-          <div className="ui-segmented stage-views" role="group" aria-label="练习视图">
-            {VIEWS.map(([id, label, needsSong]) => (
-              <button key={id} aria-pressed={view === id} disabled={needsSong && !song} onClick={() => setView(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
+      <div className="stage-tools-group" aria-label="练习">
+        <div className="ui-segmented stage-inline" role="group" aria-label="练习方式">
+          <button aria-pressed={state.mode === "wait"} disabled={locked || !song} title="弹对后音乐才继续" onClick={() => action({ type: "mode", value: "wait" })}>
+            等待
+          </button>
+          <button aria-pressed={state.mode === "listen"} disabled={locked || !song} title="音乐连续播放" onClick={() => action({ type: "mode", value: "listen" })}>
+            连续
+          </button>
+        </div>
+        <div className="ui-segmented stage-inline" role="group" aria-label="练习的手">
+          {[
+            ["left", "左手"],
+            ["both", "双手"],
+            ["right", "右手"],
+          ].map(([value, label]) => (
+            <button key={value} aria-pressed={state.hands === value} disabled={busy || state.recording || !song} onClick={() => action({ type: "hands", value })}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ui-segmented stage-inline stage-views" role="group" aria-label="练习视图">
+        {VIEWS.map(([id, label, needsSong, Icon]) => (
+          <button key={id} aria-pressed={view === id} disabled={needsSong && !song} title={label} onClick={() => setView(id)}>
+            <Icon size={16} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="stage-tools-group" aria-label="面板">
+      <ToolbarMore panel icon={<Eye size={24} />} label="舞台" disabled={!startupReady}>
         <section aria-label="舞台">
           <h3>舞台</h3>
           <label>
@@ -120,6 +145,12 @@ export function PerformanceTools({
             />
           )}
         </section>
+        <button className="stage-panel-link" onClick={open.settings}>
+          更多舞台设置…
+        </button>
+      </ToolbarMore>
+
+      <ToolbarMore panel icon={<Tags size={24} />} label="标注" disabled={!startupReady}>
         <section aria-label="标注">
           <h3>标注</h3>
           {!!song?.harmony?.chords.length && (
@@ -170,28 +201,7 @@ export function PerformanceTools({
         </button>
       </ToolbarMore>
 
-      <ToolbarMore panel icon={<Hand size={24} />} label="练习" scale={display.uiScale / 100} disabled={!song || !startupReady}>
-        <section aria-label="练习方式">
-          <div className="ui-segmented" role="group" aria-label="练习方式">
-            <button aria-pressed={state.mode === "wait"} disabled={locked} onClick={() => action({ type: "mode", value: "wait" })}>
-              弹对后继续
-            </button>
-            <button aria-pressed={state.mode === "listen"} disabled={locked} onClick={() => action({ type: "mode", value: "listen" })}>
-              连续播放
-            </button>
-          </div>
-          <div className="ui-segmented" role="group" aria-label="练习的手">
-            {[
-              ["left", "左手"],
-              ["both", "双手"],
-              ["right", "右手"],
-            ].map(([value, label]) => (
-              <button key={value} aria-pressed={state.hands === value} disabled={busy || state.recording} onClick={() => action({ type: "hands", value })}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
+      <ToolbarMore panel icon={<Repeat size={24} />} label="循环与书签" disabled={!song || !startupReady}>
         <section aria-label="循环">
           <h3>循环</h3>
           <PracticeRangeControls
@@ -227,6 +237,9 @@ export function PerformanceTools({
             />
           )}
         </section>
+      </ToolbarMore>
+
+      <ToolbarMore panel icon={<Hand size={24} />} label="指法" disabled={!song || !startupReady}>
         <section aria-label="指法">
           <h3>指法</h3>
           <label>
@@ -257,6 +270,7 @@ export function PerformanceTools({
       >
         <MetronomeIcon size={24} />
       </button>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 @layer screens {
   .score-range-dialog.ui-dialog {
     width: min(840px, 100%);
-    max-height: 90vh;
+    max-height: calc(90 * var(--vh));
   }
   .score-range-dialog .file-actions {
     display: flex;

@@ -1,8 +1,9 @@
-import { FolderOpen, Keyboard, Music, Search, Settings, SearchX } from "lucide-react";
+import { FolderOpen, Keyboard, LayoutGrid, Music, Rows3, Search, Settings, SearchX, Grid3x3 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api";
 import { product } from "../../product.generated";
-import { Badge, Button, Empty, IconButton } from "../../ui/components";
+import { Badge, Button, Empty, IconButton, Segmented } from "../../ui/components";
+import { setDisplay, useDisplay } from "../../features/settings/interfaceSettingsStore";
 import { formatDuration, keyLabel, type SongFacts } from "../../features/library/songSummary";
 import "../../ui/controls.css";
 import "./homeScreen.css";
@@ -43,7 +44,8 @@ function ago(ms: number) {
 }
 
 /** The start page (frontend-architecture.md §3): a top bar and the recently opened songs as
- * cards in two columns, or search results from the music folder. Choosing a card opens the song;
+ * a grid of cards (size chosen in the bar, columns follow the window), or search results from
+ * the music folder. Choosing a card opens the song;
  * its details slide in over this page (`details`). */
 export function HomeScreen({
   recent,
@@ -73,6 +75,15 @@ export function HomeScreen({
   const [found, setFound] = useState<Found[] | null>(null);
   const [folder, setFolder] = useState<FolderStatus | null>(null);
   const searchSeq = useRef(0);
+  const grid = useDisplay().homeGrid;
+  /** A missing file's card asks what to do: find it elsewhere or forget it. */
+  const [asking, setAsking] = useState<string | null>(null);
+  const relocate = async (file: RecentFile) => {
+    const path = api.desktop ? await api.pickSongFile("music", file.path) : window.prompt("曲目的新位置（完整路径）", file.path)?.trim();
+    if (!path) return;
+    setAsking(null);
+    if (await open(path)) forget(file.path);
+  };
   const busy = disabled || pending !== null;
   // The music folder is scanned when the program starts; ask again until the scan has finished.
   useEffect(() => {
@@ -152,6 +163,17 @@ export function HomeScreen({
           />
         </label>
         <div className="home-actions">
+          <Segmented
+            label="卡片大小"
+            className="home-density"
+            value={grid}
+            onChange={(homeGrid) => setDisplay((previous) => ({ ...previous, homeGrid }))}
+            options={[
+              { value: "compact", label: <Grid3x3 aria-hidden="true" />, title: "紧凑" },
+              { value: "normal", label: <LayoutGrid aria-hidden="true" />, title: "标准" },
+              { value: "roomy", label: <Rows3 aria-hidden="true" />, title: "宽松" },
+            ]}
+          />
           <Button variant="primary" icon={FolderOpen} disabled={busy} onClick={() => void chooseFile()}>
             打开文件…
           </Button>
@@ -163,7 +185,7 @@ export function HomeScreen({
         <h2 className="ui-section-title">{searching ? `搜索结果 · ${found.length >= 200 ? "前 200 个" : `${found.length} 个`}` : "最近打开"}</h2>
         {searching && found.length === 0 && <Empty icon={SearchX}>没有找到“{query.trim()}”。</Empty>}
         {!searching && recent.length === 0 && <Empty icon={Music}>打开一个 MIDI、MusicXML 或 ABC 文件，或从 Keel、资源管理器双击曲目。</Empty>}
-        <ul className="home-grid">
+        <ul className="home-grid" data-size={grid}>
           {searching
             ? found.map((item) => (
                 <li key={item.path}>
@@ -191,13 +213,16 @@ export function HomeScreen({
                       missing={!file.exists}
                       active={file.path === current}
                       pending={pending === file.path}
-                      disabled={busy || !file.exists}
+                      disabled={busy}
+                      asking={asking === file.path}
+                      ask={() => setAsking(asking === file.path ? null : file.path)}
+                      relocate={() => void relocate(file)}
                       marks={MARKS.map(([key, label]) => [label, !!brief?.has?.[key]])}
                       facts={facts ? [formatDuration(facts.durationSeconds), keyLabel(facts.key)].filter(Boolean).join(" · ") : ""}
                       time={ago(file.openedAt)}
                       open={choose}
                       forget={() => {
-                        if (window.confirm(`从最近打开中移除“${file.title}”？文件本身不受影响。`)) forget(file.path);
+                        if (!file.exists || window.confirm(`从最近打开中移除“${file.title}”？文件本身不受影响。`)) forget(file.path);
                       }}
                     />
                   </li>
@@ -223,6 +248,9 @@ function SongCard({
   disabled,
   open,
   forget,
+  asking,
+  ask,
+  relocate,
 }: {
   title: string;
   place: string;
@@ -236,7 +264,28 @@ function SongCard({
   disabled: boolean;
   open: (path: string) => void;
   forget?: () => void;
+  asking?: boolean;
+  ask?: () => void;
+  relocate?: () => void;
 }) {
+  if (missing && asking)
+    return (
+      <div className="home-card ui-card" data-missing="true" data-asking="true" title={path}>
+        <span className="home-card-main">
+          <strong>{title}</strong>
+          <small>找不到这个文件：{path}</small>
+        </span>
+        <span className="home-card-ask">
+          <Button variant="primary" onClick={relocate}>
+            重新定位…
+          </Button>
+          <Button onClick={forget}>从列表中移除</Button>
+          <Button variant="ghost" onClick={ask}>
+            取消
+          </Button>
+        </span>
+      </div>
+    );
   return (
     <button
       className="home-card ui-card"
@@ -245,7 +294,7 @@ function SongCard({
       aria-busy={pending || undefined}
       disabled={disabled}
       title={path}
-      onClick={() => open(path)}
+      onClick={() => (missing ? ask?.() : open(path))}
       onContextMenu={
         forget
           ? (event) => {
