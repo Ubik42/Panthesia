@@ -1,4 +1,4 @@
-import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, PencilLine, Piano, Repeat, Tags, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { AudioLines, AudioWaveform, Blend, ChevronLeft, ChevronRight, Clock4, FileMusic, Hand, Hash, Hourglass, KeyboardMusic, Lightbulb, MicVocal, Milestone, Music2, Palette, PencilLine, Piano, Repeat, Tags, Box, Rows2, ScrollText, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { StageBackgroundSettings } from "../settings/StageBackgroundSettings";
 import { useOpenSongCover } from "../library/songCover";
 import { PartsList, type PartsListProps } from "../parts/PartsList";
@@ -120,6 +120,7 @@ export function PerformanceTools({
           set({ virtualHands });
           if (virtualHands && view !== "keyboard" && view !== "combined") setView("keyboard");
         }} />
+        <Toggle icon={Box} label="立体视角（从前上方看双手与琴键）" on={display.handCamera === "front"} disabled={!display.virtualHands} change={(on) => set({ handCamera: on ? "front" : "top" })} />
         <Toggle icon={Hash} label="在瀑布上编辑指法" on={editFingers} disabled={!song} change={(on) => {
           setEditFingers(on);
           clearSelection();

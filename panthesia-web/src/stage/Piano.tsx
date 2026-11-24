@@ -767,7 +767,7 @@ export function Piano({
         }
       }
       virtualHands.configure(song,state.speed,display.virtualHands);
-      const handState=virtualHands.paint(position,baseline,baseline+keyboardHeight,height,width,pitch=>keyLayout.has(pitch)?geometry(pitch,width):undefined,display.virtualHandOpacity/100);
+      const handState=virtualHands.paint(position,baseline,baseline+keyboardHeight,height,width,pitch=>keyLayout.has(pitch)?geometry(pitch,width):undefined,display.virtualHandOpacity/100,{camera:display.handCamera,low:keyboardRange.low,high:keyboardRange.high,sounding:visualNotes});
       element.dataset.virtualHands=display.virtualHands?(virtualHands.ready?"ready":"preparing"):"off";
       element.dataset.handPoses=String(handState.hands);
       element.dataset.thumbUnder=String(handState.thumbUnder);

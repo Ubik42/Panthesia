@@ -1,7 +1,7 @@
 import type { LoadedSong } from "../../engine/sessionTypes";
 import type { HandPlan } from "./virtualHandPlan";
 import { handPose, arrangeHands, type HandMemory, type HandPose } from "./virtualHandPose";
-import { HandMeshDrawing } from "./virtualHandMesh";
+import { HandMeshDrawing, type HandView } from "./virtualHandMesh";
 import { reportDiagnostic } from "../../lib/diagnostics";
 import { api } from "../../api";
 import type { PlannedFinger } from "../../engine/commands.generated";
@@ -109,7 +109,7 @@ export class VirtualHands {
     paint(time: number, top: number, bottom: number, height: number, width: number, geometry: (pitch: number) => {
         x: number;
         w: number;
-    } | undefined, opacity: number) {
+    } | undefined, opacity: number, view?: Omit<HandView, "geometry" | "band">) {
         const plan = this.plan;
         if (!plan) {
             this.drawing?.hide();
@@ -130,7 +130,7 @@ export class VirtualHands {
             .filter((p): p is HandPose => !!p);
         const crossed = poses.length === 2 && poses[0].wrist.x > poses[1].wrist.x;
         const ordered = arrangeHands(poses);
-        this.drawing?.draw(ordered, width, height, top, opacity);
+        this.drawing?.draw(ordered, width, height, top, opacity, view && { ...view, geometry, band: { top, bottom } });
         return {
             hands: poses.length,
             thumbUnder: poses.filter((p) => p.thumbUnder).length,

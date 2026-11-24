@@ -1,6 +1,20 @@
 import type * as Three from "three";
 import type { HandPose, V3 } from "./virtualHandPose";
 import { handSkin } from "./stageTheme";
+import { buildKeyboard, paintKeys, type KeyboardModel } from "./virtualKeyboard3d";
+
+/** How the hands are seen: from straight above over the 2D keyboard, or from the front and
+ * above with a 3D keyboard drawn under them. */
+export type HandView = {
+  camera: "top" | "front";
+  geometry: (pitch: number) => { x: number; w: number } | undefined;
+  low: number;
+  high: number;
+  /** Keys sounding now, with their note colours. */
+  sounding: ReadonlyMap<number, string>;
+  /** The keys' fallboard (top) and front edges on the canvas, pixels. */
+  band: { top: number; bottom: number };
+};
 
 /** The hands drawn as skinned meshes: the WebXR `generic-hand` model (immersive-web/
  * webxr-input-profiles, W3C Software and Document License, `public/models/generic-hand`).
@@ -57,6 +71,7 @@ function loadKit(): Promise<Kit> {
       if (!mesh || !joints.has("wrist")) throw new Error("手模型缺少骨骼");
       mesh.material = skin;
       mesh.frustumCulled = false;
+      mesh.castShadow = true;
       // Outline: the same skinned mesh pushed out along its normals, back faces only.
       const line = new THREE.MeshBasicMaterial({ color: handSkin.outline, side: THREE.BackSide });
       line.onBeforeCompile = (shader) => {
@@ -96,6 +111,9 @@ export class HandMeshDrawing {
   private renderer: Three.WebGLRenderer | null = null;
   private scene: Three.Scene | null = null;
   private camera: Three.OrthographicCamera | null = null;
+  private perspective: Three.PerspectiveCamera | null = null;
+  private keyLight: Three.DirectionalLight | null = null;
+  private keyboard: KeyboardModel | null = null;
   private kit: Kit | null = null;
   private failed = false;
   private size = "";
@@ -105,12 +123,21 @@ export class HandMeshDrawing {
     const THREE = k.THREE;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, antialias: true, premultipliedAlpha: true });
     this.renderer.setClearColor(0x000000, 0);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
     this.scene = new THREE.Scene();
     this.scene.add(new THREE.HemisphereLight(0xfff3e6, 0x6b4a36, 1.1));
     const light = new THREE.DirectionalLight(0xfff1e0, 2.2);
     // Key light from the upper left, above: the same side as the drop shadow's offset implies.
     light.position.set(-0.6, 0.5, 1);
+    light.shadow.mapSize.set(2048, 2048);
+    light.shadow.bias = -0.0004;
+    light.shadow.radius = 3;
     this.scene.add(light);
+    this.scene.add(light.target);
+    this.keyLight = light;
     const fill = new THREE.DirectionalLight(0xdfe8ff, 0.6);
     fill.position.set(0.8, -0.4, 0.6);
     this.scene.add(fill);
@@ -121,9 +148,11 @@ export class HandMeshDrawing {
     this.camera = new THREE.OrthographicCamera(0, 1, 1, 0, 1, 4000);
     this.camera.position.set(0, 0, 2000);
     this.camera.lookAt(0, 0, 0);
+    this.perspective = new THREE.PerspectiveCamera(30, 1, 10, 20000);
+    this.perspective.up.set(0, 0, 1);
   }
 
-  draw(poses: HandPose[], width: number, height: number, top: number, opacity: number) {
+  draw(poses: HandPose[], width: number, height: number, top: number, opacity: number, view?: HandView) {
     if (!this.kit) {
       if (!this.failed)
         void loadKit().then(
@@ -148,6 +177,11 @@ export class HandMeshDrawing {
       renderer.setPixelRatio(ratio);
       renderer.setSize(width, height, false);
     }
+    if (view?.camera === "front") return this.drawFront(poses, width, height, top, view);
+    if (this.keyboard) this.keyboard.group.visible = false;
+    this.keyLight!.castShadow = false;
+    renderer.setClearColor(0x000000, 0);
+    renderer.setViewport(0, 0, width, height);
     const scale = poses[0]?.scale ?? 1,
       front = poses[0]?.front ?? height;
     // Millimetres on the keyboard to pixels: x * scale across, front - y * scale down.
@@ -232,6 +266,68 @@ export class HandMeshDrawing {
     model.root.matrixWorldNeedsUpdate = true;
     model.root.visible = true;
     model.thickness.value = OUTLINE_PX / pose.scale / 1000;
+  }
+
+  /** The front camera: a perspective view from in front of and above the keys, the 3D keyboard
+   * under the hands, shadows from the hands on the keys. Covers the keyboard's area below `top`. */
+  private drawFront(poses: HandPose[], width: number, height: number, top: number, view: HandView) {
+    const { THREE, models } = this.kit!;
+    const renderer = this.renderer!,
+      scene = this.scene!,
+      camera = this.perspective!,
+      light = this.keyLight!;
+    const keyPx = view.geometry(60)?.w ?? view.geometry(view.low)?.w ?? 20;
+    const scale = poses[0]?.scale ?? keyPx / 23.5;
+    const keyHeight = Math.max(60, (view.band.bottom - view.band.top) / scale);
+    const layout = `${view.low}:${view.high}:${Math.round(scale * 1000)}:${Math.round(keyHeight)}:${Math.round(view.geometry(view.low)?.x ?? 0)}`;
+    if (this.keyboard?.layout !== layout) {
+      if (this.keyboard) scene.remove(this.keyboard.group);
+      this.keyboard = buildKeyboard(THREE, view.geometry, scale, keyHeight, view.low, view.high, layout);
+      scene.add(this.keyboard.group);
+    }
+    this.keyboard.group.visible = true;
+    paintKeys(THREE, this.keyboard, view.sounding);
+    for (const side of ["left", "right"] as const) models[side].root.visible = false;
+    for (const pose of poses) this.place(THREE, models[pose.side], pose);
+    // The camera: the whole visible width of keys at a 50 degree horizontal view, 40 degrees
+    // above the keys, looking a little behind their middle.
+    const regionHeight = Math.max(1, height - top);
+    const span = width / scale;
+    const aspect = width / regionHeight;
+    const half = (25 * Math.PI) / 180;
+    const distance = (span / 2 / Math.tan(half)) * 1.02;
+    const elevation = (52 * Math.PI) / 180;
+    const target = new THREE.Vector3(span / 2, keyHeight * 0.62, -4);
+    camera.aspect = aspect;
+    camera.fov = (2 * Math.atan(Math.tan(half) / aspect) * 180) / Math.PI;
+    camera.near = distance * 0.2;
+    camera.far = distance * 4;
+    camera.position.set(target.x, target.y - distance * Math.cos(elevation), target.z + distance * Math.sin(elevation));
+    camera.lookAt(target);
+    camera.updateProjectionMatrix();
+    // The key light casts the hands' shadows on the keys.
+    light.castShadow = true;
+    light.target.position.copy(target);
+    light.position.set(target.x - 300, target.y - 450, target.z + 1300);
+    const shadow = light.shadow.camera as Three.OrthographicCamera;
+    shadow.left = -span * 0.6;
+    shadow.right = span * 0.6;
+    shadow.top = keyHeight * 3;
+    shadow.bottom = -keyHeight * 3;
+    shadow.near = 100;
+    shadow.far = 4000;
+    shadow.updateProjectionMatrix();
+    renderer.setClearColor(0x15110e, 1);
+    renderer.setScissorTest(true);
+    renderer.setViewport(0, 0, width, regionHeight);
+    renderer.setScissor(0, 0, width, regionHeight);
+    renderer.clear();
+    renderer.render(scene, camera);
+    this.canvas.style.filter = "none";
+    this.canvas.style.opacity = "1";
+    this.canvas.style.visibility = "visible";
+    this.canvas.dataset.handRenderer = "mesh-front";
+    this.canvas.dataset.handPoses = String(poses.length);
   }
 
   hide() {

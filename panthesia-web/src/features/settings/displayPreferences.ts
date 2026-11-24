@@ -35,6 +35,8 @@ export type DisplayPreferences = {
   gridSubdivision: 4 | 8 | 16 | 32;
   virtualHands: boolean;
   virtualHandOpacity: number;
+  /** How the virtual hands are seen: from above over the keys, or from the front with a 3D keyboard. */
+  handCamera: "top" | "front";
   effectsEnabled: boolean;
   effectsPreset: "practice" | "performance";
   effectsPalette: "aurora" | "ember" | "violet";
@@ -121,7 +123,7 @@ export const displayDefaults: DisplayPreferences = {
   practiceView: "combined", practiceSplitAxis: "auto", practiceSplitRatio: 55, scorePaper: "transparent", homeGrid: "normal", theme: "light", stageColor: "#ffffff", backgroundImage: "preset:night", backgroundImageOpacity: 100,
   pianoMaterial: "ivory", effectStyle: "bloom",
   barOpacity: 45, beatOpacity: 18, subdivisionOpacity: 12, gridSubdivision: 8,
-  virtualHands: false, virtualHandOpacity: 100,
+  virtualHands: false, virtualHandOpacity: 100, handCamera: "top",
   effectsEnabled: true,
   effectsPreset: "practice",
   effectsPalette: "aurora",
@@ -199,6 +201,7 @@ export function normalizeDisplayPreferences(
     gridSubdivision: raw.gridSubdivision === 4 || raw.gridSubdivision === 16 || raw.gridSubdivision === 32 ? raw.gridSubdivision : 8,
     virtualHands: raw.virtualHands === true,
     virtualHandOpacity: size(raw.virtualHandOpacity,20,100,100),
+    handCamera: raw.handCamera === "front" ? "front" : "top",
     effectsEnabled: typeof raw.effectsEnabled === "boolean" ? raw.effectsEnabled : true,
     effectsPreset: raw.effectsPreset === "performance" ? "performance" : "practice",
     effectsPalette: raw.effectsPalette === "ember" || raw.effectsPalette === "violet" ? raw.effectsPalette : "aurora",

@@ -11,3 +11,5 @@ Panthesia 是 Ubik42 独立维护的钢琴练习、乐谱与音乐工作台。�
 虚拟双手的俯视卡通画面与程序动画参考 [V9011N/pygame-piano-animator](https://github.com/V9011N/pygame-piano-animator)，固定参考提交 `ae8ae035c76ef9591926892cdbf603371be73499`。该仓库当前未声明项目许可证；产品中的 Canvas 皮肤、动作计划和逆运动学由 Panthesia 独立编写，未复制其源码、权重或资源。
 
 伴奏音轨变速保持音高使用 Geraint Luff / Signalsmith Audio 的 [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch) 1.1.1 及其 dsp 库，MIT 许可。源码原样放在 [panthesia-audio/vendor/signalsmith-stretch](panthesia-audio/vendor/signalsmith-stretch)，许可文本随附；Panthesia 只增加了一层 C 接口（`panthesia-audio/src/stretch.cpp`）。音频解码使用 [Symphonia](https://github.com/pdeljanov/Symphonia)（MPL-2.0），作为 Cargo 依赖使用，未修改。
+
+虚拟双手的立体视角（3D 琴键的比例、黑键位置与材质参数，皮肤与灯光的取值）参考 shafranek-js 的 [pianomotion-studio](https://github.com/shafranek-js/pianomotion-studio) 中 MIT 许可的渲染层（`apps/client/src/render3d`），按其署名条款在此注明 shafranek-js。该仓库中被排除在许可之外的指法引擎（`python-core/handthesia_core`、`packages/engine-ts`）及其动作数据未被参考或使用；Panthesia 的实现为独立编写。手部网格为 WebXR `generic-hand`（W3C Software and Document License）。

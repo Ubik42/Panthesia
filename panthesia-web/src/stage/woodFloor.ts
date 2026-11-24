@@ -79,6 +79,12 @@ function makeTile() {
   return canvas;
 }
 
+/** The plank tile (for the 3D floor's texture). */
+export function woodTile() {
+  tile ??= makeTile();
+  return tile;
+}
+
 /** Paint the floor in `ctx` over (x, y, w, h), with the keyboard's shadow along its top edge. */
 export function paintWoodFloor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, scale = 1) {
   tile ??= makeTile();
