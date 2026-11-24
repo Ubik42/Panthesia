@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Workspace } from "../../app/useWorkspaceNavigation";
+import type { Workspace } from "../../stores/route";
 import type { PlaybackStore } from "../practice/playbackStore";
 import type { EngineCommand } from "../../api";
 import { samePlaybackSource } from "../practice/playbackCommands";

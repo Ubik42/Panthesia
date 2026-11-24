@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { useApp } from "../../app/AppContext";
 import { api } from "../../api";
 import { product } from "../../product.generated";
-import type { SettingsSection } from "../../features/screens/useProductScreens";
+import { route, useRoute, type SettingsSection } from "../../stores/route";
 import { DeviceSettingsPanel } from "../../features/devices/DeviceSettingsPanel";
 import { DisplaySettingsPanel } from "../../features/settings/DisplaySettingsPanel";
 import { DuetRuntimePanel } from "../../features/settings/DuetRuntimePanel";
@@ -31,10 +31,10 @@ const SECTIONS: { id: SettingsSection; label: string; hint: string; icon: Lucide
 /** The settings page (interface-design.md §6): every global setting, one section at a time. */
 export function SettingsScreen() {
   const app = useApp();
-  const { productScreens, display, setDisplay, state, playback, progressEngineId, busy, connected, startupReady, run, refreshSession, setError, setAboutOpen } = app;
+  const { display, setDisplay, state, playback, progressEngineId, busy, connected, startupReady, run, refreshSession, setError, setAboutOpen } = app;
   const workbench = getInterfaceWorkbench();
   const workbenchError = useSyncExternalStore(workbench.subscribe, workbench.getSnapshot).storageError;
-  const section = productScreens.settingsSection;
+  const section = useRoute((s) => s.settingsSection);
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
   const unavailable = !connected
     ? "练习室连接中断，当前显示上次读取的设备设置。重新连接后可更改。"
@@ -44,14 +44,14 @@ export function SettingsScreen() {
   return (
     <main className="settings-screen ui-screen" aria-label="设置">
       <aside className="settings-nav">
-        <button className="ui-button ui-button--ghost settings-back" onClick={productScreens.leaveSettings}>
+        <button className="ui-button ui-button--ghost settings-back" onClick={route.leaveSettings}>
           <ArrowLeft />
           返回
         </button>
         <h1>设置</h1>
         <nav aria-label="设置分区">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
-            <button key={id} className="settings-nav-item" aria-current={id === section ? "page" : undefined} onClick={() => productScreens.setSettingsSection(id)}>
+            <button key={id} className="settings-nav-item" aria-current={id === section ? "page" : undefined} onClick={() => route.setSettingsSection(id)}>
               <Icon aria-hidden="true" />
               {label}
             </button>
@@ -65,7 +65,7 @@ export function SettingsScreen() {
             <p>{current.hint}</p>
           </div>
           {["appearance", "notes", "keyboard", "shortcuts", "backup"].includes(section) && (
-            <InterfaceSaveStatus openRecovery={() => productScreens.setSettingsSection("backup")} draftError={workbenchError} />
+            <InterfaceSaveStatus openRecovery={() => route.setSettingsSection("backup")} draftError={workbenchError} />
           )}
         </header>
         <div className="settings-body ui-form">

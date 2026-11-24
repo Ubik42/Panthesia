@@ -1,5 +1,5 @@
 /** Content identity follows a piece across names, copies and workspace visits. */
-import type { Workspace } from "./useWorkspaceNavigation";
+import type { Workspace } from "../stores/route";
 export interface SongWorkspaceTarget {
   contentId: string;
   title: string;

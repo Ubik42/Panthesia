@@ -32,10 +32,7 @@ import { useCallback,useEffect,useRef,useState,useSyncExternalStore } from "reac
 import {
 api,type LoadedSong
 } from "../api";
-import {
-useWorkspaceNavigation,
-type Workspace,
-} from "./useWorkspaceNavigation";
+import { route as routeActions, useRoute, type Workspace } from "../stores/route";
 import { matchesSong } from "../engine/stateOrder";
 import { usePracticeRange } from "../features/practice/usePracticeRange";
 const normalize = pathKey;
@@ -57,9 +54,8 @@ export function useAppModel() {
   const releaseInput = useRef<() => void>(() => {});
   const inputOwnership = useDialogFocus(() => releaseInput.current());
   const workspaceSessions = useWorkspaceSessions();
-  const navigation = useWorkspaceNavigation();
-  const { workspace } = navigation;
-  const productScreens=useProductScreens(workspace);
+  const workspace = useRoute((s) => s.workspace);
+  const productScreens=useProductScreens();
   /** Every global setting lives on the settings page; other places link to its sections. The
    * stage pauses while the page is open. */
   const openSettings = (section: SettingsSection, device?: DeviceObject) => {
@@ -206,11 +202,11 @@ export function useAppModel() {
   });
   const changeWorkspace = useCallback(async (next: Workspace, signal?: AbortSignal) => {
     if (signal?.aborted) return false;
-    if (next === workspace) return navigation.navigate(next);
+    if (next === workspace) { routeActions.navigate(next); return true; }
     if (requestBusy.current || busy || !startupReady || state.recording) return false;
     clearLiveNotes();
     const originEngine = playback.getEngineId();
-    const changed = await navigation.request(next, async (from, to) => {
+    const changed = await routeActions.request(next, async (from, to) => {
       if (from === "practice" && to !== "practice") {
         if (!(await run({type:"pause"}))) return false;
 
@@ -220,7 +216,7 @@ export function useAppModel() {
         !live.recording && live.startup?.ready !== false && !live.storage?.operation;
     }, signal);
     return changed;
-  }, [busy, startupReady, state.recording, workspace, navigation.pending, navigation.navigate, navigation.request, run, clearLiveNotes, playback]);
+  }, [busy, startupReady, state.recording, workspace, run, clearLiveNotes, playback]);
   const currentPracticeTarget: SongWorkspaceTarget | null = song && !binding && matchesSong(state, song) &&
     (progressEngineId ?? null) === (song.engineId ?? null)
     ? { contentId: song.contentId, title: song.title, path: song.sourcePath } : null;
