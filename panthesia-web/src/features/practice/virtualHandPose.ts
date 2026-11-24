@@ -74,13 +74,16 @@ const ANATOMY = {
     { x: 14, y: 60, z: -13 },
   ],
   /** The thumb metacarpal turns outward between these angles (degrees from straight ahead). */
-  thumbSpread: [18, 70] as const,
-  thumbRestSpread: 36,
+  thumbSpread: [26, 76] as const,
+  thumbRestSpread: 46,
 };
 /** The wrist sits this far behind the keys' front edge (toward the player), at this height. */
 const WRIST_Y = -115;
-const WRIST_Z = 30;
-const LIFT = 16;
+/** Wrist height above the white keys (mm): high enough that the fingers hang down to the keys. */
+const WRIST_Z = 40;
+/** Free fingers hover this far above the key surface. */
+const HOVER = 8;
+const LIFT = 9;
 
 const smooth = (x: number) => {
   x = Math.max(0, Math.min(1, x));
@@ -113,7 +116,7 @@ export type FingerLimit = {
 };
 /** Joint ranges (radians): knuckle flexion from slightly hyperextended to well bent, and the
  * least curl a finger keeps (a straight finger never plays). */
-const KNUCKLE = [-0.3, 1.45] as const;
+const KNUCKLE = [0, 1.45] as const;
 const MIN_CURL = 0.22;
 
 export function fingerChain(base: V3, target: V3, bones: readonly number[], coupling = 0.67, limit?: FingerLimit): V3[] {
@@ -210,27 +213,37 @@ function twoBone(base: V3, target: V3, l1: number, l2: number): V3[] {
 export function thumbChain(cmc: V3, target: V3, bones: readonly number[], mirror: number, yaw = 0): V3[] {
   const [l0, l1, l2] = bones;
   const [low, high] = ANATOMY.thumbSpread;
-  const drop = 0.18;
-  let best: V3 = cmc,
+  const elevation = (a: V3, b: V3) => (Math.atan2(b.z - a.z, Math.hypot(b.x - a.x, b.y - a.y)) * 180) / Math.PI;
+  let best: V3[] = [cmc, ...twoBone(cmc, target, l1, l2)],
     score = Infinity;
-  for (let deg = low; deg <= high; deg += 1.5) {
-    const a = (deg * Math.PI) / 180;
-    // The metacarpal's direction in the hand, turned with the hand.
-    const hx = -mirror * Math.sin(a),
-      hy = Math.cos(a);
-    const m = {
-      x: cmc.x + (Math.cos(yaw) * hx - Math.sin(yaw) * hy) * l0 * Math.cos(drop),
-      y: cmc.y + (Math.sin(yaw) * hx + Math.cos(yaw) * hy) * l0 * Math.cos(drop),
-      z: cmc.z - l0 * Math.sin(drop),
-    };
-    const d = Math.hypot(target.x - m.x, target.y - m.y, target.z - m.z);
-    const s = Math.abs(d - (l1 + l2) * 0.9) + 0.25 * Math.abs(deg - ANATOMY.thumbRestSpread);
-    if (s < score) {
-      score = s;
-      best = m;
+  // The metacarpal's turn outward (the web between thumb and index) and its drop; the phalanges
+  // then reach the key. A thumb never bends backward: the proximal phalanx may not rise above
+  // the metacarpal's line (MCP hyperextension) nor the tip above the proximal's (IP), and the
+  // IP joint bends at most 40 degrees.
+  for (const drop of [0.18, 0.34, 0.5]) {
+    for (let deg = low; deg <= high; deg += 2) {
+      const a = (deg * Math.PI) / 180;
+      const hx = -mirror * Math.sin(a),
+        hy = Math.cos(a);
+      const m = {
+        x: cmc.x + (Math.cos(yaw) * hx - Math.sin(yaw) * hy) * l0 * Math.cos(drop),
+        y: cmc.y + (Math.sin(yaw) * hx + Math.cos(yaw) * hy) * l0 * Math.cos(drop),
+        z: cmc.z - l0 * Math.sin(drop),
+      };
+      const d = Math.hypot(target.x - m.x, target.y - m.y, target.z - m.z);
+      const [, joint, tip] = twoBone(m, target, l1, l2);
+      const e1 = elevation(cmc, m),
+        e2 = elevation(m, joint),
+        e3 = elevation(joint, tip);
+      const backward = Math.max(0, e2 - e1 - 4) + Math.max(0, e3 - e2 - 2) + Math.max(0, e2 - e3 - 40);
+      const s = Math.abs(d - (l1 + l2) * 0.93) + 0.2 * Math.abs(deg - ANATOMY.thumbRestSpread) + 3 * backward;
+      if (s < score) {
+        score = s;
+        best = [cmc, m, joint, tip];
+      }
     }
   }
-  return [cmc, ...twoBone(best, target, l1, l2)];
+  return best;
 }
 
 /** The hand of `track` at `time`: where the wrist is and where each fingertip goes. */
@@ -554,7 +567,10 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   type Target = { target: V3; pressed: boolean; substitution: boolean; priority: number; since: number };
   const targets: Target[] = rows.map(({ prev, future, held, contact, release }, i) => {
     const b = world(base(i));
-    const rest = world({ x: restTip(i).x * mirror, y: restTip(i).y, z: base(i).z + ANATOMY.rest[i].z });
+    // A finger not playing hovers a little above the keys at its place in the hand.
+    const restAt = world({ x: restTip(i).x * mirror, y: restTip(i).y, z: 0 });
+    // Over the black keys' part of the keyboard it hovers above their tops.
+    const rest = { ...restAt, z: restAt.y > keyHeight * 0.37 ? BLACK_KEY_TOP + 4 : HOVER };
     const goal = goals[i];
     if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0, since: -Infinity };
     const { max } = reachRange(i, b.z);
@@ -593,7 +609,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   // for the ones on keys and lift a little when pushed.
   const lateral = (p: V3) => mirror * (cos * (p.x - wrist.x) + sin * (p.y - wrist.y));
   const shiftLateral = (t: Target, by: number) => {
-    t.target = { ...t.target, x: t.target.x + mirror * cos * by, y: t.target.y + mirror * sin * by, z: t.target.z + Math.min(8, Math.abs(by) * 0.5) };
+    t.target = { ...t.target, x: t.target.x + mirror * cos * by, y: t.target.y + mirror * sin * by, z: t.target.z + Math.min(3, Math.abs(by) * 0.25) };
   };
   const separate = (a: Target, b: Target) => {
     const need = FINGER_GAP - (lateral(b.target) - lateral(a.target));
@@ -604,16 +620,19 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       const older = a.since <= b.since ? a : b;
       older.pressed = false;
       older.priority = 1.5;
-      older.target = { ...older.target, z: older.target.z + LIFT * 0.6 };
+      older.target = { ...older.target, z: older.target.z + LIFT * 0.4 };
     }
     const share = b.priority === a.priority ? 0.5 : b.priority < a.priority ? 1 : 0;
     if (share > 0) shiftLateral(b, need * share);
     if (share < 1) shiftLateral(a, -need * (1 - share));
   };
   /** A free finger's target turned into the sideways range it can reach from its knuckle, so
-   * the finger chain never has to bend it away from where the order below put it. */
+   * the finger chain never has to bend it away from where the order below put it; it also stays
+   * over the keys (a finger not playing never reaches past them toward the fallboard). */
   const reachable = (i: number, t: Target) => {
-    if (i === 0 || t.priority >= 3) return;
+    if (t.priority >= 3) return;
+    if (t.target.y > keyHeight * 0.85) t.target = { ...t.target, y: keyHeight * 0.85 };
+    if (i === 0) return;
     const kb = world(base(i));
     const dx = t.target.x - kb.x,
       dy = t.target.y - kb.y;
@@ -722,7 +741,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
         right = i < 4 ? want[i + 1] : Infinity;
       if (right - left < 2 * GAP) {
         want[i] = Number.isFinite(left) && Number.isFinite(right) ? (left + right) / 2 : want[i];
-        lift[i] = 14;
+        lift[i] = HOVER;
       }
     }
     let changed = false;
