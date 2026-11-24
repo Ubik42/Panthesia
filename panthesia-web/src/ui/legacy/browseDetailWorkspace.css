@@ -1,3 +1,5 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
 .browse-detail-workspace {
   min-width: 0;
 }
@@ -9,42 +11,6 @@
   margin-top: -14px;
   border-bottom: 1px solid var(--blue-46);
   background: var(--gray-29);
-}
-.browse-detail-masthead .browse-detail-heading {
-  margin: 0 0 7px;
-  color: var(--gray-96);
-  font-size: 19px;
-  font-weight: 650;
-  line-height: 1.45;
-}
-.browse-detail-subtitle {
-  margin: 0 0 12px;
-  color: var(--blue-78);
-  font-size: 12px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.browse-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
-  margin-bottom: 13px;
-}
-.browse-detail-actions > button {
-  min-height: 36px;
-  padding: 7px 11px;
-  font-size: 12px;
-}
-.browse-detail-actions > .primary {
-  color: var(--green-25);
-  border-color: var(--green-86);
-  background: var(--green-81);
-  font-weight: 650;
-}
-.browse-detail-actions > .primary:hover:not(:disabled) {
-  color: var(--green-25);
-  background: var(--green-86);
 }
 .browse-detail-tabs {
   position: relative;
@@ -75,51 +41,10 @@
   color: var(--green-87);
   font-variant-numeric: tabular-nums;
 }
-.browse-detail-section {
-  min-width: 0;
-  padding: 16px 0 4px;
-}
-.browse-detail-section:focus-visible {
-  outline-offset: -2px;
-}
-.browse-detail-section :is(h4, p, dl, details, table, input, textarea, button) {
-  scroll-margin-top: calc(var(--browse-detail-heading-height, 150px) + 12px);
-}
-.browse-detail-section h4 {
-  margin: 0 0 10px;
-  color: var(--gray-89);
-  font-size: 14px;
-}
-.browse-detail-section p {
-  line-height: 1.65;
-}
-.browse-detail-section .parameter-help {
-  color: var(--blue-78);
-  font-size: 12px;
-  line-height: 1.65;
-}
-.browse-detail-masthead .browse-detail-heading {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
 @media (max-height: 640px) {
   .browse-detail-masthead {
     position: static;
   }
-  .browse-detail-section
-    :is(h4, p, dl, details, table, input, textarea, button) {
-    scroll-margin-top: 12px;
-  }
-}
-.browse-detail-workspace[data-detail-narrow]
-  .browse-detail-masthead
-  .browse-detail-heading {
-  font-size: 17px;
-}
-.browse-detail-workspace[data-detail-narrow] .browse-detail-actions > .primary {
-  flex: 1 1 150px;
 }
 .browse-detail-workspace[data-detail-narrow] .browse-detail-tabs > button {
   padding-inline: 6px;

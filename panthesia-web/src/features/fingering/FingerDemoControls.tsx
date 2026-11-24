@@ -5,6 +5,7 @@ import type { PairSelection } from "../../engine/fingeringApi";
 import { FingerDemoKeyboard } from "./FingerDemoKeyboard";
 import { useEffect, useRef, useState } from "react";
 import { api, pitchName, type PracticeEditScope } from "../../api";
+import "./fingerDemoControls.css";
 type DemoResult = {
   fingerprint: string;
   request: PlanRequest;

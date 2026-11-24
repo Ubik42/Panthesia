@@ -2,6 +2,7 @@ import type { PlanRequest } from "../../engine/commands.generated";
 import type { PairSelection } from "../../engine/fingeringApi";
 import { useRef, useState } from "react";
 import { api, pitchName, type PracticeEditScope } from "../../api";
+import "./fingerPracticeBuilder.css";
 
 export type FingerDifficulty = {
   measure: number;

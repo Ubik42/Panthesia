@@ -69,3 +69,28 @@
 .paper-list-pager { font-size: 12px; }
 .paper-anchor-filter input { min-width: 0; width: min(240px, 60vw); }
 .paper-reading-status { min-inline-size: 7em; color: var(--blue-82); font-size: 12px; white-space: nowrap; }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.paper-reader{display:flex;flex:1;min-height:180px;flex-direction:column;gap:8px}
+.paper-controls{flex-shrink:0;padding:8px 12px;border-top:1px solid var(--blue-37);border-bottom:1px solid var(--blue-37);background:var(--gray-29)}
+.paper-controls label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.paper-controls input{width:65px}
+.paper-controls select{width:110px}
+.paper-sheet-scroll{position:relative;overflow:auto;flex:1;min-height:160px;text-align:center;padding:16px;background:var(--gray-21);outline-offset:-3px}
+.paper-sheet-scroll canvas{display:block;margin:0 auto;box-shadow:0 3px 18px color-mix(in oklab, var(--gray-0) 47%, transparent);background:var(--gray-100);max-width:none}
+.paper-loading{position:sticky;left:0;top:12px;padding:6px 12px;background:color-mix(in oklab, var(--blue-32) 93%, transparent);color:var(--green-93)}
+.paper-password{display:flex;gap:8px}
+@media(max-width:850px){.paper-controls{gap:5px}}
+@media(max-width:850px){.paper-controls button{padding:5px 8px}}
+.paper-sheet-scroll canvas{touch-action:pan-x pan-y}
+.paper-follow-controls {flex-shrink:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border,var(--blue-37));font-size:12px;max-height:240px;overflow:auto;}
+.paper-follow-controls > label {display:flex;align-items:center;gap:6px;}
+.paper-mapping-editor {flex-basis:100%;}
+.paper-mapping-editor > summary {cursor:pointer;}
+.paper-anchor-add,.paper-anchor-row {display:flex;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap;}
+.paper-anchor-add input {width:72px;}
+.paper-anchor-row > span {min-width:175px;}
+fieldset.paper-controls {border:0;padding:0;margin:0;min-width:0;}
+.paper-updates-dialog .paper-source-preview .paper-reader{height:42vh;min-height:260px;display:flex;flex-direction:column;overflow:hidden}
+.paper-updates-dialog .paper-source-preview .paper-sheet-scroll{min-height:120px;flex:1}
+.paper-updates-dialog .paper-source-preview .paper-controls{flex-shrink:0}

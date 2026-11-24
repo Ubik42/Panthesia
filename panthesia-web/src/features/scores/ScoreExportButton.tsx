@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { LoadedSong } from "../../api";
 import { scoreExportSlot } from "./scoreExportStore";
+import "./scoreExportButton.css";
 
 export function ScoreExportButton({
   song,

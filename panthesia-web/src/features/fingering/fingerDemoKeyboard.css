@@ -1,0 +1,8 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.finger-demo-keyboard{width:100%;overflow-x:auto;padding-top:8px}
+.finger-demo-keyboard svg{display:block;width:100%;max-height:175px}
+.finger-demo-keyboard-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.finger-demo-keyboard-legend span:first-child{color:var(--blue-75)}
+.finger-demo-keyboard-legend span:nth-child(2){color:var(--amber-77)}
+.finger-demo-keyboard-legend small{color:var(--blue-82)}

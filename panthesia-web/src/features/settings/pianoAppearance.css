@@ -20,3 +20,6 @@
 @media(max-width:600px) {
   .piano-appearance-preview canvas { height: 190px; }
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.piano-preview-surface { position: relative; }

@@ -1,0 +1,194 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.stage-status {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border: 1px solid var(--blue-39);
+  border-radius: 5px;
+  background: var(--gray-26);
+  font-size: 11px;
+  color: var(--gray-89);
+  pointer-events: none;
+}
+.transport-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--blue-55);
+}
+.transport-dot.playing {
+  background: var(--accent);
+}
+.required-notes {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--green-49);
+  background: var(--gray-30);
+  color: var(--green-93);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.required-notes span {
+  font-size: 11px;
+}
+.required-notes strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .required-notes {
+    top: 36px;
+  }
+}
+@media (max-width: 760px) {
+  .stage-status {
+    left: 8px;
+    font-size: 10px;
+  }
+}
+.tempo-readout {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.tempo-readout small {
+  font-size: 11px;
+  color: var(--blue-71);
+}
+.stage-status {
+  font-variant-numeric: tabular-nums;
+}
+.practice-panel > .practice-setup-summary {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 5px 14px;
+  min-height: 36px;
+  padding: 8px 15px;
+  border: 0;
+  border-bottom: 1px solid var(--teal-34);
+  border-radius: 0;
+  background: var(--gray-30);
+  color: var(--gray-82);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+.practice-panel > .practice-setup-summary:hover {
+  background: var(--teal-34);
+  color: var(--gray-96);
+}
+.practice-setup-summary strong {
+  color: var(--green-93);
+  font-weight: 650;
+}
+.practice-setup-summary .practice-setup-state {
+  margin-left: auto;
+  color: var(--green-93);
+}
+.practice-setup-summary .practice-setup-edit {
+  color: var(--green-87);
+}
+.practice-setup-summary .practice-setup-required {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--green-39);
+  color: var(--green-93);
+  overflow-wrap: anywhere;
+}
+.practice-stage-readouts {
+  position: absolute;
+  inset: 12px 14px auto;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+.practice-stage-readouts .stage-status {
+  position: static;
+  max-width: 100%;
+  flex-wrap: wrap;
+  line-height: 1.5;
+  border-color: var(--blue-43);
+  background: color-mix(in oklab, var(--gray-26) 93%, transparent);
+  font-size: 12px;
+  padding: 6px 9px;
+}
+.practice-stage-readouts .stage-status > .stage-status-label {
+  margin: 0;
+  color: var(--gray-92);
+}
+.practice-stage-readouts .stage-status > .stage-position {
+  margin: 0;
+  color: var(--blue-78);
+}
+.practice-stage-readouts .stage-status > .stage-duration {
+  margin: 0;
+  color: var(--gray-92);
+}
+.practice-stage-readouts .stage-status > .stage-loop {
+  margin: 0;
+  color: var(--green-87);
+}
+.practice-stage-readouts .stage-status[data-state="recording"] {
+  border-color: var(--red-57);
+}
+.practice-stage-readouts .stage-status[data-state="recording"] .transport-dot {
+  background: var(--red-78);
+}
+.practice-stage-readouts .required-notes {
+  position: static;
+  transform: none;
+  max-width: 100%;
+  margin-left: auto;
+  line-height: 1.5;
+}
+.practice-stage-readouts .required-notes strong {
+  overflow-wrap: anywhere;
+}
+[data-practice-short] .practice-panel > .practice-setup-summary {
+  min-height: 30px;
+  padding-block: 5px;
+}
+@container practice (max-width: 620px) {
+  .practice-setup-summary > .practice-setup-extra {
+    display: none;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-stage-readouts {
+    inset: 8px 8px auto;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-stage-readouts .required-notes {
+    margin-left: 0;
+  }
+}
+.workbench .practice-panel > .practice-setup-summary {
+  background: linear-gradient(100deg, var(--gray-30), var(--gray-26));
+  border-color: var(--green-39); color: var(--teal-87);
+}
+.workbench .practice-panel > .practice-setup-summary:hover { background: var(--teal-34); }
+.workbench .practice-stage-readouts > * {
+  border-color: var(--blue-46); background-color: color-mix(in oklab, var(--gray-24) 85%, transparent); color: var(--gray-92);
+}
+.practice-panel > .practice-setup-summary {
+  display: none;
+}
+.synthesia-layout .practice-stage .practice-stage-readouts {
+  display: none;
+}

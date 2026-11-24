@@ -2,6 +2,7 @@ import type { ActionEdit } from "../../engine/commands.generated";
 import {useEffect,useState} from "react";
 import {api,type LoadedSong,type PracticeEditCommand} from "../../api";
 import {musicalActionPosition,type HeldAction} from "./fingerActions";
+import "./heldActionEditor.css";
 export function HeldActionEditor({song,action,rate,busy,perform,commit}:{song:LoadedSong;action:HeldAction;rate:number;busy:boolean;perform:(job:()=>Promise<void>)=>Promise<void>;commit:(command:PracticeEditCommand,message?:string)=>Promise<unknown>}){
  const originalBar=song.measures.find(m=>action.atTick>=m.startTick&&action.atTick<m.endTick)??song.measures[0];
  const [measure,setMeasure]=useState(originalBar?.number??1),[beat,setBeat]=useState(Number((1+(action.atTick-(originalBar?.startTick??0))/(song.ppq*4/(originalBar?.denominator??4))).toFixed(6))),[to,setTo]=useState(action.to);

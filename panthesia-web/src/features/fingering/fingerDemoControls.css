@@ -1,0 +1,11 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.finger-demo-controls {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0;}
+.finger-demo-controls label {display:flex;align-items:center;gap:8px;}
+.finger-pair-live {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;}
+.finger-pair-live>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px;background:var(--panel,var(--gray-27));border:1px solid var(--border,var(--blue-37));border-radius:6px;}
+.finger-live-note{font-variant-numeric:tabular-nums;padding:4px 8px;background:var(--bg,var(--gray-21));border-radius:4px;}
+@media(max-width:600px){.finger-pair-live{grid-template-columns:1fr;}}
+.finger-demo-navigation {display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%;}
+.finger-demo-navigation label:first-child{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px}
+.finger-demo-navigation input[type=range]{width:100%;accent-color:var(--green-81)}

@@ -1,5 +1,6 @@
 import { useDeviceCatalog } from "./useDeviceCatalog";
 import type { Snapshot } from "../../api";
+import "./musicDeviceList.css";
 export type DeviceObject = {
   kind: "input" | "output";
   name: string;

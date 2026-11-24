@@ -1,0 +1,9 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.held-finger-demo{padding:10px 0;border-top:1px solid var(--blue-46);display:flex;flex-direction:column;gap:8px;}
+.held-demo-controls,.held-demo-steps,.held-demo-active{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.held-demo-controls label{gap:8px;}
+.held-demo-keyboard{overflow-x:auto;max-width:100%;}
+.held-demo-keyboard svg{display:block;max-width:none;}
+.held-demo-active{font-size:11px;line-height:1.5;}
+.held-finger-demo>small{line-height:1.6;color:var(--blue-78);}

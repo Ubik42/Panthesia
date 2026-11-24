@@ -1,0 +1,19 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.paper-measure-region{min-height:0;padding:0;transform:none;border:1px dashed var(--blue-66);color:var(--blue-41);font-size:11px;border-radius:1px;justify-content:flex-start;align-items:flex-start}
+.paper-measure-region span{background:color-mix(in oklab, var(--gray-96) 87%, transparent);padding:1px 4px}
+.paper-measure-region.active{border:2px solid var(--blue-57)}
+.paper-measure-region.draft{pointer-events:none;border:2px dashed var(--orange-62);color:var(--amber-49)}
+.paper-measure-region:disabled{opacity:.65}
+@layer overrides {
+.paper-measure-region { position: absolute; }
+}
+@layer overrides {
+.paper-measure-region { background: color-mix(in oklab, var(--blue-66) 5%, transparent); }
+}
+@layer overrides {
+.paper-measure-region.active { background: color-mix(in oklab, var(--blue-66) 14%, transparent); }
+}
+@layer overrides {
+.paper-measure-region.draft { background: color-mix(in oklab, var(--amber-77) 13%, transparent); }
+}

@@ -1,0 +1,25 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.score-note-editor{position:sticky;top:100px;padding:14px;background:var(--gray-29);border:1px solid var(--blue-46);border-radius:5px;display:flex;flex-direction:column;gap:10px;color:var(--gray-92);font-size:12px;margin-top:12px}
+.score-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.score-note-editor p{margin:0;line-height:1.55}
+.score-note-editor label{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.score-note-editor select{max-width:170px}
+.score-finger-values{display:grid;grid-template-columns:1fr auto;gap:7px;margin:0;padding:9px 0;border-top:1px solid var(--blue-39);border-bottom:1px solid var(--blue-39)}
+.score-finger-values dd{margin:0;font-weight:600}
+.score-finger-buttons{display:flex;gap:6px}
+.score-finger-buttons button{flex:1;font-size:15px;padding:7px}
+.score-editor-check{font-size:11px}
+.score-recommend-options,.score-editor-footer{display:flex;flex-direction:column;gap:8px}
+.score-note-proposal{padding:10px;background:var(--teal-34);border:1px solid var(--green-49);display:flex;flex-direction:column;gap:8px}
+.score-note-proposal small,.score-editor-hint{color:var(--gray-75);font-size:11px}
+.score-edit-success{color:var(--green-86)}
+@media(max-width:1050px){.score-note-editor{position:sticky;top:auto;bottom:0;max-height:300px;overflow:auto;margin:8px 12px}}
+@media(max-width:1050px){.score-note-editor .score-finger-buttons{max-width:260px}}
+@media(max-width:1050px){.score-editor-footer{flex-direction:row}}
+.score-note-editor{top:var(--score-editor-top,80px);max-height:var(--score-editor-height,350px);overflow:auto}
+@media(max-width:1050px){.score-note-editor{top:auto;max-height:min(300px,var(--score-editor-height,300px));bottom:0}}
+.score-held-actions {display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--blue-43);}
+.score-held-actions>div {display:flex;flex-direction:column;gap:6px;}
+.score-held-actions>div>div {display:flex;gap:6px;flex-wrap:wrap;}
+.score-held-actions small {color:var(--blue-82);line-height:1.5;}

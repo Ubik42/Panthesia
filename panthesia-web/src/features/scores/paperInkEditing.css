@@ -90,3 +90,7 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.paper-ink-layer{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}
+.paper-ink-layer.active{pointer-events:auto;touch-action:none;cursor:crosshair;z-index:4}

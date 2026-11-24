@@ -45,3 +45,18 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.paper-source-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.paper-transfer-review { margin:12px 0; padding-top:12px; border-top:1px solid var(--blue-43); }
+.paper-transfer-compare { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:12px 0; }
+.paper-transfer-compare>section { min-width:0; border:1px solid var(--blue-43); padding:8px; }
+.paper-transfer-note { min-width:0; margin:12px 0; border:1px solid var(--blue-43); padding:10px; }
+.paper-transfer-note legend { max-width:100%; overflow-wrap:anywhere; }
+.paper-transfer-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.paper-transfer-fields label { display:flex; flex-direction:column; gap:5px; }
+.paper-transfer-fields input { width:100%; box-sizing:border-box; }
+.paper-transfer-anchor { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:10px 0; }
+.paper-transfer-anchor input[type=number] { width:70px; }
+@media(max-width:1000px) { .paper-transfer-compare { grid-template-columns:1fr; } }
+@media(max-width:1000px) { .paper-transfer-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }

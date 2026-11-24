@@ -3,6 +3,7 @@ import type {DemoState as Demo,HeldContext as Context,DemoFingerNote as FingerNo
 import {useEffect,useRef,useState} from "react";
 import {api,pitchName,type LoadedSong} from "../../api";
 import {musicalActionPosition} from "./fingerActions";
+import "./heldFingerDemo.css";
 export function HeldFingerDemo({song,track,index,disabled,onActive}:{song:LoadedSong;track:number;index:number;disabled:boolean;onActive?:(value:boolean)=>void}){
  const [rate,setRate]=useState(.5),[context,setContext]=useState<Context|null>(null),[live,setLive]=useState<LiveDemoState|null>(null),[starting,setStarting]=useState(false),[playing,setPlaying]=useState(false),[error,setError]=useState(""),[status,setStatus]=useState(""),[position,setPosition]=useState(0),[step,setStep]=useState(0);
  const pendingStart=useRef<string|null>(null);

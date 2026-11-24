@@ -6,6 +6,7 @@ import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
 import type { PracticeRangeController } from "./usePracticeRange";
 import { measureCaption } from "../../stage/songLayers";
+import "./practiceTimeline.css";
 const fields = [
   "practiceMs",
   "beat",

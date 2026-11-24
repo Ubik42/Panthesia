@@ -19,3 +19,19 @@
 @keyframes desktop-close-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .desktop-close-spinner { animation: none; } .desktop-close-backdrop { backdrop-filter: none; } }
 @media (max-width: 540px), (max-height: 600px) { .desktop-close-backdrop { padding: 12px; } .desktop-close-dialog { padding: 20px; max-height: calc(100dvh - 24px); } .desktop-close-icon { display: none; } }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.desktop-close-backdrop {
+  background: color-mix(in oklab, var(--indigo-26) 40%, transparent);
+  backdrop-filter: blur(5px);
+}
+.desktop-close-heading > span {
+  display: none;
+}
+.desktop-close-dialog .desktop-close-icon {
+  background: var(--gray-96);
+  color: var(--indigo-67);
+}
+.desktop-close-steps {
+  display: none;
+}

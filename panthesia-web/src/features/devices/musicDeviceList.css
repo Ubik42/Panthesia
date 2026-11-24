@@ -1,0 +1,22 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.product-device-list {
+  max-width: 1100px;
+}
+.product-device-list h2 {
+  font-size: 25px;
+  font-weight: 400;
+  margin: 15px 12px 18px;
+}
+.product-device-list > div {
+  border: 1px solid var(--gray-75);
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 36px;
+}
+.product-device-row b {
+  font-size: 38px;
+  color: var(--blue-60);
+  font-weight: 400;
+  line-height: 1;
+}

@@ -95,3 +95,11 @@
     min-width: calc(100% - 35px);
   }
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.session-save-status {
+  padding: 6px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}

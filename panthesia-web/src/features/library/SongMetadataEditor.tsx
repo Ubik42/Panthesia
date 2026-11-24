@@ -15,6 +15,7 @@ import type {
   MetadataService,
   MetadataField,
 } from "./metadataTypes";
+import "./songMetadataEditor.css";
 type MetadataEdit = { path: string; contentId: string; value: Metadata };
 const fields = metadataFields;
 type Field = (typeof fields)[number][0];

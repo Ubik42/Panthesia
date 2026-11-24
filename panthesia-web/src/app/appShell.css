@@ -1,0 +1,19 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.daily-workbench {
+  background: var(--surface-base);
+}
+.daily-workbench input[type="range"]::-webkit-slider-runnable-track {
+  background: var(--gray-92);
+  height: 3px;
+}
+.daily-workbench input[type="range"]::-webkit-slider-thumb {
+  background: var(--indigo-67);
+  width: 9px;
+  height: 13px;
+  border-radius: 3px;
+}
+.synthesia-layout {
+  --stage-bar: var(--surface-base);
+  --stage-button-hover: var(--surface-hover);
+}

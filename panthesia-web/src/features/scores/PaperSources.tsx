@@ -4,6 +4,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { api } from "../../api";
 import { PaperReader } from "./PaperReader";
 import type { PaperAttachment } from "./paperTypes";
+import "./paperSources.css";
 type Row={assetId:string;page:number;name:string;status:string;path?:string;fingerprint?:string;error?:string};
 type Inspection={rows:Row[];baseline:string};
 type Preview={baseline:string;fingerprint:string;asset:{id:string;name:string;kind:string;size:number};name:string;format:"pdf"|"images";row:Row};

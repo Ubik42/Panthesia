@@ -3,6 +3,7 @@ import { AppDialogs } from "./AppDialogs";
 import { AppNotices } from "./AppNotices";
 import { PracticeWorkspace } from "./PracticeWorkspace";
 import { ProductScreens } from "./ProductScreens";
+import "./appShell.css";
 
 /** The application window: menu, notices, product screens, practice workspace and dialogs. */
 export function AppShell() {

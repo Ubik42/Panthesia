@@ -1,0 +1,12 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.finger-practice-builder { border-top:1px solid var(--blue-39); padding-top:10px; margin:10px 0; }
+.finger-practice-builder fieldset { border:1px solid var(--blue-43); border-radius:6px; padding:10px; margin:10px 0; min-width:0; }
+.finger-practice-builder label { display:flex; flex-direction:column; gap:5px; }
+.finger-practice-builder legend label { flex-direction:row; align-items:center; }
+.finger-practice-builder input, .finger-practice-builder textarea { width:100%; box-sizing:border-box; }
+.finger-practice-builder input[type=checkbox] { width:auto; }
+.finger-practice-builder textarea { min-height:70px; resize:vertical; }
+.finger-practice-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:10px 0; }
+.finger-practice-actions { display:flex; flex-wrap:wrap; gap:10px; }
+@media(max-width:650px) { .finger-practice-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }

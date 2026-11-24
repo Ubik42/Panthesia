@@ -1,0 +1,30 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.file-path {
+  overflow-wrap: anywhere;
+  color: var(--gray-75);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.library-metadata-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.library-metadata-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.library-metadata-editor input {
+  width: 100%;
+  min-width: 0;
+}
+.library-metadata-editor textarea{width:100%;box-sizing:border-box;resize:vertical;background:var(--gray-21);border:1px solid var(--blue-39);color:var(--gray-92);padding:7px;}
+.metadata-conflicts{margin:12px 0;padding:10px;border:1px solid var(--amber-67);border-radius:4px;}
+.metadata-conflict-table{overflow-x:auto;margin:10px 0;}
+.metadata-conflicts table{border-collapse:collapse;min-width:520px;width:100%;font-size:12px;}
+.metadata-conflicts td,.metadata-conflicts th{border:1px solid var(--blue-43);padding:7px;max-width:180px;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top;}
+.metadata-conflicts small{display:block;color:var(--amber-77);}
+.metadata-conflicts select{min-width:110px;}
+.library-metadata-editor:has(.metadata-conflicts)>label{display:none;}

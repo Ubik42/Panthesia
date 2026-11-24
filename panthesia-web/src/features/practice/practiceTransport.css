@@ -1,0 +1,519 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.practice-opening-spin {
+  animation: practice-opening-spin 1.3s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .practice-opening-spin {
+    animation: none;
+  }
+}
+.practice-transport {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  min-height: 72px;
+  padding: 12px 15px;
+  border-top: 1px solid var(--blue-39);
+  background: var(--gray-29);
+}
+.practice-transport-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.practice-transport .play-button {
+  min-height: 40px;
+  min-width: 140px;
+  padding: 8px 14px;
+  border: 1px solid var(--green-86);
+  border-radius: 7px;
+  background: var(--green-84);
+  color: var(--green-25);
+  font-size: 14px;
+  font-weight: 650;
+}
+.practice-transport .play-button:hover:not(:disabled) {
+  background: var(--green-86);
+  color: var(--green-25);
+}
+.practice-transport kbd {
+  min-width: 0;
+  max-width: 100px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid color-mix(in oklab, var(--green-57) 40%, transparent);
+  border-radius: 3px;
+  color: var(--green-39);
+  font: inherit;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.practice-speed,
+.practice-speed > label,
+.practice-volume {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--gray-85);
+}
+.practice-speed {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+}
+.practice-bpm-error {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--instrument-line, var(--gray-89));
+  border-radius: 5px;
+  background: var(--instrument-panel, var(--gray-100));
+  color: var(--red-55);
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--gray-0) 13%, transparent);
+  white-space: nowrap;
+}
+.practice-speed > label {
+  flex: 1;
+  min-width: 0;
+}
+.practice-speed input {
+  flex: 1;
+  width: 100%;
+  min-width: 60px;
+}
+.practice-speed-reset {
+  min-width: 55px;
+  padding: 5px 7px;
+  border-color: var(--blue-46);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.practice-volume {
+  margin-left: auto;
+}
+.practice-volume input {
+  width: 75px;
+}
+.practice-volume output {
+  min-width: 35px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.practice-transport .practice-record-stop {
+  color: var(--amber-90);
+  border-color: var(--red-57);
+  background: var(--orange-35);
+  font-size: 12px;
+}
+.practice-record-stop > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--red-78);
+}
+[data-practice-short] .practice-transport {
+  min-height: 60px;
+  padding-block: 8px;
+}
+@container practice (max-width: 620px) {
+  .practice-transport {
+    gap: 10px 12px;
+    padding: 10px 12px;
+  }
+}
+@container practice (max-width: 620px) {
+  .practice-transport-main {
+    flex: 1;
+  }
+}
+@container practice (max-width: 620px) {
+  .practice-speed {
+    flex: none;
+    min-width: 170px;
+    max-width: none;
+  }
+}
+@container practice (max-width: 620px) {
+  .practice-speed > label {
+    width: 120px;
+    flex: none;
+  }
+}
+@container practice (max-width: 620px) {
+  .practice-volume {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+}
+@container practice (max-width: 620px) {
+  .practice-volume input {
+    width: min(180px, 50%);
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-transport-main {
+    justify-content: center;
+    flex-basis: 100%;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-transport .play-button {
+    min-width: 170px;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-speed {
+    flex: 1;
+    min-width: 170px;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-speed > label {
+    width: auto;
+    flex: 1;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-volume {
+    flex-basis: auto;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-volume input {
+    width: 50px;
+  }
+}
+@container practice (max-width: 430px) {
+  .practice-volume output {
+    display: none;
+  }
+}
+.workbench .practice-transport { background: linear-gradient(110deg, var(--gray-29), var(--gray-26)); border-top: 1px solid var(--blue-43); }
+.workbench .practice-transport-main > .play-button {
+  background: linear-gradient(120deg, var(--teal-91), var(--teal-80));
+  color: var(--teal-34); border-color: var(--teal-91);
+  box-shadow: 0 3px 16px color-mix(in oklab, var(--teal-80) 15%, transparent), inset 0 1px var(--teal-96);
+  border-radius: 10px; font-weight: 650;
+}
+.workbench .practice-transport-main > .play-button:hover:not(:disabled) { background: var(--teal-91); box-shadow: 0 4px 24px color-mix(in oklab, var(--teal-80) 25%, transparent); }
+.practice-transport {
+  background: var(--gray-29);
+  border-top: 1px solid var(--blue-46);
+  padding: 10px 14px;
+  gap: 10px;
+}
+@media (max-width: 1100px) {
+  .practice-transport-main {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 800px) {
+  .practice-transport {
+    padding: 8px;
+  }
+}
+@media (max-width: 800px) {
+  .practice-transport-main {
+    gap: 6px;
+  }
+}
+.daily-workbench .practice-volume .volume-mute { display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:4px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--instrument-muted); }
+.daily-workbench .practice-volume .volume-mute[aria-pressed=true] {background:var(--instrument-selected);color:var(--instrument-accent);border-color:var(--instrument-line);}
+.daily-workbench .practice-speed .bpm-number {
+  width: 58px;
+  flex: none;
+}
+.daily-workbench .practice-speed label > span {
+  white-space: nowrap;
+}
+.daily-workbench .practice-transport {
+  background: var(--gray-100);
+  border-top: 1px solid var(--gray-96);
+  padding: 12px 24px;
+  gap: 20px;
+  min-height: 70px;
+  color: var(--blue-67);
+}
+.daily-workbench .practice-transport-main {
+  gap: 11px;
+}
+.daily-workbench .practice-transport .play-button {
+  border: 1px solid var(--indigo-60);
+  background: var(--indigo-60);
+  color: var(--gray-100);
+  border-radius: 5px;
+  box-shadow: 0 3px 8px color-mix(in oklab, var(--indigo-53) 16%, transparent);
+  padding: 9px 18px;
+  min-width: 125px;
+  font-size: 12px;
+}
+.daily-workbench .practice-transport .play-button:hover {
+  background: var(--indigo-53);
+  color: var(--gray-100);
+}
+.daily-workbench .play-button kbd {
+  background: color-mix(in oklab, var(--gray-100) 10%, transparent);
+  border-color: color-mix(in oklab, var(--gray-100) 15%, transparent);
+  color: var(--blue-86);
+  font-size: 9px;
+}
+.daily-workbench .practice-speed {
+  gap: 9px;
+  align-items: center;
+}
+.daily-workbench .practice-speed label {
+  gap: 10px;
+  color: var(--blue-67);
+  font-size: 11px;
+}
+.daily-workbench .practice-speed label small {
+  font-size: 9px;
+  margin-left: 4px;
+  color: var(--blue-67);
+}
+.daily-workbench .practice-speed input[type="range"] {
+  width: 100px;
+}
+.daily-workbench .bpm-number {
+  width: 58px;
+  padding: 7px 5px;
+  background: var(--gray-96);
+  color: var(--blue-55);
+  border: 1px solid var(--gray-92);
+  border-radius: 4px;
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.daily-workbench .practice-speed-reset {
+  border: 0;
+  color: var(--blue-60);
+  background: transparent;
+  font-size: 10px;
+  padding: 4px;
+  min-width: 32px;
+}
+.daily-workbench .practice-volume {
+  font-size: 10px;
+  color: var(--blue-71);
+}
+.daily-workbench .practice-volume input {
+  width: 76px;
+}
+@media (max-width: 1100px) {
+  .daily-workbench .practice-transport {
+    gap: 12px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 1100px) {
+  .daily-workbench .practice-speed input[type="range"] {
+    width: 76px;
+  }
+}
+@media (max-width: 1100px) {
+  .daily-workbench .practice-transport-main {
+    gap: 7px;
+  }
+}
+@media (max-width: 800px) {
+  .daily-workbench .practice-transport {
+    padding: 9px 13px;
+    gap: 7px;
+  }
+}
+@media (max-width: 800px) {
+  .daily-workbench .practice-volume {
+    margin-left: auto;
+  }
+}
+@media(max-height:760px){.daily-workbench .practice-transport{min-height:55px;padding-top:8px;padding-bottom:8px}}
+.synthesia-layout .synthesia-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  min-height: 36px;
+  padding: 5px 12px;
+  font-size: 14px;
+}
+.synthesia-layout .practice-panel > .synthesia-transport {
+  display: flex;
+  flex-wrap: nowrap;
+  flex: none;
+  align-items: center;
+  min-height: 52px;
+  height: 52px;
+  gap: 2px;
+  padding: 0 10px;
+  background: var(--stage-bar);
+  border: 0;
+  border-bottom: 1px solid var(--line-subtle);
+  border-radius: 0;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  overflow: visible;
+}
+.synthesia-layout .synthesia-transport .practice-transport-main {
+  display: flex;
+  gap: 0;
+  flex: none;
+}
+.synthesia-layout .synthesia-transport button {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: var(--radius-s);
+}
+.synthesia-layout .synthesia-transport button:hover:not(:disabled) {
+  background: var(--stage-button-hover);
+  color: var(--text-primary);
+}
+.synthesia-layout .synthesia-transport button:disabled {
+  opacity: 0.35;
+}
+.synthesia-layout .synthesia-transport .synthesia-back {
+  white-space: nowrap;
+  margin-right: 12px;
+  padding: 5px 10px;
+  min-height: 36px;
+  border: 0;
+  font-size: 14px;
+}
+.synthesia-layout .synthesia-transport .play-button {
+  order: -1;
+  min-width: 40px;
+  padding: 6px;
+  color: var(--accent-strong);
+}
+.synthesia-transport .play-button svg,
+.synthesia-transport .practice-transport-main > button svg {
+  width: 22px;
+  height: 22px;
+}
+.synthesia-play-label,
+.synthesia-transport .play-button kbd {
+  display: none;
+}
+.synthesia-layout .synthesia-transport .practice-speed {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex: none;
+  margin: 0 8px;
+  position: relative;
+  padding: 0 4px;
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
+}
+.synthesia-layout .synthesia-transport .practice-speed > label,
+.synthesia-layout .synthesia-transport .practice-speed-reset {
+  display: none;
+}
+.synthesia-layout .synthesia-transport .practice-speed .bpm-number {
+  width: 64px;
+  min-height: 42px;
+  margin: 0;
+  padding: 0 2px 13px;
+  text-align: center;
+  font: 600 21px/1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  appearance: textfield;
+}
+.synthesia-transport .bpm-number::-webkit-inner-spin-button,
+.synthesia-transport .bpm-number::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.synthesia-bpm-unit {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+.synthesia-tool-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
+.synthesia-layout .synthesia-transport .practice-volume {
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+}
+.synthesia-layout .synthesia-transport .practice-volume input {
+  min-width: 150px;
+  flex: 1;
+}
+@media (max-width: 1000px) {
+  .synthesia-layout .synthesia-transport .synthesia-back {
+    margin-right: 8px;
+  }
+}
+@media (max-width: 1000px) {
+  .synthesia-layout .synthesia-transport button {
+    padding: 7px 8px;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport {
+    padding: 0 3px;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport .synthesia-back {
+    font-size: 0;
+    padding: 5px;
+    margin-right: 2px;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport .practice-transport-main > button {
+    padding: 6px;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport .practice-speed .bpm-number {
+    width: 54px;
+    font-size: 22px;
+  }
+}
+.synthesia-layout .practice-transport .play-button {
+  background: transparent;
+  border-radius: 0;
+}
+@keyframes practice-opening-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

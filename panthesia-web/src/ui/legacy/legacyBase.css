@@ -1,0 +1,437 @@
+/* Legacy base styles: element defaults and the old shared utility classes (.primary, .toggle,
+   .dialog-actions, …) still used across features. Components layer, loaded where style.css was.
+   Each goes when its last user moves to ui components. */
+.workspace {
+  position: relative;
+}
+:root {
+  font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  color: var(--gray-89);
+  background: var(--gray-21);
+  font-size: 13px;
+  font-synthesis: none;
+  color-scheme: dark;
+  --line: var(--gray-33);
+  --surface: var(--gray-26);
+  --muted: var(--blue-71);
+  --accent: var(--green-84);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--gray-85);
+  background: var(--gray-29);
+  border: 1px solid var(--blue-37);
+  border-radius: 4px;
+  padding: 6px 10px;
+  min-height: 29px;
+  transition: background 0.12s;
+}
+button:hover:not(:disabled) {
+  background: var(--blue-37);
+  color: var(--gray-100);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--green-84);
+  outline-offset: 2px;
+}
+input,
+select {
+  background: var(--gray-21);
+  color: var(--gray-89);
+  border: 1px solid var(--blue-37);
+  border-radius: 4px;
+  padding: 6px;
+  min-width: 0;
+}
+input[type="range"] {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  height: 22px;
+  accent-color: var(--accent);
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--blue-43);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--gray-85);
+  border-radius: 2px;
+}
+input[type="range"]:disabled {
+  opacity: 0.35;
+}
+select {
+  font-size: 12px;
+}
+svg {
+  flex-shrink: 0;
+}
+button.icon-button {
+  padding: 6px;
+  border-color: transparent;
+  background: transparent;
+}
+.workbench {
+  height: 100dvh;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.parameter-help {
+  font-size: 10px;
+  color: var(--blue-71);
+  margin: 9px 0 0;
+  line-height: 1.5;
+}
+.toggle {
+  width: 28px;
+  height: 15px;
+  min-height: 0;
+  border: 0;
+  background: var(--blue-46);
+  border-radius: 20px;
+  padding: 2px;
+  display: block;
+}
+.toggle i {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--gray-85);
+  transition: transform 0.12s;
+}
+.toggle.on {
+  background: var(--green-66);
+}
+.toggle.on i {
+  transform: translateX(13px);
+  background: var(--green-93);
+}
+.results dl {
+  margin: 0 0 14px;
+}
+.results dl > div {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  font-size: 11px;
+}
+.results dt {
+  color: var(--blue-71);
+}
+.results dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 25px;
+}
+.dialog-actions .primary {
+  background: var(--green-84);
+  border-color: var(--green-84);
+  color: var(--green-25);
+  min-width: 70px;
+}
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--blue-43);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+@media (max-width: 760px) {
+  .workbench {
+    min-height: 480px;
+  }
+}
+.primary {
+  font-weight: 600;
+  margin-top: 16px;
+}
+.score-paper g.note {
+  cursor: pointer;
+}
+.fingering-table-wrap {
+  overflow: auto;
+  min-height: 120px;
+  max-height: 48vh;
+  border: 1px solid var(--blue-37);
+}
+.fingering-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.fingering-table th {
+  position: sticky;
+  top: 0;
+  background: var(--gray-29);
+  text-align: left;
+  z-index: 1;
+}
+.fingering-table th,
+.fingering-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gray-33);
+}
+.fingering-table td:nth-child(-n + 6) {
+  white-space: nowrap;
+}
+.fingering-table select {
+  min-width: 52px;
+}
+.fingering-selection,
+.fingering-pages,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+}
+.dialog-error {
+  color: var(--red-78);
+  font-size: 13px;
+}
+.primary-button {
+  background: var(--green-86);
+  color: var(--green-25);
+  font-weight: 600;
+}
+.dialog-actions {
+  border-top: 1px solid var(--gray-33);
+  margin-top: auto;
+}
+.dialog-actions button {
+  min-height: 32px;
+}
+.file-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dialog-actions {
+  flex-wrap: wrap;
+}
+.paper-score .dialog-error{margin:4px 8px}
+.score-paper g.note:focus .notehead{fill:var(--orange-62);stroke:var(--orange-62)}
+.score-paper g.note .notehead{pointer-events:bounding-box}
+.fingering-table-wrap {min-height:90px}
+.finger-demo-controls small, .finger-demo-controls .dialog-error {flex-basis:100%;}
+.computer-key-settings .dialog-actions {flex-wrap:wrap;gap:8px;}
+.interface-backup-settings .dialog-actions{flex-wrap:wrap}
+:root{--ui-scale:1}
+.workbench{height:calc(100dvh / var(--ui-scale));min-width:0}
+[role=dialog]{max-width:calc(96vw / var(--ui-scale));max-height:calc(90dvh / var(--ui-scale))}
+@layer overrides {
+@media (prefers-reduced-motion: reduce) {
+* { transition: none; }
+}
+}
+@layer overrides {
+.primary { background: var(--accent); }
+}
+@layer overrides {
+.primary { color: var(--on-accent); }
+}
+@layer overrides {
+.score-paper .selected-score-note .notehead { fill: var(--orange-62); }
+}
+@layer overrides {
+.score-paper .selected-score-note .notehead { stroke: var(--orange-62); }
+}
+.practice-transport-main .icon-button {
+  min-height: 36px;
+  min-width: 32px;
+}
+.browse-detail-subtitle {
+  margin: 0 0 12px;
+  color: var(--blue-78);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.browse-detail-section {
+  min-width: 0;
+  padding: 16px 0 4px;
+}
+.browse-detail-section:focus-visible {
+  outline-offset: -2px;
+}
+.browse-detail-section :is(h4, p, dl, details, table, input, textarea, button) {
+  scroll-margin-top: calc(var(--browse-detail-heading-height, 150px) + 12px);
+}
+.browse-detail-section h4 {
+  margin: 0 0 10px;
+  color: var(--gray-89);
+  font-size: 14px;
+}
+.browse-detail-section p {
+  line-height: 1.65;
+}
+.browse-detail-section .parameter-help {
+  color: var(--blue-78);
+  font-size: 12px;
+  line-height: 1.65;
+}
+@media (max-height: 640px) {
+  .browse-detail-section
+    :is(h4, p, dl, details, table, input, textarea, button) {
+    scroll-margin-top: 12px;
+  }
+}
+:root {
+  --accent: var(--teal-84);
+  --surface: var(--gray-26);
+  --line: var(--blue-37);
+  --muted: var(--gray-75);
+}
+.workbench { color: var(--gray-92); }
+.workbench button, .workbench summary {
+  border-radius: 7px;
+  transition: background-color .16s, border-color .16s, box-shadow .16s;
+}
+.workbench button:hover:not(:disabled) { border-color: var(--green-57); }
+.workbench button[aria-pressed="true"], .workbench button[aria-selected="true"] {
+  background: var(--green-39); border-color: var(--green-57); color: var(--teal-96);
+}
+.workbench button.primary { background: var(--teal-84); border-color: var(--teal-91); color: var(--teal-34); }
+.workbench button:focus-visible, .workbench input:focus-visible, .workbench select:focus-visible, .workbench summary:focus-visible {
+  outline-color: var(--teal-91);
+}
+@media (prefers-reduced-motion: reduce) { .workbench button, .workbench summary { transition: none; } }
+.piano-surface > .piano-gpu-effects, .piano-preview-surface > .piano-gpu-effects { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; visibility: hidden; }
+:root {
+  --accent: var(--indigo-67);
+  --muted: var(--gray-75);
+  font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+}
+button,
+input,
+select,
+summary {
+  transition:
+    background-color 0.14s,
+    border-color 0.14s,
+    color 0.14s;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline-color: var(--indigo-67);
+}
+.daily-workbench .practice-transport .icon-button {
+  border: 0;
+  color: var(--blue-71);
+  background: transparent;
+}
+.desktop-close-dialog {
+  color: var(--blue-50);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-92);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px color-mix(in oklab, var(--indigo-26) 27%, transparent);
+}
+.desktop-close-dialog h2 {
+  color: var(--blue-41);
+}
+.desktop-close-dialog p,
+.desktop-close-dialog footer small {
+  color: var(--blue-67);
+}
+.desktop-close-dialog button {
+  background: var(--gray-96);
+  border-color: var(--gray-92);
+  color: var(--blue-63);
+}
+.desktop-close-dialog footer {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.desktop-close-dialog footer small {
+  flex-basis: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  button,
+  input,
+  select,
+  summary {
+    transition: none;
+  }
+}
+.synthesia-layout > .workspace {
+  flex: 1;
+  min-height: 0;
+}
+.synthesia-layout .notation-pane > .notation-toolbar :is(button, select, .toolbar-more > summary) {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.synthesia-layout .notation-pane > .notation-toolbar :is(button, .toolbar-more > summary):hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.product-hand-svg {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  touch-action: none;
+}
+.product-hand-svg rect[role="button"] {
+  cursor: crosshair;
+}
+.product-hand-svg rect[role="button"]:focus {
+  outline: none;
+  stroke: var(--gray-100);
+  stroke-width: 3px;
+}

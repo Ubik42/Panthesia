@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { pitchName } from "../../api";
+import "./fingerPlanComparison.css";
 
 export type ComparedNote = {
   track: number;

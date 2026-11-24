@@ -1,0 +1,9 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.held-action-editor {padding:8px;border:1px solid var(--blue-46);border-radius:4px;}
+.held-action-editor summary {cursor:pointer;line-height:1.6;}
+.held-action-editor label {margin:8px 0;gap:6px;}
+.held-action-editor input {width:110px;min-width:0;}
+.held-action-editor>div {display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.held-action-editor>small {display:block;}
+.held-action-editor p {margin-top:8px;}

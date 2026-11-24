@@ -1,0 +1,23 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.app-notice {
+  position: static;
+  flex: none;
+  min-width: 0;
+  max-height: 24vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--teal-34);
+  border: 1px solid var(--green-57);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.app-notice span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.app-notice button { flex: none; }

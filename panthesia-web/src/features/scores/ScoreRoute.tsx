@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { PlaybackStore } from "../practice/playbackStore";
+import "./scoreRoute.css";
 
 export interface WrittenVisit {
   ordinal: number;

@@ -1,0 +1,11 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.finger-comparison {border:1px solid var(--border,var(--blue-37));border-radius:8px;padding:12px;margin:12px 0;background:var(--gray-27);}
+.finger-comparison p {font-size:13px;line-height:1.6;color:var(--muted);}
+.finger-comparison-tools {display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;}
+.finger-comparison-tools label {display:flex;gap:6px;align-items:center;}
+.finger-comparison-table {overflow:auto;max-height:360px;}
+.finger-comparison-table table {min-width:450px;width:100%;border-collapse:collapse;}
+.finger-comparison-table th,.finger-comparison-table td {padding:8px;border-bottom:1px solid var(--border,var(--blue-37));text-align:left;font-size:13px;}
+.finger-comparison-table small {display:block;color:var(--muted);margin-top:4px;}
+.finger-comparison-table td:nth-child(2) button {margin-top:5px;font-size:12px;padding:4px 6px;}

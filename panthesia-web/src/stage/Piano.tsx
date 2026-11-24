@@ -34,6 +34,7 @@ import {
   handColor,
   type DisplayPreferences,
 } from "../features/settings/displayPreferences";
+import "./piano.css";
 
 const sharp = isBlackKey;
 /** Room under the keys for the virtual hands' palms: the knuckles sit about 3.3 white keys

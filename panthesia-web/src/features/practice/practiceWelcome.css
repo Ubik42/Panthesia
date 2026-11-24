@@ -20,20 +20,6 @@
   width: 100%;
   filter: drop-shadow(0 10px 12px color-mix(in oklab, var(--gray-0) 27%, transparent));
 }
-.welcome-key {
-  fill: var(--blue-78);
-  stroke: var(--gray-85);
-  stroke-width: 0.7;
-}
-.welcome-key-lit {
-  fill: var(--green-86);
-  stroke: var(--green-93);
-}
-.welcome-key-black {
-  fill: var(--gray-27);
-  stroke: var(--blue-50);
-  stroke-width: 1;
-}
 .practice-welcome-note {
   position: absolute;
   top: -18px;

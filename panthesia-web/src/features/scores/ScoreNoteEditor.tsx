@@ -10,6 +10,7 @@ import {HeldActionEditor} from "../fingering/HeldActionEditor";
 import {HeldFingerDemo} from "../fingering/HeldFingerDemo";
 export type { ScoreMapping } from "./mappingTypes";
 import type { ScoreMapping } from "./mappingTypes";
+import "./scoreNoteEditor.css";
 interface Proposal {
   track: number;
   index: number;

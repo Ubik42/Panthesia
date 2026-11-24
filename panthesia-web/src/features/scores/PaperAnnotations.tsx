@@ -3,6 +3,7 @@ import { usePaperInk } from "./PaperInk";
 import { paperPoint as rotate, paperAnnotationBox } from "./PaperGeometry";
 export { paperAnnotationBox } from "./PaperGeometry";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import "./paperAnnotations.css";
 
 export interface PaperAnnotation {
   id: string;

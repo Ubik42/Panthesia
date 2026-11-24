@@ -2,6 +2,7 @@ import { memo } from "react";
 import { pitchName } from "../../api";
 import { paperAnnotationBox } from "./PaperAnnotations";
 import type { NoteAnchor, PageAnchor } from "../../engine/commands.generated";
+import "./paperNavigationRegions.css";
 
 export const PaperMeasureRegions = memo(function PaperMeasureRegions({
   anchors,

@@ -155,3 +155,11 @@
   padding: 5px 9px;
   font-size: 11px;
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.computer-key-settings {border-top:1px solid var(--blue-39);margin-top:18px;padding-top:12px;}
+.computer-key-grid {display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;margin:14px 0;}
+.computer-key-grid button {display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 3px;}
+.computer-key-grid button[aria-pressed=true] {border-color:var(--green-86);background:var(--teal-34);}
+.computer-key-grid small {font-size:10px;color:var(--gray-75);}
+@media(max-width:650px){.computer-key-grid{grid-template-columns:repeat(7,minmax(0,1fr));}}

@@ -9,3 +9,29 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.workspace-read-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 13px;
+  margin: 8px 0;
+  border: 1px solid var(--amber-49);
+  border-radius: 8px;
+  background: var(--gray-31);
+  color: var(--orange-88);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.workspace-read-error > span,
+.workspace-read-error > div { flex: 1; min-width: 180px; }
+.workspace-read-error p { margin: 4px 0; }
+.workspace-read-error button { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .workspace-read-error { align-items: flex-start; }
+}
+@media (max-width: 600px) {
+  .workspace-read-error > span { min-width: 100%; }
+}

@@ -1,0 +1,35 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.view-legend {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 10px;
+}
+.view-legend i {
+  width: 6px;
+  height: 9px;
+  border-radius: 1px;
+  margin-left: 9px;
+}
+.view-legend .low {
+  background: var(--blue-75);
+}
+.view-legend .high {
+  background: var(--green-84);
+}
+@media (max-width: 1150px) {
+  .view-legend {
+    display: none;
+  }
+}
+.track-legend {display:inline-flex;align-items:center;gap:4px;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px;}
+.track-legend i {flex-shrink:0;width:7px;height:10px;}
+.view-legend {max-width:270px;overflow:hidden;white-space:nowrap;}
+.practice-view-toolbar > .view-legend,
+.practice-view-toolbar > button {
+  display: none;
+}
+.daily-workbench .practice-view-toolbar > .view-legend {
+  display: none;
+}

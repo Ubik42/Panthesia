@@ -5,6 +5,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import "./browseDetailWorkspace.css";
 
 export interface BrowseDetailSection<Id extends string> {
   id: Id;

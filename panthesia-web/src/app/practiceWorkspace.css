@@ -1,0 +1,50 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.practice-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-24);
+}
+.finger-editor {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--blue-32);
+  border: 1px solid var(--blue-50);
+  padding: 12px;
+  z-index: 8;
+  border-radius: 6px;
+  box-shadow: 0 6px 22px color-mix(in oklab, var(--gray-0) 53%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.finger-editor > div {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+.finger-editor button {
+  min-width: 28px;
+}
+.finger-editor button.selected {
+  color: var(--green-93);
+  background: var(--green-39);
+  border-color: var(--green-80);
+}
+.practice-panel {
+  container-name: practice;
+  container-type: inline-size;
+}
+.daily-workbench .practice-panel {
+  background: var(--indigo-26);
+}
+.synthesia-layout .practice-panel {
+  border: 0;
+  border-radius: 0;
+}

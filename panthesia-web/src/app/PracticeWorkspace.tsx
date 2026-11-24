@@ -15,6 +15,7 @@ import { Notation } from "../features/scores/Notation";
 import { PaperScore } from "../features/scores/PaperScore";
 import { Piano } from "../stage/Piano";
 import { shortcutLabel } from "../lib/shortcuts";
+import "./practiceWorkspace.css";
 const normalize = pathKey;
 
 /** The practice workspace: stage, notation, paper scores and transport. */

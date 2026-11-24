@@ -1,0 +1,10 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.shortcut-settings{border-top:1px solid var(--blue-39);padding-top:12px;margin-top:16px}
+.shortcut-settings h3{font-size:14px}
+.shortcut-list{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin:12px 0}
+.shortcut-list>div{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--blue-37);padding:6px 0;font-size:12px}
+.shortcut-list span{flex:1}
+.shortcut-list button:first-of-type{min-width:100px}
+.shortcut-list button[aria-pressed=true]{border-color:var(--green-84);color:var(--green-84)}
+@media(max-width:700px){.shortcut-list{grid-template-columns:1fr}}

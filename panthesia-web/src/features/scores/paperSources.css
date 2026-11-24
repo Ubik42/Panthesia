@@ -1,0 +1,7 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.paper-sources { margin:12px 0; border-top:1px solid var(--blue-43); padding-top:12px; }
+.paper-source-row { display:flex; flex-direction:column; gap:8px; padding:12px 0; border-bottom:1px solid var(--blue-39); }
+.paper-source-row label { display:flex; flex-direction:column; gap:5px; }
+.paper-source-row input { width:100%; box-sizing:border-box; }
+.paper-source-preview { border:1px solid var(--green-57); padding:12px; margin:12px 0; }

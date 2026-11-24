@@ -4,6 +4,7 @@ import { SessionStatus } from "./SessionStatus";
 import { StartupNotice } from "./StartupNotice";
 import { pathKey } from "../engine/pathIdentity";
 import { TaskActivity } from "../engine/TaskActivity";
+import "./appNotices.css";
 
 const normalize = pathKey;
 

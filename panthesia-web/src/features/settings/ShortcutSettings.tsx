@@ -10,6 +10,7 @@ import {
   type ShortcutAction,
 } from "../../lib/shortcuts";
 import type { DisplayPreferences } from "./displayPreferences";
+import "./shortcutSettings.css";
 const shortcutGroups: {
   id: string;
   label: string;

@@ -1,4 +1,5 @@
 import { pitchName } from "../../api";
+import "./fingerDemoKeyboard.css";
 export type LiveFinger = {
   track: number;
   index: number;

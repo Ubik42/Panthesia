@@ -15,6 +15,7 @@ import type {
   PracticeContext,
   Papers,
 } from "./paperTypes";
+import "./paperScore.css";
 export type {
   PaperAttachment,
   PaperView,

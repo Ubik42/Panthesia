@@ -19,6 +19,7 @@ import { usePlaybackFields } from "./usePlaybackFields";
 import { StemControls } from "./StemControls";
 import type { PlaybackStore } from "./playbackStore";
 import { usePlaybackSlider } from "./usePlaybackSlider";
+import "./practiceTransport.css";
 
 const transportFields = [
   "status",

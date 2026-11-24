@@ -13,6 +13,7 @@ import {
   practiceStatus,
   seekableMeasures,
 } from "./practicePresentation";
+import "./practiceReadouts.css";
 
 const stageFields = [
   "status",

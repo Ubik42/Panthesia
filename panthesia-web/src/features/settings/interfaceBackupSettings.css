@@ -1,0 +1,11 @@
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.interface-backup-settings{border-top:1px solid var(--blue-39);padding-top:12px;margin-top:16px}
+.interface-backup-settings h3{font-size:14px}
+.interface-backup-preview{padding:12px;border:1px solid var(--blue-46);margin-top:12px}
+.interface-backup-preview details{margin:8px 0}
+.interface-backup-preview table{width:100%;font-size:12px;border-collapse:collapse}
+.interface-backup-preview th,.interface-backup-preview td{padding:6px;text-align:left;border-bottom:1px solid var(--blue-37);overflow-wrap:anywhere}
+.settings-difference{background:var(--blue-37)}
+.interface-layout-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--blue-37)}
+.interface-layout-row small{display:block;margin-top:5px;color:var(--blue-82)}

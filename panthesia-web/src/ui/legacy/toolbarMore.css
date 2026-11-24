@@ -144,3 +144,177 @@
 .practice-toolbar > button svg {
   width: 15px;
 }
+
+/* Moved from the old global stylesheets (style.css, dailyTheme.css, synthesiaLayout.css and the other sheets main.tsx loaded). */
+.practice-view-toolbar > .toolbar-more {
+  margin-left: auto;
+}
+.practice-view-toolbar > .toolbar-more + .toolbar-more {
+  margin-left: 0;
+}
+.practice-view-toolbar .toolbar-more > summary {
+  background: transparent;
+  border: 0;
+  color: var(--gray-75);
+  font-size: 11px;
+}
+.practice-view-toolbar .toolbar-more > summary > svg:first-child {
+  display: none;
+}
+.daily-workbench .practice-view-toolbar .toolbar-more > summary {
+  color: var(--blue-67);
+}
+.daily-workbench .practice-view-toolbar .toolbar-more-actions {
+  color: var(--gray-85);
+}
+.synthesia-layout .synthesia-transport .toolbar-more {
+  flex: none;
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 36px;
+  padding: 5px;
+  background: none;
+  color: var(--text-secondary);
+  border: 0;
+  border-radius: var(--radius-s);
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary:hover,
+.synthesia-layout .synthesia-transport .toolbar-more[open] > summary {
+  background: var(--stage-button-hover);
+  color: var(--text-primary);
+}
+.synthesia-layout .synthesia-transport .toolbar-more > summary > span,
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more
+  > summary
+  > svg:last-child {
+  display: none;
+}
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more
+  > summary
+  > svg:first-child {
+  display: block;
+  width: 21px;
+  height: 21px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions {
+  gap: 2px;
+  min-width: 240px;
+  max-height: 80vh;
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-raised);
+  padding: 8px;
+  font: 13px/1.4 var(--font-ui);
+  color-scheme: dark;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions button {
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  min-height: 34px;
+  text-align: left;
+  padding: 7px 10px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.synthesia-layout
+  .synthesia-transport
+  .toolbar-more-actions
+  button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label {
+  min-height: 34px;
+  padding: 4px 10px;
+  border-radius: var(--radius-s);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label:hover {
+  background: var(--surface-hover);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="checkbox"],
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="range"],
+.synthesia-layout .synthesia-transport .toolbar-more-actions input[type="radio"] {
+  accent-color: var(--accent);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions select {
+  min-height: 30px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions small {
+  color: var(--text-muted);
+}
+@media (max-width: 1000px) {
+  .synthesia-layout .synthesia-transport .toolbar-more > summary {
+    width: 38px;
+  }
+}
+@media (max-width: 760px) {
+  .synthesia-layout .synthesia-transport .toolbar-more > summary {
+    width: 32px;
+  }
+}
+.synthesia-layout .notation-pane > .notation-toolbar .toolbar-more-actions {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-raised);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label:has(> input[type="checkbox"]) {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"] {
+  order: 3;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  appearance: none;
+  cursor: pointer;
+  transition: background 140ms var(--ease-out);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]::before {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  content: "";
+  transition: transform 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:checked {
+  background: var(--accent);
+  box-shadow: none;
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:checked::before {
+  background: var(--on-accent);
+  transform: translateX(12px);
+}
+.synthesia-layout .synthesia-transport .toolbar-more-actions > label > input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
