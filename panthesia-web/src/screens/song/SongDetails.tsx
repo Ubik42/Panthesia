@@ -1,8 +1,8 @@
 import {
   AudioLines,
-  ChevronLeft,
+
   ChevronRight,
-  Ellipsis,
+
   FileMusic,
   FileText,
   FolderOpen,
@@ -24,7 +24,6 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api";
 import { reportDiagnostic } from "../../app/diagnostics";
-import { ToolbarMore } from "../../app/ToolbarMore";
 import type { LoadedSong } from "../../api";
 import type { PlaybackStore } from "../../features/practice/playbackStore";
 import { useTasks } from "../../engine/taskStore";
@@ -41,6 +40,7 @@ import {
   type MaterialItem,
 } from "./songSummary";
 import "../../ui/controls.css";
+import { Sheet } from "../../ui/components";
 import "./songScreen.css";
 
 type Mode = "listen" | "wait";
@@ -71,14 +71,14 @@ const TOOL_TASKS: Record<string, string> = { transcribe: "从原曲转录 MIDI",
 
 const fileName = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 
-/** The song page (interface-design.md 3.2): the song's materials, layers and the way to start. */
-export function SongScreen({
+/** Song details (interface-design.md 3.2, frontend-architecture.md §3): a sheet over the library
+ * with the way to start, the song's facts, materials and layers. */
+export function SongDetails({
   song,
   store,
   disabled,
   engineId,
   back,
-  menu,
   parts,
   options,
   scores,
@@ -93,7 +93,6 @@ export function SongScreen({
   disabled: boolean;
   engineId?: string;
   back: () => void;
-  menu: () => void;
   parts: () => void;
   options: () => void;
   scores: () => void;
@@ -190,22 +189,70 @@ export function SongScreen({
   const startLabel = mode === "listen" ? "开始播放" : `开始${hand === "left" ? "左手" : hand === "right" ? "右手" : "双手"}练习`;
 
   return (
-    <main className="song-screen ui-screen" aria-label="歌曲">
-      <header className="song-header">
-        <button className="ui-button ui-button--ghost" data-workspace-close onClick={back}>
-          <ChevronLeft />
-          返回
-        </button>
+    <Sheet
+      width={620}
+      close={back}
+      title={
         <div className="song-title">
           <h1 title={title}>{title}</h1>
           {facts?.artist && <p>{facts.artist}</p>}
         </div>
-        <ToolbarMore label="更多" icon={<Ellipsis size={20} />} disabled={locked}>
-          <button onClick={sound}>键盘与音源…</button>
-          <button onClick={menu}>其他操作…</button>
-        </ToolbarMore>
-      </header>
+      }
+    >
       <div className="song-body">
+        <section className="song-practice ui-card" aria-label="练习">
+          <h2 className="ui-section-title">练习</h2>
+          <div className="song-practice-group">
+            <span>方式</span>
+            <div className="ui-segmented" role="group" aria-label="练习方式">
+              <button aria-pressed={mode === "listen"} disabled={locked} onClick={() => setMode("listen")}>连续播放</button>
+              <button aria-pressed={mode === "wait"} disabled={locked} onClick={() => setMode("wait")}>等待按键</button>
+            </div>
+            <p>{mode === "listen" ? "音乐连续播放，跟着弹或只是听。" : "弹下所需的琴键后，音乐才继续。"}</p>
+          </div>
+          <div className="song-practice-group">
+            <span>手</span>
+            <div className="ui-segmented" role="group" aria-label="练习的手">
+              {(
+                [
+                  ["left", "左手"],
+                  ["right", "右手"],
+                  ["both", "双手"],
+                ] as const
+              ).map(([value, label]) => (
+                <button key={value} aria-pressed={hand === value} data-hand={value} disabled={locked} onClick={() => setHand(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} onClick={() => void launch()}>
+            {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
+            {pending === "start" ? "正在准备…" : startLabel}
+          </button>
+          <nav className="song-practice-links" aria-label="练习设置">
+            <button className="ui-link-row" disabled={locked} onClick={parts}>
+              <Hand />
+              <span>声部、手别与乐器</span>
+              <ChevronRight />
+            </button>
+            <button className="ui-link-row" disabled={locked} onClick={options}>
+              <SlidersHorizontal />
+              <span>转调与量化</span>
+              <ChevronRight />
+            </button>
+            <button className="ui-link-row" disabled={locked} onClick={scores}>
+              <Music />
+              <span>谱面</span>
+              <ChevronRight />
+            </button>
+            <button className="ui-link-row" disabled={locked} onClick={sound}>
+              <PianoIcon />
+              <span>键盘与音源</span>
+              <ChevronRight />
+            </button>
+          </nav>
+        </section>
         <div className="song-main">
           <section className="song-hero ui-card" aria-label="歌曲概览">
             <PianoRoll song={song} />
@@ -266,61 +313,8 @@ export function SongScreen({
           </section>
         </div>
 
-        <aside className="song-practice ui-card" aria-label="练习">
-          <h2 className="ui-section-title">练习</h2>
-          <div className="song-practice-group">
-            <span>方式</span>
-            <div className="ui-segmented" role="group" aria-label="练习方式">
-              <button aria-pressed={mode === "listen"} disabled={locked} onClick={() => setMode("listen")}>连续播放</button>
-              <button aria-pressed={mode === "wait"} disabled={locked} onClick={() => setMode("wait")}>等待按键</button>
-            </div>
-            <p>{mode === "listen" ? "音乐连续播放，跟着弹或只是听。" : "弹下所需的琴键后，音乐才继续。"}</p>
-          </div>
-          <div className="song-practice-group">
-            <span>手</span>
-            <div className="ui-segmented" role="group" aria-label="练习的手">
-              {(
-                [
-                  ["left", "左手"],
-                  ["right", "右手"],
-                  ["both", "双手"],
-                ] as const
-              ).map(([value, label]) => (
-                <button key={value} aria-pressed={hand === value} data-hand={value} disabled={locked} onClick={() => setHand(value)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button className="ui-button ui-button--primary ui-button--large song-start" disabled={locked} onClick={() => void launch()}>
-            {pending === "start" ? <LoaderCircle className="spin" /> : <Play />}
-            {pending === "start" ? "正在准备…" : startLabel}
-          </button>
-          <nav className="song-practice-links" aria-label="练习设置">
-            <button className="ui-link-row" disabled={locked} onClick={parts}>
-              <Hand />
-              <span>声部、手别与乐器</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={options}>
-              <SlidersHorizontal />
-              <span>转调与量化</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={scores}>
-              <Music />
-              <span>谱面</span>
-              <ChevronRight />
-            </button>
-            <button className="ui-link-row" disabled={locked} onClick={sound}>
-              <PianoIcon />
-              <span>键盘与音源</span>
-              <ChevronRight />
-            </button>
-          </nav>
-        </aside>
       </div>
-    </main>
+    </Sheet>
   );
 }
 

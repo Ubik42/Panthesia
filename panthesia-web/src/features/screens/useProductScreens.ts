@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { Workspace } from "../../app/useWorkspaceNavigation";
 
 /** Sections of the settings page (interface-design.md §6). */
-export type SettingsSection = "devices" | "appearance" | "notes" | "keyboard" | "shortcuts" | "tools" | "backup" | "about";
+export type SettingsSection = "devices" | "library" | "appearance" | "notes" | "keyboard" | "shortcuts" | "tools" | "backup" | "about";
 
 /** Product pages own presentation; the existing workspace adapter owns guarded engine transitions. */
 export function useProductScreens(workspace: Workspace) {

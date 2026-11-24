@@ -27,7 +27,6 @@
   border-radius: var(--radius-m);
   background: var(--part-color);
   color: var(--on-accent);
-  cursor: pointer;
 }
 .parts-swatch svg {
   width: 16px;

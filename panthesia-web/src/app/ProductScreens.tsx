@@ -1,7 +1,7 @@
 import { useApp } from "./AppContext";
 import { topInputScope, topPopup } from "./inputOwnership";
 import { pathKey } from "../engine/pathIdentity";
-import { SongScreen } from "../screens/song/SongScreen";
+import { SongDetails } from "../screens/song/SongDetails";
 import { HandSplitScreen } from "../screens/song/HandSplitScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { FreePlayScreen } from "../screens/freeplay/FreePlayScreen";
@@ -52,52 +52,51 @@ export function ProductScreens() {
   } = useApp();
   return (
     <>
-      {startupReady && productScreens.screen === "home" && (
+      {/* The start page; with a song open, its details slide in over it. */}
+      {startupReady && (productScreens.screen === "home" || (workspace === "practice" && songSetup && song)) && (
         <HomeScreen
           recent={recentFiles}
+          current={productScreens.screen === "home" ? null : song?.sourcePath}
           disabled={!!workspaceUnavailable || !connected}
           chooseFile={chooseFile}
           open={openPath}
           forget={forgetRecent}
           freePlay={() => void openFreePlay()}
           settings={() => productScreens.settings()}
+          details={
+            productScreens.screen !== "home" && workspace === "practice" && songSetup && song ? (
+          <SongDetails
+            song={song}
+            store={playback}
+            engineId={progressEngineId}
+            disabled={busy || openingActive || !connected}
+            back={() => {
+              void goHome();
+            }}
+            parts={() => productScreens.show("parts")}
+            options={() => setSongOptions(true)}
+            scores={() => setScoresDialog(true)}
+            sound={() => openSoundSettings()}
+            tools={() => openSettings("tools")}
+            editLayer={(name) => {
+              if (name === "hands") productScreens.show("parts");
+              else if (name === "fingering") setFingeringDialog(true);
+            }}
+            openVersion={(path) => run({ type: "openFile", path }, true)}
+            start={async (mode, hands) => {
+              if ((await run({ type: "hands", value: hands })) && (await run({ type: "mode", value: mode })) && (await run({ type: "play" }))) {
+                productScreens.show("performance");
+                return true;
+              }
+              return false;
+            }}
+          />
+            ) : undefined
+          }
         />
       )}
       {startupReady && productScreens.screen === "settings" && <SettingsScreen />}
 
-      {workspace === "practice" && songSetup && song && (
-        <SongScreen
-          song={song}
-          store={playback}
-          engineId={progressEngineId}
-          disabled={busy || openingActive || !connected}
-          back={() => {
-            void goHome();
-          }}
-          menu={() => { clearLiveNotes(); setCommandsOpen(true); }}
-          parts={() => productScreens.show("parts")}
-          options={() => setSongOptions(true)}
-          scores={() => setScoresDialog(true)}
-          sound={() => openSoundSettings()}
-          tools={() => openSettings("tools")}
-          editLayer={(name) => {
-            if (name === "hands") productScreens.show("parts");
-            else if (name === "fingering") setFingeringDialog(true);
-          }}
-          openVersion={(path) => run({ type: "openFile", path }, true)}
-          start={async (mode, hands) => {
-            if (
-              (await run({ type: "hands", value: hands })) &&
-              (await run({ type: "mode", value: mode })) &&
-              (await run({ type: "play" }))
-            ) {
-              productScreens.show("performance");
-              return true;
-            }
-            return false;
-          }}
-        />
-      )}
       {workspace === "practice" &&
         productScreens.screen === "parts" &&
         song && (

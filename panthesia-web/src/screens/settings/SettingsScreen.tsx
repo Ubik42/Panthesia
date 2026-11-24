@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Keyboard, KeyRound, LayoutGrid, Music4, Palette, Save, Wrench } from "lucide-react";
+import { ArrowLeft, FolderSearch, Info, Keyboard, KeyRound, LayoutGrid, Music4, Palette, Save, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useApp } from "../../app/AppContext";
 import { api } from "../../api";
@@ -8,6 +8,7 @@ import { DeviceSettingsPanel } from "../../features/devices/DeviceSettingsPanel"
 import { DisplaySettingsPanel } from "../../features/settings/DisplaySettingsPanel";
 import { DuetRuntimePanel } from "../../features/settings/DuetRuntimePanel";
 import { TranscriptionToolSettings } from "./TranscriptionToolSettings";
+import { SongFolderSettings } from "./SongFolderSettings";
 import { InterfaceSaveStatus } from "../../features/settings/InterfaceStorageNotice";
 import { getInterfaceWorkbench } from "../../features/settings/interfaceWorkbenchStore";
 import { useSyncExternalStore } from "react";
@@ -17,6 +18,7 @@ import "./settingsScreen.css";
 
 const SECTIONS: { id: SettingsSection; label: string; hint: string; icon: LucideIcon }[] = [
   { id: "devices", label: "声音与设备", hint: "MIDI 键盘、音源、发声设备与试音", icon: Music4 },
+  { id: "library", label: "曲目文件夹", hint: "主界面搜索的文件夹与索引库快捷方式", icon: FolderSearch },
   { id: "appearance", label: "舞台外观", hint: "琴键材质、光效、网格与虚拟双手", icon: Palette },
   { id: "notes", label: "音符与琴键", hint: "标签、配色、音域与预览范围", icon: LayoutGrid },
   { id: "keyboard", label: "电脑键盘", hint: "用电脑键盘弹奏的按键映射", icon: Keyboard },
@@ -86,6 +88,7 @@ export function SettingsScreen() {
           {(section === "appearance" || section === "notes" || section === "keyboard" || section === "shortcuts" || section === "backup") && (
             <DisplaySettingsPanel section={section} input={state.input} value={display} change={setDisplay} />
           )}
+          {section === "library" && <SongFolderSettings disabled={!connected} />}
           {section === "tools" && (
             <>
               <TranscriptionToolSettings disabled={!connected} />

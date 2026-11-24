@@ -62,7 +62,6 @@
   border-radius: var(--radius-s);
   background: var(--surface-raised);
   color: var(--text-primary);
-  cursor: pointer;
 }
 .hand-split-time button:disabled {
   opacity: 0.4;

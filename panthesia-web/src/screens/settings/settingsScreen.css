@@ -39,7 +39,6 @@
   color: var(--text-secondary);
   font: 500 14px/1 var(--font-ui);
   text-align: left;
-  cursor: pointer;
   transition: background 140ms var(--ease-out), color 140ms var(--ease-out);
 }
 .settings-nav-item svg {

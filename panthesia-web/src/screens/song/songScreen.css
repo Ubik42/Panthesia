@@ -1,46 +1,6 @@
-/* Song page (interface-design.md 3.2). */
-.song-screen {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  flex: 1;
-  min-height: 0;
-}
-.song-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--line-subtle);
-}
-.song-header .toolbar-more > summary {
-  min-height: 32px;
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-}
-.song-header .toolbar-more > summary:hover,
-.song-header .toolbar-more[open] > summary {
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-.song-header .toolbar-more-actions {
-  border-color: var(--line-strong);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-raised);
-}
-.song-header .toolbar-more-actions > button {
-  border: 0;
-  border-radius: var(--radius-s);
-  background: transparent;
-  color: var(--text-primary);
-}
-.song-header .toolbar-more-actions > button:hover {
-  background: var(--surface-hover);
-}
+/* Song details sheet over the start page (frontend-architecture.md §3). */
 .song-title {
   min-width: 0;
-  text-align: center;
 }
 .song-title h1 {
   margin: 0;
@@ -56,14 +16,7 @@
 }
 .song-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  align-items: start;
   gap: var(--space-5);
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-5) var(--space-6);
-  overflow: auto;
-  box-sizing: border-box;
 }
 .song-main {
   display: grid;
@@ -126,7 +79,7 @@
 }
 .song-materials {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-3);
 }
 .material-card {
@@ -278,12 +231,9 @@
   color: var(--text-muted);
 }
 .song-practice {
-  position: sticky;
-  top: 0;
   display: grid;
   gap: var(--space-4);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-raised);
+  padding: var(--space-4);
 }
 .song-practice .ui-section-title {
   margin: 0;
@@ -317,7 +267,7 @@
   padding-top: var(--space-3);
   border-top: 1px solid var(--line-subtle);
 }
-.song-screen .spin {
+.song-body .spin {
   animation: song-spin 900ms linear infinite;
 }
 @keyframes song-spin {
@@ -325,17 +275,8 @@
     transform: rotate(360deg);
   }
 }
-@media (max-width: 960px) {
-  .song-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .song-practice {
-    position: static;
-    order: -1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .song-screen .spin {
+  .song-body .spin {
     animation: none;
   }
 }

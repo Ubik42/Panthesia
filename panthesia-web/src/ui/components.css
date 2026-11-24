@@ -1,0 +1,80 @@
+/* ui/components.tsx: badge, empty state, sheet. Semantic tokens only. */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-s);
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  font: 500 11px/1 var(--font-ui);
+  white-space: nowrap;
+}
+.ui-badge[data-tone="accent"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.ui-badge[data-tone="ok"] {
+  background: color-mix(in oklch, var(--state-ok) 16%, transparent);
+  color: var(--state-ok);
+}
+.ui-badge[data-tone="warn"] {
+  background: color-mix(in oklch, var(--state-warn) 16%, transparent);
+  color: var(--state-warn);
+}
+.ui-badge[data-tone="generated"] {
+  background: color-mix(in oklch, var(--state-generated) 16%, transparent);
+  color: var(--state-generated);
+}
+.ui-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--text-muted);
+  text-align: center;
+}
+.ui-empty svg {
+  width: 28px;
+  height: 28px;
+}
+.ui-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+/* Sheet: anchored to the right of its positioned parent, full height. */
+.ui-sheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  border-left: 1px solid var(--line-strong);
+  background: var(--surface-panel);
+  box-shadow: -18px 0 40px oklch(0% 0 0 / 0.35);
+}
+.ui-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line-subtle);
+}
+.ui-sheet-title {
+  min-width: 0;
+}
+.ui-sheet-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  overflow: auto;
+}
+.ui-sheet-footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line-subtle);
+}

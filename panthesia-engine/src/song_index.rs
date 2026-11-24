@@ -33,6 +33,8 @@ pub struct Entry {
     pub kind: &'static str,
     /// Folder relative to the music folder, `/`-separated.
     pub folder: String,
+    /// Materials the song has: `midi`, `score`, `audio`, `vocals`, `accompaniment`.
+    pub materials: Vec<&'static str>,
     #[serde(skip)]
     haystack: String,
 }
@@ -133,7 +135,23 @@ pub fn scan(root: &Path) -> Vec<Entry> {
         // A folder manifest is named after its folder.
         let fallback = if stem.eq_ignore_ascii_case("song") { dir.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or(stem) } else { stem };
         let title = m.title.clone().filter(|t| !t.trim().is_empty()).unwrap_or(fallback);
-        entries.push(entry(path.clone(), title, m.artist.clone(), "manifest", relative(&path)));
+        let mut materials: Vec<&'static str> = Vec::new();
+        for f in &m.files {
+            let kind = match (f.role.as_str(), f.stem.as_deref()) {
+                ("performance", _) => "midi",
+                ("score", _) | ("paper", _) => "score",
+                ("source", _) => "audio",
+                ("stem", Some("vocals")) => "vocals",
+                ("stem", _) => "accompaniment",
+                _ => continue,
+            };
+            if !materials.contains(&kind) {
+                materials.push(kind);
+            }
+        }
+        let mut e = entry(path.clone(), title, m.artist.clone(), "manifest", relative(&path));
+        e.materials = materials;
+        entries.push(e);
     }
     for path in music {
         if covered.contains(&path) {
@@ -146,7 +164,9 @@ pub fn scan(root: &Path) -> Vec<Entry> {
             _ => "midi",
         };
         let folder = relative(&path);
-        entries.push(entry(path, title, None, kind, folder));
+        let mut e = entry(path, title, None, kind, folder);
+        e.materials = vec![if kind == "midi" { "midi" } else { "score" }];
+        entries.push(e);
     }
     entries.sort_by(|a, b| (a.kind != "manifest", &a.title).cmp(&(b.kind != "manifest", &b.title)));
     entries
@@ -154,7 +174,7 @@ pub fn scan(root: &Path) -> Vec<Entry> {
 
 fn entry(path: PathBuf, title: String, artist: Option<String>, kind: &'static str, folder: String) -> Entry {
     let haystack = format!("{} {} {}", title, artist.as_deref().unwrap_or(""), folder).to_lowercase();
-    Entry { path, title, artist, kind, folder, haystack }
+    Entry { path, title, artist, kind, folder, materials: Vec::new(), haystack }
 }
 
 /// Entries whose title, artist or folder contain every word of `query`; manifests first.

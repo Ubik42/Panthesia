@@ -73,7 +73,6 @@
   border-radius: var(--radius-m);
   background: transparent;
   color: var(--text-secondary);
-  cursor: pointer;
 }
 .stage-tool-button:hover:not(:disabled) {
   background: var(--surface-hover);

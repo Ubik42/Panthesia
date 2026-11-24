@@ -1,0 +1,21 @@
+/* Desktop conventions (frontend-architecture.md §1): the interface frame is not selectable
+   text, uses the default cursor, and has thin scrollbars that follow the theme. Content areas
+   (inputs, editable text, the score) opt back in. */
+:root {
+  user-select: none;
+  cursor: default;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+:where(button, summary, [role="button"], [role="tab"], [role="option"], label, select) {
+  cursor: default;
+}
+:where(input, textarea, [contenteditable="true"], .selectable) {
+  user-select: text;
+}
+:where(input:not([type]), input[type="text"], input[type="search"], input[type="number"], textarea) {
+  cursor: text;
+}
+a[href] {
+  cursor: pointer;
+}
