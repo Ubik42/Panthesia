@@ -10,9 +10,14 @@
  * Results are cached per song, manifest and folder listing.
  *
  * Panthesia is found through PANTHESIA_EXE, else the App Paths entry it writes on launch.
+ *
+ * "用 Panthesia 练习" (asset menu, open group; also the song card's submit button) opens the real
+ * file on Panthesia's stage. Keel withholds absolute paths, so `Panthesia.exe locate` finds the
+ * file from its library-relative path and size, under the library folder or Panthesia's song
+ * folder; then `Panthesia.exe --play <file>` starts (or hands over to the running window).
  */
 /* global exports, require */
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const os = require('node:os');
@@ -303,14 +308,57 @@ function songCard(ui, item, summary) {
         { id: 'layers', label: '图层', children: [ui.list({ columns: ['图层', '来源', '条目'], rows: layers })] },
       ],
     }),
-    ui.note(summary.manifest ? '资料来自歌曲清单与同文件夹的文件。缺少的资料可以在 Panthesia 的歌曲页中生成。' : '这首歌还没有歌曲清单。缺少的资料可以在 Panthesia 的歌曲页中生成。'),
+    ui.note(summary.manifest ? '资料来自歌曲清单与同文件夹的文件。缺少的资料可以在 Panthesia 的歌曲详情中生成。' : '这首歌还没有歌曲清单。缺少的资料可以在 Panthesia 的歌曲详情中生成。'),
   );
 }
 
-/** Inspector section: the selected song's card. */
+/** The selected song's real location, found by Panthesia (see the header). */
+async function locate(item) {
+  const exe = await panthesia();
+  const args = ['locate', String(item.relativeFilePath || item.name), '--json'];
+  if (typeof item.byteSize === 'number') args.push('--size', String(item.byteSize));
+  if (item.locationKind !== 'linked') {
+    // The plugin's library folder is `<library>/.serpent/plugin-files/<id>`.
+    const { path: own } = await keel.data.getDirectory({ scope: 'library' }).catch(() => ({ path: null }));
+    if (own) args.push('--root', path.resolve(own, '..', '..', '..'));
+  }
+  const output = await run(exe, args, PROBE_TIMEOUT_MS).catch((error) => error.message);
+  let result;
+  try {
+    result = JSON.parse(output.slice(output.indexOf('{')));
+  } catch {
+    throw new Error(output || 'Panthesia 没有返回文件位置。');
+  }
+  if (!result.path) throw new Error(result.error || 'Panthesia 没有返回文件位置。');
+  return result.path;
+}
+
+/** Open the song on Panthesia's stage with the remembered practice mode and hands. */
+async function practice(item) {
+  try {
+    const exe = await panthesia();
+    const file = await locate(item);
+    spawn(exe, ['--play', file], { detached: true, stdio: 'ignore' }).unref();
+  } catch (error) {
+    await keel.ui.notify({
+      severity: 'error',
+      title: '无法用 Panthesia 练习',
+      message: `${(error instanceof Error ? error.message : String(error)).replace(/。$/u, '')}。可以在 Panthesia 的设置中把曲目文件夹设为这首歌所在的文件夹。`,
+    });
+  }
+}
+
+const selectedSong = (context) => (((context.invocation && context.invocation.selection) || {}).assets || []).find(isSong);
+
+async function practiceSelected(context) {
+  const item = selectedSong(context);
+  if (item) await practice(item);
+  else await keel.ui.notify({ severity: 'info', message: '请选择一个 MIDI 或乐谱文件。' });
+}
+
+/** Inspector section: the selected song's card; its submit button starts practising. */
 async function showFacts(context) {
-  const selection = (context.invocation && context.invocation.selection) || {};
-  const item = (selection.assets || []).find(isSong);
+  const item = selectedSong(context);
   if (!item) {
     await keel.ui.notify({ severity: 'info', message: '请选择一个 MIDI 或乐谱文件。' });
     return;
@@ -318,7 +366,8 @@ async function showFacts(context) {
   const asset = { assetId: item.id, name: item.name, relativeFilePath: item.relativeFilePath, revisionId: item.currentRevisionId };
   try {
     const { summary } = await probe(asset);
-    await keel.ui.openDialog({ title: '歌曲信息', submitLabel: '完成', render: (ui) => songCard(ui, item, summary) });
+    const result = await keel.ui.openDialog({ title: '歌曲信息', submitLabel: '开始练习', render: (ui) => songCard(ui, item, summary) });
+    if (result !== null && result !== undefined) await practice(item);
   } catch (error) {
     await keel.ui.notify({ severity: 'error', title: 'Panthesia', message: error instanceof Error ? error.message : String(error) });
   }
@@ -327,6 +376,7 @@ async function showFacts(context) {
 exports.setup = async function setup(context) {
   keel = context.keel || context.serpent || context;
   keel.commands.register('show-song-facts', showFacts);
+  keel.commands.register('practice-in-panthesia', practiceSelected);
   keel.providers.register('thumbnail', {
     id: 'song-thumbnail',
     compute: (batch, ctx) => each(batch, ctx, (asset, { thumbnail }) =>

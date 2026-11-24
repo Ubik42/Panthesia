@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "com.ubik.panthesia",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "Panthesia",
   "description": "Song facts, materials and piano-roll thumbnails for MIDI and score files, read by Panthesia; keeps .panthesia song manifests with their music files.",
   "locales": {
@@ -38,9 +38,21 @@
       {
         "id": "show-song-facts",
         "title": "查看歌曲信息"
+      },
+      {
+        "id": "practice-in-panthesia",
+        "title": "用 Panthesia 练习"
       }
     ],
-    "menus": {},
+    "menus": {
+      "asset": [
+        {
+          "command": "practice-in-panthesia",
+          "group": "open",
+          "when": "selection.count == 1 && selection.extensions intersects ['mid','midi','kar','musicxml','mxl','abc']"
+        }
+      ]
+    },
     "toolbar": [],
     "inspector": [
       {

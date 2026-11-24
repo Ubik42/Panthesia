@@ -661,6 +661,17 @@ fn main() {
         println!("{output}");
         std::process::exit(code);
     }
+    // `locate` resolves a file manager's library-relative path against the song folder.
+    if args.get(1).is_some_and(|a| a == "locate") {
+        attach_parent_console();
+        let data = panthesia_core::product::env_os("PANTHESIA_DATA_ROOT").map(PathBuf::from).unwrap_or_else(|| {
+            let roaming = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_default();
+            panthesia_core::product::profile_root(&roaming.join("com.ubik.panthesia"))
+        });
+        let (code, output) = panthesia_engine::locate::run(&args[2..], &data);
+        println!("{output}");
+        std::process::exit(code);
+    }
     diagnostics::install();
     let context = match startup_checks::configure(tauri::generate_context!()) {
         Ok(context) => context,
@@ -798,7 +809,7 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
-                open_requests::push(window.app_handle(), paths.clone());
+                open_requests::push(window.app_handle(), open_requests::dropped(paths));
                 return;
             }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

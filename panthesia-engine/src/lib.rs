@@ -60,6 +60,7 @@ mod song_audition;
 mod data_locks;
 mod music_file;
 pub mod probe;
+pub mod locate;
 pub mod song_summary;
 mod song_generate;
 pub mod song_index;

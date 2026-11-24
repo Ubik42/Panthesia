@@ -100,12 +100,17 @@ export function useSongOpening(o: {
 
   const openRequestsBusy = useRef(false);
   const { connected, startupReady, setError } = o;
+  const runRef = useRef(o.run);
+  runRef.current = o.run;
   const takeOpenRequests = useCallback(async () => {
     if (openRequestsBusy.current || !connected || !startupReady) return;
     openRequestsBusy.current = true;
     try {
-      const path = (await api.takeOpenRequests()).at(-1);
-      if (path) await openPathRef.current(path, "performance");
+      // Only the newest request counts; `play` starts with the remembered mode and hands.
+      const request = (await api.takeOpenRequests()).at(-1);
+      if (request?.play) {
+        if (await openPathRef.current(request.path, "performance")) await runRef.current({ type: "play" });
+      } else if (request) await openPathRef.current(request.path, "setup");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
     } finally {

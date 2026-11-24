@@ -122,7 +122,9 @@ async function savePaperFile(format: "png" | "pdf", name: string, bytes: Uint8Ar
 
 export const api = {
   /** Files handed over by the command line, a second launch or a native drop. Empty outside the desktop. */
-  takeOpenRequests: async (): Promise<string[]> => isTauri() ? invoke<string[]>("take_open_requests") : [],
+  /** Files handed over by Explorer, Keel, the command line or a drop; `play` (`--play`) goes
+   * straight to the stage. */
+  takeOpenRequests: async (): Promise<{ path: string; play: boolean }[]> => isTauri() ? invoke<{ path: string; play: boolean }[]>("take_open_requests") : [],
   pickSongFile: async (kind: "music" | "performance" | "audio" | "paper" | "score" | "tool", near?: string): Promise<string | null> =>
     isTauri() ? invoke<string | null>("pick_song_file", { kind, near: near ?? null }) : null,
   pickFolder: async (title: string): Promise<string | null> => (isTauri() ? invoke<string | null>("pick_folder", { title }) : null),
