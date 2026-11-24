@@ -2,6 +2,12 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-23 · 谱面背景默认透明；新运行包；指法与虚拟手诊断（提交 71cc5b3 及本条）
+
+- 谱面背景：显示偏好 `scorePaper`（设置 → 音符与琴键，“透明”默认 / “白纸”）。透明时谱面用界面文字色画：Verovio 线条用 `currentColor`、字形默认黑色填充且内层 svg 带 `color="black"`，所以在 svg 与 `.definition-scale` 上同时设 `color` 与 `fill`。指法数字改为 `data-tone`（左、右、警告）由 CSS 取手色，白纸上加深。浏览器中核对：音符、谱号、谱线为浅色，背景透明。
+- 运行包：`outputs/releases/Panthesia-20261123c`（Release，来源 71cc5b3），App Paths 已指向它。用户要求：每轮改动后及时打包。
+- 诊断（未改代码）：虚拟手骨架为 3D（毫米，含高度），用 Three.js 正交俯视渲染，看起来像 2D。穿插与没按到键的原因：手腕位置是各指拉力的加权平均，手掌不能转动；每根手指独立求解，手指之间没有顺序或间距约束；目标离静止位置超过 45 mm（拇指 70 mm）的手指直接放弃按键；指法规划器的跨度模型与动画的手型互不知道。参考仓库 pygame-piano-animator 的做法见回复与研究文档第 8 节。
+
 ## 2026-11-23 · RU 完成：旧样式表拆散、useAppModel 拆分（提交 8004b46、4e46791 及本条）
 
 - 旧样式表：`main.tsx` 直接加载的 9 个全局样式表（`style.css`、`dailyTheme.css`、`synthesiaLayout.css`、`productScreens.css`、`workspaces.css`、`pianoVisual.css`、`practiceChrome.css`、`practiceWorkspace.css` 与 `browseDetailWorkspace.css` 的全局部分）全部拆散。
