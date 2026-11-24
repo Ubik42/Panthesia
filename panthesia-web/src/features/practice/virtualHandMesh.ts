@@ -1,5 +1,7 @@
 import type * as Three from "three";
-import type { HandPose, V3 } from "./virtualHandPose";
+import { HAND_SCALE, type HandPose, type V3 } from "./virtualHandPose";
+/** Model metres to keyboard millimetres at the hand's drawn size. */
+const MM = 1000 * HAND_SCALE;
 import { handSkin } from "./stageTheme";
 import { buildKeyboard, paintKeys, type KeyboardModel } from "./virtualKeyboard3d";
 
@@ -228,7 +230,8 @@ export class HandMeshDrawing {
   private place(THREE: typeof Three, model: Model, pose: HandPose) {
     const R = AXES[pose.side];
     const w = model.wrist;
-    // Keyboard millimetres to model metres: the inverse of R (its transpose), about the wrist.
+    // Keyboard millimetres to model metres (the hand drawn at HAND_SCALE): the inverse of R (its
+    // transpose), about the wrist.
     // The hand's turn is applied to the whole model (below), so joints are placed unturned.
     const c = Math.cos(pose.yaw),
       sn = Math.sin(pose.yaw);
@@ -237,9 +240,9 @@ export class HandMeshDrawing {
         ey = p.y - pose.wrist.y;
       const d = [c * ex + sn * ey, -sn * ex + c * ey, p.z - pose.wrist.z];
       return new THREE.Vector3(
-        w.x + (R[0][0] * d[0] + R[1][0] * d[1] + R[2][0] * d[2]) / 1000,
-        w.y + (R[0][1] * d[0] + R[1][1] * d[1] + R[2][1] * d[2]) / 1000,
-        w.z + (R[0][2] * d[0] + R[1][2] * d[1] + R[2][2] * d[2]) / 1000,
+        w.x + (R[0][0] * d[0] + R[1][0] * d[1] + R[2][0] * d[2]) / MM,
+        w.y + (R[0][1] * d[0] + R[1][1] * d[1] + R[2][1] * d[2]) / MM,
+        w.z + (R[0][2] * d[0] + R[1][2] * d[1] + R[2][2] * d[2]) / MM,
       );
     };
     const posed = new Map<string, Three.Vector3>();
@@ -270,11 +273,11 @@ export class HandMeshDrawing {
         joint.bone.quaternion.copy(turn).multiply(joint.restQuat);
       }
     }
-    // Model metres to keyboard millimetres: key = wrist + Rz(yaw) 1000 R (m - w).
+    // Model metres to keyboard millimetres: key = wrist + Rz(yaw) MM R (m - w).
     const m = new THREE.Matrix4().set(
-      R[0][0] * 1000, R[0][1] * 1000, R[0][2] * 1000, 0,
-      R[1][0] * 1000, R[1][1] * 1000, R[1][2] * 1000, 0,
-      R[2][0] * 1000, R[2][1] * 1000, R[2][2] * 1000, 0,
+      R[0][0] * MM, R[0][1] * MM, R[0][2] * MM, 0,
+      R[1][0] * MM, R[1][1] * MM, R[1][2] * MM, 0,
+      R[2][0] * MM, R[2][1] * MM, R[2][2] * MM, 0,
       0, 0, 0, 1,
     );
     m.premultiply(new THREE.Matrix4().makeRotationZ(pose.yaw));
@@ -283,7 +286,7 @@ export class HandMeshDrawing {
     model.root.matrix.copy(m);
     model.root.matrixWorldNeedsUpdate = true;
     model.root.visible = true;
-    model.thickness.value = OUTLINE_PX / pose.scale / 1000;
+    model.thickness.value = OUTLINE_PX / pose.scale / MM;
   }
 
   /** The front camera: a perspective view from in front of and above the keys, the 3D keyboard
