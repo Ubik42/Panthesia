@@ -2,7 +2,14 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
-## 2026-11-24 · 关闭窗口直接退出；歌曲来源链接与备注；B站 流行曲目整理为练习歌曲（本条提交）
+## 2026-11-24 · 歌曲标准布局：清单引用的文件与 `.panthesia` 同层（本条提交）
+
+- 格式文档写明标准布局：一首歌一个文件夹，清单与它引用的文件同层，以歌名命名（`歌名.mid`、`歌名（标签）.mid`、`歌名.musicxml`、`歌名.mp4/.mp3`、`歌名_人声.wav` 等、`歌名.jpg`），转录工具工程在 `转录/`。路径字段仍允许子目录与 `../`，兼容数据集旁的单文件清单。
+- 引擎：`manifest_store::adopt_file`——登记（`editSongFile add`）或生成（转录 / 分离结果）的文件不在清单那一层时，按标准名放进来：同盘硬链接，否则复制；已在这一层的保留原名，同内容的同名文件复用。转录工作目录由 `<名>_转录/` 改为 `转录/`。
+- 数据：7 首 B站 曲目改为标准布局（文件夹改名为 `歌名 - 艺人`）。5 首转录曲目的工具工程移入 `转录/`，`latest.json`、`files.json`、`result.roformer-duet.json` 中的路径随之改写；清单旁的 MIDI、视频、分轨是 `转录/` 成品的硬链接。发现原根目录 `piano_raw.mid` 是旧版 Transkun 转录，与谱面所依据的新版不一致；默认演奏改用新版，旧版留在 `转录/`，清单重建并重新生成草稿（原清单只有自动草稿，无人工内容）。Look at the Sky、Never See Me Again 的原音频从 `source/` 移到清单旁，清单只改文件路径（图层与设置与备份逐项一致），Never See Me Again 补登记原音频。最近打开路径同步更新。备份与移动记录：`work/user-data-backup/standard-layout-20261124/`（`moves.json`）。`D:\Music\MIDI\README.md` 与 music-transcription README 已更新。
+- 检查：`cargo check`、`npm run build`、`cargo test -p panthesia-engine opens_without_manifest`（断言改为外部文件被放进歌曲文件夹）；7 首用引擎逐首打开，无缺失文件、无子目录引用、无未登记文件。
+
+## 2026-11-24 · 关闭窗口直接退出；歌曲来源链接与备注；B站 流行曲目整理为练习歌曲（e81305b、ba61a97）
 
 - 关闭：右上角 X 直接 `exit(0)`，不确认、不再保存（编辑在发生时已原子写入）。删除桌面关闭准备整套（`desktop_close.rs`、关闭审查与参与者登记、进度对话框、`closePreparation.ts` 及各调用处）。引擎 `storage_close.rs` 中的 `prepare_desktop_close` 等现在无人调用，`closing` 标志在引擎多处读取，留待引擎整理时删除。
 - 元数据新增 `source`（清单 `metadata.source`，来源链接，≤2000 字），曲目信息编辑器可改；详情在数据下显示来源链接（新命令 `open_web_link`，只开 http/https，用默认浏览器）与备注（最多 3 行），旁边是编辑按钮。

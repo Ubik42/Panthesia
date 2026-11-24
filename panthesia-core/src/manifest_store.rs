@@ -164,6 +164,74 @@ pub fn hash_file(path: &Path) -> Result<(String, u64), String> {
     Ok((hasher.finalize().to_hex().to_string(), bytes))
 }
 
+/// The standard layout keeps every file of a song beside its manifest. A file elsewhere is
+/// brought into the manifest's folder under the song's name (a hard link on the same volume,
+/// otherwise a copy) and its new path relative to the folder is returned; a file already
+/// in the folder keeps its name. Names: `<歌名>.<ext>` for the source, score, paper and
+/// cover; `<歌名>_人声.wav` and the like for stems; `<歌名>（标签）.mid` for other versions.
+pub fn adopt_file(dir: &Path, manifest: &Manifest, file: &Path, role: &str, stem: Option<&str>, label: Option<&str>) -> Result<String, String> {
+    let file = normalize(&std::path::absolute(file).map_err(|e| format!("文件位置无法解析：{e}"))?);
+    let relative = relative_path(dir, &file).ok_or("文件与歌曲清单不在同一磁盘")?;
+    if !relative.contains('/') {
+        return Ok(relative);
+    }
+    let ext = file.extension().map(|e| format!(".{}", e.to_string_lossy().to_lowercase())).unwrap_or_default();
+    let base = manifest
+        .performance(&manifest.default.performance)
+        .and_then(|p| manifest.file(&p.file))
+        .and_then(|f| Path::new(&f.path).file_stem().map(|s| s.to_string_lossy().to_string()))
+        .or_else(|| dir.file_name().map(|n| n.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "song".into());
+    let clean = |text: &str| text.chars().map(|c| if r#"\/:*?"<>|"#.contains(c) || c.is_control() { '_' } else { c }).collect::<String>().trim().to_string();
+    let stem_name = |s: &str| match s {
+        "vocals" => "人声",
+        "accompaniment" => "伴奏",
+        "piano" => "钢琴",
+        "drums" => "鼓",
+        "bass" => "贝斯",
+        "guitar" => "吉他",
+        "other" => "其他",
+        other => other,
+    }
+    .to_string();
+    let name = match role {
+        "annotation-source" => file.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+        "performance" => format!("{base}（{}）{ext}", clean(label.filter(|l| !l.trim().is_empty()).unwrap_or("版本"))),
+        "stem" => format!("{base}_{}{ext}", clean(&stem_name(stem.unwrap_or("other")))),
+        _ => format!("{base}{ext}"),
+    };
+    let (hash, _) = hash_file(&file)?;
+    let (stem_part, ext_part) = match name.rfind('.') {
+        Some(i) if i > 0 => (name[..i].to_string(), name[i..].to_string()),
+        _ => (name.clone(), String::new()),
+    };
+    for n in 1.. {
+        let candidate = if n == 1 { name.clone() } else { format!("{stem_part} {n}{ext_part}") };
+        let target = dir.join(&candidate);
+        let taken = manifest.files.iter().any(|f| f.path.eq_ignore_ascii_case(&candidate));
+        if target.exists() {
+            // The same content already in place (an earlier adoption): reuse it.
+            if !taken && hash_file(&target).is_ok_and(|(h, _)| h == hash) {
+                return Ok(candidate);
+            }
+            continue;
+        }
+        if taken {
+            continue;
+        }
+        if std::fs::hard_link(&file, &target).is_err() {
+            let temporary = dir.join(format!(".{candidate}.copy"));
+            std::fs::copy(&file, &temporary).map_err(|e| format!("无法把文件放进歌曲文件夹：{e}"))?;
+            std::fs::rename(&temporary, &target).map_err(|e| {
+                let _ = std::fs::remove_file(&temporary);
+                format!("无法把文件放进歌曲文件夹：{e}")
+            })?;
+        }
+        return Ok(candidate);
+    }
+    unreachable!()
+}
+
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Check {
     /// Referenced files whose recorded hash no longer matches (file id).

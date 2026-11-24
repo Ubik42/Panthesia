@@ -155,12 +155,17 @@ fn add(m: &mut Manifest, dir: &Path, path: &Path, role: &str, stem: Option<Strin
     if role == "performance" && !crate::openable_file(&path) {
         return Err("版本须为 MIDI 文件".into());
     }
-    let relative = manifest_store::relative_path(dir, &path)
-        .ok_or("文件与歌曲清单不在同一磁盘，无法引用")?;
+    if let Some(known) = manifest_store::relative_path(dir, &path) {
+        if m.files.iter().any(|f| f.path.eq_ignore_ascii_case(&known)) {
+            return Err("这个文件已经登记在歌曲清单中".into());
+        }
+    }
+    // A file outside the song folder is brought in under the song's name (standard layout).
+    let relative = manifest_store::adopt_file(dir, m, &path, role, stem.as_deref(), label.as_deref())?;
     if m.files.iter().any(|f| f.path.eq_ignore_ascii_case(&relative)) {
         return Err("这个文件已经登记在歌曲清单中".into());
     }
-    let (hash, bytes) = manifest_store::hash_file(&path)?;
+    let (hash, bytes) = manifest_store::hash_file(&dir.join(&relative))?;
     let id = unique_id(m, &file_base(role, stem.as_deref()));
     let label = label.map(|l| l.trim().to_string()).filter(|l| !l.is_empty());
     m.files.push(FileRef {

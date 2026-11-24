@@ -7,6 +7,21 @@
 - UTF-8 JSON，不带 BOM，最大 32 MB。
 - 单个乐曲文件：主文件旁同名清单，`七里香.mid` → `七里香.panthesia`。
 - 歌曲文件夹：根目录 `song.panthesia`。
+- **标准布局**：一首歌一个文件夹，清单引用的文件全部与 `.panthesia` 放在同一层，以歌名命名：
+
+  ```text
+  爱爱爱 - 方大同/
+    爱爱爱 - 方大同.panthesia        清单
+    爱爱爱 - 方大同.mid              默认演奏
+    爱爱爱 - 方大同（乐谱量化）.mid   其他版本：歌名（标签）
+    爱爱爱 - 方大同.musicxml         谱面
+    爱爱爱 - 方大同.mp4 / .mp3       原视频或原音频
+    爱爱爱 - 方大同_钢琴.wav         分轨：歌名_人声 / _伴奏 / _钢琴 …
+    爱爱爱 - 方大同.jpg              封面
+    转录/                            转录工具的工程（不被清单引用）
+  ```
+
+  路径字段仍允许子目录和 `../`（兼容旧清单与数据集旁的单文件清单）。Panthesia 登记或生成文件时，文件不在清单那一层就按上面的名称放进来：同一磁盘建硬链接（不占额外空间，原处文件保留），否则复制。已经在这一层的文件保留原名。
 - 写入一律原子替换（同目录临时文件 + 重命名）。只在用户第一次修改某首歌时创建；扫描、打开、分析不生成清单。
 
 ## 顶层
@@ -210,6 +225,6 @@ Panthesia.exe probe <文件> [--json] [--detached] [--thumbnail <png 路径>] [-
 歌曲页可以生成缺少的资料（引擎 `song_generate`），文件写在演奏文件旁边，同名已存在时加序号，不覆盖任何文件：
 
 - `<名>.musicxml`：由演奏生成五线谱（ABC 歌曲直接转换）；`<名>.abc`：由演奏或五线谱生成 ABC；`<名>.mid`：由乐谱导出演奏。登记为 `score` 或 `performance`。
-- 转录与分离调用外部工具 `music-transcription`（位置在设置中指定，或环境变量 `PANTHESIA_TRANSCRIPTION_TOOL`）。工作目录为歌曲旁的 `<名>_转录/`（歌曲所在文件夹本身已是该工具的项目时用它）。结果中的 `vocals.wav` 登记为人声，`piano.wav` 为钢琴分轨，`piano_raw.mid` 为转录版本；`bass`、`drums`、`guitar`、`other` 四条分轨相加写成 `accompaniment.wav`，登记为伴奏。
+- 转录与分离调用外部工具 `music-transcription`（位置在设置中指定，或环境变量 `PANTHESIA_TRANSCRIPTION_TOOL`）。工作目录为歌曲文件夹中的 `转录/`（歌曲所在文件夹本身已是该工具的旧式项目时用它）；结果按标准布局以硬链接放到清单旁。结果中的 `vocals.wav` 登记为人声，`piano.wav` 为钢琴分轨，`piano_raw.mid` 为转录版本；`bass`、`drums`、`guitar`、`other` 四条分轨相加写成 `accompaniment.wav`，登记为伴奏。
 
 生成的文件在 `files[]` 中带 `provenance`：`{ "origin": "generated", "tool": "panthesia" | "music-transcription", "createdAt": 毫秒 }`。

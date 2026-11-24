@@ -76,11 +76,11 @@ fn free_path(beside: &Path, stem: &str, ext: &str) -> PathBuf {
 /// Register `file` in the manifest of `music` (created if needed). Returns the new file id.
 fn register(music: &Path, file: &Path, role: &str, stem: Option<&str>, label: &str, tool: &str) -> Result<(), String> {
     manifest_store::edit(music, true, |m, _, dir| {
-        let relative = manifest_store::relative_path(dir, file).ok_or("生成的文件与歌曲清单不在同一磁盘")?;
+        let relative = manifest_store::adopt_file(dir, m, file, role, stem, Some(label))?;
         if m.files.iter().any(|f| f.path.eq_ignore_ascii_case(&relative)) {
             return Ok(((), false));
         }
-        let (hash, bytes) = manifest_store::hash_file(file)?;
+        let (hash, bytes) = manifest_store::hash_file(&dir.join(&relative))?;
         let base: String = stem.unwrap_or(match role {
             "performance" => "perf",
             r => r,
@@ -307,14 +307,14 @@ fn make_local(music: &Path, kind: &str) -> Result<PathBuf, String> {
 }
 
 /// The project folder the tool works in: the song's own folder when it already is a tool
-/// project, otherwise `<song>_转录` beside it.
+/// project, otherwise `转录/` inside the song folder.
 fn project_dir(music: &Path) -> PathBuf {
     let dir = music.parent().unwrap_or(Path::new("."));
     if dir.join("source.json").is_file() || dir.join("exports").join("latest.json").is_file() {
         return dir.to_path_buf();
     }
-    let stem = music.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "song".into());
-    dir.join(format!("{stem}_转录"))
+    // Standard layout: the tool's project sits in the song folder as `转录/`.
+    dir.join("转录")
 }
 
 /// Run the tool to separation (or to a performance MIDI) and register what it produced.

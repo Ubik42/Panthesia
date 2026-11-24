@@ -178,7 +178,8 @@ mod tests {
         std::fs::create_dir_all(songs.join("audio")).unwrap();
         std::fs::write(songs.join("audio").join("acc.wav"), b"RIFF").unwrap();
         let listed = engine.command(Command::EditSongFile { action: "add".into(), path: Some(songs.join("audio").join("acc.wav")), id: None, role: Some("stem".into()), stem: Some("accompaniment".into()), label: None }).unwrap();
-        assert_eq!(listed["files"][1]["relative"], "../audio/acc.wav", "{listed}");
+        assert_eq!(listed["files"][1]["relative"], "five_伴奏.wav", "a file from elsewhere is brought into the song folder: {listed}");
+        assert!(songs.join("sub").join("five_伴奏.wav").is_file() && songs.join("audio").join("acc.wav").is_file());
         let id = listed["files"][1]["id"].as_str().unwrap().to_string();
         assert!(engine.command(Command::EditSongFile { action: "remove".into(), path: None, id: Some("perf".into()), role: None, stem: None, label: None }).is_err());
         let listed = engine.command(Command::EditSongFile { action: "remove".into(), path: None, id: Some(id), role: None, stem: None, label: None }).unwrap();
