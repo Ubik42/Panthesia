@@ -76,9 +76,13 @@ pub(crate) fn pair_cost(p1: u8, f1: u8, p2: u8, f2: u8, hand: FingeringHand, pro
     // Small and large span: 1 point per semitone outside the relaxed range, 2 without the thumb.
     let weight = if i == 1 { 1 } else { 2 };
     cost += weight * ((min_rel - d).max(0) + (d - max_rel).max(0));
-    // Weak finger.
-    if f2 == 4 || f2 == 5 {
-        cost += 1;
+    // Weak finger: players lead with the thumb, index and middle finger and bring in the ring
+    // and little finger when the hand needs them (2026-11-24: stronger than Parncutt's 1 point;
+    // the little finger less, as the hand's outer edge often needs it).
+    if f2 == 4 {
+        cost += 5;
+    } else if f2 == 5 {
+        cost += 3;
     }
     // Three-to-four, and four on black next to three on white.
     if (f1, f2) == (3, 4) || (f1, f2) == (4, 3) {

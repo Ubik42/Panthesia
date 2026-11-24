@@ -33,7 +33,7 @@ const WHITE_KEY_MM = 23.5;
 /** Height of a black key's top above the white keys, millimetres. */
 export const BLACK_KEY_TOP = 10;
 /** How far the wrist may come in toward the fallboard (black keys with the short fingers). */
-const WRIST_IN = 85;
+const WRIST_IN = 110;
 
 /** A right hand at rest, palm down, wrist at the origin, thumb toward -X, millimetres. The
  * joints are those of the WebXR `generic-hand` model (immersive-web/webxr-input-profiles, W3C
@@ -114,7 +114,7 @@ export type FingerLimit = {
 /** Joint ranges (radians): knuckle flexion from slightly hyperextended to well bent, and the
  * least curl a finger keeps (a straight finger never plays). */
 const KNUCKLE = [-0.3, 1.45] as const;
-const MIN_CURL = 0.12;
+const MIN_CURL = 0.22;
 
 export function fingerChain(base: V3, target: V3, bones: readonly number[], coupling = 0.67, limit?: FingerLimit): V3[] {
   let dx = target.x - base.x,
@@ -150,7 +150,7 @@ export function fingerChain(base: V3, target: V3, bones: readonly number[], coup
     return Math.hypot(l1 + t.x, t.y);
   };
   let lo = MIN_CURL,
-    hi = 1.75;
+    hi = 1.25;
   if (reach >= span(MIN_CURL)) hi = MIN_CURL;
   else if (reach <= span(hi)) lo = hi;
   else
@@ -241,7 +241,9 @@ const isBlack = (pitch: number) => [1, 3, 6, 8, 10].includes(pitch % 12);
 function reachRange(finger: number, down: number) {
   const length = ANATOMY.bones[finger].reduce((s, b) => s + b, 0) * (finger === 0 ? 0.92 : 0.97);
   const max = Math.sqrt(Math.max(0, length * length - down * down));
-  return { min: Math.min(max, length * 0.42), max };
+  // Pianists play with the fingers gently curved, not folded straight down: the hand keeps the
+  // fingertip at least 60% of the finger's length out from its base.
+  return { min: Math.min(max, length * 0.6), max };
 }
 /** Sideways range of a finger (degrees from the hand's forward direction, toward the little
  * finger positive) beyond its rest direction. */
@@ -399,9 +401,10 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   const keyPoint = (pitch: number, finger = 2): V3 | null => {
     const g = geometry(pitch);
     if (!g) return null;
-    const white = finger === 1 ? Math.min(keyHeight * 0.08, 9) : Math.min(keyHeight * 0.36, 55);
+    // Fingers land well onto the key (toward the fallboard), the thumb nearer the front.
+    const white = finger === 1 ? Math.min(keyHeight * 0.2, 28) : Math.min(keyHeight * 0.52, 78);
     // Black keys stand BLACK_KEY_TOP above the white keys' surface.
-    return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.55 : white, z: isBlack(pitch) ? BLACK_KEY_TOP : 0 };
+    return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.7 : white, z: isBlack(pitch) ? BLACK_KEY_TOP : 0 };
   };
   const base = (i: number) => ANATOMY.bases[i];
   const restTip = (i: number) => ({ x: mirror * (base(i).x + ANATOMY.rest[i].x), y: base(i).y + ANATOMY.rest[i].y });
@@ -564,7 +567,9 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     if (!held && future === contact) {
       // Travel to the coming key in an arc and come down on it.
       const start = Math.max(prev ? release : -Infinity, contact.start - 0.34 * rate);
-      const u = smooth((time - start) / Math.max(0.001, contact.start - start));
+      // Near-constant speed along the way (a light ease only at both ends).
+      const linear = Math.max(0, Math.min(1, (time - start) / Math.max(0.001, contact.start - start)));
+      const u = 0.7 * linear + 0.3 * smooth(linear);
       // From the previous key while the finger is still near it, else from its rest place.
       const fromKey = prev && start - release < 0.3 * rate ? keyPoint(prev.pitch, i + 1) : null;
       const from = fromKey ?? rest;
