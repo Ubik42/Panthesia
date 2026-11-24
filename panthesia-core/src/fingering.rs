@@ -146,7 +146,42 @@ pub fn suggest_fingerings(
     suggest_fingerings_with_profile(notes, hand, HandSpanProfile::Standard)
 }
 
+/// Notes struck within this time of a chord's first note belong to the chord: a played chord's
+/// notes start a few milliseconds apart (transcriptions, recorded performances), and planned
+/// one by one they get melodic fingerings no hand can hold (an octave with 1-2, the thumb above
+/// the fifth finger).
+pub const CHORD_TOLERANCE: Duration = Duration::from_millis(30);
+
 pub fn suggest_fingerings_with_profile(
+    notes: &[FingeringNote],
+    hand: FingeringHand,
+    profile: HandSpanProfile,
+) -> Vec<Option<FingerSuggestion>> {
+    // Chords: every note within the tolerance of the chord's first note takes its onset; the
+    // planner then sees one chord, in pitch order.
+    let mut order: Vec<usize> = (0..notes.len()).collect();
+    order.sort_by(|&a, &b| notes[a].onset.cmp(&notes[b].onset).then(notes[a].pitch.cmp(&notes[b].pitch)));
+    let mut snapped: Vec<FingeringNote> = order.iter().map(|&i| notes[i]).collect();
+    let mut first = 0;
+    for i in 0..snapped.len() {
+        if snapped[i].onset.saturating_sub(snapped[first].onset) > CHORD_TOLERANCE {
+            first = i;
+        }
+        snapped[i].onset = snapped[first].onset;
+    }
+    let mut chordwise: Vec<usize> = (0..snapped.len()).collect();
+    chordwise.sort_by(|&a, &b| snapped[a].onset.cmp(&snapped[b].onset).then(snapped[a].pitch.cmp(&snapped[b].pitch)));
+    let planned: Vec<FingeringNote> = chordwise.iter().map(|&i| snapped[i]).collect();
+    let result = suggest_exact_onsets(&planned, hand, profile);
+    let mut out = vec![None; notes.len()];
+    for (k, suggestion) in result.into_iter().enumerate() {
+        out[order[chordwise[k]]] = suggestion;
+    }
+    out
+}
+
+/// The planner on notes whose chords share one exact onset.
+fn suggest_exact_onsets(
     notes: &[FingeringNote],
     hand: FingeringHand,
     profile: HandSpanProfile,

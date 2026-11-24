@@ -83,6 +83,7 @@ export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["finge
     }
     for (const hand of hands) {
         hand.notes.sort((a, b) => a.start - b.start || a.pitch - b.pitch);
+        missing += playable(hand, rate);
         for (const contacts of hand.fingers) {
             contacts.sort((a, b) => a.start - b.start);
             for (let i = 1; i < contacts.length; i++)
@@ -103,4 +104,56 @@ export function planHands(notes: LoadedSong["notes"], actions: LoadedSong["finge
         }
     }
     return { hands, missing, conflicts, rate };
+}
+
+/** Widest chord one hand holds at once, in semitones (a ninth; the hands reach about a tenth). */
+const HAND_SPAN = 14;
+/** Delay between the parts of a rolled chord, in song seconds at normal speed. */
+const ROLL_STEP = 0.07;
+
+/** What one hand can actually do with each chord (as a pianist would; the sound is unchanged):
+ * one key per finger at a time, and a chord wider than the hand rolled from the bottom up,
+ * each part let go (the pedal keeps it) when the hand moves on. Returns the notes dropped. */
+function playable(hand: HandTrack, rate: number): number {
+    let dropped = 0;
+    const keep: Contact[] = [];
+    for (let i = 0; i < hand.notes.length; ) {
+        let j = i + 1;
+        while (j < hand.notes.length && hand.notes[j].start - hand.notes[i].start < 0.03) j++;
+        const group = hand.notes.slice(i, j);
+        i = j;
+        // One key per finger: keep the outer notes of the chord first (they shape the hand).
+        const byFinger = new Map<number, Contact>();
+        const order = [...group].sort((a, b) => Math.abs(b.pitch - group[0].pitch) - Math.abs(a.pitch - group[0].pitch));
+        for (const c of order) if (!byFinger.has(c.finger)) byFinger.set(c.finger, c);
+        dropped += group.length - byFinger.size;
+        const chord = [...byFinger.values()].sort((a, b) => a.pitch - b.pitch);
+        // Parts of at most a hand's span, from the bottom.
+        let part = 0,
+            low = chord[0]?.pitch ?? 0;
+        const parts: Contact[][] = [[]];
+        for (const c of chord) {
+            if (c.pitch - low > HAND_SPAN) {
+                parts.push([]);
+                part++;
+                low = c.pitch;
+            }
+            parts[part].push(c);
+        }
+        parts.forEach((members, k) => {
+            const start = members[0].start + k * ROLL_STEP * rate;
+            const next = k + 1 < parts.length ? members[0].start + (k + 1) * ROLL_STEP * rate : Infinity;
+            for (const c of members) {
+                c.start = start;
+                // Released as the hand moves to the next part.
+                c.end = Math.max(start + 0.03 * rate, Math.min(c.end, next - 0.01 * rate));
+                keep.push(c);
+            }
+        });
+    }
+    keep.sort((a, b) => a.start - b.start || a.pitch - b.pitch);
+    hand.notes = keep;
+    const kept = new Set(keep);
+    for (let f = 0; f < 5; f++) hand.fingers[f] = hand.fingers[f].filter((c) => kept.has(c)).sort((a, b) => a.start - b.start);
+    return dropped;
 }

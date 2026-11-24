@@ -30,6 +30,10 @@ type Geometry = (pitch: number) => { x: number; w: number } | undefined;
 export type KeyBand = { top: number; bottom: number };
 
 const WHITE_KEY_MM = 23.5;
+/** Height of a black key's top above the white keys, millimetres. */
+export const BLACK_KEY_TOP = 10;
+/** How far the wrist may come in toward the fallboard (black keys with the short fingers). */
+const WRIST_IN = 85;
 
 /** A right hand at rest, palm down, wrist at the origin, thumb toward -X, millimetres. The
  * joints are those of the WebXR `generic-hand` model (immersive-web/webxr-input-profiles, W3C
@@ -357,7 +361,8 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     const g = geometry(pitch);
     if (!g) return null;
     const white = finger === 1 ? Math.min(keyHeight * 0.08, 9) : Math.min(keyHeight * 0.36, 55);
-    return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.55 : white, z: 0 };
+    // Black keys stand BLACK_KEY_TOP above the white keys' surface.
+    return { x: (g.x + g.w / 2) / scale, y: isBlack(pitch) ? keyHeight * 0.55 : white, z: isBlack(pitch) ? BLACK_KEY_TOP : 0 };
   };
   const base = (i: number) => ANATOMY.bases[i];
   const restTip = (i: number) => ({ x: mirror * (base(i).x + ANATOMY.rest[i].x), y: base(i).y + ANATOMY.rest[i].y });
@@ -424,7 +429,7 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     w.x += ux * 0.85;
     w.y += Math.max(-25, Math.min(25, uy * 0.85));
   }
-    w.y = Math.max(WRIST_Y - 20, Math.min(WRIST_Y + 45, w.y));
+    w.y = Math.max(WRIST_Y - 20, Math.min(WRIST_Y + WRIST_IN, w.y));
   };
   /** The hand's place at time `t` before smoothing: the rigid fit (weighted Procrustes) of the
    * fingers' rest tips onto their keys; the turn is held near straight when few keys pull. */

@@ -66,12 +66,16 @@ const band = { top: 0, bottom: KEY_DEPTH };
 // A tip is on its key when it is inside the key's width (a 2 mm margin) and at most 3 mm above.
 const onKey = (tip, pitch) => {
   const g = geometry(pitch);
-  return g && tip.x >= g.x - 2 && tip.x <= g.x + g.w + 2 && tip.z <= 3;
+  return g && tip.x >= g.x - 2 && tip.x <= g.x + g.w + 2 && tip.z <= (black(pitch) ? 10 : 0) + 3;
 };
 
 const report = [];
 const misses = [];
 const examples = [];
+const solverFinger = [0, 0, 0, 0, 0];
+const solverAxis = { x: 0, z: 0 };
+const solverShow = [];
+const solverOrder = { ok: 0, reversed: 0, sameFinger: 0 };
 const crossExamples = [];
 const crossCause = { bothPressed: 0, onePressed: 0, bothFree: 0 };
 const cause = { chord: 0, span: 0, long: 0, solver: 0 };
@@ -100,8 +104,20 @@ for (const name of (await readdir(folder)).filter((f) => /\.midi?$/i.test(f)).so
         const chord = held.filter((n) => Math.abs(n.start - c.start) < 0.05).map((n) => geometry(n.pitch).x);
         const chordSpread = Math.max(...chord) - Math.min(...chord);
         cause[chordSpread > 200 ? "chord" : spread > 200 ? "span" : t - c.start > 0.6 ? "long" : "solver"]++;
+        if (chordSpread <= 200 && spread <= 200) {
+          solverFinger[c.finger - 1]++;
+          // Held fingers whose order contradicts pitch order (thumb crossings aside).
+          const sorted = [...held].sort((a, b) => a.pitch - b.pitch).map((n) => n.finger).filter((f) => f > 1);
+          const ordered = sorted.every((f, k) => k === 0 || (track.side === "right" ? f > sorted[k - 1] : f < sorted[k - 1]));
+          const dup = new Set(held.map((n) => n.finger)).size < held.length;
+          solverOrder[dup ? "sameFinger" : ordered ? "ok" : "reversed"]++;
+          if (process.env.HAND_DEBUG3 && !dup && ordered && solverShow.length < 8) solverShow.push({ name: name.slice(0, 10), side: track.side, t: +t.toFixed(3), finger: c.finger, pitch: c.pitch, miss: +(Math.abs(tip.x - (geometry(c.pitch).x + geometry(c.pitch).w / 2)) - geometry(c.pitch).w / 2).toFixed(1), held: held.map((n) => `${n.pitch}:${n.finger}@${(t - n.start).toFixed(2)}`).join(" "), near: track.notes.filter((n) => Math.abs(n.start - c.start) < 0.4).map((n) => `${n.pitch}:${n.finger}@${(n.start - c.start).toFixed(2)}`).join(" ") });
+          const g = geometry(c.pitch);
+          solverAxis[Math.abs(tip.x - (g.x + g.w / 2)) > g.w / 2 + 2 ? "x" : "z"]++;
+          if (Math.abs(tip.x - (g.x + g.w / 2)) <= g.w / 2 + 2) solverAxis[black(c.pitch) ? "zBlack" : "zWhite"] = (solverAxis[black(c.pitch) ? "zBlack" : "zWhite"] ?? 0) + 1;
+        }
         const g = geometry(c.pitch);
-        misses.push(Math.max(Math.abs(tip.x - (g.x + g.w / 2)) - g.w / 2, tip.z));
+        misses.push(Math.max(Math.abs(tip.x - (g.x + g.w / 2)) - g.w / 2, tip.z - (black(c.pitch) ? 10 : 0)));
       }
     }
     // Every 1/60 s while the hand is shown: finger order, spacing and tip speed.
@@ -154,6 +170,8 @@ console.log(`合计 ${totals.notes} 音：未按 ${pct(totals.unpressed)}%，不
 misses.sort((a, b) => a - b);
 if (crossExamples.length) console.log(JSON.stringify(crossExamples, (k, v) => (typeof v === "number" ? Math.round(v * 10) / 10 : v)));
 if (examples.length) console.log(JSON.stringify(examples, (k, v) => (typeof v === "number" ? Math.round(v * 10) / 10 : v)));
+for (const x of solverShow) console.log(JSON.stringify(x));
+console.log("求解类未命中：手指", solverFinger, "方向", solverAxis, "按住的指序", solverOrder);
 console.log("不在键上的归因：", cause, "超速帧的归因：", speedCause, "交叉帧的归因：", crossCause);
 if (misses.length) console.log(`未命中距离（毫米，超出琴键边缘或高于键面）：中位 ${misses[misses.length >> 1].toFixed(1)}，90% ${misses[Math.floor(misses.length * 0.9)].toFixed(1)}`);
 if (out) await writeFile(out, JSON.stringify({ totals, songs: report }, null, 1));
