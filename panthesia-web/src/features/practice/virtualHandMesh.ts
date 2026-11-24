@@ -107,6 +107,16 @@ const AXES: Record<Side, number[][]> = {
   ],
 };
 
+/** The front camera's free view: dragging turns it around the keys, the wheel moves it nearer
+ * or further; off, it returns to the fixed view. Shared by the stage's camera button. */
+export const handOrbit = { free: false, yaw: 0, pitch: 0, zoom: 1 };
+export function resetHandOrbit(free: boolean) {
+  handOrbit.free = free;
+  handOrbit.yaw = 0;
+  handOrbit.pitch = 0;
+  handOrbit.zoom = 1;
+}
+
 export class HandMeshDrawing {
   private renderer: Three.WebGLRenderer | null = null;
   private scene: Three.Scene | null = null;
@@ -114,6 +124,7 @@ export class HandMeshDrawing {
   private perspective: Three.PerspectiveCamera | null = null;
   private keyLight: Three.DirectionalLight | null = null;
   private keyboard: KeyboardModel | null = null;
+  private environment: Three.Texture | null = null;
   private kit: Kit | null = null;
   private failed = false;
   private size = "";
@@ -150,6 +161,12 @@ export class HandMeshDrawing {
     this.camera.lookAt(0, 0, 0);
     this.perspective = new THREE.PerspectiveCamera(30, 1, 10, 20000);
     this.perspective.up.set(0, 0, 1);
+    // Reflections from a room (lacquer, keys and skin catch them); only the front view uses it.
+    void import("three/examples/jsm/environments/RoomEnvironment.js").then(({ RoomEnvironment }) => {
+      const pmrem = new THREE.PMREMGenerator(this.renderer!);
+      this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    });
   }
 
   draw(poses: HandPose[], width: number, height: number, top: number, opacity: number, view?: HandView) {
@@ -179,6 +196,7 @@ export class HandMeshDrawing {
     }
     if (view?.camera === "front") return this.drawFront(poses, width, height, top, view);
     if (this.keyboard) this.keyboard.group.visible = false;
+    scene.environment = null;
     this.keyLight!.castShadow = false;
     renderer.setClearColor(0x000000, 0);
     renderer.setViewport(0, 0, width, height);
@@ -286,6 +304,8 @@ export class HandMeshDrawing {
       scene.add(this.keyboard.group);
     }
     this.keyboard.group.visible = true;
+    scene.environment = this.environment;
+    scene.environmentIntensity = 0.35;
     paintKeys(THREE, this.keyboard, view.sounding);
     for (const side of ["left", "right"] as const) models[side].root.visible = false;
     for (const pose of poses) this.place(THREE, models[pose.side], pose);
@@ -295,14 +315,20 @@ export class HandMeshDrawing {
     const span = width / scale;
     const aspect = width / regionHeight;
     const half = (25 * Math.PI) / 180;
-    const distance = (span / 2 / Math.tan(half)) * 1.02;
-    const elevation = (52 * Math.PI) / 180;
+    const free = handOrbit.free;
+    const distance = (span / 2 / Math.tan(half)) * 1.02 * (free ? handOrbit.zoom : 1);
+    const elevation = (Math.max(8, Math.min(86, 52 + (free ? handOrbit.pitch : 0))) * Math.PI) / 180;
+    const azimuth = free ? handOrbit.yaw : 0;
     const target = new THREE.Vector3(span / 2, keyHeight * 0.62, -4);
     camera.aspect = aspect;
     camera.fov = (2 * Math.atan(Math.tan(half) / aspect) * 180) / Math.PI;
-    camera.near = distance * 0.2;
-    camera.far = distance * 4;
-    camera.position.set(target.x, target.y - distance * Math.cos(elevation), target.z + distance * Math.sin(elevation));
+    camera.near = Math.max(10, distance * 0.05);
+    camera.far = distance * 12 + 12000;
+    camera.position.set(
+      target.x + distance * Math.cos(elevation) * Math.sin(azimuth),
+      target.y - distance * Math.cos(elevation) * Math.cos(azimuth),
+      target.z + distance * Math.sin(elevation),
+    );
     camera.lookAt(target);
     camera.updateProjectionMatrix();
     // The key light casts the hands' shadows on the keys.
@@ -312,8 +338,8 @@ export class HandMeshDrawing {
     const shadow = light.shadow.camera as Three.OrthographicCamera;
     shadow.left = -span * 0.6;
     shadow.right = span * 0.6;
-    shadow.top = keyHeight * 3;
-    shadow.bottom = -keyHeight * 3;
+    shadow.top = keyHeight * 6;
+    shadow.bottom = -keyHeight * 6;
     shadow.near = 100;
     shadow.far = 4000;
     shadow.updateProjectionMatrix();

@@ -6,3 +6,11 @@
 .piano-surface > .piano-waterfall { position: absolute; inset: 0; pointer-events: none; visibility: hidden; }
 .piano-surface > .piano-hands { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; visibility:hidden; }
 .piano-surface > .piano-backdrop-image { position: absolute; inset: 0; background-position: center; background-size: cover; pointer-events: none; }
+
+/* The front camera's area (virtual hands seen from the front): its view button; in the free
+   view the area takes the pointer to turn the camera. */
+.piano-surface > .piano-camera-region { position: absolute; left: 0; right: 0; top: var(--waterfall-height, 60%); bottom: 0; pointer-events: none; }
+.piano-surface > .piano-camera-region[data-free] { pointer-events: auto; cursor: grab; touch-action: none; }
+.piano-surface > .piano-camera-region[data-free]:active { cursor: grabbing; }
+.piano-camera-toggle { position: absolute; top: 10px; right: 12px; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid color-mix(in oklch, var(--surface-raised) 30%, transparent); border-radius: 999px; background: color-mix(in oklch, var(--surface-raised) 72%, transparent); color: var(--text-primary); font: 600 12px/1 var(--font-ui); box-shadow: var(--shadow-raised); backdrop-filter: blur(10px); pointer-events: auto; }
+.piano-camera-toggle[aria-pressed="true"] { background: linear-gradient(135deg, var(--accent), var(--accent-strong)); color: var(--surface-raised); }

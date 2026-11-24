@@ -9,7 +9,7 @@ import {
   type KeyboardViewport,
   type KeyboardRange,
 } from "../features/practice/keyboardViewport";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePianoViewportGestures } from "../features/practice/usePianoViewportGestures";
 import { PianoKeyboard } from "../features/practice/pianoKeyboard";
 import type { PracticeRange } from "../features/practice/usePracticeRange";
@@ -20,6 +20,8 @@ import { applyStageInk, backdropFor, luminance, pitchColors, stageAtmospheres, s
 import { useStageBackground } from "./stageBackground";
 import { presetUrl, useImageTone } from "./backgroundPresets";
 import { paintWoodFloor } from "./woodFloor";
+import { handOrbit, resetHandOrbit } from "../features/practice/virtualHandMesh";
+import { Lock, Rotate3d } from "lucide-react";
 import { useOpenSongCover } from "../features/library/songCover";
 import { lyricLines, paintChords, paintLyrics, measureLabels, paintMeasureLabels, sectionColors } from "./songLayers";
 import type { PlaybackStore } from "../features/practice/playbackStore";
@@ -955,6 +957,50 @@ export function Piano({
     />
     <canvas ref={effectsCanvas} className="piano-gpu-effects" aria-hidden="true" />
     <canvas ref={handCanvas} className="piano-hands" aria-hidden="true" />
+    {display.virtualHands && display.handCamera === "front" && <CameraRegion repaint={() => requestPaint.current()} />}
+    </div>
+  );
+}
+
+/** The front camera's area: a button in its top right switches between the fixed view and a
+ * free one, in which dragging turns the view and the wheel zooms. */
+function CameraRegion({ repaint }: { repaint: () => void }) {
+  const [free, setFree] = useState(handOrbit.free);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => () => resetHandOrbit(false), []);
+  const toggle = () => {
+    resetHandOrbit(!free);
+    setFree(!free);
+    repaint();
+  };
+  return (
+    <div
+      className="piano-camera-region"
+      data-free={free || undefined}
+      onPointerDown={(e) => {
+        if (!free || e.button !== 0) return;
+        drag.current = { x: e.clientX, y: e.clientY };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return;
+        handOrbit.yaw -= (e.clientX - drag.current.x) * 0.006;
+        handOrbit.pitch = Math.max(-44, Math.min(34, handOrbit.pitch + (e.clientY - drag.current.y) * 0.25));
+        drag.current = { x: e.clientX, y: e.clientY };
+        repaint();
+      }}
+      onPointerUp={() => (drag.current = null)}
+      onPointerCancel={() => (drag.current = null)}
+      onWheel={(e) => {
+        if (!free) return;
+        handOrbit.zoom = Math.max(0.35, Math.min(2.2, handOrbit.zoom * Math.exp(e.deltaY * 0.0012)));
+        repaint();
+      }}
+    >
+      <button type="button" className="piano-camera-toggle" aria-pressed={free} title={free ? "回到固定视角" : "自由视角：拖动旋转，滚轮缩放"} onClick={toggle} onPointerDown={(e) => e.stopPropagation()}>
+        {free ? <Lock size={16} /> : <Rotate3d size={16} />}
+        {free ? "固定视角" : "自由视角"}
+      </button>
     </div>
   );
 }
