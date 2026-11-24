@@ -84,6 +84,14 @@ const WRIST_Z = 40;
 /** Free fingers hover this far above the key surface. */
 const HOVER = 8;
 const LIFT = 9;
+/** Free fingers start moving over their next key this long before it (real seconds), and get
+ * this close (fraction of the way from their rest place). */
+/** Wrist arc: starts at ARC_FROM and is full (ARC_MAX mm higher) at ARC_FULL mm per second. */
+const ARC_FROM = 150,
+  ARC_FULL = 700,
+  ARC_MAX = 18;
+const PREPARE = 0.9,
+  PREPARE_REACH = 0.75;
 
 const smooth = (x: number) => {
   x = Math.max(0, Math.min(1, x));
@@ -258,6 +266,17 @@ function reachRange(finger: number, down: number) {
   // fingertip at least 60% of the finger's length out from its base.
   return { min: Math.min(max, length * 0.6), max };
 }
+/** The horizontal reach of a finger in its relaxed curve (its rest shape, see ANATOMY.rest) at
+ * a drop of `down`: a key at this distance is pressed by turning the finger at the knuckle, the
+ * curve itself hardly changing. */
+function relaxedReach(finger: number, down: number) {
+  const r = ANATOMY.rest[finger];
+  const length = Math.hypot(r.x, r.y, WRIST_Z + ANATOMY.bases[finger].z - HOVER);
+  return Math.sqrt(Math.max(0, length * length - down * down));
+}
+/** How strongly the hand moves to give each finger on a key its relaxed reach (against the hard
+ * limits, which count fully). */
+const RELAX = 0.6;
 /** Sideways range of a finger (degrees from the hand's forward direction, toward the little
  * finger positive) beyond its rest direction. */
 const SPLAY = [0, 20, 14, 14, 20];
@@ -459,6 +478,13 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
       } else if (d < min) {
         cx = (ox / d) * (d - min);
         cy = (oy / d) * (d - min);
+      } else if (i > 0) {
+        // Within reach: the hand still moves toward where the finger keeps its relaxed curve, so
+        // it plays from the knuckle rather than folding up or straightening out (Zhu et al. 2013:
+        // a relaxed base pose plus small changes).
+        const relaxed = Math.max(min, Math.min(max, relaxedReach(i, b.z - g.z)));
+        cx = (ox / d) * (d - relaxed) * RELAX;
+        cy = (oy / d) * (d - relaxed) * RELAX;
       }
       if (i === 0) {
         // The thumb's key stays on the thumb's side of the hand, clear of where the index finger
@@ -541,7 +567,18 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
   const placed = trajectory(track, layout, raw, time, rate);
   if (!placed) return null;
   const weight = placed.weight;
-  const wrist: V3 = { x: placed.x, y: placed.y, z: WRIST_Z };
+  // The wrist rises while the hand travels across the keys and comes down as it arrives: an arc
+  // between positions, higher the faster the move (speed from the path, in real seconds); fingers
+  // on fresh keys hold it down.
+  const span = 0.04 * rate;
+  const before = trajectory(track, layout, raw, time - span, rate),
+    after = trajectory(track, layout, raw, time + span, rate);
+  const speed = before && after ? Math.hypot(after.x - before.x, after.y - before.y) / (2 * span / rate) : 0;
+  const rowsNow = aims(track, time, rate);
+  const goalsNow = goalsOf(rowsNow);
+  const holding = Math.max(0, ...mustOf(rowsNow, goalsNow, time));
+  const arc = ARC_MAX * smooth((speed - ARC_FROM) / (ARC_FULL - ARC_FROM)) * (1 - smooth(holding / 12));
+  const wrist: V3 = { x: placed.x, y: placed.y, z: WRIST_Z + arc };
   const yaw = placed.yaw;
   const cos = Math.cos(yaw),
     sin = Math.sin(yaw);
@@ -552,8 +589,8 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     z: wrist.z + p.z,
   });
 
-  const rows = aims(track, time, rate);
-  const goals = goalsOf(rows);
+  const rows = rowsNow;
+  const goals = goalsNow;
   // No key fix here: the path already carries it, and a fix after smoothing makes the hand jump.
   const must = mustOf(rows, goals, time);
 
@@ -570,7 +607,22 @@ export function handPose(track: HandTrack, time: number, rate: number, band: Key
     // A finger not playing hovers a little above the keys at its place in the hand.
     const restAt = world({ x: restTip(i).x * mirror, y: restTip(i).y, z: 0 });
     // Over the black keys' part of the keyboard it hovers above their tops.
-    const rest = { ...restAt, z: restAt.y > keyHeight * 0.37 ? BLACK_KEY_TOP + 4 : HOVER };
+    let rest = { ...restAt, z: restAt.y > keyHeight * 0.37 ? BLACK_KEY_TOP + 4 : HOVER };
+    // A finger whose next key comes within PREPARE seconds moves over it early, hovering, as
+    // pianists place the hand ahead (the strike itself starts 0.34 s before, see below).
+    const coming = future && !held && keyPoint(future.pitch, i + 1);
+    if (coming) {
+      const ahead = (future.start - time) / rate;
+      const ready = PREPARE_REACH * smooth((PREPARE - ahead) / (PREPARE - 0.34));
+      if (ready > 0) {
+        const over = { ...coming, z: (isBlack(future.pitch) ? BLACK_KEY_TOP : 0) + HOVER };
+        // Only as far as the finger reaches from where the hand is now.
+        const { max } = reachRange(i, b.z - over.z);
+        const fits = 1 - smooth((Math.hypot(over.x - b.x, over.y - b.y) - max) / 20);
+        const k = ready * fits;
+        rest = { x: blend(rest.x, over.x, k), y: blend(rest.y, over.y, k), z: blend(rest.z, over.z, k) };
+      }
+    }
     const goal = goals[i];
     if (!contact || !goal) return { target: rest, pressed: false, substitution: false, priority: 0, since: -Infinity };
     const { max } = reachRange(i, b.z);
