@@ -2,6 +2,15 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-23 · RU 旧对话框改写第一批（提交 cae3d24 及本条）
+
+- `ui/Dialog` 补齐：副标题、关闭按钮文字、`closeDisabled`（保存中不能关闭）、`keepOnBackdrop`（有未保存选择时点背景不关闭）、内容类名。删除它自带的 Escape 处理，统一交给窗口焦点管理（`useDialogFocus`，支持 `data-dialog-escape`）。
+- 改写：关于（去掉旧的绿色主题）、曲目信息、笔迹核对、可定位纸谱。各自样式移到组件旁，用语义 token。
+- 层级：插件保留文件中显式的 `@layer screens { … }` 块，features 中画在 ui 组件里的内容样式用它声明，与 ui 样式同层；`.ui-form` 的输入框与按钮选择器改用 `:where()`，内容样式可以细化；普通按钮样式不再覆盖 `ui/Button` 的变体（此前主要按钮在表单里显示为普通按钮）。
+- 检查：`npm run build`、`cargo check`；浏览器中打开关于与曲目信息，Esc 关闭正常。
+- Keel 交互讨论：插件已有只读歌曲信息，双击打开即进入主界面详情（方案 2）；建议保持操作只在 Panthesia 一处实现，插件加“开始练习”直达舞台，待用户决定。
+- 下一入口：ScoreExportDialog、MediaExportDialog、ExerciseDialog、SessionRecovery、WorkProgress…，每改完一个删除它在 `style.css` 中的规则。
+
 ## 2026-11-23 · RU 前端架构：主界面、歌曲详情面板、路由与分层（提交 d4ac986、4bd1e4e、e4f4a74、71db1ec 及本条）
 
 用户重整了本地前端技能，要求按项目实际设计前端架构并与现状比对；主界面左栏三个大按钮留白太多、按行列出看到的太少，歌曲详情不需要“更多”、应在主界面选歌时弹出。随后明确：曲库管理（文件夹浏览、标签）由 Keel 承担，Panthesia 不重复做，只从技术架构和适合项目的角度整理。
