@@ -183,3 +183,50 @@
   padding: 0 4px;
   font-size: 12px;
 }
+/* Tempo stepper on the bar (PracticeTransport.tsx): − | number over "BPM" | +, as wide as it
+   needs and symmetric (the slider label and the reset button stay hidden here). */
+.synthesia-transport .practice-speed {
+  display: inline-grid;
+  grid-template-columns: 32px auto 32px;
+  grid-template-rows: auto auto;
+  grid-template-areas: "minus value plus" "minus unit plus";
+  align-items: center;
+  justify-items: center;
+  width: auto;
+  min-width: 0;
+  flex: none;
+  gap: 0 2px;
+  padding: 2px 4px;
+}
+.synthesia-transport .practice-speed > .synthesia-tempo-step:first-of-type {
+  grid-area: minus;
+}
+.synthesia-transport .practice-speed > .synthesia-tempo-step:last-of-type {
+  grid-area: plus;
+}
+.synthesia-transport .practice-speed > .bpm-number {
+  grid-area: value;
+  width: 3.4em;
+  height: 22px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 650 18px/1.1 var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.synthesia-transport .practice-speed > .synthesia-bpm-unit {
+  position: static;
+  left: auto;
+  transform: none;
+  grid-area: unit;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+.synthesia-transport .practice-speed > .synthesia-tempo-step {
+  width: 32px;
+  height: 32px;
+}
