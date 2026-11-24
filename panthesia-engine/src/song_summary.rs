@@ -18,10 +18,10 @@ pub const MATERIALS: &[(&str, &str)] = &[
     ("musicxml", "五线谱 MusicXML"),
     ("abc", "ABC 谱"),
     ("paper", "谱页 PDF"),
-    ("source", "原曲音频"),
+    ("source", "原曲（音频 / 视频）"),
     ("vocals", "人声"),
     ("accompaniment", "伴奏"),
-    ("stems", "其他分轨"),
+    ("stems", "钢琴与其他分轨"),
     ("cover", "封面图片"),
 ];
 /// Layers in display order, with their names.

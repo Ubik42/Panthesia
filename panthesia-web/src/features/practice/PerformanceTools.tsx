@@ -121,8 +121,8 @@ export function PerformanceTools({
           if (virtualHands && view !== "keyboard" && view !== "combined") setView("keyboard");
         }} />
         <Toggle optional icon={Lightbulb} label="琴键灯带" on={display.ledStrip} change={(ledStrip) => set({ ledStrip })} />
-        <Toggle icon={Milestone} label="段落" on={display.sections} disabled={!song?.sections?.items.length} change={(sections) => set({ sections })} />
-        <Toggle icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
+        <Toggle optional icon={Milestone} label="段落" on={display.sections} disabled={!song?.sections?.items.length} change={(sections) => set({ sections })} />
+        <Toggle optional icon={Music2} label="和弦" on={display.chordLabels !== "off"} disabled={!song?.harmony?.chords.length} change={(on) => set({ chordLabels: on ? "name" : "off" })} />
         <Toggle optional icon={MicVocal} label="歌词" on={display.lyrics} disabled={!song?.importedLayers.lyrics.length} change={(lyrics) => set({ lyrics })} />
         <Toggle optional icon={Clock4} label="拍号" on={display.meterLabels} change={(meterLabels) => set({ meterLabels })} />
         <Toggle icon={MetronomeIcon} label="节拍器" on={!!state.metronome} disabled={busy || !song} change={(enabled) => action({ type: "metronome", enabled })} />
@@ -143,7 +143,7 @@ export function PerformanceTools({
       </div>
 
       <div className="stage-tools-group" aria-label="面板">
-      <ToolbarMore panel icon={<Palette size={22} />} label="背景" disabled={!startupReady}>
+      <ToolbarMore panel width={440} icon={<Palette size={22} />} label="背景" disabled={!startupReady}>
         <StageBackgroundSettings value={display} change={set} cover={cover} />
       </ToolbarMore>
 
@@ -185,6 +185,12 @@ export function PerformanceTools({
                 </button>
               </span>
             </div>
+          )}
+          {!!song?.sections?.items.length && (
+            <label className="fallback-1180">
+              <input type="checkbox" aria-label="显示段落" checked={display.sections} onChange={(event) => set({ sections: event.target.checked })} />
+              段落
+            </label>
           )}
           <label className="fallback-1180">
             <input type="checkbox" aria-label="显示拍号" checked={display.meterLabels} onChange={(event) => set({ meterLabels: event.target.checked })} />

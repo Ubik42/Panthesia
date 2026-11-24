@@ -11,14 +11,14 @@ type Value = Pick<DisplayPreferences, "stageColor" | "backgroundOpacity" | "back
 /** The stage background in one place (stage bar panel and settings page): the colour, a picture
  * behind the waterfall (none, the song's cover, a preset or the player's own) and how much the
  * colour covers the picture. */
-export function StageBackgroundSettings({ value, change, cover }: { value: Value; change: (patch: Partial<Value>) => void; /** The current song's cover, when it has one. */ cover?: string | null }) {
+export function StageBackgroundSettings({ value, change, cover, heading }: { value: Value; change: (patch: Partial<Value>) => void; /** The current song's cover, when it has one. */ cover?: string | null; /** A section heading (the settings page; the stage panel has its own title). */ heading?: string }) {
   const own = useStageBackground();
   const pick = (backgroundImage: BackgroundImage) =>
     // A picture under a fully opaque colour would not show: let it through.
     change(backgroundImage !== "none" && value.backgroundOpacity === 100 ? { backgroundImage, backgroundOpacity: 55 } : { backgroundImage });
   return (
     <section className="stage-background" aria-label="背景">
-      <h3>背景</h3>
+      {heading && <h3>{heading}</h3>}
       <div className="stage-background-row">
         <span>颜色</span>
         <StageColorPicker value={value.stageColor} change={(stageColor) => change({ stageColor })} />

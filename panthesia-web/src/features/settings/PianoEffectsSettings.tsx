@@ -34,7 +34,7 @@ export function PianoEffectsSettings({ value, change }: { value: DisplayPreferen
           </span>
         </div>
       </section>
-      <StageBackgroundSettings value={value} change={change} />
+      <StageBackgroundSettings heading="舞台背景" value={value} change={change} />
       <label>
         <input type="checkbox" checked={value.ledStrip} onChange={(e) => change({ ledStrip: e.target.checked })} />
         琴键上沿灯带，随发声的音符亮起

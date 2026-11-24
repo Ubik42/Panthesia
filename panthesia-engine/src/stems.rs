@@ -242,7 +242,7 @@ struct Prepared {
 
 /// Decoded stems and their alignment, prepared off the player thread.
 pub(crate) struct Stems {
-    content_id: String,
+    pub(crate) content_id: String,
     output: Option<Output>,
     prepared: Option<Prepared>,
     loading: Option<mpsc::Receiver<Result<Prepared, String>>>,

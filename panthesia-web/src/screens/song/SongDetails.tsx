@@ -213,7 +213,7 @@ export function SongDetails({
   const fileLine = (material: Material, item: MaterialItem) => (
     <li key={`${item.id ?? ""}:${item.path ?? item.relative}`} className="material-file" data-state={item.state}>
       <span className="material-name" title={item.path ?? item.relative}>
-        {fileName(item.relative)}
+        {displayName(item)}
       </span>
       {item.origin === "generated" && item.step && <em data-state="made" title={item.tool ? `由 ${item.tool} ${STEP_NAMES[item.step] ?? item.step}` : undefined}>{STEP_NAMES[item.step] ?? item.step}</em>}
       {item.state === "current" && <em>当前</em>}
@@ -398,6 +398,12 @@ export function SongDetails({
  * player brought is an input, one transcribed from the recording is generated. */
 const INPUT_ROWS = new Set(["performance", "musicxml", "source", "paper", "cover"]);
 /** The step that made a generated file (provenance.step). */
+/** A generated file by its label and type ("乐谱量化 · MID"): its name repeats the song's. */
+const displayName = (item: MaterialItem) => {
+  const name = fileName(item.relative);
+  const ext = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toUpperCase() : "";
+  return item.origin === "generated" && item.label ? `${item.label}${ext ? ` · ${ext}` : ""}` : name;
+};
 const STEP_NAMES: Record<string, string> = { separate: "分离", transcribe: "转录", engrave: "制谱", export: "导出", frame: "视频画面", omr: "识谱" };
 
 /** One column of the materials: a row per kind, its files and its actions. */

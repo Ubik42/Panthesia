@@ -274,6 +274,12 @@ impl Playback {
         }
         player.reset_with_sound(self.state.position, Some(self.sound));
         player.state.metronome = metronome;
+        // The reader prepared the song without sound; the live player loads the song's stems
+        // (vocals, accompaniment) itself, unless the same song's stems are already loaded.
+        let song = player.source_file.as_ref().or(player.file.as_ref()).map(|f| f.content_id.clone());
+        if player.stems.as_ref().map(|s| &s.content_id) != song.as_ref() {
+            player.load_stems();
+        }
     }
 }
 
