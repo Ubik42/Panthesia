@@ -55,5 +55,5 @@ Panthesia 是一个打开一首歌就能练的桌面程序，界面只有四类�
 | 主界面 | 左栏三个大按钮 + 按行列出最近打开 | 顶栏 + 双列卡片（第 3 节） | 重写 |
 | 歌曲页 | 独立页面，有“更多”菜单 | 主界面上的详情面板，无“更多” | 改为 Sheet |
 | 组件 | 只有 CSS 类（`ui-button` 等）与少量组件 | 第 2 节的组件 | 补齐并替换页面中的类 |
-| 旧样式 | `style.css`、`dailyTheme.css`、`synthesiaLayout.css` 等仍在 | 全部删除 | 随各页面改写删除；旧对话框外壳统一由 `legacyDialog.css` 过渡 |
+| 旧样式 | `style.css`、`dailyTheme.css`、`synthesiaLayout.css` 等仍在 | 全部删除 | 随各页面改写删除；对话框已全部改用 `ui/Dialog`（2026-11-23），`legacyDialog.css` 已删除 |
 | 桌面约定 | 部分（系统字体、深色） | 第 1 节全部 | 全局样式补齐 |

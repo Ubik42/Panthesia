@@ -2,6 +2,18 @@
 
 每轮一条，新记录在上。计划与阶段定义见 [current-plan.md](current-plan.md)。
 
+## 2026-11-23 · Keel 直达练习；旧对话框全部改写（提交 f1d8fe2、f1b613b、776d990 及本条）
+
+- 用户选定：插件只看信息，加“开始练习”直达舞台；修改只在 Panthesia 歌曲详情中。
+- 启动参数 `--play`：打开请求带 `play` 标记。普通打开（双击、拖放、第二次启动）显示歌曲详情，与界面规范一致，此前进入舞台；`--play` 打开后按记住的方式与左右手开始。
+- `Panthesia.exe locate <库内相对路径> --size <字节> [--root <文件夹>]`：Keel 不给插件绝对路径（只能复制到剪贴板，不可用），由 Panthesia 在资源库文件夹与曲目文件夹中按“相对路径后缀 + 大小”查找；只有同名同大小多份时，取父文件夹与相对路径相同层数最多的那份，仍不唯一时报错。用语料（`D:\Music\MIDI`，临时数据根）验证了直接命中、多一层前缀、只凭文件名、大小不符、`..` 拒绝。
+- Keel 插件 0.3.0：资产右键“打开”分组的“用 Panthesia 练习”；歌曲信息对话框的提交按钮改为“开始练习”。找不到文件时提示把曲目文件夹设到歌曲所在处。插件需在 Keel 中重新安装或重载；`--play` 的完整流程未在桌面实测（用户的 Panthesia 正在运行，单实例会转交给旧版本）。
+- 对话框：其余 16 个全部改用 `ui/Dialog`（导出谱、导出 MIDI、练习生成、段落、范围、节拍网格、逐音分手、谱面管理、原谱文件、原谱选段、纸谱练习段、指法建议、双手指法审阅、指法工作台、恢复与问题、工作进度）。样式在各组件旁的 `@layer screens` 中，只用语义 token；`style.css` 删去约 160 条规则，`legacyDialog.css` 删除。嵌套对话框改为同级渲染。
+- `ui/Dialog`：背景网格只有一条可收缩轨道，宽对话框在窄窗口中不再溢出；挂载时优先聚焦 `[data-dialog-initial-focus]`（搜索框）。
+- 外观变化：对话框里的 `section` 按 `.ui-form` 画成卡片；主要操作统一为强调色；标题统一为对话框标准字号。
+- 检查：`npm run build`、`cargo check`、`cargo test -p panthesia-desktop open_requests`；浏览器中核对导出 MIDI、恢复与问题、指法工作台的尺寸、焦点与 Esc。其余对话框只经过类型检查。
+- 下一入口：`style.css`、`dailyTheme.css`、`synthesiaLayout.css` 中剩余的旧规则随页面继续删；会话状态从 `useAppModel` 拆出。
+
 ## 2026-11-23 · RU 旧对话框改写第一批（提交 cae3d24 及本条）
 
 - `ui/Dialog` 补齐：副标题、关闭按钮文字、`closeDisabled`（保存中不能关闭）、`keepOnBackdrop`（有未保存选择时点背景不关闭）、内容类名。删除它自带的 Escape 处理，统一交给窗口焦点管理（`useDialogFocus`，支持 `data-dialog-escape`）。
